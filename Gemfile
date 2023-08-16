@@ -103,7 +103,7 @@ group :test do
   gem 'simplecov', '~> 0.21.2', :require => false
   gem "ffi", platforms: [:mingw, :x64_mingw, :mswin]
   # For running system tests
-  gem 'puma', (Gem.ruby_version < Gem::Version.new('2.7') ? '< 6.0.0' : '>= 0')
+  #gem 'puma', (Gem.ruby_version < Gem::Version.new('2.7') ? '< 6.0.0' : '>= 0')
   gem 'capybara', (if Gem.ruby_version < Gem::Version.new('2.6')
                      '~> 3.35.3'
                    elsif Gem.ruby_version < Gem::Version.new('2.7')
@@ -138,3 +138,5 @@ require 'rbconfig'
 if RbConfig::CONFIG['target_os'] =~ /(?i-mx:bsd|dragonfly)/
   gem 'rb-kqueue', '>= 0.2'
 end
+
+gem "passenger", "~> 6.0"
