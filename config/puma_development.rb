@@ -13,3 +13,4 @@ pidfile "#{application_path}/tmp/pids/puma_development.pid"
 state_path "#{application_path}/tmp/pids/puma_development.state"
 stdout_redirect "#{application_path}/log/puma_development.stdout.log", "#{application_path}/log/puma_development.stderr.log"
 bind "unix://#{application_path}/tmp/sockets/redmine_development.sock"
+activate_control_app 'tcp://127.0.0.1:9293', { auth_token: "trustteam" }
