@@ -37,6 +37,25 @@
   </div>
 </fieldset>
 
+  <fieldset class="box">
+    <legend><%= l(:label_display_revision_branches) %></legend>
+    <div class="tabular settings">
+      <p><%= setting_check_box :display_under_single_revision %></p>
+
+      <p><%= setting_check_box :display_under_associated_revisions %></p>
+
+      <p>
+        <%= setting_text_area :display_revision_branches_enable_regex_delimiters, :rows => 5 %>
+        <label class="block">
+          <%= setting_check_box :display_revision_branches_regex_enable, :label => false %>
+          <%= l(:setting_display_revision_branches_regex_enable) %>
+        </label>
+        <em class="info"><%= l(:text_comma_separated) %>
+          <%= l(:label_example) %>: ^[A-Z0-9]+$</em>
+      </p>
+    </div>
+  </fieldset>
+
 <fieldset class="box">
   <legend><%= l(:setting_issue_list_default_columns) %></legend>
   <%= render_query_columns_selection(

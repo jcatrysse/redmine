@@ -87,10 +87,8 @@ module RedmineApp
     config.log_level = Rails.env.production? ? :info : :debug
 
     config.session_store(
-      :cookie_store,
-      :key => '_redmine_session',
-      :path => config.relative_url_root || '/',
-      :same_site => :lax
+      :active_record_store,
+      :key => '_redmine_session'
     )
 
     if File.exist?(File.join(File.dirname(__FILE__), 'additional_environment.rb'))

@@ -862,7 +862,7 @@ nl:
   error_unable_delete_issue_status: Verwijderen van issuestatus is niet gelukt (%{value})
   label_profile: Profiel
   permission_manage_subtasks: Subtaken beheren
-  field_parent_issue: Hoofdissue
+  field_parent_issue: Parent issue
   label_subtask_plural: Subtaken
   label_project_copy_notifications: E-mailnotificaties voor de projectkopie sturen
   error_can_not_delete_custom_field: Custom field verwijderen is niet mogelijk

@@ -24,10 +24,16 @@ module Redmine
         return str
       end
       enc = encoding.blank? ? "UTF-8" : encoding
+      enc = "WINDOWS-1252" if encoding.upcase == "WINDOWS-1258"
       if enc.casecmp("UTF-8") != 0
+        begin
         str.force_encoding(enc)
         str = str.encode("UTF-8", :invalid => :replace,
               :undef => :replace, :replace => '?')
+        rescue Encoding::ConverterNotFoundError
+          Rails.logger.warn ">>> ConverterNotFoundError (#{enc} to UTF-8)"
+          str = replace_invalid_utf8(str)
+        end
       else
         str = replace_invalid_utf8(str)
       end

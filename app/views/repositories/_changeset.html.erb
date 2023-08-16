@@ -28,6 +28,12 @@
                }.join(", ").html_safe %>
       </li>
     <% end %>
+    <% if Setting.display_under_single_revision? %>
+      <li>
+        <strong><%= l(:label_branches) %></strong>
+        <%=  links_to_branches.join(', ').html_safe %>
+      </li>
+    <% end %>
   </ul>
   <% end %>
 

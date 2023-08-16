@@ -226,6 +226,10 @@ issue_list_default_columns:
 issue_list_default_totals:
   serialized: true
   default: []
+display_under_single_revision:
+  default: 0
+display_under_associated_revisions:
+  default: 0
 display_subprojects_issues:
   default: 1
 time_entry_list_defaults:
@@ -341,3 +345,7 @@ timelog_accept_future_dates:
   default: 1
 show_status_changes_in_mail_subject:
   default: 1
+display_revision_branches_enable_regex_delimiters:
+  default: ''
+display_revision_branches_regex_enable:
+  default: 0

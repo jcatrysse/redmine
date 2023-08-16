@@ -945,12 +945,19 @@ module ApplicationHelper
         filename, ext, alt, alttext = $1, $2, $3, $4
         # search for the picture in attachments
         if found = Attachment.latest_attach(attachments, CGI.unescape(filename))
-          image_url = download_named_attachment_url(found, found.filename, :only_path => only_path)
           desc = found.description.to_s.delete('"')
           if !desc.blank? && alttext.blank?
             alt = " title=\"#{desc}\" alt=\"#{desc}\""
           end
+          case options[:wiki_links]
+          when :local
+            "src=\"data:#{found.content_type};base64,#{Base64.encode64(File.read(found.diskfile)).gsub(/\n/,"")}\"#{alt}"
+          when :anchor
+            "src=\"data:#{found.content_type};base64,#{Base64.encode64(File.read(found.diskfile)).gsub(/\n/,"")}\"#{alt}"
+          else
+            image_url = download_named_attachment_url(found, found.filename, :only_path => only_path)
           "src=\"#{image_url}\"#{alt} loading=\"lazy\""
+          end
         else
           m
         end

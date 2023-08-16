@@ -99,6 +99,35 @@ module Redmine
           nil
         end
 
+        def branch_contains(hash)
+          cleaned_hash = hash.sub(/[^\w]/, '')
+          cmd_args = ['branch', '--contains', cleaned_hash]
+          begin
+            branches = git_cmd(cmd_args) do |io|
+              io.readlines.sort!.map{|t| t.strip.gsub(/\* ?/, '')}
+            end
+          rescue ScmCommandAborted
+            branches = Array.new
+          end
+
+          if Setting.display_revision_branches_regex_enable?
+            delimiters = Setting.display_revision_branches_enable_regex_delimiters.to_s.split(/[\r\n]+/).reject(&:blank?)
+            begin
+              delimiters = delimiters.map {|s| Regexp.new(s)}
+            rescue RegexpError => e
+              logger&.error "GitAdapter: invalid regexp delimiter found in display_revision_branches_regex setting (#{e.message})"
+            end
+
+            unless delimiters.empty? || branches.empty?
+              delimiters.each do |regex|
+                branches.reject! { |element| element.match?(regex) }
+              end
+            end
+          end
+
+          branches.uniq
+        end
+
         def tags
           return @tags if @tags
 

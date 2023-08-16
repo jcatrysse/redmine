@@ -459,6 +459,7 @@ de:
   label_board_sticky: Wichtig (immer oben)
   label_boolean: Boolean
   label_branch: Zweig
+  label_branches: Zweige
   label_browse: Codebrowser
   label_bulk_edit_selected_issues: Alle ausgewählten Tickets bearbeiten
   label_bulk_edit_selected_time_entries: Ausgewählte Zeitaufwände bearbeiten
@@ -1007,6 +1008,8 @@ de:
   setting_default_projects_tracker_ids: Standardmäßig aktivierte Tracker für neue Projekte
   setting_diff_max_lines_displayed: Maximale Anzahl anzuzeigender Diff-Zeilen
   setting_display_subprojects_issues: Tickets von Unterprojekten im Hauptprojekt anzeigen
+  setting_display_under_single_revision: Unterschiede bei Revision anzeigen
+  setting_display_under_associated_revisions: Bei zugehörigen Revisionen anzeigen
   setting_emails_footer: E-Mail-Fußzeile
   setting_emails_header: E-Mail-Kopfzeile
   setting_enabled_scm: Aktivierte Versionskontrollsysteme
@@ -1302,6 +1305,7 @@ de:
   label_ends_with: endet mit
   label_issue_fixed_version_updated: Zielversion aktualisiert
   setting_project_list_defaults: Voreinstellungen Projektliste
+  label_display_revision_branches: Zweige zur Revision anzeigen
   label_display_type: Ergebnisse anzeigen als
   label_display_type_list: Liste
   label_display_type_board: Karte

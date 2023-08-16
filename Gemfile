@@ -128,3 +128,13 @@ end
 Dir.glob File.expand_path("../plugins/*/{Gemfile,PluginGemfile}", __FILE__) do |file|
   eval_gemfile file
 end
+
+Dir["#{File.dirname(__FILE__)}/bundler.d/*.rb"].each do |bundle|
+  self.instance_eval(Bundler.read_file(bundle))
+end
+
+gem "activerecord-session_store", "~> 2.0"
+require 'rbconfig'
+if RbConfig::CONFIG['target_os'] =~ /(?i-mx:bsd|dragonfly)/
+  gem 'rb-kqueue', '>= 0.2'
+end
