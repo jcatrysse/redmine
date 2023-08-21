@@ -140,3 +140,4 @@ if RbConfig::CONFIG['target_os'] =~ /(?i-mx:bsd|dragonfly)/
 end
 
 gem "passenger", "~> 6.0"
+gem "matrix", "~> 0.4.2"
