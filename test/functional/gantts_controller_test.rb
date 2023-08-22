@@ -170,6 +170,7 @@ class GanttsControllerTest < Redmine::ControllerTest
 
   if Object.const_defined?(:MiniMagick) && convert_installed?
     def test_gantt_should_export_to_png
+      Issue.generate!(:subject => %q!Subject containing special characters " and '!)
       get(
         :show,
         :params => {
