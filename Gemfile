@@ -141,3 +141,4 @@ end
 
 gem "passenger", "~> 6.0"
 gem "matrix", "~> 0.4.2"
+gem 'blankslate'
