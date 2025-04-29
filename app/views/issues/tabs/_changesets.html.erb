@@ -8,18 +8,23 @@
     <p>
     <%= "#{changeset.project.name} - " unless changeset.project == project %>
     <%= link_to_revision(changeset, changeset.repository,
-                        :text => "#{l(:label_revision)} #{changeset.format_identifier}") %>
-    <% if changeset.filechanges.any? && User.current.allowed_to?(:browse_repository, changeset.project) %>
-    (<%= link_to(l(:label_diff),
-           :controller => 'repositories',
-           :action => 'diff',
-           :id     => changeset.project,
-           :repository_id => changeset.repository.identifier_param,
-           :path   => "",
-           :rev    => changeset.identifier) %>)
-    <% end %></p>
-
-    <div class="wiki changeset-comments">
+                         :text => "#{l(:label_revision)} #{changeset.format_identifier}") %>
+      <% if changeset.filechanges.any? && User.current.allowed_to?(:browse_repository, changeset.project) %>
+        (<%= link_to(l(:label_diff),
+                     :controller => 'repositories',
+                     :action => 'diff',
+                     :id     => changeset.project,
+                     :repository_id => changeset.repository.identifier_param,
+                     :path   => "",
+                     :rev    => changeset.identifier) %>)
+      <% end %></p>
+      <% if User.current.allowed_to?(:browse_repository, changeset.project) && Setting.display_under_associated_revisions? && changeset.scmid.present?
+           @repository = changeset.repository
+           @rev = changeset.identifier
+      %>
+        (<em><%= l(:label_branches) %>: <%= links_to_branches.join(', ').force_encoding("UTF-8").html_safe %></em>)
+      <% end %>
+      <div class="wiki changeset-comments">
       <%= format_changeset_comments changeset %>
     </div>
     </div>

@@ -416,6 +416,10 @@ fr:
   setting_time_format: Format d'heure
   setting_timespan_format: Format des temps en heures
   setting_cross_project_issue_relations: Autoriser les relations entre demandes de différents projets
+  setting_display_under_single_revision: Display revision under Single Revision
+  setting_display_under_associated_revisions: Display revision under Associated Revisions
+  setting_display_revision_branches_enable_regex_delimiters: Hide branches with Regular Expression
+  setting_display_revision_branches_regex_enable: Enable Regular Expression
   setting_cross_project_subtasks: Autoriser les sous-tâches dans des projets différents
   setting_issue_list_default_columns: Colonnes affichées par défaut sur la liste des demandes
   setting_repositories_encodings: Encodages des fichiers et des dépôts
