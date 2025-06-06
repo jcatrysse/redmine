@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
 require 'net/imap'
 
 module Redmine
@@ -28,12 +27,20 @@ module Redmine
         ssl = !imap_options[:ssl].nil?
         starttls = !imap_options[:starttls].nil?
         folder = imap_options[:folder] || 'INBOX'
+        auth_type = imap_options[:auth_type] || 'LOGIN'
 
         imap = Net::IMAP.new(host, port, ssl)
         if starttls
           imap.starttls
         end
-        imap.login(imap_options[:username], imap_options[:password]) unless imap_options[:username].nil?
+        if auth_type == "XOAUTH2" 
+          require 'gmail_xoauth' unless defined?(Net::IMAP::XOauth2Authenticator) && Net::IMAP::XOauth2Authenticator.class == Class
+        end
+        if auth_type == "LOGIN"
+          imap.login(imap_options[:username], imap_options[:password]) unless imap_options[:username].nil?
+        else
+          imap.authenticate(auth_type, imap_options[:username], imap_options[:password]) unless imap_options[:username].nil?
+        end
         imap.select(folder)
         imap.uid_search(['NOT', 'SEEN']).each do |uid|
           msg = imap.uid_fetch(uid,'RFC822')[0].attr['RFC822']
