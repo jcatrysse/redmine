@@ -988,6 +988,38 @@ class ProjectsControllerTest < Redmine::ControllerTest
     assert_select "tr#member-#{member.id}"
   end
 
+  def test_settings_members_tab_should_paginate_memberships
+    project = Project.generate!
+    3.times do
+      user = User.generate!
+      User.add_to_project(user, project)
+    end
+
+    @request.session[:user_id] = 1
+
+    with_settings :per_page_options => '2,25,50' do
+      get(:settings, :params => {:id => project.id, :tab => 'members'})
+      assert_response :success
+      assert_select 'table.members tbody tr', 2
+      assert_select 'span.pagination ul.pages'
+      assert_select 'span.pagination span.per-page', :text => /Per page: 2, 25/
+
+      get(:settings, :params => {:id => project.id, :tab => 'members', :members_page => 2})
+      assert_response :success
+      assert_select 'table.members tbody tr', 1
+    end
+  end
+
+  def test_settings_without_members_tab_should_prepare_membership_pagination
+    project = Project.generate!
+    @request.session[:user_id] = 1
+
+    get(:settings, :params => {:id => project.id})
+    assert_response :success
+    assert_kind_of Redmine::Pagination::Paginator, assigns(:member_pages)
+    assert_equal [], assigns(:memberships)
+  end
+
   def test_settings_should_show_tabs_depending_on_permission
     @request.session[:user_id] = 3
     project = Project.find(1)

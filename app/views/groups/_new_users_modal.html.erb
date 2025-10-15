@@ -1,6 +1,11 @@
 <h3 class="title"><%= l(:label_user_new) %></h3>
 
-<%= form_for(@group, :url => group_users_path(@group), :remote => true, :method => :post) do |f| %>
+<% users_query = {} %>
+<% users_query[:users_page] = params[:users_page] if params[:users_page].present? %>
+<% users_query[:per_page] = params[:per_page] if params[:per_page].present? %>
+<%= form_for(@group, :url => group_users_path(@group, users_query), :remote => true, :method => :post) do |f| %>
+  <%= hidden_field_tag :users_page, params[:users_page] if params[:users_page].present? %>
+  <%= hidden_field_tag :per_page, params[:per_page] if params[:per_page].present? %>
   <%= render :partial => 'new_users_form' %>
   <p class="buttons">
     <%= submit_tag l(:button_add) %>

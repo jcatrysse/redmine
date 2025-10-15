@@ -2,6 +2,8 @@
                       :as => :membership,
                       :remote => request.xhr?,
                       :method => :put) do |f| %>
+  <%= hidden_field_tag :members_page, params[:members_page] if params[:members_page].present? %>
+  <%= hidden_field_tag :per_page, params[:per_page] if params[:per_page].present? %>
   <p>
     <% @roles.each do |role| %>
     <label class="block">

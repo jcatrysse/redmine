@@ -84,6 +84,7 @@ class GroupsController < ApplicationController
   end
 
   def edit
+    load_group_users if @group.givable?
   end
 
   def update
@@ -116,8 +117,9 @@ class GroupsController < ApplicationController
   def add_users
     @users = User.not_in_group(@group).where(:id => (params[:user_id] || params[:user_ids])).to_a
     @group.users << @users
+    load_group_users
     respond_to do |format|
-      format.html {redirect_to edit_group_path(@group, :tab => 'users')}
+      format.html {redirect_to edit_group_path(@group, group_users_query)}
       format.js
       format.api do
         if @users.any?
@@ -131,8 +133,9 @@ class GroupsController < ApplicationController
 
   def remove_user
     @group.users.delete(User.find(params[:user_id])) if request.delete?
+    load_group_users
     respond_to do |format|
-      format.html {redirect_to edit_group_path(@group, :tab => 'users')}
+      format.html {redirect_to edit_group_path(@group, group_users_query)}
       format.js
       format.api {render_api_ok}
     end
@@ -158,5 +161,21 @@ class GroupsController < ApplicationController
       h[key.to_i] = h.delete(key)
     end
     h
+  end
+
+  def load_group_users
+    scope = @group.users.sorted
+    @group_users_count = scope.count
+    @group_users_pages = Paginator.new(@group_users_count, per_page_option,
+                                       params[:users_page], 'users_page')
+    @group_users =
+      scope.offset(@group_users_pages.offset).limit(@group_users_pages.per_page).to_a
+  end
+
+  def group_users_query
+    query = {:tab => 'users'}
+    query[:users_page] = params[:users_page] if params[:users_page].present?
+    query[:per_page] = params[:per_page] if params[:per_page].present?
+    query
   end
 end

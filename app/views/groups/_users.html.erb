@@ -1,22 +1,35 @@
-<p><%= link_to l(:label_user_new), new_group_users_path(@group), :remote => true, :class => "icon icon-add" %></p>
+<% current_users_page = @group_users_pages&.page || params[:users_page] %>
+<% current_users_per_page = @group_users_pages&.per_page || params[:per_page].presence %>
+<% users_query = {} %>
+<% users_query[:users_page] = current_users_page if current_users_page.present? %>
+<% users_query[:per_page] = current_users_per_page if current_users_per_page.present? %>
+<p><%= link_to l(:label_user_new), new_group_users_path(@group, users_query), :remote => true, :class => "icon icon-add" %></p>
 
-<% if @group.users.any? %>
+<% users = @group_users || [] %>
+<% users_count = @group_users_count || users.size %>
+<% if users.any? %>
   <table class="list users">
     <thead><tr>
       <th><%= l(:label_user) %></th>
       <th style="width:15%"></th>
     </tr></thead>
     <tbody>
-    <% @group.users.sort.each do |user| %>
+    <% users.each do |user| %>
       <tr id="user-<%= user.id %>">
         <td class="name"><%= link_to_user user %></td>
         <td class="buttons">
-          <%= delete_link group_user_path(@group, :user_id => user), :remote => true %>
+          <%= delete_link group_user_path(@group, users_query.merge(:user_id => user)), :remote => true %>
         </td>
       </tr>
     <% end %>
     </tbody>
   </table>
+  <% if @group_users_pages %>
+    <% pagination_params = request.query_parameters.merge(:tab => 'users') %>
+    <span class="pagination"><%= pagination_links_full(@group_users_pages, users_count) do |text, parameters, options|
+      link_to text, edit_group_path(@group, pagination_params.merge(parameters)), options
+    end %></span>
+  <% end %>
 <% else %>
   <p class="nodata"><%= l(:label_no_data) %></p>
 <% end %>

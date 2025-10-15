@@ -164,6 +164,33 @@ class GroupsControllerTest < Redmine::ControllerTest
     end
   end
 
+  def test_edit_users_tab_should_paginate_group_members
+    group = Group.generate!
+    users = Array.new(3) { User.generate! }
+    users.each {|user| group.users << user }
+
+    with_settings :per_page_options => '2,25,50' do
+      get(:edit, :params => {:id => group.id, :tab => 'users'})
+      assert_response :success
+      assert_select 'table.users tbody tr', 2
+      assert_select 'span.pagination ul.pages'
+      assert_select 'span.pagination span.per-page', :text => /Per page: 2, 25/
+
+      get(:edit, :params => {:id => group.id, :tab => 'users', :users_page => 2})
+      assert_response :success
+      assert_select 'table.users tbody tr', 1
+    end
+  end
+
+  def test_edit_without_users_tab_should_prepare_group_users_pagination
+    group = Group.generate!
+
+    get(:edit, :params => {:id => group.id})
+    assert_response :success
+    assert_kind_of Redmine::Pagination::Paginator, assigns(:group_users_pages)
+    assert_equal [], assigns(:group_users)
+  end
+
   def test_update
     new_name = 'New name'
     put(

@@ -18,6 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 class MembersController < ApplicationController
+  include MembersPagination
   model_object Member
   before_action :find_model_object, :except => [:index, :new, :create, :autocomplete]
   before_action :find_project_from_association, :except => [:index, :new, :create, :autocomplete]
@@ -65,6 +66,8 @@ class MembersController < ApplicationController
       @project.members << members
     end
 
+    paginate_project_members(@project)
+
     respond_to do |format|
       format.html {redirect_to_settings_in_projects}
       format.js do
@@ -91,6 +94,7 @@ class MembersController < ApplicationController
       @member.set_editable_role_ids(params[:membership][:role_ids])
     end
     saved = @member.save
+    paginate_project_members(@project)
     respond_to do |format|
       format.html {redirect_to_settings_in_projects}
       format.js
@@ -108,6 +112,7 @@ class MembersController < ApplicationController
     if @member.deletable?
       @member.destroy
     end
+    paginate_project_members(@project)
     respond_to do |format|
       format.html {redirect_to_settings_in_projects}
       format.js
@@ -130,6 +135,9 @@ class MembersController < ApplicationController
   private
 
   def redirect_to_settings_in_projects
-    redirect_to settings_project_path(@project, :tab => 'members')
+    query = {:tab => 'members'}
+    query[:members_page] = params[:members_page] if params[:members_page].present?
+    query[:per_page] = params[:per_page] if params[:per_page].present?
+    redirect_to settings_project_path(@project, query)
   end
 end

@@ -43,6 +43,7 @@ class ProjectsController < ApplicationController
   helper :repositories
   helper :members
   helper :trackers
+  include MembersPagination
 
   # Lists visible projects
   def index
@@ -203,6 +204,10 @@ class ProjectsController < ApplicationController
     @issue_category ||= IssueCategory.new
     @member ||= @project.members.new
     @trackers = Tracker.sorted.to_a
+
+    if User.current.allowed_to?(:manage_members, @project)
+      paginate_project_members(@project)
+    end
 
     @version_status = params[:version_status] || 'open'
     @version_name = params[:version_name]
