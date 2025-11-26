@@ -473,6 +473,18 @@ class IssueQuery < Query
     raise StatementInvalid.new(e.message)
   end
 
+  def fixed_version_values
+    versions_scope =
+      if project
+        Version.visible.where(project_statement).includes(:project).references(:project)
+      else
+        Version.visible
+      end
+
+    Version.sort_by_status(versions_scope.distinct.to_a).
+      collect{|s| ["#{s.project.name} - #{s.name}", s.id.to_s, l("version_status_#{s.status}")]}
+  end
+
   def sql_for_notes_field(field, operator, value)
     subquery = "SELECT 1 FROM #{Journal.table_name}" +
       " WHERE #{Journal.table_name}.journalized_type='Issue' AND #{Journal.table_name}.journalized_id=#{Issue.table_name}.id" +

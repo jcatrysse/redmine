@@ -132,7 +132,11 @@ function addFilter(field, operator, values) {
   if (!filterOptions) return;
 
   if (filterOptions['remote'] && filterOptions['values'] == null) {
-    $.getJSON(filtersUrl, {'name': field}).done(function(data) {
+    var form = $('#query_form, #gantt_form, #calendar_form, #timelog_form, #time_entries_form').filter('form').first();
+    var data = form.length ? form.serializeArray() : [];
+    data.push({name: 'name', value: field});
+
+    $.getJSON(filtersUrl, data).done(function(data) {
       filterOptions['values'] = data;
       addFilter(field, operator, values) ;
     });
