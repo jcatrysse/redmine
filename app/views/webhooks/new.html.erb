@@ -1,0 +1,4 @@
+<%= labelled_form_for @webhook, :url => webhooks_path do |f| %>
+  <%= render :partial => 'form', :locals => {:f => f} %>
+  <p><%= submit_tag l(:button_create) %></p>
+<% end %>

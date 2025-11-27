@@ -33,6 +33,8 @@ class WikiContent < ActiveRecord::Base
   after_save :create_version
   after_create_commit :send_notification_create
   after_update_commit :send_notification_update
+  after_create_commit :trigger_webhook_create
+  after_update_commit :trigger_webhook_update
 
   scope :without_text, lambda {select(:id, :page_id, :version, :updated_on)}
 
@@ -100,5 +102,13 @@ class WikiContent < ActiveRecord::Base
     if Setting.notified_events.include?('wiki_content_updated') && saved_change_to_text?
       Mailer.deliver_wiki_content_updated(self)
     end
+  end
+
+  def trigger_webhook_create
+    Webhook.trigger('wiki_page.created', self)
+  end
+
+  def trigger_webhook_update
+    Webhook.trigger('wiki_page.updated', self)
   end
 end

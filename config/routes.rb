@@ -317,6 +317,7 @@ Rails.application.routes.draw do
   get 'attachments/download/:id', :to => 'attachments#download', :id => /\d+/
   get 'attachments/thumbnail/:id(/:size)', :to => 'attachments#thumbnail', :id => /\d+/, :size => /\d+/, :as => 'thumbnail'
   resources :attachments, :only => [:show, :update, :destroy]
+  resources :webhooks, :except => [:show]
 
   # register plugin object types with ObjectTypeConstraint.register_object_type(PluginModel.name.underscore.pluralize')
   constraints Redmine::Acts::Attachable::ObjectTypeConstraint do

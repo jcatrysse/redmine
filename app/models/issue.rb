@@ -127,6 +127,9 @@ class Issue < ActiveRecord::Base
   # https://api.rubyonrails.org/v5.2.3/classes/ActiveSupport/Callbacks/ClassMethods.html#method-i-set_callback
   after_create_commit :send_notification
   after_create_commit :add_auto_watcher
+  after_create_commit  -> {Webhook.trigger('issue.created', self)}
+  after_update_commit  :trigger_issue_webhooks
+  after_destroy_commit -> {Webhook.trigger('issue.deleted', self)}
   after_commit :create_parent_issue_journal
 
   # Returns a SQL conditions string used to find all issues visible by the specified user
@@ -162,6 +165,20 @@ class Issue < ActiveRecord::Base
       end
       sql
     end
+  end
+
+  def trigger_issue_webhooks
+    Webhook.trigger('issue.updated', self)
+
+    return unless saved_change_to_status_id?
+
+    previous_status = IssueStatus.find_by(:id => saved_change_to_status_id.first)
+    current_status = status
+
+    return unless current_status&.is_closed?
+    return if previous_status&.is_closed?
+
+    Webhook.trigger('issue.closed', self)
   end
 
   # Returns true if usr or current user is allowed to view the issue

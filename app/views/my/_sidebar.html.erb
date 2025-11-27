@@ -31,6 +31,11 @@
 <% else %>
 <%= l(:label_missing_api_access_key) %>
 <% end %>
+
+<% if Setting.webhooks_enabled? && User.current.allowed_to?(:use_webhooks, nil, :global => true) %>
+  <h4><%= l(:label_integrations) %></h4>
+  <p><%= link_to l(:label_webhook_plural), webhooks_path, :class => 'icon icon-link' %></p>
+<% end %>
 (<%= link_to l(:button_reset), my_api_key_path, :method => :post %>)
 </p>
 <% end %>

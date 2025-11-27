@@ -47,6 +47,7 @@ class Project < ActiveRecord::Base
   has_many :queries, :dependent => :destroy
   has_many :documents, :dependent => :destroy
   has_many :news, lambda {includes(:author)}, :dependent => :destroy
+  has_and_belongs_to_many :webhooks
   has_many :issue_categories, lambda {order(:name)}, :dependent => :delete_all
   has_many :boards, lambda {order(:position)}, :inverse_of => :project, :dependent => :destroy
   has_one :repository, lambda {where(:is_default => true)}

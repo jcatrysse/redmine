@@ -91,6 +91,7 @@ class User < Principal
   has_one :api_token, lambda {where "#{table.name}.action='api'"}, :class_name => 'Token'
   has_one :email_address, lambda {where :is_default => true}, :autosave => true
   has_many :email_addresses, :dependent => :delete_all
+  has_many :webhooks, :dependent => :destroy
   belongs_to :auth_source
 
   scope :logged, lambda {where("#{User.table_name}.status <> #{STATUS_ANONYMOUS}")}

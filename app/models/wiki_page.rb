@@ -61,6 +61,7 @@ class WikiPage < ActiveRecord::Base
   before_destroy :delete_redirects
   before_save :handle_rename_or_move, :update_wiki_start_page
   after_save :handle_children_move, :delete_selected_attachments
+  after_destroy_commit -> {Webhook.trigger('wiki_page.deleted', self)}
 
   # eager load information about last updates, without loading text
   scope :with_updated_on, lambda {preload(:content_without_text)}
