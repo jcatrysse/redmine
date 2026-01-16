@@ -17,6 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+require 'set'
+
 # The WikiController follows the Rails REST controller pattern but with
 # a few differences
 #
@@ -43,6 +45,7 @@ class WikiController < ApplicationController
   include AttachmentsHelper
   helper :watchers
   include Redmine::Export::PDF
+  include ActionView::Helpers::NumberHelper
 
   # List of pages, sorted alphabetically and by parent (hierarchy)
   def index
@@ -309,6 +312,13 @@ class WikiController < ApplicationController
 
   # Export wiki to a single pdf or html file
   def export
+    if params[:format] == 'txt'
+      @pages = @wiki.pages.includes(:content).to_a
+      @ordered_pages = wiki_pages_in_hierarchy(@pages)
+      export = render_to_string :action => 'export_multiple', :formats => [:txt], :layout => false
+      send_data(export, :type => 'text/plain', :filename => "#{@project.identifier}.txt")
+      return
+    end
     @pages = @wiki.pages.
                       includes([:content, {:attachments => :author}]).
                       to_a
@@ -320,6 +330,42 @@ class WikiController < ApplicationController
       format.pdf do
         send_file_headers! :type => 'application/pdf', :filename => "#{@project.identifier}.pdf"
       end
+    end
+  end
+
+  def export_attachments
+    return render_403 unless User.current.allowed_to?(:export_wiki_pages, @project)
+
+    pages = @wiki.pages.includes(:content, :attachments).to_a
+    attachments_by_page =
+      pages.each_with_object({}) do |page, hash|
+        readable_attachments = page.attachments.select(&:readable?)
+        hash[page] = readable_attachments if readable_attachments.any?
+      end
+
+    return render_404 if pages.empty?
+
+    attachments = attachments_by_page.values.flatten
+    bulk_download_max_size = Setting.bulk_download_max_size.to_i.kilobytes
+    if attachments.sum(&:filesize) > bulk_download_max_size
+      flash[:error] = l(:error_bulk_download_size_too_big,
+                        :max_size => number_to_human_size(bulk_download_max_size.to_i))
+      redirect_back_or_default project_wiki_index_path(@project)
+      return
+    end
+
+    return render_404 unless params[:format] == 'zip'
+
+    archive = archive_wiki_assets(pages, attachments_by_page)
+    if archive
+      file_name = "wiki-#{@project.identifier}.zip"
+      send_data(
+        archive,
+        :type => Redmine::MimeType.of(file_name),
+        :filename => file_name
+      )
+    else
+      render_404
     end
   end
 
@@ -385,6 +431,69 @@ class WikiController < ApplicationController
   # Returns true if the current user is allowed to edit the page, otherwise false
   def editable?(page = @page)
     page.editable_by?(User.current)
+  end
+
+  def archive_wiki_assets(pages, attachments_by_page)
+    Zip.unicode_names = true
+    archived_file_names = Hash.new {|hash, key| hash[key] = Hash.new(0)}
+    pages_by_id = pages.index_by(&:id)
+    ordered_pages = wiki_pages_in_hierarchy(pages)
+
+    buffer = Zip::OutputStream.write_buffer do |zos|
+      ordered_pages.each do |page|
+        page_dir = wiki_page_archive_path(page, pages_by_id)
+        zos.put_next_entry(File.join(page_dir, 'page.txt'))
+        zos << page.content&.text.to_s
+        attachments = attachments_by_page[page] || []
+        attachments.each do |attachment|
+          filename = attachment.filename
+          count = archived_file_names[page_dir][filename]
+          if count.positive?
+            extname = File.extname(filename)
+            basename = File.basename(filename, extname)
+            filename = "#{basename}(#{count})#{extname}"
+          end
+          archived_file_names[page_dir][attachment.filename] += 1
+          zos.put_next_entry(File.join(page_dir, filename))
+          zos << IO.binread(attachment.diskfile)
+        end
+      end
+    end
+    buffer.string
+  ensure
+    buffer&.close
+  end
+
+  def sanitize_archive_path(value)
+    value.to_s.gsub(/\A.*(\\|\/)/m, '').gsub(/[\/\?\%\*\:\|\"\'<>\n\r]+/, '_')
+  end
+
+  def wiki_page_archive_path(page, pages_by_id)
+    segments = []
+    current = page
+    visited = Set.new
+    while current
+      break if visited.include?(current.id)
+
+      visited << current.id
+      segments.unshift(sanitize_archive_path(current.title))
+      current = pages_by_id[current.parent_id]
+    end
+    File.join(segments)
+  end
+
+  def wiki_pages_in_hierarchy(pages)
+    pages_by_parent = pages.group_by(&:parent_id)
+    ordered = []
+    walk = lambda do |parent_id|
+      children = pages_by_parent[parent_id].to_a.sort_by(&:title)
+      children.each do |page|
+        ordered << page
+        walk.call(page.id)
+      end
+    end
+    walk.call(nil)
+    ordered
   end
 
   # Returns the default content of a new wiki page

@@ -33,6 +33,8 @@
   <% if User.current.allowed_to?(:export_wiki_pages, @project) %>
   <%= f.link_to('PDF', :url => {:action => 'export', :format => 'pdf'}) %>
   <%= f.link_to('HTML', :url => {:action => 'export'}) %>
+  <%= f.link_to('TXT', :url => {:action => 'export', :format => 'txt'}) %>
+  <%= f.link_to("#{l(:label_wiki)} + #{l(:label_attachment_plural)} (ZIP)", :url => {:action => 'export_attachments', :format => 'zip'}) %>
   <% end %>
 <% end %>
 <% end %>

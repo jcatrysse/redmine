@@ -202,6 +202,7 @@ Rails.application.routes.draw do
       end
       collection do
         get 'export'
+        get 'export_attachments'
         get 'date_index'
         post 'new'
       end
