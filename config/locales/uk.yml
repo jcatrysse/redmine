@@ -1113,6 +1113,8 @@ uk:
   label_enable_notifications: Увімкнути сповіщення
   label_disable_notifications: Вимкнути сповіщення
   setting_search_results_per_page: Кількість знайдених результатів на сторінку
+  setting_search_token_limit: "Максимальна кількість токенів для ключових слів фільтра"
+  text_search_token_limit_info: "Використовуйте 0 для необмеженої кількості токенів (може вплинути на продуктивність)"
   label_blank_value: пусто
   permission_copy_issues: Копіювання задач
   error_password_expired: Термін дії вашого паролю закінчився або адміністратор запросив поміняти його.

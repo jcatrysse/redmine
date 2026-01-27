@@ -488,6 +488,8 @@ sq:
   setting_email_domains_allowed: Përkatësi email të lejuara
   setting_email_domains_denied: Përkatësi email të palejuara
   setting_search_results_per_page: Përfundime kërkimi për faqe
+  setting_search_token_limit: "Shenjat maksimale për filtrimin e fjalëve kyçe"
+  text_search_token_limit_info: "Përdorni 0 për shenja të pakufizuara (mund të ndikojë në performancën)"
   setting_attachment_extensions_allowed: Zgjatime të lejuara
   setting_attachment_extensions_denied: Zgjatime të palejuara
   setting_new_item_menu_tab: Skedë menuje projekti për krijim objektesh të rinj

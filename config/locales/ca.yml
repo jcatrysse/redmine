@@ -1108,6 +1108,8 @@ ca:
   label_enable_notifications: "Activar notificacions"
   label_disable_notifications: "Desactivar notificacions"
   setting_search_results_per_page: "Cercar resultats per pàgina"
+  setting_search_token_limit: "Nombre màxim de fitxes per a paraules clau de filtre"
+  text_search_token_limit_info: "Utilitzeu 0 per a fitxes il·limitades (pot afectar el rendiment)"
   label_blank_value: "blanc"
   permission_copy_issues: "Copiar incidència"
   error_password_expired: "La teva contrasenya ha expirat, és necessari canviar-la"

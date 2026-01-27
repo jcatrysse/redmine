@@ -90,6 +90,10 @@ per_page_options:
   default: '25,50,100'
 search_results_per_page:
   default: 10
+search_token_limit:
+  format: int
+  # Use 0 for unlimited tokens (may impact performance on large queries)
+  default: 5
 mail_from:
   default: redmine@example.net
 plain_text_mail:

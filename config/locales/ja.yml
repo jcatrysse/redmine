@@ -1139,6 +1139,8 @@ ja:
   label_enable_notifications: 通知を有効にする
   label_disable_notifications: 通知を無効にする
   setting_search_results_per_page: ページごとの検索結果表示件数
+  setting_search_token_limit: "フィルタキーワードの最大トークン"
+  text_search_token_limit_info: "トークンを無制限にするには 0 を使用します (パフォーマンスに影響を与える可能性があります)"
   label_blank_value: 空
   permission_copy_issues: チケットのコピー
   error_password_expired: パスワードの有効期限が過ぎたか、システム管理者より変更を求められています。

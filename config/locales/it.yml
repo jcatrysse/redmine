@@ -516,6 +516,8 @@ it:
   setting_email_domains_allowed: Domini di posta elettronica consentiti
   setting_email_domains_denied: Domini di posta elettronica non consentiti
   setting_search_results_per_page: Risultati per pagina
+  setting_search_token_limit: "Token massimi per le parole chiave del filtro"
+  text_search_token_limit_info: "Utilizza 0 per token illimitati (potrebbe influire sulle prestazioni)"
   setting_attachment_extensions_allowed: Estensioni abilitate
   setting_attachment_extensions_denied: Estensioni disabilitate
   setting_new_item_menu_tab: Scheda di creazione oggetti nel menu del progetto

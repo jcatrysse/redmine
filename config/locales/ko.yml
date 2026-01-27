@@ -1151,6 +1151,8 @@ ko:
   label_enable_notifications: 알림 켜기
   label_disable_notifications: 알림 끄기
   setting_search_results_per_page: 페이지당 검색 결과
+  setting_search_token_limit: "필터 키워드의 최대 토큰"
+  text_search_token_limit_info: "토큰을 무제한으로 사용하려면 0을 사용하세요(성능에 영향을 미칠 수 있음)."
   label_blank_value: blank
   permission_copy_issues: 일감 복사
   error_password_expired: 암호가 만료되었거나 관리자가 변경하도록 설정하였습니다.

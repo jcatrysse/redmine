@@ -1089,6 +1089,8 @@ nl:
   label_enable_notifications: Notificaties inschakelen
   label_disable_notifications: Notificaties uitschakelen
   setting_search_results_per_page: Zoekresultaten per pagina
+  setting_search_token_limit: "Maximale tokens voor filterzoekwoorden"
+  text_search_token_limit_info: "Gebruik 0 voor onbeperkte tokens (kan van invloed zijn op de prestaties)"
   label_blank_value: leeg
   permission_copy_issues: Issues kopiëren
   error_password_expired: Uw wachtwoord is verlopen of moet gewijzigd worden op vraag van een beheerder.

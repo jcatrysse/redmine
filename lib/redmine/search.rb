@@ -128,8 +128,9 @@ module Redmine
     end
 
     class Tokenizer
-      def initialize(question)
+      def initialize(question, max_tokens: nil)
         @question = question.to_s
+        @max_tokens = max_tokens
       end
 
       def tokens
@@ -138,8 +139,17 @@ module Redmine
         tokens = @question.scan(%r{(([[:space:]]|^)"[^"]+"([[:space:]]|$)|[[:^space:]]+)}).collect {|m| m.first.gsub(%r{(^[[:space:]]*"[[:space:]]*|[[:space:]]*"[[:space:]]*$)}, '')}
         # tokens must be at least 2 characters long
         # but for Chinese characters (Chinese HANZI/Japanese KANJI), tokens can be one character
-        # no more than 5 tokens to search for
-        tokens.uniq.select{|w| w.length > 1 || w =~ /\p{Han}/}.first 5
+        # no more than max_tokens to search for
+        tokens = tokens.uniq.select{|w| w.length > 1 || w =~ /\p{Han}/}
+        max_tokens ? tokens.first(max_tokens) : tokens
+      end
+
+      private
+
+      def max_tokens
+        limit = (@max_tokens.nil? ? Setting.search_token_limit : @max_tokens).to_i
+        return if limit <= 0
+        limit
       end
     end
 

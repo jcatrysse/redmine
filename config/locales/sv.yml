@@ -1143,6 +1143,8 @@ sv:
   label_enable_notifications: Aktivera underrättelser
   label_disable_notifications: Avaktivera underrättelser
   setting_search_results_per_page: Sökresultat per sida
+  setting_search_token_limit: "Maximalt antal tokens för filtersökord"
+  text_search_token_limit_info: "Använd 0 för obegränsade tokens (kan påverka prestandan)"
   label_blank_value: blank
   permission_copy_issues: Kopiera ärenden
   error_password_expired: Ditt lösenord har gått ut eller administratören kräver att

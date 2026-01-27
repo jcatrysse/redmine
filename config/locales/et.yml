@@ -1117,6 +1117,8 @@ et:
   label_enable_notifications: "Saada teavitusi" 
   label_disable_notifications: "Ära saada teavitusi"
   setting_search_results_per_page: "Otsitulemusi lehe kohta"
+  setting_search_token_limit: "Maksimaalne lubade arv filtri märksõnade jaoks"
+  text_search_token_limit_info: "Kasutage piiramatute märkide jaoks 0 (võib mõjutada jõudlust)"
   label_blank_value: "tühi"
   permission_copy_issues: "Kopeeri teemad"
   error_password_expired: "Su parool on aegunud või administraator nõuab sult selle vahetamist"

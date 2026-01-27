@@ -1211,6 +1211,8 @@ ru:
   label_enable_notifications: Включить уведомления
   label_disable_notifications: Выключить уведомления
   setting_search_results_per_page: Количество найденных результатов на страницу
+  setting_search_token_limit: "Максимальное количество токенов для ключевых слов фильтра"
+  text_search_token_limit_info: "Используйте 0 для неограниченного количества токенов (может повлиять на производительность)."
   label_blank_value: пусто
   permission_copy_issues: Копирование задач
   error_password_expired: Время действия вашего пароля истекло или администратор потребовал сменить его.

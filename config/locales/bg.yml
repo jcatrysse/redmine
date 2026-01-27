@@ -506,6 +506,8 @@ bg:
   setting_email_domains_allowed: Разрешени имейл домейни
   setting_email_domains_denied: Забранени имейл домейни
   setting_search_results_per_page: Резултати от търсене на страница
+  setting_search_token_limit: "Максимален брой токени за филтриране на ключови думи"
+  text_search_token_limit_info: "Използвайте 0 за неограничени токени (може да повлияе на производителността)"
   setting_attachment_extensions_allowed: Позволени типове на файлове
   setting_attachment_extensions_denied: Разрешени типове на файлове
   setting_new_item_menu_tab: Меню-елемент за добавяне на нови обекти (+)

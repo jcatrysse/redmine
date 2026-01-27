@@ -1118,6 +1118,8 @@ gl:
   label_enable_notifications: Activar notificacións
   label_disable_notifications: Desactivar notificacións
   setting_search_results_per_page: Resultados da busca por páxina
+  setting_search_token_limit: "Fichas máximas para palabras clave de filtro"
+  text_search_token_limit_info: "Usa 0 para tokens ilimitados (pode afectar o rendemento)"
   label_blank_value: En branco
   permission_copy_issues: Copiar peticións
   error_password_expired: A túa contrasinal caducou ou o administrador obrígate

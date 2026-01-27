@@ -1168,6 +1168,8 @@ de:
   label_enable_notifications: Benachrichtigungen aktivieren
   label_disable_notifications: Benachrichtigungen deaktivieren
   setting_search_results_per_page: Suchergebnisse pro Seite
+  setting_search_token_limit: "Maximale Token für Filterschlüsselwörter"
+  text_search_token_limit_info: "Verwenden Sie 0 für unbegrenzte Token (kann sich auf die Leistung auswirken)"
   label_blank_value: leer
   permission_copy_issues: Tickets kopieren
   error_password_expired: Ihr Passwort ist abgelaufen oder der Administrator verlangt eine Passwortänderung.

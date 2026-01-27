@@ -541,6 +541,8 @@
   setting_link_copied_issue: 複製時連結議題
   setting_max_additional_emails: 其他電子郵件地址的最大值
   setting_search_results_per_page: 每一頁的搜尋結果數目
+  setting_search_token_limit: "過濾關鍵字的最大標記數"
+  text_search_token_limit_info: "使用 0 表示無限令牌（可能會影響性能）"
   setting_attachment_extensions_allowed: 允許使用的附檔名
   setting_attachment_extensions_denied: 禁止使用的副檔名
   setting_new_item_menu_tab: 建立新物件的專案功能分頁

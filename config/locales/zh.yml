@@ -1108,6 +1108,8 @@ zh:
   label_enable_notifications: 启用通知
   label_disable_notifications: 禁用通知
   setting_search_results_per_page: 每一页的搜索结果数
+  setting_search_token_limit: "过滤关键字的最大标记数"
+  text_search_token_limit_info: "使用 0 表示无限令牌（可能会影响性能）"
   label_blank_value: 空白
   permission_copy_issues: 复制问题
   error_password_expired: 您的密码已经过期或是管理员要求您修改密码.

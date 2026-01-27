@@ -1158,6 +1158,8 @@ vi:
   label_enable_notifications: Bật thông báo
   label_disable_notifications: Vô hiệu hóa thông báo
   setting_search_results_per_page: Kết quả tìm kiếm trên mỗi trang
+  setting_search_token_limit: "Mã thông báo tối đa cho từ khóa lọc"
+  text_search_token_limit_info: "Sử dụng 0 để nhận mã thông báo không giới hạn (có thể ảnh hưởng đến hiệu suất)"
   label_blank_value: trống
   permission_copy_issues: Sao chép vấn đề
   error_password_expired: Mật khẩu của bạn đã hết hạn hoặc quản trị viên yêu cầu bạn thay đổi nó.

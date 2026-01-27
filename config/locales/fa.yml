@@ -505,6 +505,8 @@ fa:
   setting_email_domains_allowed: دامنه‌های مجاز برای نشانی رایانامه
   setting_email_domains_denied: دامنه‌های غیرمجاز برای نشانی رایانامه
   setting_search_results_per_page: تعداد نتایج جستجو در صفحه
+  setting_search_token_limit: "حداکثر توکن برای فیلتر کردن کلمات کلیدی"
+  text_search_token_limit_info: "از 0 برای توکن های نامحدود استفاده کنید (ممکن است بر عملکرد تأثیر بگذارد)"
   setting_attachment_extensions_allowed: پسوندهای مجاز
   setting_attachment_extensions_denied: پسوندهای غیرمجاز
   setting_new_item_menu_tab: منوی پروژه برای ساخت اجزاء جدید

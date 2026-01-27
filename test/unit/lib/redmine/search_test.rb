@@ -30,4 +30,18 @@ class Redmine::Search::Tokenize < ActiveSupport::TestCase
     value = "全角\u3000スペース"
     assert_equal %w[全角 スペース], Redmine::Search::Tokenizer.new(value).tokens
   end
+
+  def test_tokenize_respects_search_token_limit_setting
+    value = "one two three four five six"
+    with_settings :search_token_limit => '10' do
+      assert_equal %w[one two three four five six], Redmine::Search::Tokenizer.new(value).tokens
+    end
+  end
+
+  def test_tokenize_allows_unlimited_tokens
+    value = "one two three four five six"
+    with_settings :search_token_limit => '0' do
+      assert_equal %w[one two three four five six], Redmine::Search::Tokenizer.new(value).tokens
+    end
+  end
 end

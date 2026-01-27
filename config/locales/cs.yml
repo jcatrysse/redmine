@@ -1110,6 +1110,8 @@ cs:
   label_enable_notifications: Povolit notifikace
   label_disable_notifications: Zakázat notifikace
   setting_search_results_per_page: Vyhledaných výsledků na stránku
+  setting_search_token_limit: "Maximální počet tokenů pro klíčová slova filtru"
+  text_search_token_limit_info: "Použijte 0 pro neomezený počet tokenů (může ovlivnit výkon)"
   label_blank_value: prázdný
   permission_copy_issues: Kopírovat úkoly
   error_password_expired: Platnost vašeho hesla vypršela a administrátor vás žádá o jeho změnu.

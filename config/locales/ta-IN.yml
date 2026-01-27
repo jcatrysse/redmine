@@ -1116,6 +1116,8 @@ ta-IN:
   label_enable_notifications: அறிவிப்புகளை இயக்கு
   label_disable_notifications: அறிவிப்புகளை முடக்கு
   setting_search_results_per_page: ஒரு பக்கத்திற்கு தேடல் முடிவுகள்
+  setting_search_token_limit: "வடிகட்டி முக்கிய வார்த்தைகளுக்கான அதிகபட்ச டோக்கன்கள்"
+  text_search_token_limit_info: "வரம்பற்ற டோக்கன்களுக்கு 0 ஐப் பயன்படுத்தவும் (செயல்திறனை பாதிக்கலாம்)"
   label_blank_value: வெற்று
   permission_copy_issues: சிக்கல்களை நகலெடுக்கவும்
   error_password_expired: உங்கள் கடவுச்சொல் காலாவதியானது அல்லது நிர்வாகி உங்களுக்குத் தேவை

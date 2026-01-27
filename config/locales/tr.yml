@@ -1118,6 +1118,8 @@ tr:
   label_enable_notifications: Bildirimleri aç
   label_disable_notifications: Bildirimleri kapat
   setting_search_results_per_page: Sayfa başına arama sonucu sayısı
+  setting_search_token_limit: "Filtre anahtar kelimeleri için maksimum belirteçler"
+  text_search_token_limit_info: "Sınırsız jeton için 0 kullanın (performansı etkileyebilir)"
   label_blank_value: boş
   permission_copy_issues: İşleri kopyala
   error_password_expired: Parolanızın süresi dolmuş veya yönetici parolanızı değiştirmenizi

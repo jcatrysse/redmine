@@ -445,6 +445,8 @@ lt:
   setting_link_copied_issue: Susieti darbus kopijavimo metu
   setting_max_additional_emails: Maksimalus skaičius papildomų elektronikių laiškų adresų
   setting_search_results_per_page: Paieškos rezultatai puslapyje
+  setting_search_token_limit: "Maksimalus filtro raktinių žodžių prieigos raktų skaičius"
+  text_search_token_limit_info: "Naudokite 0 neribotam žetonų kiekiui (gali turėti įtakos našumui)"
   setting_attachment_extensions_allowed: Leistini plėtiniai
   setting_attachment_extensions_denied: Neleistini plėtiniai
 

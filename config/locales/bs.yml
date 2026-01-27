@@ -1114,6 +1114,8 @@ bs:
   label_enable_notifications: Omogući notifikacije
   label_disable_notifications: Onemogući notifikacije
   setting_search_results_per_page: Broj rezultata po stranici
+  setting_search_token_limit: "Maksimalan broj tokena za ključne riječi filtera"
+  text_search_token_limit_info: "Koristite 0 za neograničene tokene (može utjecati na performanse)"
   label_blank_value: prazno
   permission_copy_issues: Kopiraj tikete
   error_password_expired: Vaša šifra je istekla i administrator od vas traži njenu promjenu.

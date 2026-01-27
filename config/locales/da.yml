@@ -1127,6 +1127,8 @@ da:
   label_enable_notifications: Enable notifications
   label_disable_notifications: Disable notifications
   setting_search_results_per_page: Search results per page
+  setting_search_token_limit: "Maksimalt antal tokens for filtersøgeord"
+  text_search_token_limit_info: "Brug 0 for ubegrænsede tokens (kan påvirke ydeevnen)"
   label_blank_value: blank
   permission_copy_issues: Copy issues
   error_password_expired: Your password has expired or the administrator requires you

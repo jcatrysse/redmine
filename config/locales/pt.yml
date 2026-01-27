@@ -1112,6 +1112,8 @@ pt:
   label_enable_notifications: Ativar notificações
   label_disable_notifications: Desativar notificações
   setting_search_results_per_page: Resultados de pesquisa por página
+  setting_search_token_limit: "Máximo de tokens para palavras-chave de filtro"
+  text_search_token_limit_info: "Use 0 para tokens ilimitados (pode afetar o desempenho)"
   label_blank_value: vazio
   permission_copy_issues: Copiar tarefas
   error_password_expired: A sua palavra-chave expirou ou o administrador exige que a altere.

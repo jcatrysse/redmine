@@ -1144,6 +1144,8 @@ es:
   label_enable_notifications: Permitir Notificaciones
   label_disable_notifications: No Permitir Notificaciones
   setting_search_results_per_page: Buscar resultados por página
+  setting_search_token_limit: "Tokens máximos para palabras clave de filtro"
+  text_search_token_limit_info: "Utilice 0 para tokens ilimitados (puede afectar el rendimiento)"
   label_blank_value: blanco
   permission_copy_issues: Copiar petición
   error_password_expired: Tu contraseña ha expirado o tu administrador requiere que la cambies.

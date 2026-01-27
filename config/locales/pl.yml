@@ -515,6 +515,8 @@ pl:
   setting_email_domains_allowed: Dozwolone domeny adresów e-mail
   setting_email_domains_denied: Niedozwolone domeny adresów e-mail
   setting_search_results_per_page: Limit wyników wyszukiwania na stronie
+  setting_search_token_limit: "Maksymalna liczba tokenów dla słów kluczowych filtra"
+  text_search_token_limit_info: "Użyj 0, aby uzyskać nieograniczoną liczbę tokenów (może mieć wpływ na wydajność)"
   setting_attachment_extensions_allowed: Dozwolone rozszerzenia
   setting_attachment_extensions_denied: Niedozwolone rozszerzenia
   setting_new_item_menu_tab: Zakładka w menu do tworzenia nowych obiektów
