@@ -345,6 +345,7 @@ cs:
   setting_per_page_options: Povolené počty řádků na stránce
   setting_user_format: Formát zobrazení uživatele
   setting_activity_days_default: Dny zobrazené v činnosti projektu
+  setting_my_page_max_issuequery_blocks: Maximální počet bloků dotazů na Mé stránce
   setting_display_subprojects_issues: Automaticky zobrazit úkoly podprojektu v hlavním projektu
   setting_enabled_scm: Povolené SCM
   setting_mail_handler_body_delimiters: Zkrátit e-maily po jednom z těchto řádků

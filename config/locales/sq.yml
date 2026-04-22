@@ -438,6 +438,7 @@ sq:
   setting_per_page_options: Mundësi rreth objektesh për faqe
   setting_user_format: Format shfaqjesh përdoruesish
   setting_activity_days_default: Ditë të shfaqura në veprimtari projekti
+  setting_my_page_max_issuequery_blocks: Numri maksimal i blloqeve të pyetjeve në Faqen time
   setting_display_subprojects_issues: Shfaq, si parazgjedhje, te projekti kryesor çështje nënprojektesh
   setting_enabled_scm: SCM e aktivizuar
   setting_mail_handler_body_delimiters: "Cungoji email-et pas njërit prej këtyre rreshtave"

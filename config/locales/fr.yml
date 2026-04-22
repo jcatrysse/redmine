@@ -429,6 +429,7 @@ fr:
   setting_per_page_options: Options d'objets affichés par page
   setting_user_format: Format d'affichage des utilisateurs
   setting_activity_days_default: Nombre de jours affichés sur l'activité des projets
+  setting_my_page_max_issuequery_blocks: Nombre maximal de blocs de requête sur Ma page
   setting_display_subprojects_issues: Afficher par défaut les demandes des sous-projets sur les projets principaux
   setting_enabled_scm: SCM activés
   setting_mail_handler_body_delimiters: "Tronquer les emails après l'une de ces lignes"

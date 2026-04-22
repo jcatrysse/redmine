@@ -299,6 +299,7 @@ th:
   setting_per_page_options: ตัวเลือกจำนวนต่อหน้า
   setting_user_format: รูปแบบการแสดงชื่อผู้ใช้
   setting_activity_days_default: จำนวนวันที่แสดงในกิจกรรมของโครงการ
+  setting_my_page_max_issuequery_blocks: จำนวนสูงสุดของบล็อกการค้นหาบนหน้าของฉัน
   setting_display_subprojects_issues: แสดงปัญหาของโครงการย่อยในโครงการหลัก
 
   project_module_issue_tracking: การติดตามปัญหา

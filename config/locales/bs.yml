@@ -325,6 +325,7 @@ bs:
   setting_per_page_options: Broj objekata po stranici
   setting_user_format: Format korisničkog prikaza
   setting_activity_days_default: Prikaz promjena na projektu - opseg dana
+  setting_my_page_max_issuequery_blocks: Maksimalan broj blokova upita na mojoj stranici
   setting_display_subprojects_issues: Prikaz podprojekata na glavnom projektima (uobičajeno)
   setting_enabled_scm: Omogući SCM (source code management)
   setting_mail_handler_api_enabled: Omogući automatsku obradu ulaznih emailova

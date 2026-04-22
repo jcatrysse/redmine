@@ -702,6 +702,7 @@ uk:
   text_destroy_time_entries: Видалити зареєстрований час
   text_reassign_time_entries: 'Перенести зареєстрований час на наступну задачу:'
   setting_activity_days_default: Кількість днів, відображених в Діях
+  setting_my_page_max_issuequery_blocks: Максимальна кількість блоків запитів на Моїй сторінці
   label_chronological_order: В хронологічному порядку
   field_comments_sorting: Відображення коментарів
   label_reverse_chronological_order: В зворотньому порядку

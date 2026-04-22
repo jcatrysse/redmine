@@ -985,6 +985,7 @@ de:
   project_status_closed: geschlossen
 
   setting_activity_days_default: Anzahl Tage pro Seite der Projekt-Aktivität
+  setting_my_page_max_issuequery_blocks: Maximale Anzahl Anfrageblöcke auf Meine Seite
   setting_app_title: Applikationstitel
   setting_attachment_max_size: Maximale Dateigröße
   setting_autofetch_changesets: Changesets automatisch abrufen

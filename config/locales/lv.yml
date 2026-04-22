@@ -320,6 +320,7 @@ lv:
   setting_per_page_options: Objekti vienā lapā
   setting_user_format: Lietotāju rādīšanas formāts
   setting_activity_days_default: Dienus skaits aktivitāšu rādīšanai aktivitāšu sadaļā
+  setting_my_page_max_issuequery_blocks: Maksimālais vaicājumu bloku skaits Manā lapā
   setting_display_subprojects_issues: Rādīt apakšprojekta uzdevumus galvenajā projektā pēc noklusējuma
   setting_enabled_scm: Lietot SCM
   setting_mail_handler_body_delimiters: "Saīsināt pēc vienas no šim rindām"

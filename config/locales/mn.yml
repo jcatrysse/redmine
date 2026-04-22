@@ -326,6 +326,7 @@ mn:
   setting_per_page_options: Нэг хуудсанд байх обьектуудын тохиргоо
   setting_user_format: Хэрэглэгчдийг харуулах формат
   setting_activity_days_default: Төслийн үйл ажиллагаа хэсэгт үзүүлэх өдрийн тоо
+  setting_my_page_max_issuequery_blocks: Миний хуудасны асуулгын блокийн дээд тоо
   setting_display_subprojects_issues: Дэд төслүүдийн асуудлуудыг автоматаар гол төсөл дээр харуулах
   setting_enabled_scm: SCM - ийг идэвхжүүлэх
   setting_mail_handler_body_delimiters: "Truncate emails after one of these lines"

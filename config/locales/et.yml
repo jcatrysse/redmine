@@ -378,6 +378,7 @@ et:
   setting_per_page_options: "Objekte lehe kohta variandid"
   setting_user_format: "Kasutaja nime esitamise vorm"
   setting_activity_days_default: "Projektide ajalugu näidatakse"
+  setting_my_page_max_issuequery_blocks: Maksimaalne päringuploki arv Minu lehel
   setting_display_subprojects_issues: "Näita projektis vaikimisi ka alamprojektide teemasid"
   setting_enabled_scm: "Kasutatavad lähtekoodi haldusvahendid"
   setting_mail_handler_body_delimiters: "Kärbi e-kirja lõpp peale sellist rida"

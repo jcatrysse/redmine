@@ -337,6 +337,7 @@ sr-YU:
   setting_per_page_options: Opcije prikaza objekata po stranici
   setting_user_format: Format prikaza korisnika
   setting_activity_days_default: Broj dana prikazanih na projektnoj aktivnosti
+  setting_my_page_max_issuequery_blocks: Maksimalan broj blokova upita na Mojoj stranici
   setting_display_subprojects_issues: Prikazuj probleme iz potprojekata na glavnom projektu, ukoliko nije drugačije navedeno
   setting_enabled_scm: Omogućavanje SCM
   setting_mail_handler_body_delimiters: "Skraćivanje e-poruke nakon jedne od ovih linija"

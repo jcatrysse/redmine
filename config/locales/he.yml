@@ -342,6 +342,7 @@ he:
   setting_per_page_options: אפשרויות אוביקטים לפי דף
   setting_user_format: פורמט הצגת משתמשים
   setting_activity_days_default: ימים המוצגים על פעילות הפרויקט
+  setting_my_page_max_issuequery_blocks: מספר מקסימלי של בלוקי שאילתות בדף שלי
   setting_display_subprojects_issues: הצג נושאים של תתי־פרויקטים כברירת מחדל
   setting_enabled_scm: אפשר ניהול תצורה
   setting_mail_handler_body_delimiters: חתוך כתובות דואר אחרי אחת משורות אלה

@@ -455,6 +455,7 @@ fa:
   setting_per_page_options: گزینه‌های اندازه داده‌های هر صفحه
   setting_user_format: قالب نمایشی کاربران
   setting_activity_days_default: روزهای نمایش داده شده در خط زمان
+  setting_my_page_max_issuequery_blocks: حداکثر تعداد بلوک‌های جستجوی مسائل در صفحه‌ام
   setting_display_subprojects_issues: نمایش مسائل زیرپروژه در پروژه پدر
   setting_enabled_scm: فعال‌سازی SCM
   setting_mail_handler_body_delimiters: "بریدن رایانامه‌ها پس از یکی از این ردیف‌ها"

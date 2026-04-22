@@ -496,6 +496,7 @@
   setting_per_page_options: 每頁顯示個數選項
   setting_user_format: 用戶顯示格式
   setting_activity_days_default: 專案活動顯示天數
+  setting_my_page_max_issuequery_blocks: 我的頁面最大查詢區塊數
   setting_display_subprojects_issues: 預設於父專案中顯示子專案的議題
   setting_enabled_scm: 啟用的 SCM
   setting_mail_handler_body_delimiters: "截去郵件中包含下列值之後的內容"

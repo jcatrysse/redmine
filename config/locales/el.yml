@@ -319,6 +319,7 @@ el:
   setting_per_page_options: Αντικείμενα ανά σελίδα επιλογών
   setting_user_format: Μορφή εμφάνισης χρηστών
   setting_activity_days_default: Ημέρες που εμφανίζεται στη δραστηριότητα έργου
+  setting_my_page_max_issuequery_blocks: Μέγιστος αριθμός μπλοκ αναζήτησης στη σελίδα μου
   setting_display_subprojects_issues: Εμφάνιση από προεπιλογή θεμάτων επιμέρους έργων στα κύρια έργα
   setting_enabled_scm: Ενεργοποίηση SCM
   setting_mail_handler_api_enabled: Ενεργοποίηση WS για εισερχόμενα email

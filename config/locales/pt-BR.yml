@@ -327,6 +327,7 @@ pt-BR:
   setting_per_page_options: Número de itens exibidos por página
   setting_user_format: Formato de exibição de nome de usuário
   setting_activity_days_default: Dias visualizados na atividade do projeto
+  setting_my_page_max_issuequery_blocks: Número máximo de blocos de consulta na Minha página
   setting_display_subprojects_issues: Visualizar tarefas dos subprojetos nos projetos principais por padrão
   setting_enabled_scm: SCM habilitados
   setting_mail_handler_api_enabled: Habilitar WS para e-mails de entrada

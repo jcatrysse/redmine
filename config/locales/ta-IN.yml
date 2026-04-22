@@ -347,6 +347,7 @@ ta-IN:
   setting_per_page_options: பக்க விருப்பங்களுக்கு பொருள்கள்
   setting_user_format: பயனர்கள் வடிவமைப்பைக் காண்பிக்கின்றனர்
   setting_activity_days_default: திட்ட செயல்பாட்டில் நாட்கள் காட்டப்படும்
+  setting_my_page_max_issuequery_blocks: என் பக்கத்தில் அதிகபட்ச சிக்கல் வினவல் தொகுதிகள்
   setting_display_subprojects_issues: முன்னிருப்பாக முக்கிய திட்டங்களில் துணை திட்ட சிக்கல்களைக் காண்பி
   setting_enabled_scm: இயக்கப்பட்ட  SCM
   setting_mail_handler_body_delimiters: "இந்த வரிகளில் ஒன்றிற்குப் பிறகு மின்னஞ்சல்களைக் குறைக்கவும்"

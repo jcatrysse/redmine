@@ -328,6 +328,7 @@ eu:
   setting_per_page_options: Orriko objektuen aukerak
   setting_user_format: Erabiltzaileak erakusteko formatua
   setting_activity_days_default: Proiektuen jardueran erakusteko egunak
+  setting_my_page_max_issuequery_blocks: Nire orrialdean kontsulta bloke kopuru maximoa
   setting_display_subprojects_issues: Azpiproiektuen zereginak proiektu nagusian erakutsi defektuz
   setting_enabled_scm: Gaitutako IKKak
   setting_mail_handler_body_delimiters: "Lerro hauteko baten ondoren epostak moztu"

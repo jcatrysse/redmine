@@ -711,6 +711,7 @@ fi:
   label_chronological_order: Aikajärjestyksessä
   label_date_to: ''
   setting_activity_days_default: Päivien esittäminen projektien historiassa
+  setting_my_page_max_issuequery_blocks: Hakublokkien enimmäismäärä Omalla sivullani
   label_date_from: ''
   label_in: ''
   setting_display_subprojects_issues: Näytä aliprojektien tapahtumat pääprojektissa oletusarvoisesti

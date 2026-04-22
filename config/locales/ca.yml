@@ -339,6 +339,7 @@ ca:
   setting_per_page_options: "Opcions dels objectes per pàgina"
   setting_user_format: "Format de com mostrar l'usuari"
   setting_activity_days_default: "Dies a mostrar l'activitat del projecte"
+  setting_my_page_max_issuequery_blocks: Nombre màxim de blocs de consulta a la Meva pàgina
   setting_display_subprojects_issues: "Mostra les incidències d'un subprojecte en el projecte pare per defecte"
   setting_enabled_scm: "Activar SCM"
   setting_mail_handler_body_delimiters: "Trunca els correus electrònics després d'una d'aquestes línies"

@@ -355,6 +355,7 @@ ar:
   setting_per_page_options: الكائنات لكل خيارات الصفحة
   setting_user_format: تنسيق عرض المستخدم
   setting_activity_days_default: الايام المعروضة على نشاط المشروع
+  setting_my_page_max_issuequery_blocks: الحد الأقصى لعدد كتل استعلام المشكلات في صفحتي
   setting_display_subprojects_issues: عرض بنود العمل للمشارع الرئيسية بشكل افتراضي
   setting_enabled_scm: SCM تمكين
   setting_mail_handler_body_delimiters: "اقتطاع رسائل البريد الإلكتروني بعد هذه الخطوط"

@@ -299,6 +299,7 @@ sk:
   setting_per_page_options: Povolené množstvo položiek na stránku
   setting_user_format: Formát zobrazenia používateľa
   setting_activity_days_default: "Počet zobrazených dní na stránku pri aktivitách projektu:"
+  setting_my_page_max_issuequery_blocks: Maximálny počet blokov dopytov na Mojej stránke
   setting_display_subprojects_issues: Predvolené zobrazovanie úloh podprojektov v hlavnom projekte
 
   project_module_issue_tracking: Sledovanie úloh

@@ -321,6 +321,7 @@ id:
   setting_per_page_options: Pilihan obyek per halaman
   setting_user_format: Format tampilan untuk pengguna
   setting_activity_days_default: Hari tertampil pada kegiatan proyek
+  setting_my_page_max_issuequery_blocks: Jumlah maksimum blok kueri di Halaman Saya
   setting_display_subprojects_issues: Secara default, tampilkan masalah subproyek pada proyek utama
   setting_enabled_scm: Enabled SCM
   setting_mail_handler_api_enabled: Enable WS for incoming emails

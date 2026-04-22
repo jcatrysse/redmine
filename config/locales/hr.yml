@@ -319,6 +319,7 @@ hr:
   setting_per_page_options: Objekata po stranici opcija
   setting_user_format: Oblik prikaza korisnika
   setting_activity_days_default: Dani prikazane aktivnosti na projektu
+  setting_my_page_max_issuequery_blocks: Maksimalan broj blokova upita na Mojoj stranici
   setting_display_subprojects_issues: Prikaz predmeta potprojekta na glavnom projektu po defaultu
   setting_enabled_scm: Omogućen SCM
   setting_mail_handler_body_delimiters: "Truncate emails after one of these lines"

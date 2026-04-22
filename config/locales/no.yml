@@ -293,6 +293,7 @@
   setting_per_page_options: Alternativer, objekter pr. side
   setting_user_format: Visningsformat, brukere
   setting_activity_days_default: Dager vist på prosjektaktivitet
+  setting_my_page_max_issuequery_blocks: Maksimalt antall søkeblokker på Min side
   setting_display_subprojects_issues: Vis saker fra underprosjekter på hovedprosjekt som standard
   setting_enabled_scm: Aktiviserte SCM
 

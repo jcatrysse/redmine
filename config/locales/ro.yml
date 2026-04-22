@@ -306,6 +306,7 @@ ro:
   setting_per_page_options: Număr de obiecte pe pagină
   setting_user_format: Stil de afișare pentru utilizator
   setting_activity_days_default: Se afișează zile în jurnalul proiectului
+  setting_my_page_max_issuequery_blocks: Numărul maxim de blocuri de interogare pe Pagina mea
   setting_display_subprojects_issues: Afișează implicit tichetele sub-proiectelor în proiectele principale
   setting_enabled_scm: SCM activat
   setting_mail_handler_api_enabled: Activare WS pentru email primit

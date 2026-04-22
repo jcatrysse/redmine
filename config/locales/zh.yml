@@ -346,6 +346,7 @@ zh:
   setting_per_page_options: 每页显示条目个数的设置
   setting_user_format: 用户显示格式
   setting_activity_days_default: 在项目活动中显示的天数
+  setting_my_page_max_issuequery_blocks: 我的页面最大查询块数
   setting_display_subprojects_issues: 在项目页面上默认显示子项目的问题
   setting_enabled_scm: 启用 SCM
   setting_mail_handler_body_delimiters: 在这些行之后截断邮件

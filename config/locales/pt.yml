@@ -313,6 +313,7 @@ pt:
   setting_per_page_options: Opções de objetos por página
   setting_user_format: Formato de apresentação de utilizadores
   setting_activity_days_default: Dias mostrados na atividade do projeto
+  setting_my_page_max_issuequery_blocks: Número máximo de blocos de consulta na Minha página
   setting_display_subprojects_issues: Mostrar as tarefas dos sub-projetos nos projetos principais
   setting_enabled_scm: Ativar SCM
   setting_mail_handler_api_enabled: Ativar Web Service para e-mails recebidos

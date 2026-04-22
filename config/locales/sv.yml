@@ -413,6 +413,7 @@ sv:
   setting_per_page_options: Alternativ, objekt per sida
   setting_user_format: Visningsformat för användare
   setting_activity_days_default: Dagar som visas på projektaktivitet
+  setting_my_page_max_issuequery_blocks: Maximalt antal frågeblock på Min sida
   setting_display_subprojects_issues: Visa ärenden från underprojekt i huvudprojekt
   setting_enabled_scm: Aktivera SCM
   setting_mail_handler_body_delimiters: "Trunkera mail efter en av följande rader"

@@ -375,6 +375,7 @@ ja:
   setting_per_page_options: ページごとの表示件数
   setting_user_format: ユーザー名の表示形式
   setting_activity_days_default: プロジェクトの活動ページに表示する日数
+  setting_my_page_max_issuequery_blocks: マイページの問題クエリブロックの最大数
   setting_display_subprojects_issues: サブプロジェクトのチケットをメインプロジェクトに表示する
   setting_enabled_scm: 使用するバージョン管理システム
   setting_mail_handler_body_delimiters: "メール本文から一致する行以降を切り捨てる"

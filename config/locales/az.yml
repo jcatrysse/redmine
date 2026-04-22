@@ -814,6 +814,7 @@ az:
   project_module_calendar: Təqvim
 
   setting_activity_days_default: Görülən işlərdə əks olunan günlərin sayı
+  setting_my_page_max_issuequery_blocks: Mənim səhifəmdəki maksimum sorğu blokları sayı
   setting_app_title: Əlavənin adı
   setting_attachment_max_size: Yerləşdirmənin maksimal ölçüsü
   setting_autofetch_changesets: Saxlayıcının dəyişikliklərini avtomatik izləmək

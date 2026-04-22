@@ -401,6 +401,7 @@ lt:
   setting_per_page_options: Įrašų puslapyje nustatymas
   setting_user_format: Vartotojo atvaizdavimo formatas
   setting_activity_days_default: Atvaizduojamos dienos projekto veikloje
+  setting_my_page_max_issuequery_blocks: Maksimalus užklausų blokų skaičius Mano puslapyje
   setting_display_subprojects_issues: Pagal nutylėjimą, rodyti sub-projektų darbus pagrindiniame projekte
   setting_enabled_scm: Įgalinti SCM
   setting_mail_handler_body_delimiters: "Trumpinti laiškus po vienos iš šių eilučių"

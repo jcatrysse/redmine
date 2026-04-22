@@ -360,6 +360,7 @@ ko:
   setting_per_page_options: 목록에서, 한 페이지에 표시할 행
   setting_user_format: 사용자 표시 형식
   setting_activity_days_default: 프로젝트 작업내역에 표시할 기간
+  setting_my_page_max_issuequery_blocks: 내 페이지의 최대 쿼리 블록 수
   setting_display_subprojects_issues: 하위 프로젝트의 일감을 함께 표시
   setting_enabled_scm: "지원할 SCM(Source Control Management)"
   setting_mail_handler_api_enabled: 수신 메일에 WS를 허용

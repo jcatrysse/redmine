@@ -456,6 +456,7 @@ bg:
   setting_per_page_options: Опции за страниране
   setting_user_format: Потребителски формат
   setting_activity_days_default: Брой дни показвани на таб Дейност
+  setting_my_page_max_issuequery_blocks: Максимален брой блокове за заявки на Моята страница
   setting_display_subprojects_issues: Задачите от подпроектите по подразбиране се показват в главните проекти
   setting_enabled_scm: Разрешена SCM
   setting_mail_handler_body_delimiters: Отрязване на e-mail-ите след един от тези редове

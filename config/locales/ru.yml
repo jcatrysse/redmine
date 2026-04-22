@@ -824,6 +824,7 @@ ru:
   project_module_calendar: Календарь
 
   setting_activity_days_default: Количество дней, отображаемых в Действиях
+  setting_my_page_max_issuequery_blocks: Максимальное количество блоков запросов на Моей странице
   setting_app_title: Название приложения
   setting_attachment_max_size: Максимальный размер вложения
   setting_autofetch_changesets: Автоматически следить за изменениями хранилища

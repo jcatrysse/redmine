@@ -42,7 +42,11 @@ module Redmine
 
     # Returns the available blocks
     def self.blocks
-      CORE_BLOCKS.merge(additional_blocks).freeze
+      limit = [Setting.my_page_max_issuequery_blocks.to_i, 1].max
+      CORE_BLOCKS
+        .merge('issuequery' => CORE_BLOCKS['issuequery'].merge(:max_occurs => limit))
+        .merge(additional_blocks)
+        .freeze
     end
 
     def self.block_options(blocks_in_use=[])

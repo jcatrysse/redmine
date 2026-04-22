@@ -322,6 +322,7 @@
   setting_per_page_options: Objektum / oldal opciók
   setting_user_format: Felhasználók megjelenítésének formája
   setting_activity_days_default: Napok megjelenítése a project aktivitásnál
+  setting_my_page_max_issuequery_blocks: Lekérdezési blokkok maximális száma a Saját oldalon
   setting_display_subprojects_issues: Alapértelmezettként mutassa az alprojektek feladatait is a projekteken
   setting_start_of_week: A hét első napja
 

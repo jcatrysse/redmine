@@ -224,6 +224,72 @@ class MyControllerTest < Redmine::ControllerTest
     end
   end
 
+  def test_page_issuequery_dropdown_disabled_at_default_limit
+    user = User.find(2)
+    # Default limit is 3; with all 3 slots filled the option must be disabled
+    user.pref.my_page_layout = {'top' => ['issuequery', 'issuequery__1', 'issuequery__2']}
+    user.pref.save!
+
+    get :page
+    assert_response :success
+
+    assert_select '#block-select' do
+      # No enabled option for issuequery__3 – select renders nil block_id (disabled)
+      assert_select 'option[value=issuequery__3]', false
+    end
+  end
+
+  def test_page_issuequery_dropdown_enabled_above_default_limit
+    with_settings :my_page_max_issuequery_blocks => 5 do
+      user = User.find(2)
+      user.pref.my_page_layout = {'top' => ['issuequery', 'issuequery__1', 'issuequery__2']}
+      user.pref.save!
+
+      get :page
+      assert_response :success
+
+      assert_select '#block-select' do
+        assert_select 'option[value=?]:not([disabled])', 'issuequery__3', :text => 'Issues'
+      end
+    end
+  end
+
+  def test_add_issuequery_block_beyond_admin_limit_should_error
+    with_settings :my_page_max_issuequery_blocks => 2 do
+      user = User.find(2)
+      user.pref.my_page_layout = {'top' => ['issuequery', 'issuequery__1']}
+      user.pref.save!
+
+      post(:add_block, :params => {:block => 'issuequery__2'})
+      assert_response 422
+    end
+  end
+
+  def test_add_issuequery_block_within_increased_limit
+    with_settings :my_page_max_issuequery_blocks => 5 do
+      user = User.find(2)
+      user.pref.my_page_layout = {'top' => ['issuequery', 'issuequery__1', 'issuequery__2']}
+      user.pref.save!
+
+      post(:add_block, :params => {:block => 'issuequery__3'})
+      assert_redirected_to '/my/page'
+      assert_include 'issuequery__3', User.find(2).pref[:my_page_layout]['top']
+    end
+  end
+
+  def test_issuequery_limit_clamped_to_minimum_one_when_setting_is_zero
+    with_settings :my_page_max_issuequery_blocks => 0 do
+      # Even with limit=0, the clamp ensures at least 1 block is allowed
+      user = User.find(2)
+      user.pref.my_page_layout = {'top' => []}
+      user.pref.save!
+
+      post(:add_block, :params => {:block => 'issuequery'})
+      assert_redirected_to '/my/page'
+      assert_include 'issuequery', User.find(2).pref[:my_page_layout]['top']
+    end
+  end
+
   def test_page_with_activity
     user = User.find(2)
     user.pref.my_page_layout = {'top' => ['activity']}

@@ -305,6 +305,7 @@ sl:
   setting_per_page_options: Število elementov na stran
   setting_user_format: Oblika prikaza uporabnikov
   setting_activity_days_default: Prikaz dni na aktivnost projekta
+  setting_my_page_max_issuequery_blocks: Največje število blokov poizvedb na Moji strani
   setting_display_subprojects_issues: Privzeti prikaz zahtevkov podprojektov v glavnem projektu
   setting_enabled_scm: Omogočen SCM
   setting_mail_handler_api_enabled: Omogoči WS za prihajajočo e-pošto

@@ -315,6 +315,7 @@ tr:
   setting_per_page_options: Sayfada başına öğe sayısı
   setting_user_format: Kullanıcı gösterim biçimi
   setting_activity_days_default: Proje faaliyetlerinde gösterilen gün sayısı
+  setting_my_page_max_issuequery_blocks: Sayfamda maksimum sorgu blok sayısı
   setting_display_subprojects_issues: Varsayılan olarak ana projenin iş listesinde alt proje işlerini göster
 
   project_module_issue_tracking: İş Takibi

@@ -335,6 +335,7 @@ mk:
   setting_per_page_options: Objects per page options
   setting_user_format: Приказ на корисниците
   setting_activity_days_default: Денови прикажана во активноста на проектот
+  setting_my_page_max_issuequery_blocks: Максимален број на блокови за прашања на Мојата страница
   setting_display_subprojects_issues: Прикажи ги задачите на подпроектите во главните проекти
   setting_enabled_scm: Овозможи SCM
   setting_mail_handler_body_delimiters: "Truncate emails after one of these lines"

@@ -357,6 +357,7 @@ vi:
   setting_per_page_options: Tùy chọn đối tượng mỗi trang
   setting_user_format: Định dạng hiển thị người dùng
   setting_activity_days_default: Ngày hiển thị hoạt động của dự án
+  setting_my_page_max_issuequery_blocks: Số lượng khối truy vấn tối đa trên Trang của tôi
   setting_display_subprojects_issues: Hiển thị mặc định vấn đề của dự án con ở dự án chính
   setting_enabled_scm: Cho phép SCM
   setting_mail_handler_api_enabled: Cho phép WS cho các email tới
