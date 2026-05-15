@@ -19,7 +19,7 @@ gem 'rest-client', '~> 2.1'
 
 #  Ruby Standard Gems
 gem 'csv', '~> 3.2.6'
-gem 'net-imap', '~> 0.3.9'
+gem 'net-imap', '~> 0.4.24'
 gem 'net-pop', '~> 0.1.2'
 gem 'net-smtp', '~> 0.3.3'
 gem 'oauth2', '~> 2.0'

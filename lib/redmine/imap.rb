@@ -29,7 +29,7 @@ module Redmine
         folder = imap_options[:folder] || 'INBOX'
         auth_type = imap_options[:auth_type] || 'LOGIN'
 
-        imap = Net::IMAP.new(host, port, ssl)
+        imap = Net::IMAP.new(host, port: port, ssl: ssl)
         if starttls
           imap.starttls
         end
