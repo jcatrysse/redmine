@@ -4,6 +4,33 @@ Redmine - project management software
 Copyright (C) 2006-  Jean-Philippe Lang
 https://www.redmine.org/
 
+== 2026-06-15 v5.1.13
+
+=== [Documentation]
+
+* Patch #43930: Add blockquote formatting in CommonMark wiki help pages
+
+=== [Security]
+
+* Defect #43951: Bulk attachment download bypasses View files permission for project/version attachments
+* Defect #44109: PreAuth leak name of private Projects
+* Defect #44118: Any project member with add_issue_notes permission can add notes to private issues they cannot view, via the MailHandler reply dispatch
+* Defect #44138: Stored XSS in Textile formatter due to restore_redmine_links
+* Defect #44145: PostScript execution in Redmine::Thumbnail.generate via %% DSC-comment prefix
+* Defect #44146: Time-entry API hidden custom-field leak
+
+== 2026-03-16 v5.1.12
+
+=== [Security]
+
+* Defect #43661: Unsafe eval usage in AttachmentsHelper
+* Defect #43690: Directory Traversal via Backslash-Separated Paths in Filesystem SCM
+* Defect #43691: DOM (Stored) XSS in @mention autocomplete via unescaped user name
+* Defect #43692: LDAP Injection (Unescaped Input in LDAP Search Filter)
+* Defect #43694: DOM XSS: HTML Injection via Custom Field Name in Query Filter Generation
+* Defect #43830: User who is allowed to view only their own time entries can retrieve other users’ time entry details by directly specifying the TimeEntry ID via the REST API
+* Defect #43864: Update Nokogiri to 1.18.9
+
 == 2026-01-05 v5.1.11
 
 === [Code cleanup/refactoring]

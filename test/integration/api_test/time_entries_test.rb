@@ -57,6 +57,12 @@ class Redmine::ApiTest::TimeEntriesTest < Redmine::ApiTest::Base
     assert_response 404
   end
 
+  test "GET /time_entries/:id.xml with non visible time entry should 403 " do
+    Role.non_member.update(:time_entries_visibility => 'own')
+    get '/time_entries/4.xml', :headers => credentials('jsmith')
+    assert_response :forbidden
+  end
+
   test "POST /time_entries.xml with issue_id should create time entry" do
     assert_difference 'TimeEntry.count' do
       post(
@@ -223,5 +229,31 @@ class Redmine::ApiTest::TimeEntriesTest < Redmine::ApiTest::Base
     assert_response :unprocessable_entity
     assert_equal 'application/xml', @response.media_type
     assert_select 'errors'
+  end
+
+  test "GET /time_entries/:id.xml should only return visible custom fields" do
+    manager_role = Role.find_by_name('Manager')
+    developer_role = Role.find_by_name('Developer')
+
+    cf1 = TimeEntryCustomField.create!(:name => 'Visible field',
+                                       :field_format => 'string',
+                                       :visible => false, :role_ids => [manager_role.id])
+    cf2 = TimeEntryCustomField.create!(:name => 'Non visible field',
+                                       :field_format => 'string',
+                                       :visible => false, :role_ids => [developer_role.id])
+
+    entry = TimeEntry.find(3) # belongs to project 1, where jsmith is a Manager but not a Developer
+    entry.custom_field_values = {cf1.id => 'value1', cf2.id => 'value2'}
+    entry.save!
+
+    # jsmith is a Manager, so cf1 should be visible, but cf2 should not.
+    get '/time_entries/3.xml', :headers => credentials('jsmith')
+    assert_response :success
+    assert_select 'time_entry custom_fields' do
+      assert_select "custom_field[id='#{cf1.id}'][name='Visible field']" do
+        assert_select 'value', 'value1'
+      end
+      assert_select "custom_field[id='#{cf2.id}']", 0
+    end
   end
 end
