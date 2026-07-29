@@ -1001,6 +1001,23 @@ class QueryTest < ActiveSupport::TestCase
     end
   end
 
+  def test_filter_assigned_to_none_or_selected_user
+    user = User.find(2)
+
+    issue_with_user = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => user)
+    issue_without_user = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
+    issue_with_other_user = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to_id => 3)
+
+    query = IssueQuery.new(:name => '_')
+    query.add_filter('assigned_to_id', '=', ['none', user.id.to_s])
+
+    results = query.issues
+
+    assert_includes results, issue_with_user
+    assert_includes results, issue_without_user
+    assert_not_includes results, issue_with_other_user
+  end
+
   def test_filter_notes
     user = User.generate!
     Journal.create!(:user_id => user.id, :journalized => Issue.find(2), :notes => 'Notes.')
@@ -2841,6 +2858,14 @@ class QueryTest < ActiveSupport::TestCase
     users = IssueQuery.new.available_filters["assigned_to_id"]
     assert_not_nil users
     assert users[:values].pluck(1).include?("3")
+  end
+
+  def test_assigned_to_filter_values_should_include_nobody
+    set_language_if_valid('en')
+
+    users = IssueQuery.new.available_filters["assigned_to_id"]
+
+    assert_include ["<< #{l(:label_nobody)} >>", 'none'], users[:values]
   end
 
   test "#available_filters should include users of subprojects" do

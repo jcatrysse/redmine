@@ -651,6 +651,7 @@ class Query < ApplicationRecord
   def assigned_to_values
     assigned_to_values = []
     assigned_to_values << ["<< #{l(:label_me)} >>", "me"] if User.current.logged?
+    assigned_to_values << ["<< #{l(:label_nobody)} >>", "none"]
     assigned_to_values +=
       (Setting.issue_group_assignment? ? principals : users).sort_by{|p| [p.status, p]}.
         collect{|s| [s.name, s.id.to_s, l("status_#{User::LABEL_BY_STATUS[s.status]}")]}
@@ -1026,6 +1027,8 @@ class Query < ApplicationRecord
         end
       end
 
+      include_none = (field == 'assigned_to_id' && operator == '=' && v.delete('none'))
+
       if field =~ /^cf_(\d+)\.cf_(\d+)$/
         filters_clauses << sql_for_chained_custom_field(field, operator, v, $1, $2)
       elsif field =~ /cf_(\d+)$/
@@ -1036,6 +1039,14 @@ class Query < ApplicationRecord
       elsif respond_to?(method = "sql_for_#{field.tr('.', '_')}_field")
         # specific statement
         filters_clauses << send(method, field, operator, v)
+      elsif include_none
+        clause = sql_for_field(field, operator, v, queried_table_name, field)
+        clause = if v.empty?
+                   "#{queried_table_name}.#{field} IS NULL"
+                 else
+                   "(#{queried_table_name}.#{field} IS NULL OR #{clause})"
+                 end
+        filters_clauses << '(' + clause + ')'
       else
         # regular field
         filters_clauses << '(' + sql_for_field(field, operator, v, queried_table_name, field) + ')'
