@@ -474,6 +474,18 @@ class IssueQuery < Query
     raise StatementInvalid.new(e.message)
   end
 
+  def fixed_version_values
+    versions_scope =
+      if project
+        Version.visible.where(project_statement).includes(:project).references(:project)
+      else
+        Version.visible
+      end
+
+    Version.sort_by_status(versions_scope.distinct.to_a).
+      collect{|s| ["#{s.project.name} - #{s.name}", s.id.to_s, l("version_status_#{s.status}")]}
+  end
+
   # Returns the journals
   # Valid options are :order, :offset, :limit
   def journals(options={})
