@@ -465,6 +465,7 @@ en:
   setting_per_page_options: Objects per page options
   setting_user_format: Users display format
   setting_activity_days_default: Days displayed on project activity
+  setting_my_page_max_issuequery_blocks: Maximum issue query blocks on My Page
   setting_display_subprojects_issues: Display subprojects issues on main projects by default
   setting_enabled_scm: Enabled SCM
   setting_mail_handler_body_delimiters: "Truncate emails after one of these lines"
