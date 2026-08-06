@@ -38,6 +38,9 @@ gem 'tzinfo-data', platforms: [:mingw, :x64_mingw, :mswin]
 gem 'rotp', '>= 5.0.0'
 gem 'rqrcode'
 
+# Database-backed sessions (GEOxyz; forward-port of c2fefd51c / ea61e37e8)
+gem 'activerecord-session_store'
+
 # HTML sanitization
 gem "sanitize", "~> 7.0"
 
