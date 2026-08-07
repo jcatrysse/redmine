@@ -1146,10 +1146,38 @@ class WikiControllerTest < Redmine::ControllerTest
     assert @response.body.starts_with?('%PDF')
   end
 
+  def test_export_to_txt
+    @request.session[:user_id] = 2
+    get :export, :params => {:project_id => 'ecookbook', :format => 'txt'}
+
+    assert_response :success
+    assert_equal 'text/plain', @response.media_type
+    assert_equal "attachment; filename=\"ecookbook.txt\"; filename*=UTF-8''ecookbook.txt",
+                 @response.headers['Content-Disposition']
+
+    pages = Project.find(1).wiki.pages.includes(:content, :parent).to_a
+    ordered = wiki_pages_in_hierarchy_for_test(pages)
+    ordered.each do |page|
+      assert_include "# #{page.title}", @response.body
+      assert_include page.content.text.to_s.strip, @response.body
+    end
+    # Hierarchy order: parent before child
+    assert_operator @response.body.index('# Another_page'), :<, @response.body.index('# Child_1')
+    assert_operator @response.body.index('# Child_1'), :<, @response.body.index('# Child_1_1')
+  end
+
   def test_export_to_zip
     with_settings :text_formatting => 'textile' do
+      set_tmp_attachments_directory
       user = User.find(2)
       user.pref.update!(:time_zone => 'Tokyo')
+
+      page_with_image = WikiPage.find_by_title('Page_with_an_inline_image')
+      Attachment.create!(
+        :container => page_with_image,
+        :file => uploaded_test_file('testfile.txt', 'text/plain'),
+        :author => user
+      )
 
       @request.session[:user_id] = user.id
       get :export, :params => {:project_id => 'ecookbook', :format => 'zip'}
@@ -1159,14 +1187,18 @@ class WikiControllerTest < Redmine::ControllerTest
       assert_equal "attachment; filename=\"ecookbook-wiki.zip\"; filename*=UTF-8''ecookbook-wiki.zip",
                    @response.headers['Content-Disposition']
 
-      pages = Project.find(1).wiki.pages.includes(:content).to_a.index_by(&:title)
+      pages = Project.find(1).wiki.pages.includes(:content, :attachments, :parent).to_a
+      pages_by_id = pages.index_by(&:id)
       zip_entries = zip_entries_from_response
 
-      assert_equal pages.keys.sort.map {|title| "#{title}.txt"}, zip_entries.keys.sort
+      page_txt_entries = pages.map do |page|
+        File.join(wiki_page_archive_path_for_test(page, pages_by_id), 'page.txt')
+      end
+      assert_equal page_txt_entries.sort, zip_entries.keys.grep(/page\.txt\z/).sort
 
-      zip_entries.each do |name, entry|
-        title = name.delete_suffix('.txt')
-        page = pages.fetch(title)
+      pages.each do |page|
+        entry_name = File.join(wiki_page_archive_path_for_test(page, pages_by_id), 'page.txt')
+        entry = zip_entries.fetch(entry_name)
         local_time = user.convert_time_to_user_timezone(page.updated_on)
 
         assert_equal page.content.text, entry[:content]
@@ -1177,6 +1209,8 @@ class WikiControllerTest < Redmine::ControllerTest
         # UT extra field should store the corresponding absolute UTC time.
         assert_equal local_time.utc.to_i, entry[:utc_time].utc.to_i
       end
+
+      assert_includes zip_entries.keys, 'CookBook_documentation/Page_with_an_inline_image/testfile.txt'
     end
   end
 
@@ -1192,9 +1226,19 @@ class WikiControllerTest < Redmine::ControllerTest
       assert_response :success
 
       zip_entries = zip_entries_from_response
-      assert_equal 'sanitized', zip_entries['Foo_.txt'][:content]
-      assert_not_includes zip_entries.keys, 'Foo*.txt'
+      assert_equal 'sanitized', zip_entries['Foo_/page.txt'][:content]
+      assert_not_includes zip_entries.keys, 'Foo*/page.txt'
+      assert_not_includes zip_entries.keys, 'Foo_.txt'
     end
+  end
+
+  def test_index_should_include_txt_and_zip_export_links
+    @request.session[:user_id] = 2
+    get :index, :params => {:project_id => 'ecookbook'}
+
+    assert_response :success
+    assert_select 'a[href=?]', '/projects/ecookbook/wiki/export.txt', :text => 'TXT'
+    assert_select 'a[href=?]', '/projects/ecookbook/wiki/export.zip', :text => 'ZIP'
   end
 
   def test_export_without_permission_should_be_denied
@@ -1401,5 +1445,33 @@ class WikiControllerTest < Redmine::ControllerTest
     end
 
     entries.transform_keys {|name| name.dup.force_encoding('UTF-8')}
+  end
+
+  def wiki_pages_in_hierarchy_for_test(pages)
+    pages_by_parent = pages.group_by(&:parent_id)
+    ordered = []
+    walk = lambda do |parent_id|
+      children = pages_by_parent[parent_id].to_a.sort_by(&:title)
+      children.each do |page|
+        ordered << page
+        walk.call(page.id)
+      end
+    end
+    walk.call(nil)
+    ordered
+  end
+
+  def wiki_page_archive_path_for_test(page, pages_by_id)
+    segments = []
+    current = page
+    visited = Set.new
+    while current
+      break if visited.include?(current.id)
+
+      visited << current.id
+      segments.unshift(current.title.to_s.gsub(/\A.*(\\|\/)/m, '').gsub(/[\/\?\%\*\:\|\"\'<>\n\r]+/, '_'))
+      current = pages_by_id[current.parent_id]
+    end
+    File.join(segments)
   end
 end

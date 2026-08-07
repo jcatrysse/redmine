@@ -18,6 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 require 'zip'
+require 'set'
 
 # The WikiController follows the Rails REST controller pattern but with
 # a few differences
@@ -45,6 +46,7 @@ class WikiController < ApplicationController
   include AttachmentsHelper
   helper :watchers
   include Redmine::Export::PDF
+  include ActionView::Helpers::NumberHelper
 
   # List of pages, sorted alphabetically and by parent (hierarchy)
   def index
@@ -309,11 +311,21 @@ class WikiController < ApplicationController
     end
   end
 
-  # Export wiki to a single pdf or html file
+  # Export wiki to a single pdf, html, txt, or zip file
   def export
     @pages = @wiki.pages.
                       includes([:content, {:attachments => :author}]).
                       to_a
+
+    # Keep TXT outside respond_to (same pattern as single-page show export).
+    if params[:format] == 'txt'
+      @ordered_pages = wiki_pages_in_hierarchy(@pages)
+      export = render_to_string :action => 'export_multiple', :formats => [:text], :layout => false
+      send_data(export, :type => 'text/plain',
+                        :filename => filename_for_content_disposition("#{@project.identifier}.txt"))
+      return
+    end
+
     respond_to do |format|
       format.html do
         export = render_to_string :action => 'export_multiple', :layout => false
@@ -323,6 +335,15 @@ class WikiController < ApplicationController
         send_file_headers! :type => 'application/pdf', :filename => "#{@project.identifier}.pdf"
       end
       format.zip do
+        attachments = @pages.flat_map {|page| page.attachments.select(&:readable?)}
+        bulk_download_max_size = Setting.bulk_download_max_size.to_i.kilobytes
+        if attachments.sum(&:filesize) > bulk_download_max_size
+          flash[:error] = l(:error_bulk_download_size_too_big,
+                            :max_size => number_to_human_size(bulk_download_max_size.to_i))
+          redirect_back_or_default project_wiki_index_path(@project)
+          return
+        end
+
         file_name = "#{@project.identifier}-wiki.zip"
         send_data(
           wiki_pages_to_zip(@pages),
@@ -411,13 +432,37 @@ class WikiController < ApplicationController
                 to_a
   end
 
+  # Depth-first order matching the wiki index hierarchy (roots, then children).
+  def wiki_pages_in_hierarchy(pages)
+    pages_by_parent = pages.group_by(&:parent_id)
+    ordered = []
+    walk = lambda do |parent_id|
+      children = pages_by_parent[parent_id].to_a.sort_by(&:title)
+      children.each do |page|
+        ordered << page
+        walk.call(page.id)
+      end
+    end
+    walk.call(nil)
+    ordered
+  end
+
+  # ZIP layout: Parent/Child/page.txt plus that page's readable attachments.
   def wiki_pages_to_zip(pages)
     Zip.unicode_names = true
-    archived_file_names = []
+    archived_file_names = Hash.new {|hash, key| hash[key] = Hash.new(0)}
+    pages_by_id = pages.index_by(&:id)
+    ordered_pages = wiki_pages_in_hierarchy(pages)
+    attachments_by_page =
+      pages.each_with_object({}) do |page, hash|
+        readable_attachments = page.attachments.select(&:readable?)
+        hash[page] = readable_attachments if readable_attachments.any?
+      end
+
     buffer = Zip::OutputStream.write_buffer do |zos|
-      pages.each do |page|
-        filename = archived_wiki_page_filename(page, archived_file_names)
-        entry = Zip::Entry.new('', filename)
+      ordered_pages.each do |page|
+        page_dir = wiki_page_archive_path(page, pages_by_id)
+        entry = Zip::Entry.new('', File.join(page_dir, 'page.txt'))
         if page.updated_on.present?
           local_time = User.current.convert_time_to_user_timezone(page.updated_on)
           # DOS timestamp stores user's displayed local time
@@ -429,7 +474,20 @@ class WikiController < ApplicationController
           entry.extra[:universaltime].mtime = local_time.utc
         end
         zos.put_next_entry(entry)
-        zos << page.content.text.to_s
+        zos << page.content&.text.to_s
+
+        (attachments_by_page[page] || []).each do |attachment|
+          filename = attachment.filename
+          count = archived_file_names[page_dir][filename]
+          if count.positive?
+            extname = File.extname(filename)
+            basename = File.basename(filename, extname)
+            filename = "#{basename}(#{count})#{extname}"
+          end
+          archived_file_names[page_dir][attachment.filename] += 1
+          zos.put_next_entry(File.join(page_dir, filename))
+          zos << IO.binread(attachment.diskfile)
+        end
       end
     end
     buffer.string
@@ -437,20 +495,22 @@ class WikiController < ApplicationController
     buffer&.close
   end
 
-  def archived_wiki_page_filename(page, archived_file_names)
-    extension = '.txt'
-    # Keep this character set aligned with Attachment#sanitize_filename.
-    # Unlike attachments, do not drop path-like components from wiki titles.
-    sanitized_title = page.title.tr('\\', '_').gsub(/[\/?%*:|"'<>\n\r]+/, '_')
-    filename = "#{sanitized_title}#{extension}"
-    dup_count = 0
+  # Keep this character set aligned with Attachment#sanitize_filename.
+  def sanitize_archive_path(value)
+    value.to_s.gsub(/\A.*(\\|\/)/m, '').gsub(/[\/\?\%\*\:\|\"\'<>\n\r]+/, '_')
+  end
 
-    while archived_file_names.include?(filename)
-      dup_count += 1
-      filename = "#{sanitized_title}(#{dup_count})#{extension}"
+  def wiki_page_archive_path(page, pages_by_id)
+    segments = []
+    current = page
+    visited = Set.new
+    while current
+      break if visited.include?(current.id)
+
+      visited << current.id
+      segments.unshift(sanitize_archive_path(current.title))
+      current = pages_by_id[current.parent_id]
     end
-
-    archived_file_names << filename
-    filename
+    File.join(segments)
   end
 end
