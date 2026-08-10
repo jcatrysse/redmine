@@ -415,6 +415,10 @@ fr:
   setting_time_format: Format d'heure
   setting_timespan_format: Format des temps en heures
   setting_cross_project_issue_relations: Autoriser les relations entre demandes de différents projets
+  setting_display_under_single_revision: Afficher les branches sur la page de révision unique
+  setting_display_under_associated_revisions: Afficher les branches sous les révisions associées
+  setting_display_revision_branches_enable_regex_delimiters: Masquer les branches correspondant aux expressions régulières
+  setting_display_revision_branches_regex_enable: Activer le filtre par expression régulière
   setting_cross_project_subtasks: Autoriser les sous-tâches dans des projets différents
   setting_issue_list_default_columns: Colonnes affichées par défaut sur la liste des demandes
   setting_repositories_encodings: Encodages des fichiers et des dépôts
@@ -758,6 +762,7 @@ fr:
   label_repository_new: Nouveau dépôt
   label_repository_plural: Dépôts
   label_branch: Branche
+  label_branches: Branches
   label_tag: Tag
   label_revision: Révision
   label_revision_plural: Révisions
@@ -872,6 +877,7 @@ fr:
   label_registration_manual_activation: activation manuelle du compte
   label_registration_automatic_activation: activation automatique du compte
   label_display_per_page: "Par page : %{value}"
+  label_display_revision_branches: Afficher les branches pour la révision
   label_age: Âge
   label_change_properties: Changer les propriétés
   label_general: Général

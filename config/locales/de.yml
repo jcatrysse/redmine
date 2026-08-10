@@ -462,6 +462,7 @@ de:
   label_board_sticky: Wichtig (immer oben)
   label_boolean: Boolean
   label_branch: Zweig
+  label_branches: Zweige
   label_bulk_edit_selected_issues: Alle ausgewählten Tickets bearbeiten
   label_bulk_edit_selected_time_entries: Ausgewählte Zeitaufwände bearbeiten
   label_calendar: Kalender
@@ -524,6 +525,7 @@ de:
   label_disabled: gesperrt
   label_display: Anzeige
   label_display_per_page: "Pro Seite: %{value}"
+  label_display_revision_branches: Zweige zur Revision anzeigen
   label_display_used_statuses_only: Zeige nur Status an, die von diesem Tracker verwendet werden
   label_document: Dokument
   label_document_added: Dokument hinzugefügt
@@ -1000,6 +1002,10 @@ de:
   setting_commit_logtime_enabled: Aktiviere Zeiterfassung via Commit-Nachricht
   setting_commit_ref_keywords: Schlüsselwörter (Beziehungen)
   setting_cross_project_issue_relations: Ticket-Beziehungen zwischen Projekten erlauben
+  setting_display_under_single_revision: Zweige auf der Einzelrevisionsseite anzeigen
+  setting_display_under_associated_revisions: Zweige bei zugehörigen Revisionen anzeigen
+  setting_display_revision_branches_enable_regex_delimiters: Zweige ausblenden, die regulären Ausdrücken entsprechen
+  setting_display_revision_branches_regex_enable: Filter mit regulären Ausdrücken aktivieren
   setting_cross_project_subtasks: Projektübergreifende untergeordnete Tickets erlauben
   setting_date_format: Datumsformat
   setting_default_issue_start_date_to_creation_date: Aktuelles Datum als Beginn für neue Tickets verwenden
