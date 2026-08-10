@@ -254,6 +254,14 @@ display_related_issues_table_headers:
   default: 0
 display_subprojects_issues:
   default: 1
+display_under_single_revision:
+  default: 0
+display_under_associated_revisions:
+  default: 0
+display_revision_branches_enable_regex_delimiters:
+  default: ''
+display_revision_branches_regex_enable:
+  default: 0
 time_entry_list_defaults:
   serialized: true
   default:

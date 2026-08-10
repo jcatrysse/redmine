@@ -748,6 +748,45 @@ class RepositoriesGitControllerTest < Redmine::RepositoryControllerTest
       end
     end
 
+    def test_revision_should_display_branches_when_enabled
+      assert_equal 0, @repository.changesets.count
+      @repository.fetch_changesets
+      @project.reload
+      rev = 'fba357b886984ee71185ad2065e65fc0417d9b92'
+      with_settings :display_under_single_revision => '1' do
+        get(
+          :revision,
+          :params => {
+            :id => PRJ_ID,
+            :repository_id => @repository.id,
+            :rev => rev
+          }
+        )
+        assert_response :success
+        assert_select 'ul.revision-info li strong', :text => 'Branches'
+        assert_select 'a', :text => 'test_branch'
+      end
+    end
+
+    def test_revision_should_not_display_branches_when_disabled
+      assert_equal 0, @repository.changesets.count
+      @repository.fetch_changesets
+      @project.reload
+      rev = 'fba357b886984ee71185ad2065e65fc0417d9b92'
+      with_settings :display_under_single_revision => '0' do
+        get(
+          :revision,
+          :params => {
+            :id => PRJ_ID,
+            :repository_id => @repository.id,
+            :rev => rev
+          }
+        )
+        assert_response :success
+        assert_select 'ul.revision-info li strong', :text => 'Branches', :count => 0
+      end
+    end
+
     def test_empty_revision
       assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets

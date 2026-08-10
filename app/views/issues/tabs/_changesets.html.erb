@@ -20,6 +20,14 @@
                        :path => "",
                        :rev => changeset.identifier) %>)
         <% end %>
+        <% if User.current.allowed_to?(:browse_repository, changeset.project) &&
+              Setting.display_under_associated_revisions? &&
+              changeset.scmid.present?
+            @repository = changeset.repository
+            @rev = changeset.identifier
+        %>
+        (<em><%= l(:label_branches) %>: <%= safe_join(links_to_branches, ', '.html_safe) %></em>)
+        <% end %>
       </p>
       <div class="wiki changeset-comments">
         <%= format_changeset_comments changeset %>

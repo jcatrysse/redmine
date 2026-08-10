@@ -36,4 +36,12 @@ $(document).ready(function() {
       $('#branch,#tag').removeAttr('disabled');
     }
   });
+
+  /*
+  Toggle the branch group when clicking on the link
+  */
+  $('a.scm-branch-group').on('click', function(e) {
+    e.preventDefault();
+    $(this).parent().removeClass('scm-branch-hide');
+  });
 })
