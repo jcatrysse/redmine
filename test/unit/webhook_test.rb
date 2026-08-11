@@ -220,6 +220,64 @@ class WebhookTest < ActiveSupport::TestCase
     assert_equal @issue.id, payload.dig(:data, :issue, :id)
   end
 
+  test "hooks_for should match when no trackers are selected" do
+    hook = create_hook
+    assert_equal [hook], Webhook.hooks_for('issue.created', @issue)
+  end
+
+  test "hooks_for should match when the issue tracker is selected" do
+    hook = create_hook
+    hook.trackers = [@issue.tracker]
+    hook.save!
+    assert_equal [hook], Webhook.hooks_for('issue.created', @issue)
+  end
+
+  test "hooks_for should skip when the issue tracker is not selected" do
+    other = Tracker.where.not(id: @issue.tracker_id).first
+    hook = create_hook
+    hook.trackers = [other]
+    hook.save!
+    assert_equal [], Webhook.hooks_for('issue.created', @issue)
+  end
+
+  test "should enqueue issue.closed when an open issue is closed" do
+    with_settings webhooks_enabled: '1' do
+      create_hook events: ['issue.closed']
+      issue = Issue.generate!(project: @project)
+      assert_not issue.status.is_closed?
+      assert_enqueued_jobs 1, only: WebhookJob do
+        issue.init_journal(@dlopper)
+        issue.status = IssueStatus.find(5)
+        assert issue.save
+      end
+    end
+  end
+
+  test "should not enqueue issue.closed when the issue stays open" do
+    with_settings webhooks_enabled: '1' do
+      create_hook events: ['issue.closed']
+      issue = Issue.generate!(project: @project)
+      assert_no_enqueued_jobs only: WebhookJob do
+        issue.init_journal(@dlopper)
+        issue.subject = 'Webhook closed should not fire'
+        assert issue.save
+      end
+    end
+  end
+
+  test "should not enqueue issue.closed when changing from one closed status to another" do
+    with_settings webhooks_enabled: '1' do
+      create_hook events: ['issue.closed']
+      issue = Issue.find(8)
+      assert issue.closed?
+      assert_no_enqueued_jobs only: WebhookJob do
+        issue.init_journal(@dlopper)
+        issue.status = IssueStatus.find(6)
+        assert issue.save
+      end
+    end
+  end
+
   test "should trigger issue updated webhook when attachment removal creates a journal without saving issue" do
     issue = Issue.find(3)
     attachment = Attachment.find(1)

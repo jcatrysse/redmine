@@ -60,7 +60,7 @@ class Issue < ApplicationRecord
                             :author_key => :author_id
 
   acts_as_mentionable :attributes => ['description']
-  acts_as_webhookable
+  acts_as_webhookable %w(created updated deleted closed)
   include Issue::Webhookable
 
   DONE_RATIO_OPTIONS = %w(issue_field issue_status)

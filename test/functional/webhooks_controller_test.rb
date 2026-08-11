@@ -62,6 +62,8 @@ class WebhooksControllerTest < Redmine::ControllerTest
   test "should get new" do
     get :new
     assert_response :success
+    assert_select 'input[name=?][value=?]', 'webhook[events][]', 'issue.closed'
+    assert_select 'input[name=?]', 'webhook[tracker_ids][]'
   end
 
   test "should create webhook" do
@@ -69,6 +71,21 @@ class WebhooksControllerTest < Redmine::ControllerTest
       post :create, params: { webhook: { url: 'https://example.com/new/hook', events: %w(issue.created), project_ids: [@project.id] } }
     end
     assert_redirected_to webhooks_path
+  end
+
+  test "should create webhook with tracker ids" do
+    tracker = Tracker.find(1)
+    assert_difference 'Webhook.count' do
+      post :create, params: {
+        webhook: {
+          url: 'https://example.com/tracker/hook',
+          events: %w(issue.created),
+          project_ids: [@project.id],
+          tracker_ids: [tracker.id]
+        }
+      }
+    end
+    assert_equal [tracker.id], Webhook.order(:id).last.tracker_ids
   end
 
   test "should get edit" do

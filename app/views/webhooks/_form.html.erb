@@ -40,5 +40,16 @@
       <%= hidden_field_tag('webhook[project_ids][]', '', :id => nil) %>
     </fieldset>
 
+    <fieldset class="box" id="webhook_tracker_ids">
+      <legend><%= toggle_checkboxes_link("#webhook_tracker_ids input[type=checkbox]") %><%= l(:label_tracker_plural) %></legend>
+      <% tracker_ids = @webhook.tracker_ids.to_a %>
+      <% @webhook.setable_trackers.each do |tracker| %>
+        <label class="floating">
+          <%= check_box_tag('webhook[tracker_ids][]', tracker.id, tracker_ids.include?(tracker.id), :id => nil) %>
+          <%= h(tracker.name) %>
+        </label>
+      <% end %>
+      <%= hidden_field_tag('webhook[tracker_ids][]', '', :id => nil) %>
+    </fieldset>
   </div>
 </div>
