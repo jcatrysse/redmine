@@ -18,6 +18,28 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 module MembersHelper
+
+  # Returns the requested page of the project's members together with its
+  # paginator and the total member count. Member.sorted joins roles (a member
+  # may have several roles), so the sorted ids are collected first (duplicates
+  # removed, keeping the lowest role position) and only the current page is
+  # loaded; this paginates members rather than join rows.
+  def paginate_members(project)
+    ordered_ids =
+      project.memberships.
+        left_joins(:member_roles => :role).joins(:principal).
+        reorder("#{Role.table_name}.position").
+        order(Principal.fields_for_order_statement).
+        pluck("#{Member.table_name}.id").uniq
+    member_pages = Redmine::Pagination::Paginator.new(
+      ordered_ids.size, per_page_option, params['members_page'], 'members_page'
+    )
+    page_ids = ordered_ids[member_pages.offset, member_pages.per_page] || []
+    members_by_id = project.memberships.where(:id => page_ids).preload(:project, :principal, :roles).index_by(&:id)
+    members = page_ids.filter_map {|id| members_by_id[id]}
+    [members, member_pages, ordered_ids.size]
+  end
+
   def render_principals_for_new_members(project, limit=100)
     scope = Principal.active.visible.sorted.not_member_of(project).like(params[:q])
     principal_count = scope.count

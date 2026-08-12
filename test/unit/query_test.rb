@@ -161,6 +161,49 @@ class QueryTest < ActiveSupport::TestCase
     assert_include subproject_version.id.to_s, filter[:values].map(&:second)
   end
 
+  def test_fixed_version_filter_should_include_subproject_versions_when_displaying_subproject_issues
+    with_settings :display_subprojects_issues => '1' do
+      subproject = Project.find(3)
+      version = Version.create!(:project => subproject, :name => 'Unshared subproject version')
+
+      query = IssueQuery.new(:project => Project.find(1), :name => '_')
+      filter = query.available_filters["fixed_version_id"]
+
+      assert_not_nil filter
+      assert_include version.id.to_s, filter[:values].map(&:second)
+    end
+  end
+
+  def test_fixed_version_filter_should_respect_selected_subprojects
+    subproject_1 = Project.find(3)
+    subproject_2 = Project.find(4)
+    version_1 = Version.create!(:project => subproject_1, :name => 'Subproject 1 version')
+    version_2 = Version.create!(:project => subproject_2, :name => 'Subproject 2 version')
+
+    query = IssueQuery.new(:project => Project.find(1), :name => '_')
+    query.add_filter('subproject_id', '=', [subproject_1.id.to_s])
+    filter = query.available_filters["fixed_version_id"]
+
+    assert_not_nil filter
+    values = filter[:values].map(&:second)
+    assert_include version_1.id.to_s, values
+    assert_not_include version_2.id.to_s, values
+  end
+
+  def test_fixed_version_filter_should_include_all_subproject_versions_when_filtering_any_subproject
+    with_settings :display_subprojects_issues => '0' do
+      subproject = Project.find(3)
+      version = Version.create!(:project => subproject, :name => 'Any subproject version')
+
+      query = IssueQuery.new(:project => Project.find(1), :name => '_')
+      query.add_filter('subproject_id', '*', [''])
+      filter = query.available_filters["fixed_version_id"]
+
+      assert_not_nil filter
+      assert_include version.id.to_s, filter[:values].map(&:second)
+    end
+  end
+
   def test_query_with_multiple_custom_fields
     query = IssueQuery.find(1)
     assert query.valid?
@@ -999,6 +1042,23 @@ class QueryTest < ActiveSupport::TestCase
       assert result.include?(i2)
       assert !result.include?(i3)
     end
+  end
+
+  def test_filter_assigned_to_none_or_selected_user
+    user = User.find(2)
+
+    issue_with_user = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => user)
+    issue_without_user = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
+    issue_with_other_user = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to_id => 3)
+
+    query = IssueQuery.new(:name => '_')
+    query.add_filter('assigned_to_id', '=', ['none', user.id.to_s])
+
+    results = query.issues
+
+    assert_includes results, issue_with_user
+    assert_includes results, issue_without_user
+    assert_not_includes results, issue_with_other_user
   end
 
   def test_filter_notes
@@ -2841,6 +2901,14 @@ class QueryTest < ActiveSupport::TestCase
     users = IssueQuery.new.available_filters["assigned_to_id"]
     assert_not_nil users
     assert users[:values].pluck(1).include?("3")
+  end
+
+  def test_assigned_to_filter_values_should_include_nobody
+    set_language_if_valid('en')
+
+    users = IssueQuery.new.available_filters["assigned_to_id"]
+
+    assert_include ["<< #{l(:label_nobody)} >>", 'none'], users[:values]
   end
 
   test "#available_filters should include users of subprojects" do

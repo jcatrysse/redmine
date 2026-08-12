@@ -3336,6 +3336,81 @@ class IssuesControllerTest < Redmine::ControllerTest
     end
   end
 
+  GIT_REPOSITORY_PATH = Rails.root.join('tmp/test/git_repository').to_s
+
+  def test_issue_tab_changesets_should_display_branches_when_enabled
+    skip "Git test repository NOT FOUND" unless File.directory?(GIT_REPOSITORY_PATH)
+    skip "SCM command is unavailable" unless Repository::Git.scm_available
+
+    project = nil
+    begin
+      project = Project.find(3)
+      project.repository&.destroy
+    repository =
+      Repository::Git.create!(
+        :project => project,
+        :url => GIT_REPOSITORY_PATH,
+        :path_encoding => 'ISO-8859-1'
+      )
+    repository.fetch_changesets
+    changeset =
+      repository.changesets.find_by(
+        :revision => 'fba357b886984ee71185ad2065e65fc0417d9b92'
+      )
+    assert changeset
+
+    issue = Issue.find(5)
+    issue.changeset_ids = [changeset.id]
+    issue.save!
+
+    with_settings :display_under_associated_revisions => '1' do
+      @request.session[:user_id] = 2
+      get :issue_tab, :params => {:id => issue.id, :name => 'changesets', :format => 'js'}, :xhr => true
+      assert_response :success
+      assert_select 'em', :text => /Branches/
+      assert_select 'a', :text => 'test_branch'
+    end
+    ensure
+      project&.repository&.destroy
+    end
+  end
+
+  def test_issue_tab_changesets_should_not_display_branches_when_disabled
+    skip "Git test repository NOT FOUND" unless File.directory?(GIT_REPOSITORY_PATH)
+    skip "SCM command is unavailable" unless Repository::Git.scm_available
+
+    project = nil
+    begin
+      project = Project.find(3)
+      project.repository&.destroy
+    repository =
+      Repository::Git.create!(
+        :project => project,
+        :url => GIT_REPOSITORY_PATH,
+        :path_encoding => 'ISO-8859-1'
+      )
+    repository.fetch_changesets
+    changeset =
+      repository.changesets.find_by(
+        :revision => 'fba357b886984ee71185ad2065e65fc0417d9b92'
+      )
+    assert changeset
+
+    issue = Issue.find(5)
+    issue.changeset_ids = [changeset.id]
+    issue.save!
+
+    with_settings :display_under_associated_revisions => '0' do
+      @request.session[:user_id] = 2
+      get :issue_tab, :params => {:id => issue.id, :name => 'changesets', :format => 'js'}, :xhr => true
+      assert_response :success
+      assert_select 'em', :text => /Branches/, :count => 0
+    end
+    ensure
+      project&.repository&.destroy
+    end
+  end
+
   def test_show_should_display_spent_time_tab_for_issue_with_time_entries
     @request.session[:user_id] = 1
     get :show, :params => {:id => 3}

@@ -114,6 +114,25 @@ class GitAdapterTest < ActiveSupport::TestCase
       assert_equal false, br_test.is_default
     end
 
+    def test_branch_contains
+      branches = @adapter.branch_contains('7234cb2750b63f47bff735edc50a1c0a433c2518')
+      assert_includes branches, 'master'
+      assert_includes branches, 'test_branch'
+      assert_not_includes branches, 'issue-8857'
+    end
+
+    def test_branch_contains_with_regex_filter
+      with_settings(
+        :display_revision_branches_regex_enable => '1',
+        :display_revision_branches_enable_regex_delimiters => "^master"
+      ) do
+        branches = @adapter.branch_contains('7234cb2750b63f47bff735edc50a1c0a433c2518')
+        assert_not_includes branches, 'master'
+        assert_not_includes branches, 'master-20120212'
+        assert_includes branches, 'test_branch'
+      end
+    end
+
     def test_default_branch
       assert_equal 'master-20120212', @adapter.default_branch
 

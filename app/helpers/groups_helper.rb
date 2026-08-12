@@ -26,6 +26,19 @@ module GroupsHelper
     tabs
   end
 
+  # Returns the requested page of the group's users together with its paginator
+  # and the total user count, so the users tab loads only one page at a time
+  # instead of rendering every user of the group.
+  def paginate_group_users(group)
+    scope = group.users.sorted
+    user_count = scope.count
+    user_pages = Redmine::Pagination::Paginator.new(
+      user_count, per_page_option, params['users_page'], 'users_page'
+    )
+    users = scope.limit(user_pages.per_page).offset(user_pages.offset).to_a
+    [users, user_pages, user_count]
+  end
+  
   def render_principals_for_new_group_users(group, limit=100)
     scope = User.active.sorted.not_in_group(group).like(params[:q])
     principal_count = scope.count

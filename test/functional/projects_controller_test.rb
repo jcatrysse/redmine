@@ -1030,6 +1030,58 @@ class ProjectsControllerTest < Redmine::ControllerTest
     assert_select "tr#member-#{group_member.id} td.name a[href=?]", '/groups/10', :text => 'A Team'
   end
 
+  def test_settings_members_should_be_paginated
+    project = Project.find(1)
+    per_page = 25
+    # Ensure there are more members than fit on a single page
+    (per_page + 5).times { User.add_to_project(User.generate!, project) }
+    @request.session[:user_id] = 2
+    with_settings :per_page_options => '25,50,100' do
+      get(
+        :settings,
+        :params => {:id => 'ecookbook', :tab => 'members'}
+      )
+    end
+    assert_response :success
+    assert_select 'div#tab-content-members table.list.members tbody tr.member', :count => per_page
+    assert_select 'div#tab-content-members span.pagination'
+    # Pagination links must keep the members tab in the path and use members_page
+    assert_select 'div#tab-content-members span.pagination a[href*=?]', 'settings/members?members_page='
+  end
+
+  def test_settings_members_with_multiple_roles_should_not_appear_on_two_pages
+    project = Project.find(1)
+    30.times { User.add_to_project(User.generate!, project) }
+    # A member with several roles must still be listed once (no join-row paging)
+    Member.where(:project_id => project.id).first.update!(:role_ids => [1, 2])
+    @request.session[:user_id] = 2
+    page1 = page2 = nil
+    with_settings :per_page_options => '25,50,100' do
+      get(:settings, :params => {:id => 'ecookbook', :tab => 'members'})
+      page1 = css_select('div#tab-content-members tr.member').pluck('id')
+      get(:settings, :params => {:id => 'ecookbook', :tab => 'members', :members_page => 2})
+      page2 = css_select('div#tab-content-members tr.member').pluck('id')
+    end
+    assert_not page1.intersect?(page2), 'a member must not appear on more than one page'
+  end
+
+  def test_settings_members_should_show_requested_page
+    project = Project.find(1)
+    per_page = 25
+    (per_page + 5).times { User.add_to_project(User.generate!, project) }
+    @request.session[:user_id] = 2
+    with_settings :per_page_options => '25,50,100' do
+      get(
+        :settings,
+        :params => {:id => 'ecookbook', :tab => 'members', :members_page => 2}
+      )
+    end
+    assert_response :success
+    # The second page holds the remaining members (fewer than a full page)
+    assert_select 'div#tab-content-members table.list.members tbody tr.member'
+    assert_select 'div#tab-content-members span.pagination'
+  end
+
   def test_settings_should_show_tabs_depending_on_permission
     @request.session[:user_id] = 3
     project = Project.find(1)

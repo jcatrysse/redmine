@@ -42,6 +42,20 @@ class WebhookPayloadTest < ActiveSupport::TestCase
     end
   end
 
+  test "issue closed payload should contain journal and closed type" do
+    @issue.init_journal(@dlopper)
+    @issue.status = IssueStatus.find(5)
+    @issue.save!
+    p = WebhookPayload.new('issue.closed', @issue, @dlopper)
+    assert h = p.to_h
+    assert_equal 'issue.closed', h[:type]
+    assert Time.iso8601(h[:timestamp])
+    assert j = h.dig(:data, :journal)
+    assert_equal 'Dave Lopper', j[:user][:name]
+    assert i = h.dig(:data, :issue)
+    assert_equal @issue.id, i[:id]
+  end
+
   test "issue update payload should contain journal" do
     @issue.init_journal(@dlopper)
     @issue.subject = "new subject"

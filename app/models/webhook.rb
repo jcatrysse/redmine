@@ -90,6 +90,7 @@ class Webhook < ApplicationRecord
 
   belongs_to :user
   has_and_belongs_to_many :projects # rubocop:disable Rails/HasAndBelongsToMany
+  has_and_belongs_to_many :trackers # rubocop:disable Rails/HasAndBelongsToMany
 
   validates :url, presence: true, webhook_endpoint: true, length: { maximum: 2000 }
   validates :secret, length: { maximum: 255 }, allow_blank: true
@@ -99,6 +100,7 @@ class Webhook < ApplicationRecord
 
   scope :active, -> { where(active: true) }
 
+  before_validation ->(hook){ hook.trackers = hook.trackers.to_a & hook.setable_trackers }
   before_validation ->(hook){ hook.projects = hook.projects.to_a & hook.setable_projects }
 
   def self.enabled?
@@ -127,7 +129,7 @@ class Webhook < ApplicationRecord
       .eager_load(:user)
       .where(users: { status: User::STATUS_ACTIVE }, projects_webhooks: { project_id: object.project_id })
       .to_a.select do |hook|
-      hook.events.include?(event) && object.visible?(hook.user) && hook.user.allowed_to?(:use_webhooks, object.project)
+      hook.events.include?(event) && object.visible?(hook.user) && hook.user.allowed_to?(:use_webhooks, object.project) && hook.tracker_allowed?(object)
     end
   end
 
@@ -137,11 +139,24 @@ class Webhook < ApplicationRecord
   end
 
   def setable_events
+    # acts_as_webhookable registers when the model is first loaded. In
+    # development that is lazy, so force-load webhookable models here.
+    [Issue, News, TimeEntry, Version, WikiPage]
     WebhookPayload.events
   end
 
   def setable_event_names
     setable_events.map{|type, actions| actions.map{|action| "#{type}.#{action}"}}.flatten
+  end
+
+  def setable_trackers
+    Tracker.sorted.to_a
+  end
+
+  def tracker_allowed?(object)
+    return true unless object.respond_to?(:tracker_id)
+
+    tracker_ids.blank? || tracker_ids.include?(object.tracker_id)
   end
 
   # computes the payload. this happens when the hook is triggered, and the

@@ -1,0 +1,5 @@
+<% (@ordered_pages || @pages).each do |page| %>
+# <%= page.title %>
+<%= page.content&.text.to_s.strip %>
+
+<% end %>

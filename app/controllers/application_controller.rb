@@ -669,6 +669,7 @@ class ApplicationController < ActionController::Base
     end
     per_page
   end
+  helper_method :per_page_option #without this, paginate_members / paginate_group_users may fail when they call per_page_option.
 
   # Returns offset and limit used to retrieve objects
   # for an API response based on offset, limit and page parameters

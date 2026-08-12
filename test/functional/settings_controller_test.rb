@@ -314,4 +314,31 @@ class SettingsControllerTest < Redmine::ControllerTest
     assert_equal '1', Setting.mail_handler_enable_regex_delimiters
     assert_equal 'On .*, .* at .*, .* <.*<mailto:.*>> wrote:', Setting.mail_handler_body_delimiters
   end
+
+  def test_get_edit_issues_tab_should_show_revision_branch_settings
+    get :edit, :params => {:tab => 'issues'}
+    assert_response :success
+
+    assert_select 'input[name=?]', 'settings[display_under_single_revision]'
+    assert_select 'input[name=?]', 'settings[display_under_associated_revisions]'
+    assert_select 'textarea[name=?]', 'settings[display_revision_branches_enable_regex_delimiters]'
+    assert_select 'input[name=?]', 'settings[display_revision_branches_regex_enable]'
+  end
+
+  def test_post_edit_revision_branch_settings
+    post :edit, :params => {
+      :tab => 'issues',
+      :settings => {
+        :display_under_single_revision => '1',
+        :display_under_associated_revisions => '1',
+        :display_revision_branches_regex_enable => '1',
+        :display_revision_branches_enable_regex_delimiters => "^master"
+      }
+    }
+    assert_redirected_to '/settings?tab=issues'
+    assert Setting.display_under_single_revision?
+    assert Setting.display_under_associated_revisions?
+    assert Setting.display_revision_branches_regex_enable?
+    assert_equal '^master', Setting.display_revision_branches_enable_regex_delimiters
+  end
 end

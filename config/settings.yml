@@ -89,10 +89,17 @@ issues_export_limit:
 activity_days_default:
   format: int
   default: 10
+my_page_max_issuequery_blocks:
+  format: int
+  default: 3
 per_page_options:
   default: '25,50,100'
 search_results_per_page:
   default: 10
+search_token_limit:
+  format: int
+  # Use 0 for unlimited tokens (may impact performance on large queries)
+  default: 5
 mail_from:
   default: redmine@example.net
 plain_text_mail:
@@ -247,6 +254,14 @@ display_related_issues_table_headers:
   default: 0
 display_subprojects_issues:
   default: 1
+display_under_single_revision:
+  default: 0
+display_under_associated_revisions:
+  default: 0
+display_revision_branches_enable_regex_delimiters:
+  default: ''
+display_revision_branches_regex_enable:
+  default: 0
 time_entry_list_defaults:
   serialized: true
   default:

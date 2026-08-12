@@ -30,6 +30,8 @@ gem 'net-imap', '~> 0.6.1'
 gem 'net-pop', '~> 0.1.2'
 gem 'net-smtp', '~> 0.5.1'
 gem 'ostruct'
+gem 'oauth2', '~> 2.0'
+gem 'gmail_xoauth', '~> 0.4.3'
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem 'tzinfo-data', platforms: [:mingw, :x64_mingw, :mswin]
@@ -37,6 +39,9 @@ gem 'tzinfo-data', platforms: [:mingw, :x64_mingw, :mswin]
 # TOTP-based 2-factor authentication
 gem 'rotp', '>= 5.0.0'
 gem 'rqrcode'
+
+# Database-backed sessions (GEOxyz; forward-port of c2fefd51c / ea61e37e8)
+gem 'activerecord-session_store'
 
 # HTML sanitization
 gem "sanitize", "~> 7.0"
@@ -119,8 +124,7 @@ group :test do
   gem 'rubocop-performance', '~> 1.26.0', require: false
   gem 'rubocop-rails', '~> 2.34.3', require: false
   gem 'bundle-audit', require: false
-  # for testing oauth provider capabilities
-  gem 'oauth2'
+  # oauth2 is in the main Gemfile (IMAP OAuth + Doorkeeper tests)
   gem 'webrick'
 end
 
