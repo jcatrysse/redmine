@@ -49,3 +49,4 @@ yarn-error.log
 
 /config/master.key
 /config/credentials.yml.enc
+/config/email_oauth2*.yml
