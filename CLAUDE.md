@@ -121,6 +121,43 @@ Every row below is a real defect found in the existing GEOxyz code or its
 | `git format-patch` from a branch not descended from `origin/master` | INV-2, INV-9 | recreate the branch from trunk |
 | trailing whitespace, missing final newline | half of the port's 73 lint offences | `rubocop -a` before committing |
 
+## The GEOxyz branch — the half that actually runs
+
+`7.0-stable-GEOxyz` is not an afterthought to the patches. As of 2026-09-01 it
+carries **zero own commits**: it is a copy of upstream `7.0-stable`, five
+commits behind. So GEOxyz's Redmine 7.0 has none of these features yet — they
+still exist only on 5.1. Every feature therefore produces two deliverables, and
+the branch commit is the one that goes into production.
+
+**Nothing to rebuild.** Because the branch has no own commits, the earlier
+decision to start fresh rather than build on PR #1 costs nothing: no force
+push, no history to discard. Bring it current with upstream first, then add one
+commit per feature.
+
+**One commit per feature, no feature branches here.** The register in
+`docs/STATE.md` maps feature to commit.
+
+**Upstream-first, with one escape hatch.** The normal order is: design and prove
+the patch on trunk, then apply the same design here (skill step 7). That is what
+keeps the two identical. If Jan needs a feature running before its patch is
+finished, build it here first — but build it in the shape you intend to submit,
+not in the 5.1 shape, or you have created the divergence this whole exercise
+exists to remove.
+
+**A trunk patch never reaches 7.0-stable.** Accepted work lands in trunk and
+ships in 7.1 or later; Redmine does not backport features to a stable branch. So
+a GEOxyz commit stays needed until GEOxyz itself upgrades to the release
+carrying it. Record that release in the dossier — "can be dropped when GEOxyz
+moves to X" — not just "yes, one-to-one".
+
+**Keeping it current.** Upstream ships 7.0.x maintenance releases. Merge them in
+(`git merge origin/7.0-stable`), never rebase — a rebase invalidates every
+checkout GEOxyz has. Do it before starting a feature, not after, so a conflict
+surfaces on its own rather than mixed into new work.
+
+**Locales here match the patch:** the same five files. Identical translations on
+both sides (INV-10).
+
 ## Quality gates — all must pass with evidence
 
 | Gate | Check |
@@ -132,6 +169,7 @@ Every row below is a real defect found in the existing GEOxyz code or its
 | **G5 Minimality** | you re-read the diff adversarially and every line is defensible; no scope creep |
 | **G6 Patch hygiene** | applies to a pristine trunk checkout; `tools/check-patch-clean.sh` passes |
 | **G7 Dossier** | complete, including anticipated objections with answers |
+| **G8 GEOxyz branch** | `tools/check-geoxyz-branch.sh` passes: merges cleanly with upstream `7.0-stable`, lint clean, own commits match the register. Suites green there too — a green trunk patch can still fail on 7.0-stable. |
 
 A red suite, a lint offence or an invariant hit is a blocker: fix it and re-run
 the gates on the delta.

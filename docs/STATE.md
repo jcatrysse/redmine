@@ -26,37 +26,46 @@ Vandaar INV-8 (bewezen groen) en G1 (trunk-check) als harde regels.
 
 ## Volgende stap
 
-Analysefase, feature per feature, in de volgorde van het register hieronder.
+**Eerst**: `7.0-stable-GEOxyz` bijwerken met upstream `7.0-stable` — de branch
+staat 5 commits achter en heeft nul eigen commits. `git merge`, nooit rebase.
+`tools/check-geoxyz-branch.sh` meldt dit als eerste FAIL.
+
+**Daarna**: analysefase, feature per feature, in de volgorde van het register.
 Beginnen met `wiki-export` — de sterkste upstream-kandidaat, en de enige waar
 de bestaande 7.0-implementatie al een aanknopingspunt biedt.
 
 ## Feature-register
 
-Status: `todo` · `ontworpen` · `patch klaar` · `ingediend` · `geaccepteerd` ·
-`afgewezen` · `alleen-geoxyz` · `vervallen`
+Twee kolommen, want elke feature heeft twee leveringen. **GEOxyz** = staat het
+in productie op 7.0? **Upstream** = waar staat de patch?
 
-| Slug | Feature | 5.1-commit | Upstream | Status | Patch | Issue |
+- GEOxyz: `todo` · `live` (commit op de branch) · `n.v.t.`
+- Upstream: `todo` · `ontworpen` · `patch klaar` · `ingediend` · `geaccepteerd` ·
+  `afgewezen` · `nooit` (alleen-lokaal) · `vervallen`
+
+| Slug | Feature | 5.1-commit | GEOxyz | Upstream | Patch | Issue |
 |---|---|---|---|---|---|---|
-| `wiki-export` | Wiki TXT-export + ZIP met mappen en bijlagen | `3c3e9368e` | sterkste kandidaat | todo | — | — |
-| `search-token-limit` | Configureerbare max zoektokens i.p.v. hardcoded 5 | `17528437d` | goede kandidaat | todo | — | — |
-| `assignee-nobody` | "Niet toegewezen" combineerbaar met gekozen gebruikers | `9b03b74b2` | kandidaat, herontwerp nodig | todo | — | — |
-| `version-subprojects` | Doelversiefilter incl. subproject-versies | `89752a599` | kandidaat, union i.p.v. vervanging | todo | — | — |
-| `mypage-query-blocks` | Configureerbaar max issuequery-blokken op Mijn pagina | `0214f3ecc` | kleine kandidaat | todo | — | — |
-| `webhook-tracker-filter` | Webhook beperken tot gekozen trackers | `25220b45d` (deel) | kandidaat | todo | — | — |
-| `webhook-issue-closed` | Apart `issue.closed`-event | `25220b45d` (deel) | kandidaat | todo | — | — |
-| `members-pagination` | Paginatie op projectleden en groepsleden | `455f5753c` | aanhaken bij #43355, geen eigen patch | todo | — | — |
-| `revision-branches` | Git-branches op revisie- én issuepagina | `cf826e3fd` | twijfelachtig — bewust ongewijzigd indienen, zie DECISIONS | todo | — | — |
-| `imap-oauth` | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | herschrijving nodig | todo | — | — |
-| `geoxyz-hosts` | `*.geoxyz.eu` toestaan in development | `918f3466e` | nooit — bedrijfsdomein | alleen-geoxyz | — | — |
-| `gitignore-credentials` | `master.key` / `credentials.yml.enc` negeren | `8ec9951d3` | nooit — core gebruikt geen Rails credentials | alleen-geoxyz | — | — |
-| `ldap-mail-prefs` | Rake: mailvoorkeuren dempen voor LDAP-only users | `9e2c38e2d` | nooit — hardcoded groepsnaam | alleen-geoxyz | — | — |
-| `ar-sessions` | Sessies in de database | `ea61e37e8` + `c2fefd51c` | nooit — deployment-keuze | alleen-geoxyz | — | — |
-| `database-yml-erb` | ERB in `database.yml` bij bundle install | `7ffcdcafc` | uitgesteld door Jan | todo (laag) | — | — |
-| `netimap-cve` | net-imap gem-bump | `92312960c` | vervallen — 7.0 heeft nieuwere | vervallen | — | — |
-| `auto-watch-defaults` | Configureerbare auto-watch defaults | `b2adb8053` | **al upstream** als `default_users_auto_watch_on` | geaccepteerd | — | — |
+| `wiki-export` | Wiki TXT-export + ZIP met mappen en bijlagen | `3c3e9368e` | todo | todo | — | — |
+| `search-token-limit` | Configureerbare max zoektokens i.p.v. hardcoded 5 | `17528437d` | todo | todo | — | — |
+| `assignee-nobody` | "Niet toegewezen" combineerbaar met gekozen gebruikers | `9b03b74b2` | todo | todo | — | — |
+| `version-subprojects` | Doelversiefilter incl. subproject-versies | `89752a599` | todo | todo | — | — |
+| `mypage-query-blocks` | Configureerbaar max issuequery-blokken op Mijn pagina | `0214f3ecc` | todo | todo | — | — |
+| `webhook-tracker-filter` | Webhook beperken tot gekozen trackers | `25220b45d` (deel) | todo | todo | — | — |
+| `webhook-issue-closed` | Apart `issue.closed`-event | `25220b45d` (deel) | todo | todo | — | — |
+| `members-pagination` | Paginatie op projectleden en groepsleden | `455f5753c` | todo | todo | — | — |
+| `revision-branches` | Git-branches op revisie- én issuepagina | `cf826e3fd` | todo | todo | — | — |
+| `imap-oauth` | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | todo | todo | — | — |
+| `geoxyz-hosts` | `*.geoxyz.eu` toestaan in development | `918f3466e` | todo | nooit | — | — |
+| `gitignore-credentials` | `master.key` / `credentials.yml.enc` negeren | `8ec9951d3` | todo | nooit | — | — |
+| `ldap-mail-prefs` | Rake: mailvoorkeuren dempen voor LDAP-only users | `9e2c38e2d` | todo | nooit | — | — |
+| `ar-sessions` | Sessies in de database | `ea61e37e8` + `c2fefd51c` | todo | nooit | — | — |
+| `database-yml-erb` | ERB in `database.yml` bij bundle install | `7ffcdcafc` | todo (laag) | nooit | — | — |
+| `netimap-cve` | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — | — |
+| `auto-watch-defaults` | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — | — |
 
-Zeventien features, waarvan tien upstream-kandidaat, vier alleen-GEOxyz, één
-uitgesteld, één vervallen, één al binnen.
+Zeventien features. Upstream: tien kandidaten, vijf nooit, één vervallen, één
+al binnen. GEOxyz: **vijftien nog te doen** — de branch heeft nu nul eigen
+commits, dus geen enkele feature loopt op 7.0.
 
 ## Wat er per feature al bekend is
 
@@ -117,6 +126,13 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
   `docs/runbook.md`.
 - **`config/database.yml` bestaat niet** in de repo en is gitignored; die moet
   je zelf aanmaken.
+- **RuboCop leest de working tree, niet een ref.** Lint dus altijd binnen een
+  worktree die op de juiste commit staat, anders rapporteert het schoon over
+  bestanden die daar niet bestaan. `tools/check-geoxyz-branch.sh` deed dit eerst
+  fout en meldde stil "0 offences"; gevonden door het te testen.
+- **Een geaccepteerde trunk-patch komt niet in 7.0-stable.** Redmine backportt
+  geen features naar een stable branch. Elke GEOxyz-commit blijft dus nodig tot
+  GEOxyz zelf naar de release met die feature gaat.
 - **`origin/ansifi/learn-and-test-7.0`** is referentiemateriaal, geen basis.
   Wat daar goed aan was: `.text.erb` i.p.v. `.txt.erb` voor de mime-mapping op
   Rails 8, `Group.named`, `identifier_param`, `safe_join`, `--no-color` op

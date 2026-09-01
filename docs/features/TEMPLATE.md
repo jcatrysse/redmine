@@ -104,4 +104,7 @@ patch before submitting it, not to leave the row empty.>
 - **Commit op `7.0-stable-GEOxyz`:** `<sha>`
 - **Suites daar groen:** `<figures>`
 - **`nl.yml` toegevoegd:** ja / nee
-- **Kan dit vervallen als de patch landt?** ja, één-op-één / nee, want <reden>
+- **`tools/check-geoxyz-branch.sh`:** PASS / FAIL
+- **Wanneer kan deze commit vervallen?** Een geaccepteerde trunk-patch komt in
+  7.1 of later, nooit in 7.0-stable. Dus: pas als GEOxyz naar <release> gaat.
+  <of: nooit — dit is een permanente eigen patch, zie de afwijking hierboven>

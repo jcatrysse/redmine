@@ -28,6 +28,7 @@ where each one stands.
       review/findings/            one file per review run
     patches/<slug>/               exactly what was attached to which issue
     tools/check-patch-clean.sh    refuses to let a bad patch out
+    tools/check-geoxyz-branch.sh  health of the branch GEOxyz runs
 
 ## Branches
 
@@ -45,5 +46,14 @@ Work happens in worktrees beside this branch, never on it.
     tools/check-patch-clean.sh patch/<slug>
 
 Checks descent from trunk, that no framework or local path is touched, that
-only `en.yml` changed, that no AI traces are in the commit messages, and that
-the patch applies to a pristine trunk checkout. Exit 0 means safe to submit.
+locales stay within en/nl/fr/de/es, that no AI traces are in the commit
+messages, and that the patch applies to a pristine trunk checkout. Exit 0 means
+safe to submit.
+
+And for the branch that actually runs:
+
+    tools/check-geoxyz-branch.sh
+
+Is it current with upstream `7.0-stable`, does it still merge, is its lint
+clean, what does it carry. `REF=<local-ref>` to check work before pushing. The
+test suite is the other half and has to be run separately.
