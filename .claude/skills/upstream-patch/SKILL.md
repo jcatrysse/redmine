@@ -72,6 +72,10 @@ after.
 
 ## 5. Prove it — G2..G5
 
+Start the full suite early; it takes tens of minutes and G3 wants all of it, not
+only the touched files. Do the translations and the browser verification while
+it runs.
+
 Environment setup, once per session (PostgreSQL, gems, and the SCM fixtures if
 the feature touches repositories) is in `docs/runbook.md`.
 
@@ -114,6 +118,33 @@ Generate both from the same branch, tagged in the filename:
 
     patches/<slug>/<date>-r<rev>-feature.patch
     patches/<slug>/<date>-r<rev>-locales.patch
+
+## 5c. Live verification in a browser — G9
+
+A green suite is not proof the feature works. Do this before exporting anything.
+
+**Before shot first**, on the unpatched instance:
+
+    tools/dev-server.sh /home/user/wt/patch-<slug>
+    SHOT_DIR=docs/features/<slug>/shots PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
+      node verify/<slug>.mjs
+
+Name those `before-*.png`. Then apply the change, restart the server, and take
+the after shots. Write `verify/<slug>.mjs` against `tools/verify-lib.mjs`:
+
+    import { session, report } from '../tools/verify-lib.mjs';
+    const s = await session(process.env.SHOT_DIR);
+    await s.go('/projects/geoxyz-verify/wiki/index');
+    await s.shot('wiki-index', 'Wiki index showing the TXT export link');
+    report(s.shots);
+    await s.browser.close();
+
+One screenshot per function the feature claims, plus the failure paths: the
+setting off, the permission absent, the empty state, the input that used to
+raise. `report()` prints the dossier table rows.
+
+Read the screenshots yourself — do not just check that the file exists. That is
+how you catch a link that renders but does nothing.
 
 ## 6. Export and verify the patch — G6
 

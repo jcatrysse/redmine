@@ -27,8 +27,12 @@ where each one stands.
       features/<slug>.md          submission dossier per feature
       review/findings/            one file per review run
     patches/<slug>/               exactly what was attached to which issue
+    verify/<slug>.mjs             browser verification per feature
     tools/check-patch-clean.sh    refuses to let a bad patch out
     tools/check-geoxyz-branch.sh  health of the branch GEOxyz runs
+    tools/dev-server.sh           boots a real Redmine with test data
+    tools/dev-seed.rb             the test data
+    tools/verify-lib.mjs          Playwright harness: login, navigate, screenshot
 
 ## Branches
 

@@ -164,15 +164,46 @@ both sides (INV-10).
 |---|---|
 | **G1 Trunk check** | does current trunk already solve this? Done **first**, recorded in the dossier. One GEOxyz feature already landed upstream on its own; do not rebuild what exists. |
 | **G2 Correctness** | behaviour demonstrated, edge cases named, failure modes safe |
-| **G3 Tests** | relevant suites green, output seen, counts in the dossier; each new test red on the old code, and you say how you know |
+| **G3 Tests** | the **full** suite green — not only the touched suites — output seen, counts in the dossier; each new test red on the old code, and you say how you know. Redmine requires that all existing tests pass. Budget for it: the whole suite takes tens of minutes, so start it early and do other work while it runs. |
 | **G4 Lint** | `rubocop` clean on the changed files, and the baseline for those files was clean too |
 | **G5 Minimality** | you re-read the diff adversarially and every line is defensible; no scope creep |
 | **G6 Patch hygiene** | applies to a pristine trunk checkout; `tools/check-patch-clean.sh` passes |
 | **G7 Dossier** | complete, including anticipated objections with answers |
 | **G8 GEOxyz branch** | `tools/check-geoxyz-branch.sh` passes: merges cleanly with upstream `7.0-stable`, lint clean, own commits match the register. Suites green there too — a green trunk patch can still fail on 7.0-stable. |
+| **G9 Live verification** | the feature exercised by hand in a **real running Redmine**, in a real browser, with a screenshot per function committed as evidence. A green suite is not proof the feature works: the 2026 port shipped a link that was in the DOM, passed `assert_select`, and did nothing when clicked because its JavaScript was never loaded on that page. |
 
 A red suite, a lint offence or an invariant hit is a blocker: fix it and re-run
 the gates on the delta.
+
+## Live verification — G9
+
+A passing test suite says the code does what the test says. It does not say the
+feature works. Both halves are required.
+
+Bring up a real instance and drive it:
+
+    tools/dev-server.sh /home/user/wt/patch-<slug>     # or .../geoxyz
+    # -> http://127.0.0.1:3000, admin / GEOxyzDev123!, project geoxyz-verify
+
+`tools/dev-seed.rb` gives it two projects (one a subproject), three users, a
+group, versions, six issues (some unassigned), and a three-page wiki hierarchy —
+enough to exercise any feature in the register. It is idempotent.
+
+Then write `verify/<slug>.mjs` against `tools/verify-lib.mjs`, which logs in and
+hands you `go(path)` and `shot(name, caption)`. One screenshot per function the
+feature claims, each with its caption. Commit them to
+`docs/features/<slug>/shots/` and list them in the dossier's verification table.
+
+**Take the before shot first.** Run the verification against the unpatched
+instance, keep that image as `before-*.png`, then apply the change and take the
+after. A before/after pair is the single most persuasive thing you can put on a
+redmine.org issue, and it also proves the screenshot shows *your* change rather
+than something that was already there.
+
+Verify the failure paths too, not only the happy one: the setting turned off,
+the permission absent, the empty state, the value that used to raise. A
+screenshot of a working feature next to a screenshot of it correctly doing
+nothing when disabled is what a reviewer actually wants.
 
 ## Cadence — stop and show, per feature
 

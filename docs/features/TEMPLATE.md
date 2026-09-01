@@ -74,11 +74,30 @@ belongs in this section as a rejected alternative.>
 
 **Evidence (INV-8 — figures, not claims):**
 
-- suites run: `<command>` → `<n> runs, <n> assertions, <n> failures, <n> errors`
+- **full** suite: `<command>` → `<n> runs, <n> assertions, <n> failures, <n> errors`
 - RuboCop on changed files: `<n>` offences (baseline at merge base: `<n>`)
 - each new test verified red on the old code: <how you know>
 - patch applies to pristine `origin/master` r`<rev>`: yes / no
 - `tools/check-patch-clean.sh`: PASS / FAIL
+
+# Live verification (G9)
+
+Exercised by hand in a real Redmine at `http://127.0.0.1:3000`, seeded by
+`tools/dev-seed.rb`. Screenshots in `docs/features/<slug>/shots/`.
+
+| Function | Screenshot | What it shows |
+|---|---|---|
+| | `before-<name>.png` | the same page before the change |
+| | `<name>.png` | |
+
+Failure paths verified (setting off, permission absent, empty state, input that
+used to raise):
+
+| Case | Screenshot | Expected | Observed |
+|---|---|---|---|
+| | | | |
+
+Screenshots read, not just generated: <yes — say what you looked for>
 
 # Anticipated objections
 

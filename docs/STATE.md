@@ -30,6 +30,13 @@ Vandaar INV-8 (bewezen groen) en G1 (trunk-check) als harde regels.
 staat 5 commits achter en heeft nul eigen commits. `git merge`, nooit rebase.
 `tools/check-geoxyz-branch.sh` meldt dit als eerste FAIL.
 
+**Het G9-gereedschap is bewezen** en klaar voor gebruik: `tools/dev-server.sh`
+brengt in één commando een echte Redmine 7.0 op `http://127.0.0.1:3000` met
+testdata, en `tools/verify-lib.mjs` logt in en maakt screenshots. End-to-end
+gedraaid op 2026-09-01. De wiki-index toont daar nu `PDF | HTML | ZIP | Atom` —
+na `wiki-export` moet `TXT` erbij, en dat voor/na-paar is het eerste bewijs dat
+in dat dossier hoort.
+
 **Daarna**: analysefase, feature per feature, in de volgorde van het register.
 Beginnen met `wiki-export` — de sterkste upstream-kandidaat, en de enige waar
 de bestaande 7.0-implementatie al een aanknopingspunt biedt.

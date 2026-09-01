@@ -117,10 +117,57 @@ git diff -U0 origin/master...HEAD -- '*.rb' '*.rake' | awk '
 
 Then intersect with `rubocop --format json` output on `path:line`.
 
-## Driving the real app
+## A real Redmine, in a real browser — G9
 
-Chromium is preinstalled with `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`. Do
-not run `playwright install`. Useful for verifying UI behaviour that
-`assert_select` cannot — a link that is present in the DOM but hidden by CSS
-with no handler bound was a real defect in the existing port, and no test
-caught it.
+One command does the whole setup, idempotently:
+
+```sh
+tools/dev-server.sh /home/user/wt/patch-<slug>
+# -> http://127.0.0.1:3000   admin / GEOxyzDev123!   project geoxyz-verify
+tools/dev-server.sh --stop
+```
+
+It starts PostgreSQL, creates the dev database, writes `config/database.yml`,
+bundles, migrates, loads Redmine's default data, runs `tools/dev-seed.rb`, and
+boots the server — then waits until it actually answers 200 before printing
+PASS. The seed gives two projects (one a subproject), three users, a group,
+versions, six issues (some unassigned) and a three-page wiki hierarchy.
+
+Then drive it:
+
+```sh
+SHOT_DIR=docs/features/<slug>/shots PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
+  node verify/<slug>.mjs
+```
+
+`tools/verify-lib.mjs` logs in and hands you `go(path)` and
+`shot(name, caption)`; `report(shots)` prints the dossier table rows.
+
+### Six traps, each of which cost time here
+
+1. **Playwright is a global CommonJS module.** `import { chromium } from
+   'playwright'` does not resolve outside the global `node_modules`, and the
+   named import fails even by absolute path. Use
+   `import pw from '/opt/node22/lib/node_modules/playwright/index.js'` then
+   `const { chromium } = pw`.
+2. **Do not pass `executablePath`.** The browser lives in a versioned directory
+   (`/opt/pw-browsers/chromium-1194/...`), not `/opt/pw-browsers/chromium`. Set
+   `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` and let Playwright resolve it.
+3. **`admin` / `admin` does not work.** Set the password deterministically —
+   `tools/dev-seed.rb` does it via `rails runner` and also clears
+   `must_change_passwd`.
+4. **`bundle exec rake` does not exist** in this bundle. Use
+   `bundle exec ruby bin/rails <task>`.
+5. **`config/database.yml` drives the Gemfile**, so write it *before*
+   `bundle install` or the `pg` gem is missing.
+6. **Never `pkill -f "rails server"`** — the pattern matches the shell running
+   it and kills your own session. Kill by pidfile, or list `ps -eo pid,cmd` and
+   filter.
+
+### Reading the screenshots
+
+Look at them. A file that exists is not evidence. The defect this gate exists
+for was a link that rendered, passed `assert_select`, and did nothing when
+clicked because its JavaScript was never loaded on that page — visible in a
+screenshot only if someone actually looks, and only conclusive if you also
+clicked it.
