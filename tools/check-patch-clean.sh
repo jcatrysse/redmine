@@ -95,6 +95,19 @@ else
   pass "no AI traces in commit messages"
 fi
 
+# --- 3b. AI identity in the commit authorship ------------------------------
+# git format-patch writes the author into the "From:" line of the file that
+# gets attached to the issue, so a tool identity there is as much an AI trace
+# as one in the message. Found by exporting a patch and reading it.
+authors=$(git log --format='%an <%ae>%n%cn <%ce>' origin/master.."$BRANCH" |
+          grep -inE 'claude|anthropic|copilot|cursor|codex|chatgpt|openai|noreply@' || true)
+if [ -n "$authors" ]; then
+  fail "commit author or committer is a tool identity (INV-4):"
+  printf '%s\n' "$authors" | sort -u | sed 's/^/          /'
+else
+  pass "no AI identity in commit authorship"
+fi
+
 # --- 4. applies to a pristine trunk checkout -------------------------------
 tmp=$(mktemp -d)
 cleanup() { git worktree remove --force "$tmp/trunk" >/dev/null 2>&1; rm -rf "$tmp"; }

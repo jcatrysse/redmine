@@ -3,6 +3,8 @@
 #
 #   RAILS_ENV=development bundle exec ruby bin/rails runner tools/dev-seed.rb
 
+require 'tempfile'
+
 PASSWORD = ENV.fetch('REDMINE_ADMIN_PASSWORD', 'GEOxyzDev123!')
 
 admin = User.find_by_login('admin') ||
@@ -87,6 +89,29 @@ root = upsert_wiki_page(wiki, 'Wiki', "h1. Wiki\n\nRoot page for verification.",
   upsert_wiki_page(wiki, title, "h1. #{title}\n\nChild page for verification.", admin, root)
 end
 
+# Wiki attachments, so an export that claims to carry them has something to
+# carry. Two files share a name on purpose: that is the collision case.
+def upsert_wiki_attachment(page, filename, body, author)
+  return if page.attachments.any? {|a| a.filename == filename && a.filesize == body.bytesize}
+
+  file = Tempfile.new(['seed', File.extname(filename)])
+  file.binmode
+  file.write(body)
+  file.rewind
+  attachment = Attachment.new(container: page, author: author, filename: filename)
+  attachment.file = file
+  attachment.filename = filename
+  attachment.save!
+ensure
+  file&.close!
+end
+
+upsert_wiki_attachment(root, 'notes.txt', "Notes attached to the root wiki page.\n", admin)
+child_one = wiki.find_page('Child_one')
+upsert_wiki_attachment(child_one, 'diagram.txt', "First diagram.\n", admin)
+upsert_wiki_attachment(child_one, 'diagram.txt', "Second diagram, same filename.\n", admin)
+
 puts "seeded: projects=#{Project.count} users=#{User.count} issues=#{Issue.count} " \
-     "wiki_pages=#{WikiPage.count} versions=#{Version.count} groups=#{Group.count}"
+     "wiki_pages=#{WikiPage.count} wiki_attachments=#{Attachment.where(container_type: 'WikiPage').count} " \
+     "versions=#{Version.count} groups=#{Group.count}"
 puts "login: admin / #{PASSWORD}"

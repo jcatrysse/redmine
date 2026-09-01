@@ -14,6 +14,7 @@ set -uo pipefail
 PORT="${PORT:-3000}"
 PIDFILE="/tmp/redmine-dev-$PORT.pid"
 LOGFILE="/tmp/redmine-dev-$PORT.log"
+FILES="${REDMINE_DEV_FILES:-/tmp/redmine-dev-files}"
 DB="${REDMINE_DEV_DB:-redmine_dev}"
 PASSWORD="${REDMINE_ADMIN_PASSWORD:-GEOxyzDev123!}"
 
@@ -59,6 +60,19 @@ test:
   username: redmine
   password: redmine
   encoding: utf8
+YAML
+fi
+
+# The dev database is shared between worktrees but `files/` is not, so an
+# attachment uploaded while one worktree served the app is unreadable from the
+# next one and silently disappears from anything that checks Attachment#readable?.
+# Point every worktree at one storage directory instead.
+if [ ! -f config/configuration.yml ]; then
+  echo "==> config/configuration.yml"
+  mkdir -p "$FILES"
+  cat > config/configuration.yml <<YAML
+default:
+  attachments_storage_path: $FILES
 YAML
 fi
 
