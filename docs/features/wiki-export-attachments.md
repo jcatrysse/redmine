@@ -184,24 +184,112 @@ ZIP. Not worth the query.
 
 # Tests
 
-| Test | What it proves |
-|---|---|
-| `test_export_to_zip_with_attachments` | attachment entries appear under a directory named after the page entry, with the right bytes and the attachment's `created_on` as timestamp |
-| `test_export_to_zip_without_attachments_param_should_not_include_attachments` | the default archive is unchanged — the guarantee the whole design rests on |
-| `test_export_to_zip_with_attachments_should_rename_duplicate_attachment_filenames` | two attachments with the same filename on one page both survive, the second as `name(1).ext` |
-| `test_export_to_zip_with_attachments_should_fail_when_total_size_exceeds_limit` | over `bulk_download_max_size` the user is redirected with the existing error and no archive is sent |
+| Test | What it proves | Red on the old code? |
+|---|---|---|
+| `test_export_to_zip_with_attachments` | attachment entries appear under a directory named after the page entry, with the right bytes and the attachment's `created_on` as timestamp | yes — `Expected nil to not be nil` |
+| `test_export_to_zip_should_not_include_attachments_by_default` | the default archive is unchanged — the guarantee the whole design rests on | no, by design: it is a regression guard, and it passes before and after |
+| `test_export_to_zip_with_attachments_set_to_zero_should_not_include_attachments` | `with_attachments=0` means no | yes — `Expected ["CookBook_documentation/testfile.txt"] to be empty` |
+| `test_export_to_zip_with_attachments_should_rename_duplicate_attachment_filenames` | two attachments with the same filename on one page both survive, the second as `name(1).ext` | yes — the entry list has no directory in it |
+| `test_export_to_zip_with_attachments_should_be_denied_when_total_size_exceeds_maximum` | over `bulk_download_max_size` the user is redirected with the existing error and no archive is sent | yes — `Expected response to be a <3XX: redirect>, but was a <200: OK>` |
+| `test_index_should_show_export_link_for_zip_with_attachments` | the link is on the page, with the URL the export actually answers | yes — `found 0` |
 
 **Evidence (INV-8 — figures, not claims):**
 
-- **full** suite: pending
-- RuboCop on changed files: pending
-- each new test verified red on the old code: pending
-- patch applies to pristine `origin/master` r24882: pending
-- `tools/check-patch-clean.sh`: pending
+- **full** suite on `patch/wiki-export-attachments`
+  (`tools/test-env.sh … bundle exec ruby bin/rails test:all`, system tests
+  included): **5926 runs, 31477 assertions, 27 failures, 2 errors, 92 skips**
+  in 1021 s.
+- Those 29 are **not this patch**. They are the same 29, by name, on a pristine
+  `origin/master` checkout: running the five files they live in
+  (`repositories_controller_test`, `sys_controller_test`,
+  `api_test/repositories_test`, `api_test/issues_test`, `user_test`) at r24882
+  with no patch gives **274 runs, 27 failures, 2 errors** and a `diff` of the
+  sorted failing-test names against the patched run is empty. All of them are
+  `ActiveRecord::RecordInvalid: Validation failed: Type is invalid` on
+  `Repository::Subversion`, because this image has no `svn`, `hg`, `bzr` or
+  `cvs` binary. See "Found but not fixed" below — this is a trunk-only
+  behaviour, and the same five files are green on `7.0-stable`.
+- **full** suite on `7.0-stable-GEOxyz` with the same change:
+  **5917 runs, 31706 assertions, 0 failures, 0 errors, 39 skips** in 1030 s.
+  Completely green.
+- Wiki suite alone, both branches: `wiki_controller_test.rb` 0 failures
+  (trunk: 12 runs / 87 assertions for the `/export/` filter; GEOxyz: 106 runs /
+  614 assertions for the whole file).
+- RuboCop on the changed Ruby files: **0 offences**; baseline on the same files
+  at the merge base: **0 offences**. One offence was found and fixed during the
+  work: `Security/IoMethods` on `IO.binread`, changed to `File.binread`.
+- patch applies to pristine `origin/master` r24882: **yes**, each of the two
+  files on its own, and together they reproduce the branch exactly (`git diff`
+  of the patched pristine checkout against the branch diff is empty).
+- `tools/check-patch-clean.sh`: **PASS** (7 checks).
+- `tools/check-geoxyz-branch.sh`: **PASS**.
 
 # Live verification (G9)
 
-pending
+Exercised by hand in a real Redmine at `http://127.0.0.1:3000`, seeded by
+`tools/dev-seed.rb` (a three-page wiki: `Wiki` with `Child_one` and
+`Child_two`; `notes.txt` attached to `Wiki`, and two attachments both named
+`diagram.txt` on `Child_one` — the collision case). Screenshots in
+`docs/features/wiki-export-attachments/shots/`, the archives themselves next to
+them.
+
+| Function | Screenshot | What it shows |
+|---|---|---|
+| The export line before the change | `before-wiki-index.png` | `Also available in: PDF \| HTML \| ZIP \| Atom` |
+| The export line after | `wiki-index.png` | `PDF \| HTML \| ZIP \| ZIP with attachments \| Atom` |
+| Same on the date index | `wiki-date-index.png` | the link is on both index views, not only one |
+| The translation is real | `nl-wiki-index.png` | `Exporteer naar PDF \| HTML \| ZIP \| ZIP met bijlagen \| Atom` |
+
+The archive itself, downloaded by clicking the link in the browser, not by
+calling the controller (`zip-with-attachments.zip`):
+
+    Child_one.txt              43
+    Child_one/diagram.txt      15
+    Child_one/diagram(1).txt   31
+    Child_two.txt              43
+    Wiki.txt                   37
+    Wiki/notes.txt             38
+
+Both `diagram.txt` uploads survive, the second renamed. Page entries are
+untouched.
+
+Failure paths verified:
+
+| Case | Evidence | Expected | Observed |
+|---|---|---|---|
+| Plain ZIP must not change | `zip-plain-before.zip` vs `zip-plain-after.zip` | identical | **byte-identical** (`cmp` clean) — the pristine-trunk download and the patched download are the same file |
+| Over `bulk_download_max_size` | `shots/size-limit-error.png` | refused, not truncated | redirected to the wiki index with Redmine's own `error_bulk_download_size_too_big` banner |
+| Plain ZIP still works at the limit | `zip-plain-at-limit-zero.zip` | unaffected | with `bulk_download_max_size = 0`, still byte-identical to pristine — this is what makes the opt-in design worth it |
+| `:export_wiki_pages` absent | `shots/no-permission-wiki-index.png` | no export links at all | as user `dev` with the permission removed: `Also available in: Atom` only |
+| Direct URL without the permission | logged | 403 | `GET /projects/geoxyz-verify/wiki/export.zip?with_attachments=1` → **HTTP 403** |
+
+Screenshots read, not just generated: yes. The first run of the verification
+produced an archive with **no** attachments even though the link rendered and
+every test passed — the dev database is shared between worktrees but `files/`
+is not, so `Attachment#readable?` was silently false for every attachment.
+That is exactly the class of defect G9 exists for, and it was only visible by
+looking at the downloaded archive. Fixed in `tools/dev-server.sh`.
+
+# Found but not fixed
+
+Reported, not touched — INV-1.
+
+- **`page.content.text` in `wiki_pages_to_zip` has no nil guard.** A
+  `WikiPage` only `validates_associated :content`, so a page row without
+  content is possible and would raise `NoMethodError` during the ZIP export.
+  This is trunk's existing line, not one this patch adds, and the HTML export
+  template has the same shape. Left alone.
+- **Trunk r24882 fails 29 repository tests on a machine without the SCM client
+  binaries; `7.0-stable` fails none.** Cause: trunk added
+  `Setting.enabled_scm` (`app/models/setting.rb`), which filters the setting
+  through `Repository.repository_class(scm_name)&.scm_available`. On
+  `7.0-stable` that reader does not exist and `Repository::Subversion` stays
+  valid. Confirmed by running the same five test files on both branches: 27
+  failures + 2 errors on trunk, 0 on `7.0-stable`. Setting
+  `scm_subversion_path_regexp` does not help, so it is the missing binary and
+  not the new `path_regexp` condition that bites here. Whether Redmine intends
+  this (their CI has the clients installed) is theirs to say; worth mentioning
+  on redmine.org separately if Jan wants to.
 
 # Anticipated objections
 
@@ -223,15 +311,19 @@ pending
   [#43978](https://www.redmine.org/issues/43978)
 - **Patches attached:** `patches/wiki-export-attachments/2026-09-01-r24882-feature.patch` (code + `en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`)
 - **Made against:** `origin/master` r24882 (2026-08-03)
-- **Status:** nog niet ingediend
+- **Status:** nog niet ingediend — wacht op Jan
 - **Feedback en wat ermee gebeurde:** —
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** pending
-- **Suites daar groen:** pending
-- **`nl.yml` toegevoegd:** ja
-- **`tools/check-geoxyz-branch.sh`:** pending
+- **Commit op `7.0-stable-GEOxyz`:** `ca3229506` — de branch had nul eigen
+  commits en heeft er nu één. Eerst bijgewerkt naar upstream `7.0-stable`
+  (`a7fe622f9` → `ffc731ed7`, fast-forward).
+- **Suites daar groen:** ja, volledig — 5917 runs, 31706 assertions,
+  0 failures, 0 errors, 39 skips.
+- **`nl.yml` toegevoegd:** ja, en `fr`, `de`, `es` — identiek aan de patch
+  (INV-10).
+- **`tools/check-geoxyz-branch.sh`:** PASS
 - **Wanneer kan deze commit vervallen?** Een geaccepteerde trunk-patch komt in
   7.1 of later, nooit in 7.0-stable. Dus: pas als GEOxyz naar de release gaat
   die deze wijziging bevat (7.1 op zijn vroegst).

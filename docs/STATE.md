@@ -11,6 +11,14 @@ r24882, dezelfde wijziging staat als één commit op `7.0-stable-GEOxyz`, dossie
 compleet, screenshots gemaakt en gelezen. Jan moet er nog een issue voor
 aanmaken op redmine.org.
 
+Bewijs: volledige suite op de GEOxyz-branch **helemaal groen** (5917 runs,
+0 failures, 0 errors). Op trunk 27 failures + 2 errors, maar dat is exact
+dezelfde set als op een schone trunk zonder patch — 29 repository-tests die
+op deze machine falen omdat `svn`, `hg`, `bzr` en `cvs` niet geïnstalleerd
+zijn. Op `7.0-stable` falen diezelfde bestanden niet; dat verschil is een
+trunk-wijziging (`Setting.enabled_scm`), niet iets van ons. Staat in het
+dossier onder "Found but not fixed".
+
 Daarvoor is `7.0-stable-GEOxyz` bijgewerkt naar upstream `7.0-stable`
 (`a7fe622f9` → `ffc731ed7`, fast-forward, geen conflicten). Die branch had nul
 eigen commits en heeft er nu één.
@@ -32,6 +40,9 @@ misging, niet op voorhand bedacht:
   `7.0-stable-GEOxyz` worden nu geschreven als Jan Catrysse.
 - `tools/dev-seed.rb` zet nu ook wiki-bijlagen klaar, waaronder twee met
   dezelfde bestandsnaam op één pagina — dat is het botsingsgeval.
+- Er zijn nu drie testdatabases (`redmine_test`, `redmine_test_geoxyz`,
+  `redmine_test_base`), zodat de trunk-patch, de GEOxyz-branch en een schone
+  trunk-referentie tegelijk kunnen draaien in plaats van na elkaar.
 
 ## Volgende stap
 
