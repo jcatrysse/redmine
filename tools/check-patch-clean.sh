@@ -87,7 +87,7 @@ fi
 
 # --- 3. AI traces in the commit messages -----------------------------------
 traces=$(git log --format='%B' origin/master.."$BRANCH" |
-         grep -inE 'co-authored-by:.*(cursor|claude|copilot|codex|chatgpt|ai\b)|generated (with|by)|claude-(opus|sonnet|haiku|fable)' || true)
+         grep -inE 'co-authored-by:.*(cursor|claude|copilot|codex|chatgpt|ai\b)|generated (with|by)|claude-(opus|sonnet|haiku|fable)|(claude|chatgpt|cursor)[-.]?session|claude\.ai/code' || true)
 if [ -n "$traces" ]; then
   fail "commit messages contain AI traces (INV-4):"
   printf '%s\n' "$traces" | sed 's/^/          /'

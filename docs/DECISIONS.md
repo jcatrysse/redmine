@@ -17,6 +17,7 @@
 | 2026-09-01 | `revision-branches` wordt **niet** gesplitst en krijgt **geen** DB-cache. Git-only, het commando eronder blijft, en de vier instellingen blijven staan | Jan: "alleen git, voorlopig geen db cache maar gewoon zoals het is met een commando onderliggend. We zien wel wat ze ermee doen. Ik zou de instellingen ook houden en zien of ze comments hebben." Bewust: eerst de reactie van het core-team afwachten in plaats van vooraf inbinden. Mijn splitsingsadvies (2026-09-01, eerder die dag) is hiermee vervallen. |
 | 2026-09-01 | ~~INV-5: `en.yml` plus `nl.yml`~~ → **`en`, `nl`, `fr`, `de`, `es`** | Jan: "Ik zou toch graag wat meer talen hebben... zeker ook Nederlands, Frans, Duits, Spaans." Het zijn GEOxyz' werktalen. Ik had bezwaar gemaakt (onverifieerbare vertalingen kosten de patch geloofwaardigheid); Jan heeft dat gehoord en beslist. Twee mechanismen dekken het risico: elke vertaling wordt afgeleid van de dichtstbijzijnde bestaande sleutel in hetzelfde bestand en die sleutel wordt in het dossier genoemd, en de patch wordt gesplitst in feature (code + `en.yml`) en vertalingen. |
 | 2026-09-01 | ~~`fr.yml` niet meesturen~~ — vervallen, zie hierboven | — |
+| 2026-09-01 | AI-attributie (`Co-Authored-By`, `Claude-Session`) staat **wel** in commits van `geoxyz/framework`, **nooit** in commits van een `patch/<slug>`-branch of `7.0-stable-GEOxyz` (K-01, optie A) | Jan: "optie a". Jij bent de indiener en de patch is jouw werk om te verantwoorden; de herkomst staat volledig in je eigen repo. Redmine's Contribute-pagina vraagt niets over herkomst. INV-4 en `tools/check-patch-clean.sh` blijven dus ongewijzigd afdwingen, en de wachter kijkt nu ook op de `Claude-Session`-trailer. |
 
 ## Beslist (autonoom)
 
@@ -44,29 +45,8 @@
 
 ## Open — keuze voor Jan
 
-### K-01 — Mag de AI-attributie in de commits van een patchbranch staan?
+Geen open keuzes.
 
-- **Waar het over gaat:** de sessie-omgeving vraagt sinds 2026-09-01 om
-  `Co-Authored-By: Claude Opus 5` plus een sessielink onderaan elk commit-bericht
-  dat ik maak. Op deze framework-branch is dat prima: het is jouw interne
-  geheugen en het is eerlijk. Maar een patchbestand voor redmine.org wordt
-  gemaakt met `git format-patch`, en dat neemt het **commit-bericht mee**. Dan
-  staat die attributie in wat jij onder je eigen naam indient.
-- **Waarom het botst:** INV-4 verbiedt AI-sporen in alles wat een patch bereikt,
-  en `tools/check-patch-clean.sh` weigert zo'n patch actief. Dat is dus geen
-  toeval maar een regel die we samen hebben gezet.
-- **Opties:**
-  - **A) Framework-branch wél, patchbranches niet.** De attributie staat in je
-    interne historie; de patch is schoon. INV-4 en de wachter blijven zoals ze
-    zijn.
-  - **B) Overal wel.** Volledig transparant, ook op redmine.org. Dan moeten
-    INV-4 en de wachter aangepast worden, en jij dient in met die regels erin.
-  - **C) Overal niet.** Ook geen attributie op de framework-branch.
-- **Aanbeveling: A.** Het is niet verbergen — jij bent de indiener en de patch is
-  jouw werk om te verantwoorden; de herkomst staat volledig in je eigen repo
-  vastgelegd. En de Contribute-pagina van Redmine vraagt niets over herkomst
-  (nagekeken, zie `docs/redmine-requirements.md`), dus er is geen verplichting
-  die de andere kant op wijst.
-- **Haast?** Nee — er is nog geen patchbranch. We bouwden verder met A: deze
-  framework-commit draagt de attributie, de wachter blijft patches weigeren die
-  hem bevatten. Blokkeert niets, maar beslis het vóór de eerste patch.
+### Gesloten
+
+- **K-01** — AI-attributie in patchcommits. Beslist 2026-09-01: optie A (zie "Beslist (Jan)").

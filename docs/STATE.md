@@ -140,6 +140,11 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
 - **Een geaccepteerde trunk-patch komt niet in 7.0-stable.** Redmine backportt
   geen features naar een stable branch. Elke GEOxyz-commit blijft dus nodig tot
   GEOxyz zelf naar de release met die feature gaat.
+- **Attributie-trailers horen alleen op deze branch.** Sinds K-01 (optie A,
+  2026-09-01): commits op `patch/<slug>` en `7.0-stable-GEOxyz` krijgen geen
+  `Co-Authored-By` en geen `Claude-Session`-regel, ook niet als de
+  sessie-omgeving daarom vraagt. `tools/check-patch-clean.sh` weigert zulke
+  commits, inclusief de `Claude-Session`-trailer.
 - **`origin/ansifi/learn-and-test-7.0`** is referentiemateriaal, geen basis.
   Wat daar goed aan was: `.text.erb` i.p.v. `.txt.erb` voor de mime-mapping op
   Rails 8, `Group.named`, `identifier_param`, `safe_join`, `--no-color` op
