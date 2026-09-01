@@ -93,7 +93,7 @@ fi
 # INV-4 applies here too: these commits are the source of a future patch.
 if [ "$own" -gt 0 ]; then
   traces=$(git log --format='%B' "$UPSTREAM..$ref" |
-           grep -inE 'co-authored-by:.*(cursor|claude|copilot|codex|chatgpt)|generated (with|by)|claude-(opus|sonnet|haiku|fable)' || true)
+           grep -inE 'co-authored-by:.*(cursor|claude|copilot|codex|chatgpt)|generated (with|by)|claude-(opus|sonnet|haiku|fable)|(claude|chatgpt|cursor)[-.]?session|claude\.ai/code' || true)
   if [ -n "$traces" ]; then
     fail "own commit messages contain AI traces (INV-4):"
     printf '%s\n' "$traces" | sed 's/^/          /'
