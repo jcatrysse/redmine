@@ -45,7 +45,7 @@ Status: `todo` · `ontworpen` · `patch klaar` · `ingediend` · `geaccepteerd` 
 | `webhook-tracker-filter` | Webhook beperken tot gekozen trackers | `25220b45d` (deel) | kandidaat | todo | — | — |
 | `webhook-issue-closed` | Apart `issue.closed`-event | `25220b45d` (deel) | kandidaat | todo | — | — |
 | `members-pagination` | Paginatie op projectleden en groepsleden | `455f5753c` | aanhaken bij #43355, geen eigen patch | todo | — | — |
-| `revision-branches` | Git-branches op revisiepagina | `cf826e3fd` | twijfelachtig — splitsen, zie DECISIONS | todo | — | — |
+| `revision-branches` | Git-branches op revisie- én issuepagina | `cf826e3fd` | twijfelachtig — bewust ongewijzigd indienen, zie DECISIONS | todo | — | — |
 | `imap-oauth` | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | herschrijving nodig | todo | — | — |
 | `geoxyz-hosts` | `*.geoxyz.eu` toestaan in development | `918f3466e` | nooit — bedrijfsdomein | alleen-geoxyz | — | — |
 | `gitignore-credentials` | `master.key` / `credentials.yml.enc` negeren | `8ec9951d3` | nooit — core gebruikt geen Rails credentials | alleen-geoxyz | — | — |
@@ -85,7 +85,11 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
   git-subproces per pageview (Redmine cachet changesets juist om de SCM buiten
   het renderen te houden), alleen de Git-adapter van zes, vier nieuwe
   instellingen, en een groeperingsheuristiek die een GEOxyz-branchconventie in
-  core bakt. Zie DECISIONS voor de splitsing.
+  core bakt. **Jan kiest bewust om dit niet vooraf in te binden**: Git-only, het
+  commando blijft, de vier instellingen blijven, en we wachten hun reactie af.
+  De bezwaren horen dus wél in het dossier onder "verwachte bezwaren", met per
+  bezwaar het antwoord en wat het alternatief zou kosten — dan kan het gesprek
+  op redmine.org meteen inhoudelijk verder.
 - **`imap-oauth`** — de bestaande 5.1-rake is 435 regels met tien methodes en
   een constante op `Object`, print het access token volledig bij
   `imap_debug=1`, en trekt `gmail_xoauth` binnen terwijl

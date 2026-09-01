@@ -60,13 +60,20 @@ else
     pass "touches only Redmine paths ($(printf '%s\n' "$changed" | wc -l | tr -d ' ') files)"
   fi
 
-  # INV-5: en.yml only
-  locales=$(printf '%s\n' "$changed" | grep -E '^config/locales/' | grep -v '^config/locales/en\.yml$' || true)
-  if [ -n "$locales" ]; then
-    fail "patch touches locales other than en.yml (INV-5):"
-    printf '%s\n' "$locales" | sed 's/^/          /'
+  # INV-5: en.yml, plus only a language Jan vouches for personally.
+  # Redmine falls back to English for a missing key, so an absent translation
+  # costs nothing; an unverifiable one costs the patch its credibility.
+  ALLOWED_LOCALES='^config/locales/(en|nl)\.yml$'
+
+  locales=$(printf '%s\n' "$changed" | grep -E '^config/locales/' || true)
+  bad_locales=$(printf '%s\n' "$locales" | grep -v -E "$ALLOWED_LOCALES" | grep . || true)
+  if [ -n "$bad_locales" ]; then
+    fail "patch touches locales beyond en.yml/nl.yml (INV-5) — leave these to Redmine's translators:"
+    printf '%s\n' "$bad_locales" | sed 's/^/          /'
+  elif [ -n "$locales" ]; then
+    pass "locales: $(printf '%s\n' "$locales" | xargs -n1 basename | paste -sd, -)"
   else
-    pass "locales: en.yml only"
+    pass "locales: none touched"
   fi
 fi
 
