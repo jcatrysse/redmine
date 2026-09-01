@@ -88,15 +88,54 @@ Write the counts into the dossier. INV-8: no numbers, not green.
 Then re-read your own diff as if you wanted to reject it. Anything that is not
 strictly needed comes out.
 
+## 5b. Translations — derived, never invented
+
+Every user-visible string gets `en`, `nl`, `fr`, `de`, `es` (INV-5).
+
+For each new key, in each file: find the **closest existing key** and match its
+terminology, register and capitalisation. Redmine's files disagree on basic
+vocabulary — `issues` is *issues* in Dutch, *demandes* in French, *Tickets* in
+German, *peticiones* in Spanish — so a translation composed from the English
+reads plausible and uses the wrong word.
+
+    git show origin/master:config/locales/de.yml | grep -E '^  setting_search'
+
+Record each one in the dossier's locale table with the key you patterned it on.
+That is what makes it checkable in seconds, by Jan or by a committer.
+
+Two patch files on one issue, unless Jan says otherwise:
+
+1. the feature — code plus `en.yml`
+2. the translations — `nl`, `fr`, `de`, `es` only, no code
+
+A reviewer can take the first without waiting on the second, and the feature
+patch stays small. This mirrors how Redmine's own history handles translations.
+Generate both from the same branch, tagged in the filename:
+
+    patches/<slug>/<date>-r<rev>-feature.patch
+    patches/<slug>/<date>-r<rev>-locales.patch
+
 ## 6. Export and verify the patch — G6
 
-    git format-patch origin/master --stdout > patches/<slug>/<date>-r<rev>.patch
     tools/check-patch-clean.sh patch/<slug>
 
-The script checks descent from trunk, that no framework path is touched, and
-that the patch applies to a pristine trunk checkout. All three must pass.
+The script checks descent from trunk, that no framework or GEOxyz-local path is
+touched, that locales stay inside en/nl/fr/de/es, that no AI trace is in the
+commit messages, and that the patch applies to a pristine trunk checkout. All
+must pass.
 
-Commit the patch file on `geoxyz/framework` next to the dossier.
+Then export the two files (5b), each from the same branch:
+
+    git format-patch origin/master --stdout -- . ':!config/locales/nl.yml' \
+      ':!config/locales/fr.yml' ':!config/locales/de.yml' ':!config/locales/es.yml' \
+      > patches/<slug>/<date>-r<rev>-feature.patch
+
+    git format-patch origin/master --stdout -- config/locales/nl.yml \
+      config/locales/fr.yml config/locales/de.yml config/locales/es.yml \
+      > patches/<slug>/<date>-r<rev>-locales.patch
+
+Verify each applies to a pristine trunk checkout on its own, and that the two
+together reproduce the branch. Commit both next to the dossier.
 
 ## 7. Apply the same design to GEOxyz
 
@@ -107,7 +146,8 @@ Run the suites again there — a green trunk patch can still fail on 7.0-stable.
 Any behavioural difference is INV-10: record it in the dossier with its reason
 and the fact that it is a permanent private patch.
 
-`nl.yml` may be added here. Never in the patch.
+The same five locale files as the patch — the GEOxyz branch and upstream carry
+identical translations (INV-10).
 
 ## 8. Close out
 

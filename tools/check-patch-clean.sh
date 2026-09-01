@@ -60,18 +60,26 @@ else
     pass "touches only Redmine paths ($(printf '%s\n' "$changed" | wc -l | tr -d ' ') files)"
   fi
 
-  # INV-5: en.yml, plus only a language Jan vouches for personally.
-  # Redmine falls back to English for a missing key, so an absent translation
-  # costs nothing; an unverifiable one costs the patch its credibility.
-  ALLOWED_LOCALES='^config/locales/(en|nl)\.yml$'
+  # INV-5: en plus the four languages GEOxyz ships (Jan, 2026-09-01).
+  ALLOWED_LOCALES='^config/locales/(en|nl|fr|de|es)\.yml$'
 
   locales=$(printf '%s\n' "$changed" | grep -E '^config/locales/' || true)
   bad_locales=$(printf '%s\n' "$locales" | grep -v -E "$ALLOWED_LOCALES" | grep . || true)
   if [ -n "$bad_locales" ]; then
-    fail "patch touches locales beyond en.yml/nl.yml (INV-5) — leave these to Redmine's translators:"
+    fail "patch touches locales outside en/nl/fr/de/es (INV-5) — leave these to Redmine's translators:"
     printf '%s\n' "$bad_locales" | sed 's/^/          /'
   elif [ -n "$locales" ]; then
     pass "locales: $(printf '%s\n' "$locales" | xargs -n1 basename | paste -sd, -)"
+
+    # A feature patch carrying translations is bigger and slower to review than
+    # the same work as two files on one issue. Not a failure — Jan's call.
+    code=$(printf '%s\n' "$changed" | grep -v -E '^config/locales/' | grep . || true)
+    extra=$(printf '%s\n' "$locales" | grep -v -E '^config/locales/en\.yml$' | grep -c . || true)
+    if [ -n "$code" ] && [ "$extra" -gt 0 ]; then
+      printf '  note  this patch mixes code with %s translated locale file(s).\n' "$extra"
+      printf '        Consider two files on the same issue: the feature (code + en.yml),\n'
+      printf '        and the translations. Reviewers can take the first without the second.\n'
+    fi
   else
     pass "locales: none touched"
   fi

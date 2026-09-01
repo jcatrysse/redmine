@@ -49,6 +49,12 @@ every file it touches and why.>
 <or: name it, and justify it — INV-6's null hypothesis is that it is not
 needed. Say which existing settings tab it belongs on and why.>
 
+**Translations** (INV-5 — every row names the existing key it was patterned on):
+
+| Key | en | nl | fr | de | es | Patterned on |
+|---|---|---|---|---|---|---|
+| `` | | | | | | `` |
+
 **Backward compatibility:** <what happens to existing installations, existing
 data, existing configuration. An empty list that used to mean "all" must keep
 meaning "all".>
@@ -88,7 +94,7 @@ patch before submitting it, not to leave the row empty.>
 ## Submission
 
 - **Issue:** <redmine.org number + link, once Jan has created it>
-- **Patch attached:** `patches/<slug>/<date>-r<rev>.patch`
+- **Patches attached:** `patches/<slug>/<date>-r<rev>-feature.patch` (code + `en.yml`) and `-locales.patch` (`nl`, `fr`, `de`, `es`) — or one combined file, if that was the choice
 - **Made against:** `origin/master` r`<rev>` (`<date>`)
 - **Status:** ingediend / feedback ontvangen / geaccepteerd / afgewezen
 - **Feedback en wat ermee gebeurde:** <chronologisch, kort>

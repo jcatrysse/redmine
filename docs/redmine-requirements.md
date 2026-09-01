@@ -27,14 +27,31 @@ history shows dedicated commits such as "Traditional Chinese translation update
 (#44281)", plus periodic bulk "Updates locales" commits. Feature work does not
 carry fifty translated files.
 
-This is why INV-5 allows `en.yml` plus a language you can vouch for, and forbids
-machine-translated bulk locales. Two supporting facts:
+**Jan's decision (2026-09-01): `en`, `nl`, `fr`, `de`, `es` ship with the work.**
+He raised the concern, heard the argument below, and chose the four languages —
+they are GEOxyz's working languages and he wants them covered. Two mechanisms
+keep that from costing anything:
+
+1. **Derive, never invent.** Each new key is patterned on the closest existing
+   key in the same locale file, and the dossier names that key. Redmine's files
+   disagree on basic vocabulary — `issues` renders as *issues* (nl),
+   *demandes* (fr), *Tickets* (de), *peticiones* (es) — so a translation
+   composed from the English is plausible and wrong. Deriving it is both more
+   accurate and checkable in seconds.
+2. **Two patch files on one issue.** The feature (code + `en.yml`) and the
+   translations, separately. A committer can take the feature without waiting
+   on translations they cannot read, and the feature patch stays small. This is
+   how Redmine's own history handles translations anyway.
+
+The remaining facts, for context:
 
 - Redmine's i18n falls back to English for a missing key, so an absent
-  translation is a non-event.
+  translation is a non-event — which is why the *bulk* 51-file approach was
+  never worth its risk.
 - A patch touching 51 files is materially harder to review than one touching 3,
   and a committer cannot verify a translation into a language they do not read.
-  One wrong string discredits the whole patch.
+  One wrong string discredits the whole patch. Five files, each derived and
+  cited, is a different proposition.
 
 **RuboCop runs in CI and the codebase is clean.** `.github/workflows/linters.yml`
 runs `bundle exec rubocop --parallel` and `stylelint` on
@@ -67,5 +84,5 @@ passes on MySQL. The 2026 port shipped exactly that bug.
 - Whether redmine.org asks anything about the provenance of contributed code
   (AI assistance). Not found on the Contribute page. Jan submits, so it is his
   to check if he wants certainty.
-- Whether `fr.yml` should be included alongside `nl.yml`. Currently no — only
-  languages Jan will vouch for personally. Cheap to change.
+- Whether a sixth language is ever worth adding. Currently no: five is what
+  GEOxyz uses. One line in `tools/check-patch-clean.sh` if that changes.
