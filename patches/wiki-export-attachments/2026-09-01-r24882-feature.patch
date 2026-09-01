@@ -1,4 +1,4 @@
-From a3f41726bbfd87f1de5213183873b66f4b4ec9ae Mon Sep 17 00:00:00 2001
+From 98318cdfd01ac8dcdb6342990081659c7b1997f6 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Tue, 1 Sep 2026 21:42:39 +0000
 Subject: [PATCH] Add wiki page attachments to the wiki ZIP export.
@@ -11,15 +11,15 @@ the parameter the archive is unchanged.
 The total attachment size is checked against bulk_download_max_size, as
 AttachmentsController#download_all does.
 ---
- app/controllers/wiki_controller.rb      | 81 ++++++++++++++++++------
+ app/controllers/wiki_controller.rb      | 81 +++++++++++++++-----
  app/views/wiki/date_index.html.erb      |  2 +
  app/views/wiki/index.html.erb           |  2 +
  config/locales/en.yml                   |  1 +
- test/functional/wiki_controller_test.rb | 84 +++++++++++++++++++++++++
- 5 files changed, 151 insertions(+), 19 deletions(-)
+ test/functional/wiki_controller_test.rb | 99 +++++++++++++++++++++++++
+ 5 files changed, 166 insertions(+), 19 deletions(-)
 
 diff --git a/app/controllers/wiki_controller.rb b/app/controllers/wiki_controller.rb
-index 56e1f710e..11b2bb91e 100644
+index 56e1f710e..63d59395a 100644
 --- a/app/controllers/wiki_controller.rb
 +++ b/app/controllers/wiki_controller.rb
 @@ -45,6 +45,7 @@ class WikiController < ApplicationController
@@ -40,7 +40,7 @@ index 56e1f710e..11b2bb91e 100644
 -          :type => Redmine::MimeType.of(file_name),
 -          :filename => filename_for_content_disposition(file_name)
 -        )
-+        attachments_by_page = params[:with_attachments].present? ? wiki_page_attachments(@pages) : {}
++        attachments_by_page = params[:with_attachments] == '1' ? wiki_page_attachments(@pages) : {}
 +        max_size = Setting.bulk_download_max_size.to_i.kilobytes
 +        if attachments_by_page.values.sum {|attachments| attachments.sum(&:filesize)} > max_size
 +          flash[:error] = l(:error_bulk_download_size_too_big,
@@ -181,10 +181,10 @@ index 6ebe23d46..142b61294 100644
    label_open_issues: open
    label_open_issues_plural: open
 diff --git a/test/functional/wiki_controller_test.rb b/test/functional/wiki_controller_test.rb
-index 9f4ee657b..2fe1c331e 100644
+index 9f4ee657b..48d7dd903 100644
 --- a/test/functional/wiki_controller_test.rb
 +++ b/test/functional/wiki_controller_test.rb
-@@ -1197,6 +1197,90 @@ class WikiControllerTest < Redmine::ControllerTest
+@@ -1197,6 +1197,105 @@ class WikiControllerTest < Redmine::ControllerTest
      end
    end
  
@@ -207,6 +207,21 @@ index 9f4ee657b..2fe1c331e 100644
 +    assert_equal File.binread(attachment.diskfile), entry[:content]
 +    local_time = User.find(2).convert_time_to_user_timezone(attachment.created_on)
 +    assert_equal local_time.utc.to_i, entry[:utc_time].utc.to_i
++  end
++
++  def test_export_to_zip_with_attachments_set_to_zero_should_not_include_attachments
++    set_tmp_attachments_directory
++    Attachment.create!(
++      :container => Project.find(1).wiki.find_page('CookBook_documentation'),
++      :file => uploaded_test_file('testfile.txt', 'text/plain'),
++      :author_id => 2
++    )
++
++    @request.session[:user_id] = 2
++    get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '0'}
++
++    assert_response :success
++    assert_empty zip_entries_from_response.keys.select {|name| name.include?('/')}
 +  end
 +
 +  def test_export_to_zip_should_not_include_attachments_by_default

@@ -1,4 +1,4 @@
-From a3f41726bbfd87f1de5213183873b66f4b4ec9ae Mon Sep 17 00:00:00 2001
+From 98318cdfd01ac8dcdb6342990081659c7b1997f6 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Tue, 1 Sep 2026 21:42:39 +0000
 Subject: [PATCH] Add wiki page attachments to the wiki ZIP export.
