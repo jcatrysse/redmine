@@ -79,6 +79,48 @@ test/functional/queries_controller_test.rb
 Long runs belong in the background with the output to a file; the suites used
 in the PR #1 review took 75–120 s each.
 
+## The full suite, including the system tests
+
+`bundle exec ruby bin/rails test` runs everything except `test/system/`.
+`test:all` adds the system tests — and on a bare image every one of them errors
+in setup, roughly 260 of them, because `driven_by :selenium, using: :chrome`
+needs two things this image does not line up:
+
+- a `chrome`/`google-chrome` binary on `PATH`. There is none; Playwright's
+  Chromium lives at `/opt/pw-browsers/chromium-*/chrome-linux/chrome`.
+- a chromedriver whose **major version matches that binary**.
+  `/opt/node22/bin/chromedriver` is several majors ahead and refuses the
+  session.
+
+A 260-error run proves nothing, and it is easy to mistake for "system tests are
+not available here". They are. `tools/test-env.sh` fixes both — it symlinks
+Playwright's Chromium as `google-chrome` and takes `/opt/node22/bin` off `PATH`
+so Selenium Manager downloads the matching driver itself:
+
+```sh
+tools/test-env.sh /home/user/wt/patch-<slug> bundle exec ruby bin/rails test:all
+```
+
+Verified on 2026-09-01: `test/system/groups_test.rb` goes from 3 errors to
+3 runs, 31 assertions, 0 failures.
+
+**Two databases, so two suites can run at once.** A trunk patch and the GEOxyz
+branch are separate worktrees; give the second its own database
+(`redmine_test_geoxyz`) and both suites run in parallel instead of one after
+the other.
+
+**Attachment storage is per worktree.** `dev-server.sh` now points every
+worktree at `/tmp/redmine-dev-files`; before that, an attachment uploaded while
+worktree A served the app was invisible from worktree B, and anything checking
+`Attachment#readable?` silently dropped it. That cost one false "the feature
+does not work" during G9 verification of `wiki-export-attachments`.
+
+**Only git is available as an SCM.** `svn`, `svnadmin`, `hg`, `bzr` and `cvs`
+are all absent from the image, so unpacking their fixtures would not help:
+those suites announce themselves as skipped at the top of the run, and a handful
+of repository tests fail rather than skip. Check against a pristine trunk run
+before attributing any of that to a patch.
+
 ## RuboCop
 
 Not exposed as a bundle binstub in this environment. Call it directly:

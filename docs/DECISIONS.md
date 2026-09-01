@@ -41,11 +41,47 @@
 | 2026-09-01 | **G3 verscherpt naar de volledige suite**, niet alleen de geraakte bestanden | Redmine's Contribute-pagina eist letterlijk dat alle bestaande tests slagen. Kost tientallen minuten; vroeg starten en er ander werk naast doen. |
 | 2026-09-01 | Voor/na-screenshotparen verplicht, en ook de faalpaden (instelling uit, permissie afwezig, lege staat) | Een voor/na-paar is het meest overtuigende wat je op een redmine.org-issue kan zetten, en het bewijst dat de screenshot jouw wijziging toont in plaats van iets wat er al stond. |
 | 2026-09-01 | Gereedschap voor G9 is **eerst gebouwd en echt gedraaid**, niet alleen opgeschreven | `tools/dev-server.sh` + `dev-seed.rb` + `verify-lib.mjs` zijn end-to-end bewezen: echte Redmine 7.0 op poort 3000, ingelogd als admin, drie screenshots gemaakt en gelezen. Vond zes valkuilen en twee bugs in de scripts zelf; alle zes staan in `docs/runbook.md`. |
+| 2026-09-01 | De registerregel `wiki-export` is **gesplitst** in `wiki-export-attachments` (deze sessie) en `wiki-export-txt` (later) | De 5.1-commit deed twee losse dingen: bijlagen in de ZIP, en één samengevoegd TXT-bestand van de hele wiki. Redmine wil één issue per onderwerp; samen ingediend wordt het twee keer zo lang besproken. De bijlagen-helft is bovendien veruit de sterkste kandidaat: Go MAEDA heeft die zelf uitgesteld in #43978. |
+| 2026-09-01 | `wiki-export-attachments` bouwt **voort op** trunks bestaande `wiki#export` `format.zip`, niet op een tweede actie `export_attachments` zoals 5.1 | Die trunk-feature bestond nog niet toen 5.1 gebouwd werd. Voortbouwen scheelt een route, een permissie-regel, een tweede ZIP-bouwer en een tweede archief dat de gebruiker met de hand moet samenvoegen. |
+| 2026-09-01 | Bijlagen zijn **opt-in** via de queryparameter `with_attachments`, en de platte indeling van 7.0.0 blijft ongewijzigd | `bulk_download_max_size` moet gelden zodra er bijlagen in gaan. Onvoorwaardelijk meesturen zou de wiki-export laten falen voor een project met veel bijlagen — een regressie op wat vandaag werkt. Bewezen: met de limiet op 0 levert de gewone ZIP nog steeds hetzelfde bestand. |
+| 2026-09-01 | Bijlagen worden gefilterd op `readable?`, niet op `visible?` | Precies wat `Attachment.archive_attachments` doet. De controller heeft het verzoek al geautoriseerd op `:export_wiki_pages`, en de bestaande export geeft dezelfde gebruiker toch al de volledige tekst van elke pagina. `readable?` houdt een rij waarvan het bestand van schijf verdwenen is buiten het archief én buiten `File.binread`. |
+| 2026-09-01 | Commits op `patch/<slug>` en `7.0-stable-GEOxyz` worden geschreven als **Jan Catrysse <jan.catrysse@geoxyz.eu>** | `git format-patch` zet de auteur in de `From:`-regel van het bestand dat aan het issue hangt. Een tool-identiteit daar is net zo goed een AI-spoor als één in het bericht (INV-4). Gevonden door de patch te exporteren en te lezen; `tools/check-patch-clean.sh` controleert het nu mechanisch. |
+| 2026-09-01 | `tools/dev-server.sh` wijst elke worktree naar **één** map voor bijlagen (`/tmp/redmine-dev-files`) | De dev-database is gedeeld tussen worktrees, `files/` niet. Een bijlage die je uploadt terwijl worktree A draait, is onleesbaar vanuit worktree B en verdwijnt stil uit alles wat `Attachment#readable?` controleert. Dit kostte precies één valse "de feature werkt niet" tijdens G9 — het bewijs dat G9 zijn geld waard is. |
 | 2026-09-01 | Het dossier vraagt **wanneer** een GEOxyz-commit kan vervallen, niet of | Redmine backportt geen features naar een stable branch; een geaccepteerde patch komt in 7.1 of later. De commit blijft dus nodig tot GEOxyz die release haalt. |
 
 ## Open — keuze voor Jan
 
-Geen open keuzes.
+### K-02 — indeling van het ZIP-archief met bijlagen
+
+- **Keuze:** hoe ziet het archief eruit als je de bijlagen meestuurt?
+- **Opties:**
+  - **A) Plat (nu gebouwd).** De paginabestanden blijven exact waar ze nu
+    staan, en elke pagina met bijlagen krijgt er een map naast:
+    `Child_one.txt` plus `Child_one/diagram.txt`.
+  - **B) Genest naar de wikiboom.** `Wiki/Wiki.txt`,
+    `Wiki/Child_one/Child_one.txt`, met de bijlagen naast hun eigen
+    paginabestand. Dan klopt de mappenstructuur met de wiki, én een
+    afbeeldingsverwijzing als `!diagram.png!` werkt gewoon als je de map in
+    een markdown-editor opent, omdat het bestand ernaast staat.
+- **Aanbeveling:** A voor de patch, B als apart voorstel later. B verandert de
+  indeling van een export die vier maanden geleden in 7.0.0 is uitgekomen, en
+  verandert die ook voor mensen die helemaal geen bijlagen willen. Dat maakt
+  het een aparte discussie, geen onderdeel van deze.
+- **Haast?** nee — we bouwden verder met A, en A en B sluiten elkaar niet uit.
+
+### K-03 — de TXT-export van de hele wiki
+
+- **Keuze:** dienen we de tweede helft van de 5.1-commit (één samengevoegd
+  `.txt`-bestand van de hele wiki) ook in bij Redmine, of alleen op GEOxyz?
+- **Opties:**
+  - **A) Ook indienen**, als eigen issue.
+  - **B) Alleen op GEOxyz** houden.
+- **Aanbeveling:** A, maar met lage verwachting. Sinds april 2026 heeft trunk
+  de ZIP-export die per pagina een `.txt` geeft; een reviewer zal vragen wat
+  één samengevoegd bestand daar nog aan toevoegt. Het antwoord "je plakt het
+  in één keer in een AI-tool of grept erdoorheen" is echt, maar dun.
+- **Haast?** nee — het staat als eigen regel `wiki-export-txt` in het register
+  en komt aan de beurt na deze feature.
 
 ### Gesloten
 
