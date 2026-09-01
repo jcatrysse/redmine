@@ -1,0 +1,70 @@
+From a3f41726bbfd87f1de5213183873b66f4b4ec9ae Mon Sep 17 00:00:00 2001
+From: Jan Catrysse <jan.catrysse@geoxyz.eu>
+Date: Tue, 1 Sep 2026 21:42:39 +0000
+Subject: [PATCH] Add wiki page attachments to the wiki ZIP export.
+
+The ZIP export added in #43978 exports page sources only. With
+with_attachments, each page that has readable attachments also gets a
+directory named after its own entry, holding those attachments. Without
+the parameter the archive is unchanged.
+
+The total attachment size is checked against bulk_download_max_size, as
+AttachmentsController#download_all does.
+---
+ config/locales/de.yml | 1 +
+ config/locales/es.yml | 1 +
+ config/locales/fr.yml | 1 +
+ config/locales/nl.yml | 1 +
+ 4 files changed, 4 insertions(+)
+
+diff --git a/config/locales/de.yml b/config/locales/de.yml
+index 0b3e0eb03..4c4c7b399 100644
+--- a/config/locales/de.yml
++++ b/config/locales/de.yml
+@@ -541,6 +541,7 @@ de:
+   label_example: Beispiel
+   label_export_options: "%{export_format} Export-Eigenschaften"
+   label_export_to: "Auch abrufbar als:"
++  label_export_zip_with_attachments: ZIP mit Anhängen
+   label_f_hour: "%{value} Stunde"
+   label_f_hour_plural: "%{value} Stunden"
+   label_feed_plural: Feeds
+diff --git a/config/locales/es.yml b/config/locales/es.yml
+index 716f70bfc..7d675b3b0 100644
+--- a/config/locales/es.yml
++++ b/config/locales/es.yml
+@@ -448,6 +448,7 @@ es:
+   label_equals: igual
+   label_example: Ejemplo
+   label_export_to: 'Exportar a:'
++  label_export_zip_with_attachments: ZIP con adjuntos
+   label_f_hour: "%{value} hora"
+   label_f_hour_plural: "%{value} horas"
+   label_feed_plural: Feeds
+diff --git a/config/locales/fr.yml b/config/locales/fr.yml
+index 30612a0b3..6d5e12770 100644
+--- a/config/locales/fr.yml
++++ b/config/locales/fr.yml
+@@ -673,6 +673,7 @@ fr:
+   label_close_versions: Fermer les versions terminées
+   label_confirmation: Confirmation
+   label_export_to: 'Formats disponibles :'
++  label_export_zip_with_attachments: ZIP avec les pièces jointes
+   label_read: Lire...
+   label_open_issues: ouvert
+   label_open_issues_plural: ouverts
+diff --git a/config/locales/nl.yml b/config/locales/nl.yml
+index d77753b53..bb7de4727 100644
+--- a/config/locales/nl.yml
++++ b/config/locales/nl.yml
+@@ -391,6 +391,7 @@ nl:
+   label_equals: is gelijk
+   label_example: Voorbeeld
+   label_export_to: Exporteer naar
++  label_export_zip_with_attachments: ZIP met bijlagen
+   label_f_hour: "%{value} uur"
+   label_f_hour_plural: "%{value} uren"
+   label_feed_plural: Feeds
+-- 
+2.43.0
+

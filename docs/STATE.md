@@ -6,40 +6,46 @@
 
 ## Huidige positie
 
-Het framework staat er, en er is nog **geen enkele Redmine-code aangeraakt**.
-Wat eraan voorafging: een volledige doorlichting van PR #1 (Ansifs port van
-`5.1-stable-GEOxyz` naar 7.0), inclusief het meten van beide branches. De
-uitkomst bepaalt waarom dit framework zo is opgezet:
+De eerste feature is af: **`wiki-export-attachments`**. Patch klaar tegen trunk
+r24882, dezelfde wijziging staat als één commit op `7.0-stable-GEOxyz`, dossier
+compleet, screenshots gemaakt en gelezen. Jan moet er nog een issue voor
+aanmaken op redmine.org.
 
-- Negen functionele bevindingen, **alle negen uit de originele 5.1-commits**,
-  ongemerkt meegereisd in de port. De porter toetste "werkt het nog" in plaats
-  van "is dit goed".
-- Twee bestaande Redmine-tests staan rood op **beide** branches
-  (`queries_controller_test.rb` assignee-count, `query_test.rb`
-  `assigned_to_values[1..]`). Nooit opgemerkt omdat de volledige suite nooit
-  gedraaid is.
-- De port introduceerde 73 RuboCop-fouten op een bestandsset die er 0 had.
-- Er is **nul CI gelopen** op die PR, terwijl de repo `linters.yml` en
-  `tests.yml` heeft.
+Daarvoor is `7.0-stable-GEOxyz` bijgewerkt naar upstream `7.0-stable`
+(`a7fe622f9` → `ffc731ed7`, fast-forward, geen conflicten). Die branch had nul
+eigen commits en heeft er nu één.
 
-Vandaar INV-8 (bewezen groen) en G1 (trunk-check) als harde regels.
+Wat er onderweg aan het gereedschap is veranderd — allemaal omdat het echt
+misging, niet op voorhand bedacht:
+
+- `tools/dev-server.sh` wijst elke worktree naar één map voor bijlagen. Zonder
+  dat verdwenen bijlagen stil zodra de dev-server van worktree wisselde, en
+  leek de feature niet te werken terwijl de code klopte. **Dit is precies
+  waarvoor G9 bestaat.**
+- `tools/test-env.sh` is nieuw. `test:all` gaf ~260 fouten die niets met de
+  patch te maken hadden: de systeemtests vinden geen `chrome` op `PATH` en de
+  chromedriver in het image is vier majors te nieuw. Nu draaien ze echt.
+- `tools/check-patch-clean.sh` controleert nu ook de **auteur** van de commits,
+  niet alleen het bericht. `git format-patch` zet de auteur in de `From:`-regel
+  van het bestand dat aan het issue hangt; "Claude <noreply@anthropic.com>"
+  daar is net zo goed een AI-spoor (INV-4). Commits op `patch/<slug>` en
+  `7.0-stable-GEOxyz` worden nu geschreven als Jan Catrysse.
+- `tools/dev-seed.rb` zet nu ook wiki-bijlagen klaar, waaronder twee met
+  dezelfde bestandsnaam op één pagina — dat is het botsingsgeval.
 
 ## Volgende stap
 
-**Eerst**: `7.0-stable-GEOxyz` bijwerken met upstream `7.0-stable` — de branch
-staat 5 commits achter en heeft nul eigen commits. `git merge`, nooit rebase.
-`tools/check-geoxyz-branch.sh` meldt dit als eerste FAIL.
+**Jan:** maak het issue aan op redmine.org als follow-up van
+[#43978](https://www.redmine.org/issues/43978) en hang er
+`patches/wiki-export-attachments/2026-09-01-r24882-feature.patch` en
+`-locales.patch` aan. De issuetekst staat kant-en-klaar in het dossier
+(`docs/features/wiki-export-attachments.md`, alles onder "The problem"). Vul
+daarna het issuenummer in het register en in het dossier in.
 
-**Het G9-gereedschap is bewezen** en klaar voor gebruik: `tools/dev-server.sh`
-brengt in één commando een echte Redmine 7.0 op `http://127.0.0.1:3000` met
-testdata, en `tools/verify-lib.mjs` logt in en maakt screenshots. End-to-end
-gedraaid op 2026-09-01. De wiki-index toont daar nu `PDF | HTML | ZIP | Atom` —
-na `wiki-export` moet `TXT` erbij, en dat voor/na-paar is het eerste bewijs dat
-in dat dossier hoort.
-
-**Daarna**: analysefase, feature per feature, in de volgorde van het register.
-Beginnen met `wiki-export` — de sterkste upstream-kandidaat, en de enige waar
-de bestaande 7.0-implementatie al een aanknopingspunt biedt.
+**Volgende sessie:** de volgende regel uit het register is
+`search-token-limit`. `wiki-export-txt` (de andere helft van de oude
+`wiki-export`-regel) kan ook, maar zie K-03 — die kandidaat is zwakker en Jan
+mag zeggen of hij hem überhaupt wil indienen.
 
 ## Feature-register
 
@@ -52,7 +58,8 @@ in productie op 7.0? **Upstream** = waar staat de patch?
 
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Patch | Issue |
 |---|---|---|---|---|---|---|
-| `wiki-export` | Wiki TXT-export + ZIP met mappen en bijlagen | `3c3e9368e` | todo | todo | — | — |
+| `wiki-export-attachments` | Bijlagen mee in de wiki-ZIP-export | `3c3e9368e` (deel) | live | patch klaar | `patches/wiki-export-attachments/2026-09-01-r24882-{feature,locales}.patch` | — |
+| `wiki-export-txt` | Hele wiki als één TXT-bestand | `3c3e9368e` (deel) | todo | todo | — | — |
 | `search-token-limit` | Configureerbare max zoektokens i.p.v. hardcoded 5 | `17528437d` | todo | todo | — | — |
 | `assignee-nobody` | "Niet toegewezen" combineerbaar met gekozen gebruikers | `9b03b74b2` | todo | todo | — | — |
 | `version-subprojects` | Doelversiefilter incl. subproject-versies | `89752a599` | todo | todo | — | — |
@@ -70,15 +77,25 @@ in productie op 7.0? **Upstream** = waar staat de patch?
 | `netimap-cve` | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — | — |
 | `auto-watch-defaults` | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — | — |
 
-Zeventien features. Upstream: tien kandidaten, vijf nooit, één vervallen, één
-al binnen. GEOxyz: **vijftien nog te doen** — de branch heeft nu nul eigen
-commits, dus geen enkele feature loopt op 7.0.
+Achttien regels (`wiki-export` is gesplitst in twee). Eén af, elf te gaan
+upstream, vijf nooit, één vervallen, één al binnen.
 
 ## Wat er per feature al bekend is
 
 Uit de doorlichting van PR #1. Dit zijn geen nieuwe bevindingen maar
 vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
 
+- **`wiki-export-attachments`** — af. De trunk-check bleek beslissend: trunk
+  heeft sinds r24605 (#43978, april 2026) al een ZIP-export van de wiki, en de
+  indiener daarvan schreef er expliciet bij dat hij bijlagen bewust wegliet
+  omdat ze "additional design questions" opwerpen — archiefstructuur,
+  naamconflicten, en verwijzingen naar bijlagen in de tekst. Het dossier
+  beantwoordt die drie. Zonder die check hadden we de 5.1-vorm gebouwd (een
+  eigen `export_attachments`-actie naast de bestaande export) en was de patch
+  vrijwel zeker afgewezen.
+- **`wiki-export-txt`** — nog te doen, zie K-03. Trunk heeft nu per pagina een
+  `.txt` in de ZIP, dus de vraag "wat voegt één samengevoegd bestand toe" komt
+  gegarandeerd.
 - **`assignee-nobody`** — de 5.1-aanpak zet een pseudo-waarde in de generieke
   `Query#assigned_to_values` en behandelt die in een `elsif` in
   `Query#statement`, alleen voor operator `=`. Bij `!` en bij de
@@ -92,11 +109,6 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
   door `Version.visible.where(project_statement)` en verliest daarmee versies
   die van elders gedeeld zijn (`sharing: 'system'` is niet meer filterbaar,
   gereproduceerd). Union in plaats van vervanging.
-- **`wiki-export`** — 7.0 heeft zelf al een vlakke ZIP-export op
-  `wiki#export`; daarop voortbouwen, niet ernaast bouwen. De ZIP-opbouw hoort
-  uit de controller naar `lib/redmine/export/`. `bulk_download_max_size` op de
-  hele ZIP betekent dat een project met veel bijlagen de wiki niet meer kan
-  exporteren — beslissen wat daar moet gebeuren.
 - **`revision-branches`** — vier bezwaren, alle vier terecht: een
   git-subproces per pageview (Redmine cachet changesets juist om de SCM buiten
   het renderen te houden), alleen de Git-adapter van zes, vier nieuwe
@@ -104,8 +116,7 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
   core bakt. **Jan kiest bewust om dit niet vooraf in te binden**: Git-only, het
   commando blijft, de vier instellingen blijven, en we wachten hun reactie af.
   De bezwaren horen dus wél in het dossier onder "verwachte bezwaren", met per
-  bezwaar het antwoord en wat het alternatief zou kosten — dan kan het gesprek
-  op redmine.org meteen inhoudelijk verder.
+  bezwaar het antwoord en wat het alternatief zou kosten.
 - **`imap-oauth`** — de bestaande 5.1-rake is 435 regels met tien methodes en
   een constante op `Object`, print het access token volledig bij
   `imap_debug=1`, en trekt `gmail_xoauth` binnen terwijl
@@ -119,33 +130,38 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
 
 ## Bekende valkuilen
 
-- **De trunk-mirror loopt achter.** `origin/master` stond op 2026-08-03 bij het
-  opzetten van dit framework; vandaag is 2026-09-01. Redmine's bron is SVN.
-  Altijd verse fetch vóór een patch, en de revisie noemen in het issue.
+- **De trunk-mirror loopt achter.** `origin/master` staat op r24882 van
+  2026-08-03; vandaag is 2026-09-01. Redmine's bron is SVN en deze fork
+  synchroniseert niet vanzelf. Altijd verse fetch vóór een patch, en de
+  revisie noemen in het issue.
+- **De sessie-omgeving zet je op een verkeerde branch.** Elke sessie krijgt een
+  eigen `claude/...`-branch die de framework-commits mist. Meteen
+  `git checkout geoxyz/framework` en `git merge --ff-only origin/geoxyz/framework`.
+- **Bijlagen leven per worktree, de dev-database niet.** Opgelost in
+  `dev-server.sh` (`/tmp/redmine-dev-files`), maar weet waarom: een bijlage die
+  je uploadt terwijl worktree A draait, is onleesbaar vanuit worktree B, en
+  `Attachment#readable?` laat hem dan stil vallen. Zo lijkt een correcte
+  feature stuk.
+- **`test:all` is waardeloos zonder `tools/test-env.sh`** — ~260 fouten in de
+  systeemtests die niets met je patch te maken hebben.
+- **Alleen git is beschikbaar als SCM.** `svn`, `hg`, `bzr` en `cvs` staan niet
+  in het image, dus die repository-suites skippen of falen ongeacht je patch.
+  Vergelijk met een schone trunk-run voor je iets aan een patch toeschrijft.
 - **`lib/tasks/**/*` is uitgesloten in Redmine's `.rubocop.yml`.** Rake-code
   wordt dus niet gelint. Daar is menselijke review de enige controle.
 - **Redmine laadt hele suites in één proces.** Een testbestand dat
   `minitest/autorun` gebruikt, een `.rake` `load`t, of een constante buiten de
-  autoloader definieert, vervuilt zijn buren. In de bestaande port slagen vijf
-  OAuth-testbestanden los en falen ze samen — draai testbestanden dus altijd
+  autoloader definieert, vervuilt zijn buren. Draai testbestanden dus altijd
   ook samen.
-- **SCM-tests skippen stil** als de git-testrepo niet uitgepakt is. Zie
-  `docs/runbook.md`.
 - **`config/database.yml` bestaat niet** in de repo en is gitignored; die moet
-  je zelf aanmaken.
+  je zelf aanmaken, en wel vóór `bundle install`. Gebruik een tweede database
+  (`redmine_test_geoxyz`) voor de GEOxyz-worktree, dan draaien beide suites
+  tegelijk.
 - **RuboCop leest de working tree, niet een ref.** Lint dus altijd binnen een
-  worktree die op de juiste commit staat, anders rapporteert het schoon over
-  bestanden die daar niet bestaan. `tools/check-geoxyz-branch.sh` deed dit eerst
-  fout en meldde stil "0 offences"; gevonden door het te testen.
+  worktree die op de juiste commit staat.
 - **Een geaccepteerde trunk-patch komt niet in 7.0-stable.** Redmine backportt
   geen features naar een stable branch. Elke GEOxyz-commit blijft dus nodig tot
   GEOxyz zelf naar de release met die feature gaat.
-- **Attributie-trailers horen alleen op deze branch.** Sinds K-01 (optie A,
-  2026-09-01): commits op `patch/<slug>` en `7.0-stable-GEOxyz` krijgen geen
-  `Co-Authored-By` en geen `Claude-Session`-regel, ook niet als de
-  sessie-omgeving daarom vraagt. `tools/check-patch-clean.sh` weigert zulke
-  commits, inclusief de `Claude-Session`-trailer.
+- **Attributie hoort alleen op deze branch**, en dat geldt ook voor de
+  commit-**auteur**, niet alleen de trailers. Zie K-01 en de wachter.
 - **`origin/ansifi/learn-and-test-7.0`** is referentiemateriaal, geen basis.
-  Wat daar goed aan was: `.text.erb` i.p.v. `.txt.erb` voor de mime-mapping op
-  Rails 8, `Group.named`, `identifier_param`, `safe_join`, `--no-color` op
-  `git branch --contains`.
