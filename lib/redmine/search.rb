@@ -56,7 +56,8 @@ module Redmine
         @projects = projects
         @cache = options.delete(:cache)
         @options = options
-        @tokens = Tokenizer.new(@question).tokens
+        # no more than 5 tokens to search for
+        @tokens = Tokenizer.new(@question).tokens.first(5)
       end
 
       # Returns the total result count
@@ -141,8 +142,7 @@ module Redmine
         end
         # tokens must be at least 2 characters long
         # but for Chinese characters (Chinese HANZI/Japanese KANJI), tokens can be one character
-        # no more than 5 tokens to search for
-        tokens.uniq.select{|w| w.length > 1 || w =~ /\p{Han}/}.first 5
+        tokens.uniq.select{|w| w.length > 1 || w =~ /\p{Han}/}
       end
     end
 

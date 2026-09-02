@@ -3435,6 +3435,28 @@ class QueryTest < ActiveSupport::TestCase
     end
   end
 
+  def test_sql_contains_should_not_limit_the_number_of_tokens
+    query = IssueQuery.new(
+      :project => nil, :name => '_',
+      :filters => {
+        'subject' => {:operator => '~', :values => ['closed issue on locked version nomatch']}
+      }
+    )
+
+    assert_equal [], query.issues
+  end
+
+  def test_sql_contains_should_not_limit_the_number_of_tokens_for_contains_any_of
+    query = IssueQuery.new(
+      :project => nil, :name => '_',
+      :filters => {
+        'subject' => {:operator => '*~', :values => ['nomatch1 nomatch2 nomatch3 nomatch4 nomatch5 recipes']}
+      }
+    )
+
+    assert_equal [1], query.issues.map(&:id)
+  end
+
   def test_display_type_should_accept_known_types
     query = ProjectQuery.new(:name => '_')
     query.display_type = 'list'

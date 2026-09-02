@@ -35,4 +35,9 @@ class Redmine::Search::Tokenize < ActiveSupport::TestCase
     value = '"phrase one" "phrase two"'
     assert_equal ["phrase one", "phrase two"], Redmine::Search::Tokenizer.new(value).tokens
   end
+
+  def test_tokenize_should_not_limit_the_number_of_tokens
+    value = "one two three four five six seven"
+    assert_equal %w[one two three four five six seven], Redmine::Search::Tokenizer.new(value).tokens
+  end
 end

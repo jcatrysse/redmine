@@ -211,6 +211,12 @@ class SearchTest < ActiveSupport::TestCase
     assert_equal ['ca', '漢'], f.tokens
   end
 
+  def test_fetcher_should_use_no_more_than_five_tokens
+    f = Redmine::Search::Fetcher.new('one two three four five six seven',
+                                     User.anonymous, %w(issues), Project.all)
+    assert_equal %w[one two three four five], f.tokens
+  end
+
   private
 
   def remove_permission(role, permission)
