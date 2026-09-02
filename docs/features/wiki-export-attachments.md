@@ -3,25 +3,28 @@
 ## Voor Jan (Nederlands)
 
 - **Wat het doet, in gewone taal:** Redmine 7.0 kan de hele wiki al als ZIP
-  downloaden, maar alleen de tekst van de pagina's. Deze wijziging zet er een
-  tweede link naast die dezelfde ZIP maakt mét de bijlagen erbij, in een
-  mappenstructuur die de wikiboom volgt: elke pagina in haar eigen map, met
-  haar bijlagen ernaast. Een afbeeldingsverwijzing in de tekst werkt daardoor
-  gewoon als je het archief uitpakt.
+  downloaden, maar gooit daarbij de mappenstructuur weg: alle pagina's komen
+  als losse bestanden in één map te liggen. Deze wijziging geeft de wikiboom
+  terug, elke pagina in haar eigen map onder haar ouder. En in het
+  keuzevenster dat bij de ZIP-link hoort kan je aanvinken dat de bijlagen
+  meegaan; die belanden dan naast hun eigen paginatekst, zodat een verwijzing
+  als `!diagram.png!` gewoon werkt als je het archief uitpakt.
 - **Waar het vandaan komt:** 5.1-commit `3c3e9368e` (de ZIP-helft; de
-  TXT-helft van diezelfde commit is een aparte regel in het register geworden,
-  `wiki-export-txt`)
+  TXT-helft is vervallen, zie K-03)
 - **Doel:** upstream + GEOxyz
 - **Afwijking GEOxyz ↔ upstream:** geen — de GEOxyz-branch krijgt exact
   hetzelfde ontwerp
-- **Kans dat Redmine dit aanneemt:** goed — Go MAEDA, die de ZIP-export zelf
-  in april 2026 heeft aangeleverd, schreef in #43978 letterlijk dat hij
-  bijlagen bewust heeft weggelaten omdat die "additional design questions"
-  opwerpen, en noemde er drie: archiefstructuur, naamconflicten, en verwijzingen
-  naar bijlagen in de paginatekst. Dit dossier beantwoordt precies die drie.
+- **Kans dat Redmine dit aanneemt:** redelijk. Twee dingen werken voor ons:
+  Go MAEDA, die de ZIP-export zelf aanleverde, schreef in #43978 letterlijk
+  dat hij bijlagen bewust wegliet omdat die "additional design questions"
+  opwerpen, en noemde er drie — archiefstructuur, naamconflicten, en
+  verwijzingen naar bijlagen in de tekst. Dit dossier beantwoordt alle drie.
+  Wat ertegen werkt: het verandert de indeling van een export die op
+  30 juni 2026 in 7.0.0 is uitgekomen, en daarmee twee bestaande tests. Dat
+  moet vooraan in het issue staan, niet weggemoffeld.
 - **Wat jij nog moet doen:** issue aanmaken op redmine.org als follow-up van
-  #43978. De indelingskeuze (K-02) heb jij op 2026-09-01 beslist: geneste
-  mappen, optie B.
+  #43978. De twee keuzes zijn beslist: geneste indeling altijd (K-02), en de
+  bijlagen via het keuzevenster (2026-09-01).
 
 ## Trunk check (G1)
 
@@ -85,58 +88,70 @@ messages and projects all have one through `AttachmentsController#download_all`.
 
 # Proposed change
 
-Behaviour: the wiki index and the wiki date index gain a second entry in the
-"Also available in" line, next to the existing `ZIP`, captioned "ZIP with
-attachments". It points at the same `wiki#export` action and the same `zip`
-format, with `with_attachments=1`.
+Behaviour, in two parts.
 
-With that parameter the archive is laid out as the wiki itself is: one
-directory per page, nested by parent, with the page source and that page's
-attachments inside it.
+**The archive mirrors the wiki.** One directory per page, nested by parent,
+with the page source inside it. Redmine's own test wiki, which is three levels
+deep, exports as:
+
+    Another_page/Another_page.txt
+    Another_page/Child_1/Child_1.txt
+    Another_page/Child_1/Child_1_1/Child_1_1.txt
+    Another_page/Child_2/Child_2.txt
+    CookBook_documentation/CookBook_documentation.txt
+    CookBook_documentation/Page_with_an_inline_image/Page_with_an_inline_image.txt
+
+instead of the current six files in one directory. `wiki_page_directories`
+walks the tree exactly as core's `render_page_hierarchy` does — same
+`group_by(&:parent_id)`, same recursive signature — and reuses
+`archived_wiki_page_filename` unchanged, so the sanitising and the `(n)`
+de-duplication are the ones already there, applied per sibling group.
+
+**Attachments are an option on the export.** The `ZIP` entry in "Also
+available in" now opens the export-options dialog that Redmine already uses for
+CSV in six places, with one checkbox:
+
+    ZIP export options
+      [ ] Include attachments
+                             [ Export ]  Cancel
+
+Ticked, each page's readable attachments are written into that page's own
+directory, next to its source:
 
     Wiki/Wiki.txt
     Wiki/notes.txt
-    Wiki/Child one/Child one.txt
-    Wiki/Child one/diagram.png
-    Wiki/Child one/diagram(1).png
-    Wiki/Child two/Child two.txt
+    Wiki/Child_one/Child_one.txt
+    Wiki/Child_one/diagram.txt
+    Wiki/Child_one/diagram(1).txt
 
-That layout is not cosmetic. Redmine wiki syntax refers to an attachment by
+That placement is the point. Redmine wiki syntax refers to an attachment by
 bare filename — `!diagram.png!` in Textile, `![](diagram.png)` in Markdown —
-so putting the file next to the page source makes the reference resolve when
-the archive is unpacked and opened in any editor. This is the third of the
-design questions #43978 left open, and it is answered without touching the
-exported source at all.
+so a file next to its source resolves in any editor once the archive is
+unpacked, without this patch rewriting a single character of the exported
+source.
 
-**Without the parameter nothing changes.** The existing flat export is not
-merely compatible, it is byte-identical: the same `wiki_pages_to_zip` produces
-it, and a download from a patched instance `cmp`s clean against a download from
-a pristine trunk instance. The nested layout exists to hold attachments, so it
-appears only when attachments are asked for.
+Attachments are opt-in rather than always included because their total size is
+checked against `Setting.bulk_download_max_size`, exactly as
+`AttachmentsController#find_downloadable_attachments` does. Including them
+unconditionally would make the wiki export fail outright for a project whose
+attachments are large, where today it works. With the option unticked the
+export is unaffected by that limit, which is the escape hatch that makes the
+guard acceptable.
 
 Attachment entries carry the attachment's `created_on` as their DOS and UT
-timestamp, the same way page entries carry `updated_on`. Two things are lifted
-out of `wiki_pages_to_zip` so both layouts share them, `zip_entry` and
-`write_zip`, and `archived_wiki_page_filename` gains a defaulted `extension`
-argument so the directory names reuse its sanitising and its `(n)`
-de-duplication unchanged. That is the whole of what this patch moves.
-
-Before building the archive, the total size of the attachments to be included
-is checked against `Setting.bulk_download_max_size`, exactly as
-`AttachmentsController#find_downloadable_attachments` does, and the user is
-redirected back to the wiki index with the existing
-`error_bulk_download_size_too_big` message when it is exceeded. Because the
-attachments are opt-in, a wiki whose attachments exceed the limit can still be
-exported without them.
+timestamp, the same way page entries carry `updated_on`; the timestamp code is
+lifted into a `zip_entry` helper so both use it. That extraction is the only
+existing code this patch moves.
 
 | File | Change |
 |---|---|
-| `app/controllers/wiki_controller.rb` | include `ActionView::Helpers::NumberHelper`; `format.zip` honours `with_attachments` and checks the bulk-download size; new private `wiki_page_attachments`, `wiki_attachments_too_big?`, `wiki_pages_with_attachments_to_zip`, `wiki_page_directories`, `write_zip`, `zip_entry` and `archived_attachment_filename`; `archived_wiki_page_filename` gains a defaulted `extension` argument |
-| `app/views/wiki/index.html.erb` | one extra `f.link_to` in the existing `other_formats_links` block |
+| `app/controllers/wiki_controller.rb` | include `ActionView::Helpers::NumberHelper`; `format.zip` honours `with_attachments` and checks the bulk-download size; `wiki_pages_to_zip` now builds the nested archive; new private `wiki_page_attachments`, `wiki_attachments_too_big?`, `wiki_page_directories`, `zip_entry` and `archived_attachment_filename` |
+| `app/views/wiki/_export_options.html.erb` | new: the export-options dialog, shared by both index views |
+| `app/views/wiki/index.html.erb` | the `ZIP` link opens the dialog; render the partial |
 | `app/views/wiki/date_index.html.erb` | the same |
 | `config/locales/en.yml` | one new key |
 | `config/locales/{nl,fr,de,es}.yml` | the same key, translated (second patch file) |
-| `test/functional/wiki_controller_test.rb` | eight new tests |
+| `test/functional/wiki_controller_test.rb` | eleven new tests; `test_export_to_zip` and `test_export_to_zip_should_sanitize_non_portable_entry_name_characters` updated for the new entry paths |
 
 **New setting / migration / gem / route / permission:** none. The route is the
 existing `GET /projects/:project_id/wiki/export` with `format=zip`; the flag
@@ -149,105 +164,108 @@ is already a dependency, used by the export this builds on.
 
 | Key | en | nl | fr | de | es | Patterned on |
 |---|---|---|---|---|---|---|
-| `label_export_zip_with_attachments` | ZIP with attachments | ZIP met bijlagen | ZIP avec les pièces jointes | ZIP mit Anhängen | ZIP con adjuntos | en: `error_bulk_download_size_too_big` ("These attachments…"); nl: `label_edit_attachments` ("Bijlagen bewerken"); fr: `error_bulk_download_size_too_big` ("Ces pièces jointes…"); de: `error_bulk_download_size_too_big` ("…dieser Anhänge…"); es: `label_copy_attachments` ("Copiar adjuntos") |
+| `label_include_attachments` | Include attachments | Bijlagen meesturen | Inclure les pièces jointes | Mit Anhängen | Incluir los adjuntos | en: `error_bulk_download_size_too_big` ("These attachments…"); nl: `label_edit_attachments` ("Bijlagen bewerken") for the noun and the noun-verb order; fr: verb from `setting_show_status_changes_in_mail_subject` ("Inclure les…"), noun from `error_bulk_download_size_too_big` ("Ces pièces jointes"); de: form from `label_cross_project_descendants` ("Mit Unterprojekten"), noun from `label_copy_attachments` ("Anhänge kopieren"); es: verb from `field_searchable` ("Incluir en las búsquedas"), noun from `label_copy_attachments` ("Copiar adjuntos") |
 
-The obvious candidate, `label_download_all_attachments`, was not used as the
-pattern: it is still untranslated in `nl.yml` and `es.yml` and carries a typo
-in `de.yml` ("heruterladen"), so it establishes nothing. Each locale's own
-attachment noun was taken from a key that is actually translated in that file.
+That is the **only** new string. The dialog's title comes from the existing
+`label_export_options`, which is already parameterised by format
+(`"%{export_format} export options"` → "ZIP export options"), and the button
+from the existing `button_export`. Both are already translated in all five
+languages, so the dialog needs no new wording beyond the checkbox.
 
-**Backward compatibility:** total, and demonstrated rather than asserted.
-Without `with_attachments` the response is byte-identical to today's: same
-entry names, same order, same timestamps, same filename, same bytes. No
-setting changes meaning, no stored data is touched, and an existing script that
-fetches `export.zip` keeps getting exactly what it got.
+**Backward compatibility:** this deliberately changes the entry paths of the
+ZIP export that shipped in Redmine 7.0.0 on 30 June 2026, and that is the main
+thing a reviewer has to agree with. A script that reads `Child_1.txt` will have
+to read `Another_page/Child_1/Child_1.txt`. Nothing else moves: no setting
+changes meaning, no stored data is touched, the filename of the archive is the
+same, the timestamps are the same, and the source of each page is byte for byte
+what it was. Two existing tests assert the old flat paths and are updated with
+that reasoning, rather than being relaxed.
+
+The case for accepting that cost: the flat layout throws away structure Redmine
+holds and cannot be reconstructed from the archive, the feature is two months
+old in a stable release so few installations can depend on it yet, and trunk
+targets a feature release where this kind of refinement belongs.
 
 # Alternatives considered
 
 **A separate `export_attachments` action, as GEOxyz has on 5.1.** That is what
 the original GEOxyz change did, because it predates #43978 and had nothing to
 build on. Against it: a new route, a second entry in the permission map, a
-duplicated ZIP builder, and two archives a user has to merge by hand. Building
-on `wiki_pages_to_zip` gives one archive and no new API surface.
+duplicated ZIP builder, and two archives a user has to merge by hand.
 
-**Keeping the archive flat when attachments are included** —
-`Child one.txt` at the root with the attachments in a sibling
-`Child one/` directory. It has one real advantage: page entries then keep the
-exact names they have today in both variants. It was rejected because the
-attachment then does *not* sit next to the page source that refers to it, so
-`!diagram.png!` still does not resolve, which leaves the third of #43978's
-three design questions unanswered. The nested layout answers it for free, and
-it costs nothing that matters: the flat export is still there, unchanged, on
-the link that has always produced it.
+**Keeping the flat layout and adding a second `ZIP with attachments` link.**
+Fully backward compatible, one click instead of two, and it was built and
+verified before being rejected. Two things sank it. The archive then has two
+shapes behind one action, which is hard to justify and was the heaviest
+objection anticipated against it. And with the flat layout the attachment does
+not sit next to the source that refers to it, so `!diagram.png!` still does not
+resolve, leaving the third of #43978's design questions unanswered.
 
-**Nesting the plain ZIP as well**, so there is a single layout. Rejected: that
-changes an export that shipped in 7.0.0 four months ago, for people who never
-asked for attachments, and breaks any script that reads it. Two layouts behind
-one action is a fair objection, and the answer is that the directory exists to
-hold the attachments — with none to hold, it would be an empty wrapper around a
-single file.
+**Nesting only when attachments are included.** The intermediate position:
+flat when text-only, nested when attachments are asked for. Rejected for the
+same reason — one action, two shapes — and because the hierarchy is worth
+preserving on its own, independently of attachments.
+
+**Including attachments unconditionally**, so there is no option at all.
+Rejected because `bulk_download_max_size` would then be able to make the wiki
+export fail entirely for a project whose attachments are large, with no way for
+a user to get the source out. The option is what keeps that guard from being a
+regression.
+
+**A setting instead of a per-export option.** Rejected: a global setting cannot
+express "this time without the files", it is permanent API surface and
+translation burden for one boolean, and it does not answer the size problem
+either.
 
 **Naming every page file `page.txt` inside its directory**, which is what the
 GEOxyz 5.1 code does. Rejected: every tab in an editor then reads "page.txt"
-and the title is thrown away. The page file is named after its own directory,
-so `Child one/Child one.txt`.
+and the title is thrown away. The page file is named after its own directory.
 
-**Including attachments unconditionally.** Simpler UI, no parameter, no second
-link. Rejected because `bulk_download_max_size` would then be able to make the
-wiki export fail entirely for a project whose attachments are large, which is a
-regression against what works today.
+**`Another_page.txt` beside a directory `Another_page/` holding only the
+children**, which is how some markdown wikis lay out a tree and avoids the
+repeated name. Rejected because the attachments of `Another_page` would then
+sit among its children rather than beside its own source, which breaks the
+reference-resolving property the whole layout exists for.
 
 **Filtering attachments by `visible?`.** Not done, for the same reason
 `Attachment.archive_attachments` does not: the controller has already
 authorised the request through `:export_wiki_pages` on this project, and the
 existing export already hands the full text of every page in the wiki to the
 same user. `readable?` is still applied, which is what keeps a row whose file
-is missing from disk out of the archive and out of `IO.binread`.
-
-**Hiding the new link when the wiki has no attachments.** It would need an
-extra `EXISTS` query on every wiki index render to remove a link that is
-harmless when the wiki has no files: it produces the same archive as the plain
-ZIP. Not worth the query.
+is missing from disk out of the archive and out of `File.binread`.
 
 # Tests
 
 | Test | What it proves | Red on the old code? |
 |---|---|---|
-| `test_export_to_zip_with_attachments` | the attachment lands in the page's own directory, with the right bytes and the attachment's `created_on` as timestamp, and the page source is in that same directory | yes — `Expected nil to not be nil` |
-| `test_export_to_zip_with_attachments_should_nest_pages_by_hierarchy` | a child page ends up under its parent: `CookBook_documentation/Page_with_an_inline_image/Page_with_an_inline_image.txt` | yes — the entry is absent |
+| `test_export_to_zip` *(existing, updated)* | every page entry is at the path its place in the hierarchy dictates, with the DOS and UT timestamps unchanged | yes — it asserted the flat path |
+| `test_export_to_zip_should_sanitize_non_portable_entry_name_characters` *(existing, updated)* | `Foo*` still becomes `Foo_`, now as `Foo_/Foo_.txt` | yes — it asserted the flat path |
+| `test_export_to_zip_should_nest_pages_by_hierarchy` | a page three levels deep lands three levels deep: `Another_page/Child_1/Child_1_1/Child_1_1.txt` | yes |
+| `test_export_to_zip_with_attachments` | the attachment lands in the page's own directory with the right bytes and its `created_on` as timestamp, and the page source is in that same directory | yes |
 | `test_export_to_zip_with_attachments_should_rename_duplicate_attachment_filenames` | two attachments with the same filename on one page both survive, the second as `name(1).ext` | yes |
-| `test_export_to_zip_with_attachments_should_be_denied_when_total_size_exceeds_maximum` | over `bulk_download_max_size` the user is redirected with the existing error and no archive is sent | yes — `Expected response to be a <3XX: redirect>, but was a <200: OK>` |
-| `test_index_should_show_export_link_for_zip_with_attachments` | the link is on the page, with the URL the export actually answers | yes — `found 0` |
-| `test_export_to_zip_should_not_include_attachments_by_default` | the default archive stays flat and text-only | no, by design — a regression guard, it must pass before and after |
-| `test_export_to_zip_with_attachments_set_to_zero_should_not_include_attachments` | `with_attachments=0` means no | no, same reason |
-| `test_export_to_zip_should_be_allowed_when_bulk_download_max_size_is_exceeded` | the text-only export still works when the attachment limit is zero — the thing that makes opt-in worth it | no, same reason |
+| `test_export_to_zip_with_attachments_should_be_denied_when_total_size_exceeds_maximum` | over `bulk_download_max_size` the user is redirected with the existing error and no archive is sent | yes |
+| `test_index_should_show_zip_export_options` | the ZIP link opens the dialog, and the dialog's form posts to the URL the export actually answers with the checkbox the controller actually reads | yes |
+| `test_date_index_should_show_zip_export_options` | the dialog is on both index views, not only one | yes |
+| `test_export_to_zip_should_not_include_attachments_by_default` | no attachments without the option | no, by design — a regression guard |
+| `test_export_to_zip_with_attachments_set_to_zero_should_not_include_attachments` | an unticked checkbox means no | no, same reason |
+| `test_export_to_zip_should_be_allowed_when_bulk_download_max_size_is_exceeded` | the source-only export still works when the attachment limit is zero — the thing that makes the option worth having | no, same reason |
+| `test_index_should_not_show_zip_export_options_without_permission` | the dialog is gated by `:export_wiki_pages` like the links | no — trivially true before |
 
-Five of the eight are red without the change. The other three are regression
-guards on behaviour that must not move, so passing on both sides is the point
-of them.
+Eight of the twelve are red without the change, including the two existing
+tests, which is the honest signal that behaviour deliberately moved. The other
+four are regression guards on behaviour that must not move.
 
 **Evidence (INV-8 — figures, not claims):**
 
-- **full** suite on `patch/wiki-export-attachments`
-  (`tools/test-env.sh … bundle exec ruby bin/rails test:all`, system tests
-  included): **5928 runs, 31481 assertions, 27 failures, 2 errors, 92 skips**
-  in 1105 s.
-- Those 29 are **not this patch**. Running the five files they live in
-  (`repositories_controller_test`, `sys_controller_test`,
-  `api_test/repositories_test`, `api_test/issues_test`, `user_test`) on a
-  pristine `origin/master` r24882 checkout gives **274 runs, 27 failures,
-  2 errors**, and a `diff` of the sorted failing-test names against this run is
-  empty. All of them are `ActiveRecord::RecordInvalid: Validation failed: Type
-  is invalid` on `Repository::Subversion`, because this image has no `svn`,
-  `hg`, `bzr` or `cvs` binary. See "Found but not fixed".
-- **full** suite on `7.0-stable-GEOxyz` with the same change:
-  **5919 runs, 31716 assertions, 0 failures, 0 errors, 39 skips** in 1107 s.
-  Completely green.
+- wiki suite on `patch/wiki-export-attachments`: **111 runs, 645 assertions,
+  0 failures, 0 errors** (`test/functional/wiki_controller_test.rb`).
 - RuboCop on the changed Ruby files: **0 offences**; baseline on the same files
   at the merge base: **0 offences**.
 - patch applies to pristine `origin/master` r24882: **yes**, each of the two
   files on its own, and together they reproduce the branch exactly.
-- `tools/check-patch-clean.sh`: **PASS**. `tools/check-geoxyz-branch.sh`: **PASS**.
+- `tools/check-patch-clean.sh`: **PASS** (7 checks).
+- **full** `test:all` on both branches: being re-measured on this build; the
+  figures land in the next commit.
 
 # Live verification (G9)
 
@@ -255,46 +273,59 @@ Exercised by hand in a real Redmine at `http://127.0.0.1:3000`, seeded by
 `tools/dev-seed.rb`: a wiki with `Wiki` as root and `Child_one` and `Child_two`
 under it, `notes.txt` attached to `Wiki`, and two attachments both named
 `diagram.txt` on `Child_one` — the collision case. Screenshots in
-`docs/features/wiki-export-attachments/shots/`, the archives themselves next to
-them.
+`docs/features/wiki-export-attachments/shots/`, the archives next to them.
+**Every archive below was produced by clicking through the interface**, not by
+calling the controller.
 
 | Function | Screenshot | What it shows |
 |---|---|---|
-| The export line before the change | `before-wiki-index.png` | `Also available in: PDF \| HTML \| ZIP \| Atom` |
-| The export line after | `wiki-index.png` | `PDF \| HTML \| ZIP \| ZIP with attachments \| Atom` |
-| Same on the date index | `wiki-date-index.png` | the link is on both index views, not only one |
-| The translation is real | `nl-wiki-index.png` | `Exporteer naar PDF \| HTML \| ZIP \| ZIP met bijlagen \| Atom` |
+| The export line before | `before-wiki-index.png` | `Also available in: PDF \| HTML \| ZIP \| Atom` |
+| The export line after | `wiki-index.png` | unchanged — still one `ZIP` entry, which is the point of the dialog |
+| The dialog, opened by clicking ZIP | `zip-export-dialog.png` | "ZIP export options" with one checkbox, "Include attachments", plus Export and Cancel |
+| The dialog with the box ticked | `zip-export-dialog-checked.png` | the state the second download was made from |
+| Same dialog in Dutch | `nl-zip-export-dialog.png` | "ZIP export opties", "Bijlagen meesturen", "Exporteren", "Annuleren" — three of the four from keys that already existed |
+| Same line on the date index | `wiki-date-index.png` | the dialog is on both index views |
 
-The archive itself, downloaded by clicking the link in a browser, not by
-calling the controller (`zip-with-attachments.zip`):
+Exported by clicking Export with the box **unticked**
+(`zip-without-attachments.zip`):
 
-    Wiki/Wiki.txt                     37
-    Wiki/notes.txt                    38
-    Wiki/Child_one/Child_one.txt      43
-    Wiki/Child_one/diagram.txt        15
-    Wiki/Child_one/diagram(1).txt     31
-    Wiki/Child_two/Child_two.txt      43
+    Wiki/Wiki.txt
+    Wiki/Child_one/Child_one.txt
+    Wiki/Child_two/Child_two.txt
 
-The hierarchy is mirrored, each page's source sits in its own directory
-alongside its own attachments, and both `diagram.txt` uploads survive with the
-second renamed.
+and with the box **ticked** (`zip-with-attachments.zip`):
+
+    Wiki/Wiki.txt
+    Wiki/notes.txt
+    Wiki/Child_one/Child_one.txt
+    Wiki/Child_one/diagram.txt
+    Wiki/Child_one/diagram(1).txt
+    Wiki/Child_two/Child_two.txt
+
+The hierarchy is mirrored in both, each page's attachments sit beside its own
+source, and both `diagram.txt` uploads survive with the second renamed.
 
 Failure paths verified:
 
 | Case | Evidence | Expected | Observed |
 |---|---|---|---|
-| Plain ZIP must not change | `zip-plain-before.zip` vs `zip-plain-after.zip` | identical | **byte-identical** (`cmp` clean): still flat, `Child_one.txt` / `Child_two.txt` / `Wiki.txt`, the same file a pristine trunk instance produces |
-| Over `bulk_download_max_size` | `shots/size-limit-error.png` | refused, not truncated | redirected to the wiki index with Redmine's own `error_bulk_download_size_too_big` banner |
-| Plain ZIP still works at the limit | `zip-plain-at-limit-zero.zip` | unaffected | with `bulk_download_max_size = 0`, still byte-identical to pristine — this is what makes the opt-in design worth it |
-| `:export_wiki_pages` absent | `shots/no-permission-wiki-index.png` | no export links at all | as user `dev` with the permission removed: `Also available in: Atom` only |
+| Over `bulk_download_max_size`, box ticked | `shots/size-limit-error.png` | refused, not truncated | redirected to the wiki index with Redmine's own `error_bulk_download_size_too_big` banner |
+| Same limit, box unticked | `zip-without-attachments-at-limit-zero.zip` | unaffected | `cmp`-identical to the normal source-only archive — the escape hatch works |
+| `:export_wiki_pages` absent | `shots/no-permission-wiki-index.png` | no export links and no dialog | as user `dev` with the permission removed: `Also available in: Atom` only |
 | Direct URL without the permission | logged | 403 | `GET /projects/geoxyz-verify/wiki/export.zip?with_attachments=1` → **HTTP 403** |
 
-Screenshots read, not just generated: yes. The first verification run of this
-feature produced an archive with **no** attachments even though the link
-rendered and every test passed — the dev database is shared between worktrees
-but `files/` is not, so `Attachment#readable?` was silently false for every
-attachment. That is exactly the class of defect G9 exists for, and it was only
-visible by opening the downloaded archive. Fixed in `tools/dev-server.sh`.
+Screenshots read, not just generated: yes, and the click matters here. The
+verification script fails if `#zip-export-options` does not become visible
+within five seconds of clicking the link, because a dialog that is in the DOM
+but never opens is precisely the defect this gate exists for — the 2026 port
+shipped a link that passed `assert_select` and did nothing when clicked. Both
+downloads were then taken from the open dialog by pressing its Export button.
+
+An earlier verification run of this feature produced an archive with **no**
+attachments even though the link rendered and every test passed: the dev
+database is shared between worktrees but `files/` is not, so
+`Attachment#readable?` was silently false for every attachment. Fixed in
+`tools/dev-server.sh`.
 
 # Found but not fixed
 
@@ -321,15 +352,15 @@ Reported, not touched — INV-1.
 
 | Objection | Answer |
 |---|---|
-| "Attachments were left out of #43978 on purpose." | They were left out because of three named design questions, not because they are unwanted — the same comment calls the text-only export useful "even without attachments". Archive structure: a directory per page, named after the page's own entry. Filename collisions: the existing `(n)` scheme, applied per directory, so two pages can each have a `diagram.png`. Attachment references in content: see the next row. |
-| "What happens to `!diagram.png!` in the exported source?" | It resolves. The source is exported raw, exactly as it is now — this patch rewrites nothing — but the attachment is written next to the page file, which is where a bare-filename reference looks. That is the point of the nested layout. |
-| "Why does one link give a flat archive and the other a nested one?" | Because the directories exist to hold attachments. A page with no attachments to place would get an empty directory wrapping a single file, which is worse than the flat list for the text-only export that people already use. The two links are labelled differently and produce different things on purpose. |
-| "Why nest by hierarchy rather than one flat directory per page?" | The wiki tree is real structure that the current export throws away, and reconstructing it afterwards is not possible from a flat list. It also avoids the `(n)` suffix in the common case where two pages under different parents have similar titles. `wiki_page_directories` mirrors core's own `render_page_hierarchy` — same `group_by(&:parent_id)`, same recursive shape. |
-| "Another link in `other_formats_links` clutters the line." | It is one entry, next to a ZIP it is a variant of, and it is the same pattern the repository diff view already uses (`link_to_with_query_parameters 'Diff', …, :caption => 'Unified diff'`) — the format name drives the CSS class, the caption is what the user reads. |
-| "A ZIP with attachments can be huge." | That is why it is bounded by `bulk_download_max_size`, the setting Redmine already applies to every other bulk download, and why it is opt-in: the text-only export keeps working when the limit is hit. |
-| "It builds the whole archive in memory." | So do `wiki_pages_to_zip` and `Attachment.archive_attachments` today; `Zip::OutputStream.write_buffer` returns a `StringIO`. The difference here is that the size is now bounded by a setting, where the existing wiki ZIP is bounded by nothing. Streaming the archive would be a worthwhile change to all three call sites and does not belong in this patch. |
-| "Why move the timestamp and buffer code?" | Because both layouts need them and duplicating them would be worse. Both extractions are behaviour-preserving and are covered by the existing `test_export_to_zip`, which asserts the DOS and UT times of page entries and is untouched by this patch. |
-| "Should the parameter be a checkbox or an export-options dialog?" | It could be, like the CSV export options. That is more UI for one boolean, and `other_formats_links` is where a user already looks for export variants. Happy to change it if a committer prefers. |
+| "This changes the ZIP layout that shipped in 7.0.0." | It does, deliberately, and that is the decision being asked for. The flat layout discards the page tree, which Redmine has and the archive cannot reconstruct. The feature is two months old in a stable release, and trunk targets a feature release. If the answer is no, the same work fits behind a second link instead, at the cost of two shapes for one format. |
+| "Two existing tests had to change." | Yes: `test_export_to_zip` and `test_export_to_zip_should_sanitize_non_portable_entry_name_characters` assert the flat entry paths. They are updated to the new paths, not relaxed — the first still asserts the full path per page, the DOS timestamp and the UT timestamp, and the second still asserts that `Foo*` is sanitised and that the unsanitised name is absent. |
+| "Attachments were left out of #43978 on purpose." | Because of three named design questions, not because they are unwanted; the same comment calls the source-only export useful "even without attachments". Archive structure: the wiki hierarchy. Filename collisions: the existing `(n)` scheme, per directory, so two pages can each have a `diagram.png`. Attachment references in content: the next row. |
+| "What happens to `!diagram.png!` in the exported source?" | It resolves. The source is exported raw, exactly as now — this patch rewrites nothing — but the attachment is written next to the page file, which is where a bare-filename reference looks. |
+| "Why an option rather than always including attachments?" | `bulk_download_max_size`. With attachments always in, a project whose files exceed the limit could not export its wiki at all, where today it can. Verified: with the limit at 0 the source-only export still produces exactly the normal archive. |
+| "Why a dialog rather than a second link?" | It keeps one entry per format in "Also available in", and it is the pattern core already uses for CSV in six views, down to `label_export_options` and `button_export`, which are already translated in every language. It also leaves room for a further option later without touching the export line again. |
+| "A ZIP with attachments can be huge." | It is bounded by `bulk_download_max_size`, the setting Redmine already applies to every other bulk download. |
+| "It builds the whole archive in memory." | So does the current `wiki_pages_to_zip`, and so does `Attachment.archive_attachments`; `Zip::OutputStream.write_buffer` returns a `StringIO`. The difference is that the size is now bounded by a setting where the existing wiki ZIP is bounded by nothing. Streaming would be a worthwhile change to all three call sites and does not belong here. |
+| "Why move the timestamp code?" | Attachment entries need the same treatment and duplicating ten lines to get it would be worse. The extraction is behaviour-preserving and is covered by `test_export_to_zip`, which still asserts the DOS and UT times of page entries. |
 
 ---
 
