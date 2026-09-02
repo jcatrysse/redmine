@@ -949,6 +949,7 @@ nl:
   label_repository_new: Nieuwe repository
   field_repository_is_default: Hoofdrepository
   label_copy_attachments: Kopieer bijlage(n)
+  label_include_attachments: Bijlagen meesturen
   label_item_position: "%{position}/%{count}"
   label_completed_versions: Afgeronde versies
   field_multiple: Meerdere waarden

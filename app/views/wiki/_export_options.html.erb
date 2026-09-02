@@ -1,0 +1,15 @@
+<div id="zip-export-options" style="display:none;">
+  <h3 class="title"><%= l(:label_export_options, :export_format => 'ZIP') %></h3>
+  <%= form_tag({:action => 'export', :format => 'zip'}, :method => :get, :id => 'zip-export-form') do %>
+  <p>
+    <label>
+      <%= check_box_tag 'with_attachments', '1', false %>
+      <%= l(:label_include_attachments) %>
+    </label>
+  </p>
+  <p class="buttons">
+    <%= submit_tag l(:button_export), :name => nil, :onclick => "hideModal(this);", :data => { :disable_with => false } %>
+    <%= link_to_function l(:button_cancel), "hideModal(this);" %>
+  </p>
+  <% end %>
+</div>
