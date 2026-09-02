@@ -78,18 +78,29 @@ lang genoeg om een filter meer dan vijf bruikbare tokens te geven.
 
 ## Volgende stap
 
-**Jan, twee dingen:**
+**Jan, één ding:** hang
+`patches/search-token-limit/2026-09-02-r24882-feature.patch` als note aan het
+bestaande issue [#43701](https://www.redmine.org/issues/43701) en leg in één
+alinea uit waarom de vorm veranderd is: geen instelling meer, het is de limiet
+terugzetten waar hij hoort. De Engelse tekst staat kant-en-klaar in
+`docs/features/search-token-limit.md`, alles vanaf "The problem". De
+voor/na-screenshots zitten in `docs/features/search-token-limit/shots/`.
+Vergeet niet de oude bijlage als achterhaald te benoemen.
 
-1. Hang `patches/search-token-limit/2026-09-02-r24882-feature.patch` als note
-   aan het bestaande issue [#43701](https://www.redmine.org/issues/43701) en
-   leg in één alinea uit waarom de vorm veranderd is: geen instelling meer, het
-   is de limiet terugzetten waar hij hoort. De Engelse tekst staat kant-en-klaar
-   in `docs/features/search-token-limit.md`, alles vanaf "The problem". De
-   voor/na-screenshots zitten in `docs/features/search-token-limit/shots/`.
-   Vergeet niet de oude bijlage als achterhaald te benoemen.
-2. Beantwoord **K-04** in `docs/DECISIONS.md`: heeft GEOxyz meer dan vijf
-   zoekwoorden nodig in het globale zoekvak, of alleen in de filters? Wij
-   bouwden "alleen in de filters". Niet blokkerend.
+**K-04 is beslist** (2026-09-02, optie A): de grens van het globale zoekvak
+blijft vijf woorden, alleen de tekstfilters worden onbeperkt. Er zijn geen open
+keuzes meer.
+
+Voor de volgende sessie, want Jan vroeg er expliciet naar en het antwoord hoort
+hier te staan: **het verschil tussen de patch van januari en deze.** De patch
+van januari voegde een instelling `search_token_limit` toe (standaard 5) op het
+tabblad Issues; de tokenizer las die, en die tokenizer wordt door twee dingen
+gebruikt, de tekstfilters én het zoekvak rechtsboven. Standaardgedrag bleef dus
+5 overal, en een beheerder moest een getal invullen om meer te krijgen — voor
+filters en zoekvak tegelijk. Deze patch heeft geen instelling: filters zijn
+altijd onbeperkt, het zoekvak blijft op 5. Praktisch voor GEOxyz: het veld
+verdwijnt uit het configuratiescherm, filters werken zonder dat iemand iets
+instelt, en het zoekvak gaat terug van het ingestelde getal naar 5.
 
 Ook nog open van de vorige sessie: het issue voor `wiki-export-attachments` is
 nog niet aangemaakt. Dat is een follow-up van

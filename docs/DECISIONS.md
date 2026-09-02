@@ -21,6 +21,7 @@
 | 2026-09-01 | **De keuze bijlagen ja/nee gaat via het exportkeuzevenster**, niet via een tweede link | Jan: "ja doe optie b". Eén ingang per formaat in "Also available in", en het is het patroon dat core zelf zes keer gebruikt voor CSV. Bijkomend voordeel: `label_export_options` (geparametriseerd op het formaat) en `button_export` bestaan al vertaald in alle vijf de talen, dus er is precies één nieuwe sleutel nodig voor het vinkje. Wat niet kon: bijlagen altijd meesturen — `bulk_download_max_size` zou de wiki-export dan helemaal kunnen laten falen voor een project met veel bestanden, zonder uitweg. Bewezen: met de limiet op 0 en het vinkje uit is het archief `cmp`-identiek aan normaal. |
 | 2026-09-01 | ~~**K-02: geneste indeling (optie B).**~~ Aangescherpt door de twee regels hierboven | Het ZIP-archief mét bijlagen volgt de wikiboom: één map per pagina, genest onder de ouder, met het paginabestand en de bijlagen van die pagina erin | Jan: "keuze b". Daarmee staat een bijlage naast de paginatekst die ernaar verwijst, dus `!diagram.png!` werkt gewoon als je het archief uitpakt. Dat is de derde ontwerpvraag die Go MAEDA in #43978 openliet, en die is nu beantwoord zonder de geëxporteerde tekst aan te raken. Scoping heb ik zelf ingevuld (zie hieronder): alleen de variant mét bijlagen is genest. |
 | 2026-09-01 | **K-03: de TXT-export vervalt.** `wiki-export-txt` gaat niet naar upstream en komt ook niet op de GEOxyz-branch | Jan: "we gebruiken de txt export niet". Daarmee is er geen reden om hem te bouwen of te verdedigen. De registerregel blijft staan met status vervallen, zodat volgende sessies niet opnieuw gaan afwegen. |
+| 2026-09-02 | **K-04: optie A.** De grens van het globale zoekvak blijft vijf woorden; alleen de tekstfilters worden onbeperkt | Jan: "keuze a". Daarmee gaat er geen instelling mee de patch in en blijft het een bugfix in plaats van een functieverzoek. Praktisch gevolg voor GEOxyz: het veld `search_token_limit` verdwijnt uit Beheer → Configuratie → Issues, filters gebruiken altijd alle getypte woorden zonder dat iemand iets instelt, en het zoekvak rechtsboven gebruikt weer de eerste vijf woorden in plaats van het ingestelde getal. Als dat laatste ooit knelt is het een los issue dat deze patch niet ophoudt. |
 | 2026-09-01 | AI-attributie (`Co-Authored-By`, `Claude-Session`) staat **wel** in commits van `geoxyz/framework`, **nooit** in commits van een `patch/<slug>`-branch of `7.0-stable-GEOxyz` (K-01, optie A) | Jan: "optie a". Jij bent de indiener en de patch is jouw werk om te verantwoorden; de herkomst staat volledig in je eigen repo. Redmine's Contribute-pagina vraagt niets over herkomst. INV-4 en `tools/check-patch-clean.sh` blijven dus ongewijzigd afdwingen, en de wachter kijkt nu ook op de `Claude-Session`-trailer. |
 
 ## Beslist (autonoom)
@@ -60,27 +61,11 @@
 
 ## Open — keuze voor Jan
 
-- **K-04 — heeft GEOxyz meer dan vijf zoekwoorden nodig in het globale zoekvak,
-  of alleen in de filters?**
-  De 5.1-instelling `search_token_limit` verhoogde **beide** grenzen tegelijk:
-  die van de tekstfilters én die van de zoekmachine achter het zoekvak
-  rechtsboven. De patch die nu klaarligt haalt de grens weg bij de filters en
-  laat de zoekmachine op vijf staan, want daar is de grens ooit voor geschreven
-  en daar kost elk extra woord een `LIKE` over elke soort en elk project.
-  - **Opties:** A) Zo laten: filters onbeperkt, zoekvak vijf woorden. B) Ook de
-    grens van het zoekvak instelbaar maken — dat is een tweede, apart issue met
-    een nieuwe instelling erin, en de kans dat upstream dat aanneemt is
-    duidelijk kleiner.
-  - **Aanbeveling:** A. De klacht in #43701 gaat letterlijk over filteroperatoren,
-    de instelling stond in 5.1 ook op het tabblad *Issues*, en de kans dat deze
-    patch geaccepteerd wordt is veel groter zonder instelling. Als het zoekvak
-    later toch blijkt te knellen, is dat een los issue dat deze patch niet
-    ophoudt.
-  - **Haast?** nee — we bouwden verder met A, en die is compleet en bewezen.
-    Optie B is er bovenop bij te bouwen zonder iets van A te veranderen.
+Geen open keuzes.
 
 ### Gesloten
 
 - **K-01** — AI-attributie in patchcommits. Beslist 2026-09-01: optie A (zie "Beslist (Jan)").
 - **K-02** — indeling van het ZIP-archief. Beslist 2026-09-01: genest naar de wikiboom, en doorgetrokken naar altijd, niet alleen bij bijlagen. De keuze bijlagen ja/nee zit in het exportkeuzevenster.
 - **K-03** — de TXT-export van de hele wiki. Beslist 2026-09-01: vervalt, GEOxyz gebruikt hem niet.
+- **K-04** — meer dan vijf zoekwoorden in het globale zoekvak. Beslist 2026-09-02: optie A, alleen de filters (zie "Beslist (Jan)").

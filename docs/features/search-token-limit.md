@@ -13,11 +13,22 @@
 - **Kans dat Redmine dit aanneemt:** goed — het is geen nieuwe functie maar het
   terugdraaien van een neveneffect van hun eigen refactor uit 2021, zonder
   nieuwe instelling en zonder vertaling.
+- **Wat is er anders dan jouw patch van januari?** Die voegde een instelling
+  `search_token_limit` toe (standaard 5) op het tabblad Issues. De tokenizer las
+  die instelling, en die tokenizer wordt door twee dingen gebruikt: de
+  tekstfilters én het zoekvak rechtsboven. Standaard veranderde er dus niets, en
+  een beheerder moest een getal invullen om meer dan vijf woorden te krijgen —
+  voor filters en zoekvak tegelijk. Deze patch heeft **geen** instelling:
+  tekstfilters zijn altijd onbeperkt, het zoekvak blijft precies vijf. Voor
+  GEOxyz betekent dat: het veld verdwijnt uit Beheer → Configuratie → Issues,
+  filters werken zonder dat iemand iets instelt, en het zoekvak gebruikt weer de
+  eerste vijf woorden in plaats van het ingestelde getal. Dat laatste is K-04,
+  beslist op 2026-09-02 (optie A).
 - **Wat jij nog moet doen:** het issue bestaat al —
   [#43701](https://www.redmine.org/issues/43701), door jou aangemaakt op
   2026-01-21, zeven maanden zonder reactie. Hang de nieuwe patch daar als note
-  aan en leg in één alinea uit waarom deze vorm anders is dan de eerste. Er is
-  ook één keuze voor jou, zie K-04 in `docs/DECISIONS.md`.
+  aan en leg in één alinea uit waarom deze vorm anders is dan de eerste, en
+  benoem de oude bijlage als achterhaald.
 
 ## Trunk check (G1)
 
