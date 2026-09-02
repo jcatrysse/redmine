@@ -7,27 +7,43 @@
 ## Huidige positie
 
 De eerste feature is af: **`wiki-export-attachments`**. Patch klaar tegen trunk
-r24882, dezelfde wijziging staat als één commit op `7.0-stable-GEOxyz`, dossier
-compleet, screenshots gemaakt en gelezen. Jan moet er nog een issue voor
-aanmaken op redmine.org.
+r24882, dezelfde wijziging staat als één commit op `7.0-stable-GEOxyz`
+(`28c618860`), dossier compleet, screenshots gemaakt en gelezen. Jan moet er
+nog een issue voor aanmaken op redmine.org.
 
-Het archief is **genest naar de wikiboom** (Jans keuze K-02, optie B): elke
-pagina in haar eigen map onder haar ouder, met haar bijlagen ernaast, zodat een
-verwijzing als `!diagram.png!` in de tekst gewoon werkt als je het uitpakt. De
-gewone ZIP-link blijft plat en is aantoonbaar byte-identiek aan wat 7.0.0
-levert.
+Het ontwerp is **twee keer herzien op Jans aanwijzing**, en dat is belangrijk
+om te weten voordat je erover gaat twijfelen:
 
-Bewijs: volledige suite op de GEOxyz-branch **helemaal groen** (5919 runs,
-31716 assertions, 0 failures, 0 errors). Op trunk 27 failures + 2 errors, maar
-dat is exact dezelfde set als op een schone trunk zonder patch — 29 repository-tests die
-op deze machine falen omdat `svn`, `hg`, `bzr` en `cvs` niet geïnstalleerd
-zijn. Op `7.0-stable` falen diezelfde bestanden niet; dat verschil is een
+1. Eerst gebouwd als plat archief met een tweede link "ZIP met bijlagen",
+   omdat dat niets brak. Jan: doortrekken, één structuur (K-02, optie B).
+2. Toen genest, maar alleen bij de variant mét bijlagen. Jan vroeg terecht of
+   dat wel slim is. Antwoord: nee. Mijn argument ervoor ("zonder bijlagen is
+   een map een leeg omhulsel") gold alleen voor de platte variant, niet voor
+   een geneste. Nu: **de ZIP is altijd genest**.
+3. Daarna de vraag hoe je dan bijlagen kiest. Niet met een tweede link, maar
+   met het keuzevenster dat Redmine zelf al zes keer gebruikt voor CSV.
+
+Het eindresultaat: `export.zip` levert de wikiboom als mappenstructuur, en het
+vinkje "Bijlagen meesturen" in het ZIP-keuzevenster legt de bijlagen van elke
+pagina naast haar eigen tekst. Bijlagen blijven een keuze en geen automatisme,
+want `bulk_download_max_size` geldt zodra ze meegaan, en zonder ontsnappingsweg
+zou een project met veel bestanden zijn wiki helemaal niet meer kunnen
+exporteren.
+
+**Dit verandert de indeling van de export uit 7.0.0** (uitgekomen 30 juni 2026)
+en daarmee twee bestaande tests in trunk. Dat is bewust, staat vooraan in het
+dossier, en is het punt waarop het issue kan sneuvelen. Als upstream weigert,
+ligt de terugvaloptie klaar: dezelfde bijlagen achter een tweede link, platte
+indeling ongemoeid. Die is gebouwd en bewezen geweest, dus dat is een halve dag
+werk, geen herontwerp.
+
+Bewijs: volledige suite op de GEOxyz-branch **helemaal groen** (5921 runs,
+31735 assertions, 0 failures, 0 errors). Op trunk 27 failures + 2 errors, exact
+dezelfde set als op een schone trunk zonder patch — 29 repository-tests die op
+deze machine falen omdat `svn`, `hg`, `bzr` en `cvs` niet geïnstalleerd zijn.
+Op `7.0-stable` falen diezelfde bestanden niet; dat verschil is een
 trunk-wijziging (`Setting.enabled_scm`), niet iets van ons. Staat in het
 dossier onder "Found but not fixed".
-
-Daarvoor is `7.0-stable-GEOxyz` bijgewerkt naar upstream `7.0-stable`
-(`a7fe622f9` → `ffc731ed7`, fast-forward, geen conflicten). Die branch had nul
-eigen commits en heeft er nu één.
 
 Wat er onderweg aan het gereedschap is veranderd — allemaal omdat het echt
 misging, niet op voorhand bedacht:
@@ -41,14 +57,17 @@ misging, niet op voorhand bedacht:
   chromedriver in het image is vier majors te nieuw. Nu draaien ze echt.
 - `tools/check-patch-clean.sh` controleert nu ook de **auteur** van de commits,
   niet alleen het bericht. `git format-patch` zet de auteur in de `From:`-regel
-  van het bestand dat aan het issue hangt; "Claude <noreply@anthropic.com>"
-  daar is net zo goed een AI-spoor (INV-4). Commits op `patch/<slug>` en
-  `7.0-stable-GEOxyz` worden nu geschreven als Jan Catrysse.
+  van het bestand dat aan het issue hangt; een tool-identiteit daar is net zo
+  goed een AI-spoor (INV-4). Commits op `patch/<slug>` en `7.0-stable-GEOxyz`
+  worden nu geschreven als Jan Catrysse.
 - `tools/dev-seed.rb` zet nu ook wiki-bijlagen klaar, waaronder twee met
   dezelfde bestandsnaam op één pagina — dat is het botsingsgeval.
 - Er zijn nu drie testdatabases (`redmine_test`, `redmine_test_geoxyz`,
   `redmine_test_base`), zodat de trunk-patch, de GEOxyz-branch en een schone
   trunk-referentie tegelijk kunnen draaien in plaats van na elkaar.
+- `verify/wiki-export-attachments.mjs` klikt het keuzevenster echt open en
+  faalt als het niet binnen vijf seconden verschijnt. Een dialoog die in de
+  DOM staat maar nooit opengaat, is exact het defect dat G9 moet vangen.
 
 ## Volgende stap
 
@@ -74,7 +93,7 @@ in productie op 7.0? **Upstream** = waar staat de patch?
 
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Patch | Issue |
 |---|---|---|---|---|---|---|
-| `wiki-export-attachments` | Bijlagen mee in de wiki-ZIP-export, genest naar de wikiboom | `3c3e9368e` (deel) | live (`8716ee8c8`) | patch klaar | `patches/wiki-export-attachments/2026-09-01-r24882-{feature,locales}.patch` | — |
+| `wiki-export-attachments` | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` (deel) | live (`28c618860`) | patch klaar | `patches/wiki-export-attachments/2026-09-01-r24882-{feature,locales}.patch` | — |
 | `wiki-export-txt` | Hele wiki als één TXT-bestand | `3c3e9368e` (deel) | n.v.t. | vervallen | — | — |
 | `search-token-limit` | Configureerbare max zoektokens i.p.v. hardcoded 5 | `17528437d` | todo | todo | — | — |
 | `assignee-nobody` | "Niet toegewezen" combineerbaar met gekozen gebruikers | `9b03b74b2` | todo | todo | — | — |

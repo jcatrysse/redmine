@@ -264,8 +264,22 @@ four are regression guards on behaviour that must not move.
 - patch applies to pristine `origin/master` r24882: **yes**, each of the two
   files on its own, and together they reproduce the branch exactly.
 - `tools/check-patch-clean.sh`: **PASS** (7 checks).
-- **full** `test:all` on both branches: being re-measured on this build; the
-  figures land in the next commit.
+- **full** suite on `patch/wiki-export-attachments`
+  (`tools/test-env.sh … bundle exec ruby bin/rails test:all`, system tests
+  included): **5930 runs, 31504 assertions, 27 failures, 2 errors, 92 skips**
+  in 884 s.
+- Those 29 are **not this patch**. Running the five files they live in
+  (`repositories_controller_test`, `sys_controller_test`,
+  `api_test/repositories_test`, `api_test/issues_test`, `user_test`) on a
+  pristine `origin/master` r24882 checkout gives **274 runs, 27 failures,
+  2 errors**, and a `diff` of the sorted failing-test names against this run is
+  empty. All of them are `ActiveRecord::RecordInvalid: Validation failed: Type
+  is invalid` on `Repository::Subversion`, because this image has no `svn`,
+  `hg`, `bzr` or `cvs` binary. See "Found but not fixed".
+- **full** suite on `7.0-stable-GEOxyz` with the same change:
+  **5921 runs, 31735 assertions, 0 failures, 0 errors, 39 skips** in 891 s.
+  Completely green.
+- `tools/check-geoxyz-branch.sh`: **PASS**.
 
 # Live verification (G9)
 
@@ -375,11 +389,11 @@ Reported, not touched — INV-1.
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** `8716ee8c8` — de branch had nul eigen
+- **Commit op `7.0-stable-GEOxyz`:** `28c618860` — de branch had nul eigen
   commits en heeft er nu één. Eerst bijgewerkt naar upstream `7.0-stable`
   (`a7fe622f9` → `ffc731ed7`, fast-forward).
 - **Suites daar groen:** ja, volledig — `test:all` met systeemtests erbij:
-  5919 runs, 31716 assertions, 0 failures, 0 errors, 39 skips.
+  5921 runs, 31735 assertions, 0 failures, 0 errors, 39 skips.
 - **`nl.yml` toegevoegd:** ja, en `fr`, `de`, `es` — identiek aan de patch
   (INV-10).
 - **`tools/check-geoxyz-branch.sh`:** PASS
