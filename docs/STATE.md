@@ -11,9 +11,15 @@ r24882, dezelfde wijziging staat als één commit op `7.0-stable-GEOxyz`, dossie
 compleet, screenshots gemaakt en gelezen. Jan moet er nog een issue voor
 aanmaken op redmine.org.
 
-Bewijs: volledige suite op de GEOxyz-branch **helemaal groen** (5917 runs,
-0 failures, 0 errors). Op trunk 27 failures + 2 errors, maar dat is exact
-dezelfde set als op een schone trunk zonder patch — 29 repository-tests die
+Het archief is **genest naar de wikiboom** (Jans keuze K-02, optie B): elke
+pagina in haar eigen map onder haar ouder, met haar bijlagen ernaast, zodat een
+verwijzing als `!diagram.png!` in de tekst gewoon werkt als je het uitpakt. De
+gewone ZIP-link blijft plat en is aantoonbaar byte-identiek aan wat 7.0.0
+levert.
+
+Bewijs: volledige suite op de GEOxyz-branch **helemaal groen** (5919 runs,
+31716 assertions, 0 failures, 0 errors). Op trunk 27 failures + 2 errors, maar
+dat is exact dezelfde set als op een schone trunk zonder patch — 29 repository-tests die
 op deze machine falen omdat `svn`, `hg`, `bzr` en `cvs` niet geïnstalleerd
 zijn. Op `7.0-stable` falen diezelfde bestanden niet; dat verschil is een
 trunk-wijziging (`Setting.enabled_scm`), niet iets van ons. Staat in het
@@ -53,10 +59,9 @@ misging, niet op voorhand bedacht:
 (`docs/features/wiki-export-attachments.md`, alles onder "The problem"). Vul
 daarna het issuenummer in het register en in het dossier in.
 
-**Volgende sessie:** de volgende regel uit het register is
-`search-token-limit`. `wiki-export-txt` (de andere helft van de oude
-`wiki-export`-regel) kan ook, maar zie K-03 — die kandidaat is zwakker en Jan
-mag zeggen of hij hem überhaupt wil indienen.
+**Volgende sessie:** `search-token-limit`, de volgende regel in het register.
+`wiki-export-txt` is vervallen — Jan heeft op 2026-09-01 bevestigd dat GEOxyz
+die export niet gebruikt (K-03), dus daar gaat geen tijd meer in.
 
 ## Feature-register
 
@@ -69,8 +74,8 @@ in productie op 7.0? **Upstream** = waar staat de patch?
 
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Patch | Issue |
 |---|---|---|---|---|---|---|
-| `wiki-export-attachments` | Bijlagen mee in de wiki-ZIP-export | `3c3e9368e` (deel) | live | patch klaar | `patches/wiki-export-attachments/2026-09-01-r24882-{feature,locales}.patch` | — |
-| `wiki-export-txt` | Hele wiki als één TXT-bestand | `3c3e9368e` (deel) | todo | todo | — | — |
+| `wiki-export-attachments` | Bijlagen mee in de wiki-ZIP-export, genest naar de wikiboom | `3c3e9368e` (deel) | live (`8716ee8c8`) | patch klaar | `patches/wiki-export-attachments/2026-09-01-r24882-{feature,locales}.patch` | — |
+| `wiki-export-txt` | Hele wiki als één TXT-bestand | `3c3e9368e` (deel) | n.v.t. | vervallen | — | — |
 | `search-token-limit` | Configureerbare max zoektokens i.p.v. hardcoded 5 | `17528437d` | todo | todo | — | — |
 | `assignee-nobody` | "Niet toegewezen" combineerbaar met gekozen gebruikers | `9b03b74b2` | todo | todo | — | — |
 | `version-subprojects` | Doelversiefilter incl. subproject-versies | `89752a599` | todo | todo | — | — |
@@ -88,8 +93,8 @@ in productie op 7.0? **Upstream** = waar staat de patch?
 | `netimap-cve` | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — | — |
 | `auto-watch-defaults` | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — | — |
 
-Achttien regels (`wiki-export` is gesplitst in twee). Eén af, elf te gaan
-upstream, vijf nooit, één vervallen, één al binnen.
+Achttien regels (`wiki-export` is gesplitst in twee). Eén af, tien te gaan
+upstream, vijf nooit, twee vervallen, één al binnen.
 
 ## Wat er per feature al bekend is
 
@@ -104,9 +109,8 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
   beantwoordt die drie. Zonder die check hadden we de 5.1-vorm gebouwd (een
   eigen `export_attachments`-actie naast de bestaande export) en was de patch
   vrijwel zeker afgewezen.
-- **`wiki-export-txt`** — nog te doen, zie K-03. Trunk heeft nu per pagina een
-  `.txt` in de ZIP, dus de vraag "wat voegt één samengevoegd bestand toe" komt
-  gegarandeerd.
+- **`wiki-export-txt`** — vervallen. GEOxyz gebruikt de TXT-export niet, dus
+  er is niets te verdedigen en niets te bouwen. Niet opnieuw afwegen.
 - **`assignee-nobody`** — de 5.1-aanpak zet een pseudo-waarde in de generieke
   `Query#assigned_to_values` en behandelt die in een `elsif` in
   `Query#statement`, alleen voor operator `=`. Bij `!` en bij de

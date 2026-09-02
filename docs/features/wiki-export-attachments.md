@@ -213,24 +213,48 @@ ZIP. Not worth the query.
 
 | Test | What it proves | Red on the old code? |
 |---|---|---|
-| `test_export_to_zip_with_attachments` | attachment entries appear under a directory named after the page entry, with the right bytes and the attachment's `created_on` as timestamp | yes — `Expected nil to not be nil` |
-| `test_export_to_zip_should_not_include_attachments_by_default` | the default archive is unchanged — the guarantee the whole design rests on | no, by design: it is a regression guard, and it passes before and after |
-| `test_export_to_zip_with_attachments_set_to_zero_should_not_include_attachments` | `with_attachments=0` means no | yes — `Expected ["CookBook_documentation/testfile.txt"] to be empty` |
-| `test_export_to_zip_with_attachments_should_rename_duplicate_attachment_filenames` | two attachments with the same filename on one page both survive, the second as `name(1).ext` | yes — the entry list has no directory in it |
+| `test_export_to_zip_with_attachments` | the attachment lands in the page's own directory, with the right bytes and the attachment's `created_on` as timestamp, and the page source is in that same directory | yes — `Expected nil to not be nil` |
+| `test_export_to_zip_with_attachments_should_nest_pages_by_hierarchy` | a child page ends up under its parent: `CookBook_documentation/Page_with_an_inline_image/Page_with_an_inline_image.txt` | yes — the entry is absent |
+| `test_export_to_zip_with_attachments_should_rename_duplicate_attachment_filenames` | two attachments with the same filename on one page both survive, the second as `name(1).ext` | yes |
 | `test_export_to_zip_with_attachments_should_be_denied_when_total_size_exceeds_maximum` | over `bulk_download_max_size` the user is redirected with the existing error and no archive is sent | yes — `Expected response to be a <3XX: redirect>, but was a <200: OK>` |
 | `test_index_should_show_export_link_for_zip_with_attachments` | the link is on the page, with the URL the export actually answers | yes — `found 0` |
+| `test_export_to_zip_should_not_include_attachments_by_default` | the default archive stays flat and text-only | no, by design — a regression guard, it must pass before and after |
+| `test_export_to_zip_with_attachments_set_to_zero_should_not_include_attachments` | `with_attachments=0` means no | no, same reason |
+| `test_export_to_zip_should_be_allowed_when_bulk_download_max_size_is_exceeded` | the text-only export still works when the attachment limit is zero — the thing that makes opt-in worth it | no, same reason |
 
-**Evidence (INV-8 — figures, not claims):** de suites voor deze geneste versie
-draaien nog. De cijfers hieronder horen bij de vorige, platte versie en worden
-vervangen zodra beide runs klaar zijn. Niets in dit blok telt tot dat gebeurd
-is.
+Five of the eight are red without the change. The other three are regression
+guards on behaviour that must not move, so passing on both sides is the point
+of them.
+
+**Evidence (INV-8 — figures, not claims):**
+
+- **full** suite on `patch/wiki-export-attachments`
+  (`tools/test-env.sh … bundle exec ruby bin/rails test:all`, system tests
+  included): **5928 runs, 31481 assertions, 27 failures, 2 errors, 92 skips**
+  in 1105 s.
+- Those 29 are **not this patch**. Running the five files they live in
+  (`repositories_controller_test`, `sys_controller_test`,
+  `api_test/repositories_test`, `api_test/issues_test`, `user_test`) on a
+  pristine `origin/master` r24882 checkout gives **274 runs, 27 failures,
+  2 errors**, and a `diff` of the sorted failing-test names against this run is
+  empty. All of them are `ActiveRecord::RecordInvalid: Validation failed: Type
+  is invalid` on `Repository::Subversion`, because this image has no `svn`,
+  `hg`, `bzr` or `cvs` binary. See "Found but not fixed".
+- **full** suite on `7.0-stable-GEOxyz` with the same change:
+  **5919 runs, 31716 assertions, 0 failures, 0 errors, 39 skips** in 1107 s.
+  Completely green.
+- RuboCop on the changed Ruby files: **0 offences**; baseline on the same files
+  at the merge base: **0 offences**.
+- patch applies to pristine `origin/master` r24882: **yes**, each of the two
+  files on its own, and together they reproduce the branch exactly.
+- `tools/check-patch-clean.sh`: **PASS**. `tools/check-geoxyz-branch.sh`: **PASS**.
 
 # Live verification (G9)
 
 Exercised by hand in a real Redmine at `http://127.0.0.1:3000`, seeded by
-`tools/dev-seed.rb` (a three-page wiki: `Wiki` with `Child_one` and
-`Child_two`; `notes.txt` attached to `Wiki`, and two attachments both named
-`diagram.txt` on `Child_one` — the collision case). Screenshots in
+`tools/dev-seed.rb`: a wiki with `Wiki` as root and `Child_one` and `Child_two`
+under it, `notes.txt` attached to `Wiki`, and two attachments both named
+`diagram.txt` on `Child_one` — the collision case. Screenshots in
 `docs/features/wiki-export-attachments/shots/`, the archives themselves next to
 them.
 
@@ -241,35 +265,36 @@ them.
 | Same on the date index | `wiki-date-index.png` | the link is on both index views, not only one |
 | The translation is real | `nl-wiki-index.png` | `Exporteer naar PDF \| HTML \| ZIP \| ZIP met bijlagen \| Atom` |
 
-The archive itself, downloaded by clicking the link in the browser, not by
+The archive itself, downloaded by clicking the link in a browser, not by
 calling the controller (`zip-with-attachments.zip`):
 
-    Child_one.txt              43
-    Child_one/diagram.txt      15
-    Child_one/diagram(1).txt   31
-    Child_two.txt              43
-    Wiki.txt                   37
-    Wiki/notes.txt             38
+    Wiki/Wiki.txt                     37
+    Wiki/notes.txt                    38
+    Wiki/Child_one/Child_one.txt      43
+    Wiki/Child_one/diagram.txt        15
+    Wiki/Child_one/diagram(1).txt     31
+    Wiki/Child_two/Child_two.txt      43
 
-Both `diagram.txt` uploads survive, the second renamed. Page entries are
-untouched.
+The hierarchy is mirrored, each page's source sits in its own directory
+alongside its own attachments, and both `diagram.txt` uploads survive with the
+second renamed.
 
 Failure paths verified:
 
 | Case | Evidence | Expected | Observed |
 |---|---|---|---|
-| Plain ZIP must not change | `zip-plain-before.zip` vs `zip-plain-after.zip` | identical | **byte-identical** (`cmp` clean) — the pristine-trunk download and the patched download are the same file |
+| Plain ZIP must not change | `zip-plain-before.zip` vs `zip-plain-after.zip` | identical | **byte-identical** (`cmp` clean): still flat, `Child_one.txt` / `Child_two.txt` / `Wiki.txt`, the same file a pristine trunk instance produces |
 | Over `bulk_download_max_size` | `shots/size-limit-error.png` | refused, not truncated | redirected to the wiki index with Redmine's own `error_bulk_download_size_too_big` banner |
 | Plain ZIP still works at the limit | `zip-plain-at-limit-zero.zip` | unaffected | with `bulk_download_max_size = 0`, still byte-identical to pristine — this is what makes the opt-in design worth it |
 | `:export_wiki_pages` absent | `shots/no-permission-wiki-index.png` | no export links at all | as user `dev` with the permission removed: `Also available in: Atom` only |
 | Direct URL without the permission | logged | 403 | `GET /projects/geoxyz-verify/wiki/export.zip?with_attachments=1` → **HTTP 403** |
 
-Screenshots read, not just generated: yes. The first run of the verification
-produced an archive with **no** attachments even though the link rendered and
-every test passed — the dev database is shared between worktrees but `files/`
-is not, so `Attachment#readable?` was silently false for every attachment.
-That is exactly the class of defect G9 exists for, and it was only visible by
-looking at the downloaded archive. Fixed in `tools/dev-server.sh`.
+Screenshots read, not just generated: yes. The first verification run of this
+feature produced an archive with **no** attachments even though the link
+rendered and every test passed — the dev database is shared between worktrees
+but `files/` is not, so `Attachment#readable?` was silently false for every
+attachment. That is exactly the class of defect G9 exists for, and it was only
+visible by opening the downloaded archive. Fixed in `tools/dev-server.sh`.
 
 # Found but not fixed
 
@@ -319,11 +344,11 @@ Reported, not touched — INV-1.
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** `ca3229506` — de branch had nul eigen
+- **Commit op `7.0-stable-GEOxyz`:** `8716ee8c8` — de branch had nul eigen
   commits en heeft er nu één. Eerst bijgewerkt naar upstream `7.0-stable`
   (`a7fe622f9` → `ffc731ed7`, fast-forward).
-- **Suites daar groen:** ja, volledig — 5917 runs, 31706 assertions,
-  0 failures, 0 errors, 39 skips.
+- **Suites daar groen:** ja, volledig — `test:all` met systeemtests erbij:
+  5919 runs, 31716 assertions, 0 failures, 0 errors, 39 skips.
 - **`nl.yml` toegevoegd:** ja, en `fr`, `de`, `es` — identiek aan de patch
   (INV-10).
 - **`tools/check-geoxyz-branch.sh`:** PASS
