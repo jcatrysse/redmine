@@ -651,6 +651,7 @@ class Query < ApplicationRecord
   def assigned_to_values
     assigned_to_values = []
     assigned_to_values << ["<< #{l(:label_me)} >>", "me"] if User.current.logged?
+    assigned_to_values << ["<< #{l(:label_nobody)} >>", "none"]
     assigned_to_values +=
       (Setting.issue_group_assignment? ? principals : users).sort_by{|p| [p.status, p]}.
         collect{|s| [s.name, s.id.to_s, l("status_#{User::LABEL_BY_STATUS[s.status]}")]}
@@ -1244,6 +1245,10 @@ class Query < ApplicationRecord
   # Helper method to generate the WHERE sql for a +field+, +operator+ and a +value+
   def sql_for_field(field, operator, value, db_table, db_field, is_custom_filter=false)
     sql = ''
+    match_null =
+      !is_custom_filter && value.include?('none') &&
+      [:list_optional, :list_optional_with_history].include?(type_for(field))
+    value -= ['none'] if match_null
     case operator
     when "="
       if value.any?
@@ -1282,6 +1287,7 @@ class Query < ApplicationRecord
         # IN an empty set
         sql = "1=0"
       end
+      sql = "#{db_table}.#{db_field} IS NULL OR (#{sql})" if match_null
     when "!"
       if value.any?
         sql =
@@ -1293,6 +1299,7 @@ class Query < ApplicationRecord
         # NOT IN an empty set
         sql = "1=1"
       end
+      sql = "#{db_table}.#{db_field} IS NOT NULL AND (#{sql})" if match_null
     when "!*"
       sql = "#{db_table}.#{db_field} IS NULL"
       sql += " OR #{db_table}.#{db_field} = ''" if is_custom_filter || [:text, :string].include?(type_for(field))
@@ -1468,7 +1475,7 @@ class Query < ApplicationRecord
       sql = sql_contains("#{db_table}.#{db_field}", value.first, :ends_with => true)
     when "ev", "!ev", "cf"
       # has been,  has never been, changed from
-      if queried_class == Issue && value.present?
+      if queried_class == Issue && (value.present? || match_null)
         neg = (operator.start_with?('!') ? 'NOT' : '')
         subquery =
           "SELECT 1 FROM #{Journal.table_name}" +
@@ -1479,11 +1486,11 @@ class Query < ApplicationRecord
           " AND #{JournalDetail.table_name}.property = 'attr'" +
           " AND #{JournalDetail.table_name}.prop_key = '#{db_field}'" +
           " AND " +
-          queried_class.send(:sanitize_sql_for_conditions, ["#{JournalDetail.table_name}.old_value IN (?)", value.map(&:to_s)]) +
+          sql_for_in_or_null("#{JournalDetail.table_name}.old_value", value, match_null) +
           ")"
         sql_ev =
           if %w[ev !ev].include?(operator)
-            " OR " + queried_class.send(:sanitize_sql_for_conditions, ["#{db_table}.#{db_field} IN (?)", value.map(&:to_s)])
+            " OR " + sql_for_in_or_null("#{db_table}.#{db_field}", value, match_null)
           else
             ''
           end
@@ -1496,6 +1503,17 @@ class Query < ApplicationRecord
     end
 
     return sql
+  end
+
+  # Returns a SQL condition matching the given values, NULL values included
+  # if match_null is true
+  def sql_for_in_or_null(column, value, match_null)
+    conditions = []
+    conditions << "#{column} IS NULL" if match_null
+    if value.any?
+      conditions << queried_class.send(:sanitize_sql_for_conditions, ["#{column} IN (?)", value.map(&:to_s)])
+    end
+    conditions.size > 1 ? "(#{conditions.join(' OR ')})" : conditions.first
   end
 
   # Returns a SQL LIKE statement with wildcards
