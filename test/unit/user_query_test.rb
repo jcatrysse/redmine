@@ -172,6 +172,21 @@ class UserQueryTest < ActiveSupport::TestCase
     assert_not users.map(&:id).include? 8
   end
 
+  def test_group_filter_with_a_nobody_value_should_stay_correlated
+    q = UserQuery.new name: '_'
+    q.add_filter('is_member_of_group', '=', ['none', '10'])
+    users = find_users_with_query q
+    assert_equal [8], users.map(&:id)
+  end
+
+  def test_group_filter_not_with_a_nobody_value_should_stay_correlated
+    q = UserQuery.new name: '_'
+    q.add_filter('is_member_of_group', '!', ['none', '10'])
+    users = find_users_with_query q
+    assert users.any?
+    assert_not users.map(&:id).include? 8
+  end
+
   def test_auth_source_filter
     user = User.find(1)
     user.update_column :auth_source_id, 1
