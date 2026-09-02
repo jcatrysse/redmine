@@ -8,7 +8,7 @@
 
 Twee features af. De tweede is **`search-token-limit`**, deze sessie gebouwd,
 bewezen en klaar. Patch tegen trunk r24882, dezelfde wijziging als één commit
-op `7.0-stable-GEOxyz` (`ef9c91a05`), dossier compleet, tien screenshots
+op `7.0-stable-GEOxyz` (`1c85728aa`), dossier compleet, tien screenshots
 gemaakt en gelezen. Er hangt één keuze voor Jan aan (K-04).
 
 **Het belangrijkste van deze sessie is de trunk-check, niet de code.** Het issue
@@ -54,6 +54,14 @@ schone trunk 5920 / 31452 / 27 / 2 — **test voor test dezelfde 29 namen**, all
 (niet in het image). De patch voegt precies 4 runs en 4 assertions toe.
 GEOxyz-branch **helemaal groen**: 5925 runs, 31738 assertions, 0 failures,
 0 errors. RuboCop 0, baseline 0, aan beide kanten.
+
+De trunk-suite is daarna nog één keer gedraaid op exact de geëxporteerde commit
+(twee testmethodes verplaatst, verder identiek) en gaf toen 3 errors in plaats
+van 2. De derde is `OauthProviderSystemTest`, een Selenium-race in Chrome
+(*"Node with given id does not belong to the document"*) terwijl twee volledige
+suites samen op vier cores liepen. Los gedraaid op dezelfde commit: 1 run,
+13 assertions, 0 failures. Staat zo in het dossier — niet weggemoffeld, en ook
+niet "flaky" genoemd zonder het na te lopen.
 
 G9 heeft de fout zichtbaar gemaakt in een echte browser, en dat is het
 overtuigendste stuk van het dossier: `before-filter-contains.png` toont het
@@ -106,7 +114,7 @@ in productie op 7.0? **Upstream** = waar staat de patch?
 |---|---|---|---|---|---|---|
 | `wiki-export-attachments` | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` (deel) | live (`28c618860`) | patch klaar | `patches/wiki-export-attachments/2026-09-01-r24882-{feature,locales}.patch` | — (follow-up van #43978) |
 | `wiki-export-txt` | Hele wiki als één TXT-bestand | `3c3e9368e` (deel) | n.v.t. | vervallen | — | — |
-| `search-token-limit` | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`ef9c91a05`) | patch klaar | `patches/search-token-limit/2026-09-02-r24882-feature.patch` | [#43701](https://www.redmine.org/issues/43701) (bestaat, patch nog niet vervangen) |
+| `search-token-limit` | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | `patches/search-token-limit/2026-09-02-r24882-feature.patch` | [#43701](https://www.redmine.org/issues/43701) (bestaat, patch nog niet vervangen) |
 | `assignee-nobody` | "Niet toegewezen" combineerbaar met gekozen gebruikers | `9b03b74b2` | todo | todo | — | — |
 | `version-subprojects` | Doelversiefilter incl. subproject-versies | `89752a599` | todo | todo | — | — |
 | `mypage-query-blocks` | Configureerbaar max issuequery-blokken op Mijn pagina | `0214f3ecc` | todo | todo | — | — |
@@ -240,4 +248,11 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
   blijft dus nodig tot GEOxyz zelf naar de release met die feature gaat.
 - **Attributie hoort alleen op deze branch**, en dat geldt ook voor de
   commit-**auteur**. Zie K-01 en `tools/check-patch-clean.sh`.
+- **Amend en push in de juiste volgorde op `7.0-stable-GEOxyz`.** Deze sessie is
+  daar één keer een commit ge-amend *nadat* hij al gepusht was, wat een
+  force-push nodig maakte — precies wat de regel "nooit rebasen op deze branch"
+  wil voorkomen. Risico was nul (de tussenversie stond een paar minuten op de
+  remote en niemand kan die gehaald hebben), maar doe het niet opnieuw: lees je
+  eigen diff adversarieel **voor** de eerste push, of zet een correctie in een
+  tweede commit.
 - **`origin/ansifi/learn-and-test-7.0`** is referentiemateriaal, geen basis.

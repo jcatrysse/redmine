@@ -1,4 +1,4 @@
-From 866afcc43d8bb10fd0afa93486283d437950f7fb Mon Sep 17 00:00:00 2001
+From cb15bbb6484af1b54c6f98529ef62aef1a2392ad Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Wed, 2 Sep 2026 18:52:13 +0000
 Subject: [PATCH] Text filters no longer ignore keywords after the fifth
@@ -60,10 +60,10 @@ index e2d77cca0..78ccab9fa 100644
 +  end
  end
 diff --git a/test/unit/query_test.rb b/test/unit/query_test.rb
-index ebf7fc991..9648a34c0 100644
+index ebf7fc991..c8153c39c 100644
 --- a/test/unit/query_test.rb
 +++ b/test/unit/query_test.rb
-@@ -3421,6 +3421,28 @@ class QueryTest < ActiveSupport::TestCase
+@@ -3435,6 +3435,28 @@ class QueryTest < ActiveSupport::TestCase
      end
    end
  
@@ -89,9 +89,9 @@ index ebf7fc991..9648a34c0 100644
 +    assert_equal [1], query.issues.map(&:id)
 +  end
 +
-   def test_sql_contains_should_tokenize_for_ends_with
-     query = IssueQuery.new(
-       :project => nil, :name => '_',
+   def test_display_type_should_accept_known_types
+     query = ProjectQuery.new(:name => '_')
+     query.display_type = 'list'
 diff --git a/test/unit/search_test.rb b/test/unit/search_test.rb
 index 796cc6a6c..22dd1a13e 100644
 --- a/test/unit/search_test.rb

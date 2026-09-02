@@ -168,8 +168,19 @@ in every locale, to explain a limitation rather than lift it.
   `Redmine::ApiTest::RepositoriesTest`,
   `UserTest#test_destroy_should_nullify_changesets`). The patch adds exactly
   4 runs and 4 assertions and changes nothing else. See "Found but not fixed".
-- **full** suite on `7.0-stable-GEOxyz` with the same change
-  → 5925 runs, 31738 assertions, 0 failures, 0 errors, 39 skips
+- **confirmation run on the exact commit that was exported** (the two new
+  `QueryTest` methods were moved to sit after the existing
+  `test_sql_contains_should_tokenize*` group, so the earlier figures were
+  measured one line-position apart) → 5924 runs, 31452 assertions,
+  27 failures, **3** errors, 92 skips. The extra error is
+  `OauthProviderSystemTest#test_application_creation_and_authorization`,
+  `Selenium::WebDriver::Error::UnknownError: unhandled inspector error: Node
+  with given id does not belong to the document` — a driver-level race in
+  Chrome while two full suites shared four cores, in a test this patch does not
+  touch. Re-run on its own on the same commit: **1 run, 13 assertions,
+  0 failures, 0 errors**. The other 29 are the same 29.
+- **full** suite on `7.0-stable-GEOxyz` with the same change, on the exported
+  commit → 5925 runs, 31738 assertions, 0 failures, 0 errors, 39 skips
 - RuboCop on the four changed files: **0** offences (baseline at
   `origin/master`, same four files: **0**). On `7.0-stable-GEOxyz`: **0**
   offences on the 6 changed Ruby files (baseline at `origin/7.0-stable`,
@@ -267,7 +278,7 @@ Two things the images show that the numbers do not:
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** `ef9c91a05`
+- **Commit op `7.0-stable-GEOxyz`:** `1c85728aa`
 - **Suites daar groen:** 5925 runs, 31738 assertions, 0 failures, 0 errors, 39 skips — helemaal groen
 - **`nl.yml` toegevoegd:** n.v.t. — geen nieuwe strings
 - **`tools/check-geoxyz-branch.sh`:** PASS
