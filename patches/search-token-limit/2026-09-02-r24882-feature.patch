@@ -1,0 +1,114 @@
+From 866afcc43d8bb10fd0afa93486283d437950f7fb Mon Sep 17 00:00:00 2001
+From: Jan Catrysse <jan.catrysse@geoxyz.eu>
+Date: Wed, 2 Sep 2026 18:52:13 +0000
+Subject: [PATCH] Text filters no longer ignore keywords after the fifth
+ (#43701).
+
+The five-token limit in Redmine::Search::Tokenizer was written for the search
+engine, where one LIKE per token runs against every searchable class in every
+selected project. Since r21238 the tokenizer is also what text filters and the
+issue autocomplete use to split a filter value into terms, so the limit reached
+code it was never meant for: the ~, !~, *~, ^ and $ operators silently drop
+whatever the user typed after the fifth word and return a result set that does
+not match the filter.
+
+Take the first five tokens in Redmine::Search::Fetcher instead, so the search
+engine keeps its limit and text filters use every token.
+---
+ lib/redmine/search.rb                |  6 +++---
+ test/unit/lib/redmine/search_test.rb |  5 +++++
+ test/unit/query_test.rb              | 22 ++++++++++++++++++++++
+ test/unit/search_test.rb             |  6 ++++++
+ 4 files changed, 36 insertions(+), 3 deletions(-)
+
+diff --git a/lib/redmine/search.rb b/lib/redmine/search.rb
+index 3605d866f..35749349a 100644
+--- a/lib/redmine/search.rb
++++ b/lib/redmine/search.rb
+@@ -56,7 +56,8 @@ module Redmine
+         @projects = projects
+         @cache = options.delete(:cache)
+         @options = options
+-        @tokens = Tokenizer.new(@question).tokens
++        # no more than 5 tokens to search for
++        @tokens = Tokenizer.new(@question).tokens.first(5)
+       end
+ 
+       # Returns the total result count
+@@ -141,8 +142,7 @@ module Redmine
+         end
+         # tokens must be at least 2 characters long
+         # but for Chinese characters (Chinese HANZI/Japanese KANJI), tokens can be one character
+-        # no more than 5 tokens to search for
+-        tokens.uniq.select{|w| w.length > 1 || w =~ /\p{Han}/}.first 5
++        tokens.uniq.select{|w| w.length > 1 || w =~ /\p{Han}/}
+       end
+     end
+ 
+diff --git a/test/unit/lib/redmine/search_test.rb b/test/unit/lib/redmine/search_test.rb
+index e2d77cca0..78ccab9fa 100644
+--- a/test/unit/lib/redmine/search_test.rb
++++ b/test/unit/lib/redmine/search_test.rb
+@@ -35,4 +35,9 @@ class Redmine::Search::Tokenize < ActiveSupport::TestCase
+     value = '"phrase one" "phrase two"'
+     assert_equal ["phrase one", "phrase two"], Redmine::Search::Tokenizer.new(value).tokens
+   end
++
++  def test_tokenize_should_not_limit_the_number_of_tokens
++    value = "one two three four five six seven"
++    assert_equal %w[one two three four five six seven], Redmine::Search::Tokenizer.new(value).tokens
++  end
+ end
+diff --git a/test/unit/query_test.rb b/test/unit/query_test.rb
+index ebf7fc991..9648a34c0 100644
+--- a/test/unit/query_test.rb
++++ b/test/unit/query_test.rb
+@@ -3421,6 +3421,28 @@ class QueryTest < ActiveSupport::TestCase
+     end
+   end
+ 
++  def test_sql_contains_should_not_limit_the_number_of_tokens
++    query = IssueQuery.new(
++      :project => nil, :name => '_',
++      :filters => {
++        'subject' => {:operator => '~', :values => ['closed issue on locked version nomatch']}
++      }
++    )
++
++    assert_equal [], query.issues
++  end
++
++  def test_sql_contains_should_not_limit_the_number_of_tokens_for_contains_any_of
++    query = IssueQuery.new(
++      :project => nil, :name => '_',
++      :filters => {
++        'subject' => {:operator => '*~', :values => ['nomatch1 nomatch2 nomatch3 nomatch4 nomatch5 recipes']}
++      }
++    )
++
++    assert_equal [1], query.issues.map(&:id)
++  end
++
+   def test_sql_contains_should_tokenize_for_ends_with
+     query = IssueQuery.new(
+       :project => nil, :name => '_',
+diff --git a/test/unit/search_test.rb b/test/unit/search_test.rb
+index 796cc6a6c..22dd1a13e 100644
+--- a/test/unit/search_test.rb
++++ b/test/unit/search_test.rb
+@@ -211,6 +211,12 @@ class SearchTest < ActiveSupport::TestCase
+     assert_equal ['ca', '漢'], f.tokens
+   end
+ 
++  def test_fetcher_should_use_no_more_than_five_tokens
++    f = Redmine::Search::Fetcher.new('one two three four five six seven',
++                                     User.anonymous, %w(issues), Project.all)
++    assert_equal %w[one two three four five], f.tokens
++  end
++
+   private
+ 
+   def remove_permission(role, permission)
+-- 
+2.43.0
+

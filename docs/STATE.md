@@ -6,81 +6,92 @@
 
 ## Huidige positie
 
-De eerste feature is af: **`wiki-export-attachments`**. Patch klaar tegen trunk
-r24882, dezelfde wijziging staat als één commit op `7.0-stable-GEOxyz`
-(`28c618860`), dossier compleet, screenshots gemaakt en gelezen. Jan moet er
-nog een issue voor aanmaken op redmine.org.
+Twee features af. De tweede is **`search-token-limit`**, deze sessie gebouwd,
+bewezen en klaar. Patch tegen trunk r24882, dezelfde wijziging als één commit
+op `7.0-stable-GEOxyz` (`ef9c91a05`), dossier compleet, tien screenshots
+gemaakt en gelezen. Er hangt één keuze voor Jan aan (K-04).
 
-Het ontwerp is **twee keer herzien op Jans aanwijzing**, en dat is belangrijk
-om te weten voordat je erover gaat twijfelen:
+**Het belangrijkste van deze sessie is de trunk-check, niet de code.** Het issue
+bestaat al: [#43701](https://www.redmine.org/issues/43701), door Jan aangemaakt
+op 2026-01-21, met de 5.1-patch eraan, en in zeven maanden geen enkele reactie.
+Die patch voegt een instelling `search_token_limit` toe (51,6 kB, 48
+locale-bestanden) om een limiet te overrulen.
 
-1. Eerst gebouwd als plat archief met een tweede link "ZIP met bijlagen",
-   omdat dat niets brak. Jan: doortrekken, één structuur (K-02, optie B).
-2. Toen genest, maar alleen bij de variant mét bijlagen. Jan vroeg terecht of
-   dat wel slim is. Antwoord: nee. Mijn argument ervoor ("zonder bijlagen is
-   een map een leeg omhulsel") gold alleen voor de platte variant, niet voor
-   een geneste. Nu: **de ZIP is altijd genest**.
-3. Daarna de vraag hoe je dan bijlagen kiest. Niet met een tweede link, maar
-   met het keuzevenster dat Redmine zelf al zes keer gebruikt voor CSV.
+Wat de git-geschiedenis van trunk laat zien: die limiet van vijf tokens is
+nooit voor filters bedacht. Tot r21238 (2021-10-05, #35148) stond het
+tokeniseren inline in `Redmine::Search::Fetcher#initialize` en eindigde het op
+`@tokens.slice! 5..-1` — een grens van de **zoekmachine**, die per token een
+LIKE over elke soort en elk project legt. Die commit verplaatste het blok
+woordelijk naar een nieuwe klasse `Tokenizer` zodat tekstfilters en de
+issue-autocomplete het tokeniseren konden hergebruiken, en de limiet ging mee.
+Sindsdien gooien vijf filteroperatoren (`~`, `!~`, `*~`, `^`, `$`) stil alles
+weg wat een gebruiker na het vijfde woord typt.
 
-Het eindresultaat: `export.zip` levert de wikiboom als mappenstructuur, en het
-vinkje "Bijlagen meesturen" in het ZIP-keuzevenster legt de bijlagen van elke
-pagina naast haar eigen tekst. Bijlagen blijven een keuze en geen automatisme,
-want `bulk_download_max_size` geldt zodra ze meegaan, en zonder ontsnappingsweg
-zou een project met veel bestanden zijn wiki helemaal niet meer kunnen
-exporteren.
+Dus geen instelling. De patch zet de vijf terug bij de enige caller die hem
+nodig heeft:
 
-**Dit verandert de indeling van de export uit 7.0.0** (uitgekomen 30 juni 2026)
-en daarmee twee bestaande tests in trunk. Dat is bewust, staat vooraan in het
-dossier, en is het punt waarop het issue kan sneuvelen. Als upstream weigert,
-ligt de terugvaloptie klaar: dezelfde bijlagen achter een tweede link, platte
-indeling ongemoeid. Die is gebouwd en bewezen geweest, dus dat is een halve dag
-werk, geen herontwerp.
+    -        @tokens = Tokenizer.new(@question).tokens
+    +        # no more than 5 tokens to search for
+    +        @tokens = Tokenizer.new(@question).tokens.first(5)
 
-Bewijs: volledige suite op de GEOxyz-branch **helemaal groen** (5921 runs,
-31735 assertions, 0 failures, 0 errors). Op trunk 27 failures + 2 errors, exact
-dezelfde set als op een schone trunk zonder patch — 29 repository-tests die op
-deze machine falen omdat `svn`, `hg`, `bzr` en `cvs` niet geïnstalleerd zijn.
-Op `7.0-stable` falen diezelfde bestanden niet; dat verschil is een
-trunk-wijziging (`Setting.enabled_scm`), niet iets van ons. Staat in het
-dossier onder "Found but not fixed".
+    -        # no more than 5 tokens to search for
+    -        tokens.uniq.select{|w| ... }.first 5
+    +        tokens.uniq.select{|w| ... }
 
-Wat er onderweg aan het gereedschap is veranderd — allemaal omdat het echt
-misging, niet op voorhand bedacht:
+Vier regels in één bestand. `app/models/query.rb` en `app/models/issue.rb`
+worden niet aangeraakt: die roepen `Tokenizer.new(value).tokens` al aan en
+krijgen nu alles terug. Geen instelling, geen migratie, geen route, geen
+permissie, en **geen enkele nieuwe string** — dus ook geen locale-patch en geen
+tweede patchbestand. Het exportbestand is 114 regels tegen 51,6 kB.
 
-- `tools/dev-server.sh` wijst elke worktree naar één map voor bijlagen. Zonder
-  dat verdwenen bijlagen stil zodra de dev-server van worktree wisselde, en
-  leek de feature niet te werken terwijl de code klopte. **Dit is precies
-  waarvoor G9 bestaat.**
-- `tools/test-env.sh` is nieuw. `test:all` gaf ~260 fouten die niets met de
-  patch te maken hadden: de systeemtests vinden geen `chrome` op `PATH` en de
-  chromedriver in het image is vier majors te nieuw. Nu draaien ze echt.
-- `tools/check-patch-clean.sh` controleert nu ook de **auteur** van de commits,
-  niet alleen het bericht. `git format-patch` zet de auteur in de `From:`-regel
-  van het bestand dat aan het issue hangt; een tool-identiteit daar is net zo
-  goed een AI-spoor (INV-4). Commits op `patch/<slug>` en `7.0-stable-GEOxyz`
-  worden nu geschreven als Jan Catrysse.
-- `tools/dev-seed.rb` zet nu ook wiki-bijlagen klaar, waaronder twee met
-  dezelfde bestandsnaam op één pagina — dat is het botsingsgeval.
-- Er zijn nu drie testdatabases (`redmine_test`, `redmine_test_geoxyz`,
-  `redmine_test_base`), zodat de trunk-patch, de GEOxyz-branch en een schone
-  trunk-referentie tegelijk kunnen draaien in plaats van na elkaar.
-- `verify/wiki-export-attachments.mjs` klikt het keuzevenster echt open en
-  faalt als het niet binnen vijf seconden verschijnt. Een dialoog die in de
-  DOM staat maar nooit opengaat, is exact het defect dat G9 moet vangen.
+Geen enkele bestaande test in trunk legde die vijf vast, dus er breekt niets —
+het tegenovergestelde van `wiki-export-attachments`, dat twee trunk-tests
+veranderde.
+
+Bewijs: trunk met patch 5924 runs / 31456 assertions / 27 failures / 2 errors,
+schone trunk 5920 / 31452 / 27 / 2 — **test voor test dezelfde 29 namen**, alle
+29 repository- of changeset-tests die `svn`, `hg`, `bzr` of `cvs` nodig hebben
+(niet in het image). De patch voegt precies 4 runs en 4 assertions toe.
+GEOxyz-branch **helemaal groen**: 5925 runs, 31738 assertions, 0 failures,
+0 errors. RuboCop 0, baseline 0, aan beide kanten.
+
+G9 heeft de fout zichtbaar gemaakt in een echte browser, en dat is het
+overtuigendste stuk van het dossier: `before-filter-contains.png` toont het
+filter "Subject contains: pump alignment survey report northern zzz" met
+daaronder één resultaat, issue #7 "Pump alignment survey report northern wind
+farm" — een issue dat `zzz` niet bevat. Na de patch: "No data to display". De
+twee zoekpagina-screenshots markeren de gebruikte tokens en daar zijn er
+precies vijf gemarkeerd, voor én na: dat is het bewijs dat de grens van de
+zoekmachine blijft staan.
+
+`tools/dev-seed.rb` zaait nu ook één issue met een onderwerp van zeven woorden.
+Zonder dat kon G9 de fout niet laten zien: geen bestaand gezaaid onderwerp is
+lang genoeg om een filter meer dan vijf bruikbare tokens te geven.
 
 ## Volgende stap
 
-**Jan:** maak het issue aan op redmine.org als follow-up van
-[#43978](https://www.redmine.org/issues/43978) en hang er
-`patches/wiki-export-attachments/2026-09-01-r24882-feature.patch` en
-`-locales.patch` aan. De issuetekst staat kant-en-klaar in het dossier
-(`docs/features/wiki-export-attachments.md`, alles onder "The problem"). Vul
-daarna het issuenummer in het register en in het dossier in.
+**Jan, twee dingen:**
 
-**Volgende sessie:** `search-token-limit`, de volgende regel in het register.
-`wiki-export-txt` is vervallen — Jan heeft op 2026-09-01 bevestigd dat GEOxyz
-die export niet gebruikt (K-03), dus daar gaat geen tijd meer in.
+1. Hang `patches/search-token-limit/2026-09-02-r24882-feature.patch` als note
+   aan het bestaande issue [#43701](https://www.redmine.org/issues/43701) en
+   leg in één alinea uit waarom de vorm veranderd is: geen instelling meer, het
+   is de limiet terugzetten waar hij hoort. De Engelse tekst staat kant-en-klaar
+   in `docs/features/search-token-limit.md`, alles vanaf "The problem". De
+   voor/na-screenshots zitten in `docs/features/search-token-limit/shots/`.
+   Vergeet niet de oude bijlage als achterhaald te benoemen.
+2. Beantwoord **K-04** in `docs/DECISIONS.md`: heeft GEOxyz meer dan vijf
+   zoekwoorden nodig in het globale zoekvak, of alleen in de filters? Wij
+   bouwden "alleen in de filters". Niet blokkerend.
+
+Ook nog open van de vorige sessie: het issue voor `wiki-export-attachments` is
+nog niet aangemaakt. Dat is een follow-up van
+[#43978](https://www.redmine.org/issues/43978) met twee patchbestanden.
+
+**Volgende sessie:** `assignee-nobody`, de volgende regel in het register.
+Daar is al iets van bekend, zie "Wat er per feature al bekend is": de
+5.1-aanpak geeft een `500` op PostgreSQL bij de operatoren `!`, `ev`, `!ev` en
+`cf`, en dat is reproduceerbaar. Reken erop dat dat een echte bug is die bij
+deze feature hoort.
 
 ## Feature-register
 
@@ -93,15 +104,15 @@ in productie op 7.0? **Upstream** = waar staat de patch?
 
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Patch | Issue |
 |---|---|---|---|---|---|---|
-| `wiki-export-attachments` | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` (deel) | live (`28c618860`) | patch klaar | `patches/wiki-export-attachments/2026-09-01-r24882-{feature,locales}.patch` | — |
+| `wiki-export-attachments` | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` (deel) | live (`28c618860`) | patch klaar | `patches/wiki-export-attachments/2026-09-01-r24882-{feature,locales}.patch` | — (follow-up van #43978) |
 | `wiki-export-txt` | Hele wiki als één TXT-bestand | `3c3e9368e` (deel) | n.v.t. | vervallen | — | — |
-| `search-token-limit` | Configureerbare max zoektokens i.p.v. hardcoded 5 | `17528437d` | todo | todo | — | — |
+| `search-token-limit` | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`ef9c91a05`) | patch klaar | `patches/search-token-limit/2026-09-02-r24882-feature.patch` | [#43701](https://www.redmine.org/issues/43701) (bestaat, patch nog niet vervangen) |
 | `assignee-nobody` | "Niet toegewezen" combineerbaar met gekozen gebruikers | `9b03b74b2` | todo | todo | — | — |
 | `version-subprojects` | Doelversiefilter incl. subproject-versies | `89752a599` | todo | todo | — | — |
 | `mypage-query-blocks` | Configureerbaar max issuequery-blokken op Mijn pagina | `0214f3ecc` | todo | todo | — | — |
 | `webhook-tracker-filter` | Webhook beperken tot gekozen trackers | `25220b45d` (deel) | todo | todo | — | — |
 | `webhook-issue-closed` | Apart `issue.closed`-event | `25220b45d` (deel) | todo | todo | — | — |
-| `members-pagination` | Paginatie op projectleden en groepsleden | `455f5753c` | todo | todo | — | — |
+| `members-pagination` | Paginatie op projectleden en groepsleden | `455f5753c` | todo | todo | — | #43355 (aanhaken) |
 | `revision-branches` | Git-branches op revisie- én issuepagina | `cf826e3fd` | todo | todo | — | — |
 | `imap-oauth` | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | todo | todo | — | — |
 | `geoxyz-hosts` | `*.geoxyz.eu` toestaan in development | `918f3466e` | todo | nooit | — | — |
@@ -112,8 +123,8 @@ in productie op 7.0? **Upstream** = waar staat de patch?
 | `netimap-cve` | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — | — |
 | `auto-watch-defaults` | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — | — |
 
-Achttien regels (`wiki-export` is gesplitst in twee). Eén af, tien te gaan
-upstream, vijf nooit, twee vervallen, één al binnen.
+Achttien regels. **Twee af**, negen te gaan upstream, vijf nooit, twee
+vervallen, één al binnen.
 
 ## Wat er per feature al bekend is
 
@@ -125,11 +136,15 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
   indiener daarvan schreef er expliciet bij dat hij bijlagen bewust wegliet
   omdat ze "additional design questions" opwerpen — archiefstructuur,
   naamconflicten, en verwijzingen naar bijlagen in de tekst. Het dossier
-  beantwoordt die drie. Zonder die check hadden we de 5.1-vorm gebouwd (een
-  eigen `export_attachments`-actie naast de bestaande export) en was de patch
-  vrijwel zeker afgewezen.
-- **`wiki-export-txt`** — vervallen. GEOxyz gebruikt de TXT-export niet, dus
-  er is niets te verdedigen en niets te bouwen. Niet opnieuw afwegen.
+  beantwoordt die drie.
+- **`search-token-limit`** — af. De trunk-check was hier opnieuw beslissend,
+  maar op een andere manier: niet "bestaat het al?" maar "wanneer is die
+  constante er gekomen en waarom?". Het antwoord (r21238, een refactor die het
+  blok woordelijk verplaatste) veranderde de patch van een instelling in een
+  fix van vier regels. **Dat is het patroon dat de volgende features moeten
+  volgen: zoek de commit die de regel invoerde, niet alleen de regel.**
+- **`wiki-export-txt`** — vervallen. GEOxyz gebruikt de TXT-export niet. Niet
+  opnieuw afwegen.
 - **`assignee-nobody`** — de 5.1-aanpak zet een pseudo-waarde in de generieke
   `Query#assigned_to_values` en behandelt die in een `elsif` in
   `Query#statement`, alleen voor operator `=`. Bij `!` en bij de
@@ -164,38 +179,65 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
 
 ## Bekende valkuilen
 
+- **Doe de trunk-check op de *herkomst* van een constante, niet alleen op het
+  bestaan van de feature.** `search-token-limit` werd een vierregelige fix in
+  plaats van een instelling omdat `git log -S` liet zien wanneer en waarom die
+  `.first 5` daar terechtkwam. `git log --oneline -S "<de code>" -- <bestand>`
+  is het commando, en daarna de commit zelf lezen.
+- **Zoek ook op redmine.org vóór je begint.** Voor deze feature bestond al een
+  issue van Jan zelf (#43701), met de 5.1-patch eraan. Dat verandert de
+  inzending van "nieuw issue" in "note met een betere patch, en zeg waarom".
 - **De trunk-mirror loopt achter.** `origin/master` staat op r24882 van
-  2026-08-03; vandaag is 2026-09-01. Redmine's bron is SVN en deze fork
-  synchroniseert niet vanzelf. Altijd verse fetch vóór een patch, en de
-  revisie noemen in het issue.
+  2026-08-03. Redmine's bron is SVN en deze fork synchroniseert niet vanzelf.
+  Altijd verse fetch vóór een patch, en de revisie noemen in het issue.
 - **De sessie-omgeving zet je op een verkeerde branch.** Elke sessie krijgt een
-  eigen `claude/...`-branch die de framework-commits mist. Meteen
-  `git checkout geoxyz/framework` en `git merge --ff-only origin/geoxyz/framework`.
+  eigen `claude/...`-branch. Meteen `git checkout geoxyz/framework` en
+  `git merge --ff-only origin/geoxyz/framework`. Deze sessie stond de vorige
+  sessie zijn werk op de `claude/...`-branch en op `geoxyz/framework`, dus de
+  lokale `geoxyz/framework` liep 14 commits achter — fast-forwarden loste dat op.
+- **De worktrees zijn er niet meer bij een nieuwe sessie.** De container is
+  leeg. Opnieuw aanmaken, en per worktree een `config/database.yml` schrijven
+  **vóór** `bundle install` (de Gemfile leest dat bestand). Kost ~5 minuten per
+  worktree; start ze parallel in de achtergrond.
+- **Ook de remote branches zijn er niet.** `git ls-remote --heads origin` en dan
+  gericht fetchen: `7.0-stable-GEOxyz`, `7.0-stable`, `5.1-stable-GEOxyz` (daar
+  staan de 5.1-commits), `ansifi/learn-and-test-7.0`, `master`.
+- **`dev-server.sh` schrijft `config/database.yml` alleen als het niet bestaat.**
+  Heb je er al een met alleen een `test:`-sectie (voor de suite), dan mist de
+  `development:`-sectie en start de dev-server niet. Zelf toevoegen.
+- **Er is één dev-database en één poort.** Voor/na-screenshots gaan dus na
+  elkaar: eerst de dev-server op een schone-trunk-worktree voor de
+  `before-`shots, dan stoppen en opnieuw starten op de patch-worktree. Doe dat
+  **niet** met `git stash` in een worktree waar op dat moment een suite loopt.
 - **Bijlagen leven per worktree, de dev-database niet.** Opgelost in
   `dev-server.sh` (`/tmp/redmine-dev-files`), maar weet waarom: een bijlage die
   je uploadt terwijl worktree A draait, is onleesbaar vanuit worktree B, en
-  `Attachment#readable?` laat hem dan stil vallen. Zo lijkt een correcte
-  feature stuk.
+  `Attachment#readable?` laat hem dan stil vallen.
 - **`test:all` is waardeloos zonder `tools/test-env.sh`** — ~260 fouten in de
   systeemtests die niets met je patch te maken hebben.
 - **Alleen git is beschikbaar als SCM.** `svn`, `hg`, `bzr` en `cvs` staan niet
-  in het image, dus die repository-suites skippen of falen ongeacht je patch.
-  Vergelijk met een schone trunk-run voor je iets aan een patch toeschrijft.
+  in het image, dus 29 repository- en changeset-tests falen op trunk ongeacht je
+  patch. Draai altijd een tweede volledige suite op een schone trunk-worktree
+  (`redmine_test_base`) en `diff` de lijst met faalnamen; dat is het enige
+  sluitende bewijs. Op `7.0-stable` falen diezelfde bestanden niet.
+- **Drie testdatabases** (`redmine_test`, `redmine_test_geoxyz`,
+  `redmine_test_base`) zodat de patch, de GEOxyz-branch en de schone
+  trunk-referentie tegelijk kunnen draaien. Met 4 cores lopen twee suites
+  comfortabel parallel, drie is krap.
+- **Het filterformulier van Redmine is JavaScript.** De filterrij is
+  `div.filter#tr_<veld>` in `#filters-table`, aangemaakt door `addFilter()`, en
+  de gekozen operator en de waarde staan alleen in de DOM-*properties*, niet in
+  de HTML. In Playwright dus `inputValue()` op `#operators_<veld>` en
+  `#values_<veld>`, niet `getAttribute`. Een selector op `tr#tr_<veld>` vindt
+  niets.
 - **`lib/tasks/**/*` is uitgesloten in Redmine's `.rubocop.yml`.** Rake-code
-  wordt dus niet gelint. Daar is menselijke review de enige controle.
-- **Redmine laadt hele suites in één proces.** Een testbestand dat
-  `minitest/autorun` gebruikt, een `.rake` `load`t, of een constante buiten de
-  autoloader definieert, vervuilt zijn buren. Draai testbestanden dus altijd
+  wordt dus niet gelint.
+- **Redmine laadt hele suites in één proces.** Draai testbestanden dus altijd
   ook samen.
-- **`config/database.yml` bestaat niet** in de repo en is gitignored; die moet
-  je zelf aanmaken, en wel vóór `bundle install`. Gebruik een tweede database
-  (`redmine_test_geoxyz`) voor de GEOxyz-worktree, dan draaien beide suites
-  tegelijk.
 - **RuboCop leest de working tree, niet een ref.** Lint dus altijd binnen een
   worktree die op de juiste commit staat.
-- **Een geaccepteerde trunk-patch komt niet in 7.0-stable.** Redmine backportt
-  geen features naar een stable branch. Elke GEOxyz-commit blijft dus nodig tot
-  GEOxyz zelf naar de release met die feature gaat.
+- **Een geaccepteerde trunk-patch komt niet in 7.0-stable.** Elke GEOxyz-commit
+  blijft dus nodig tot GEOxyz zelf naar de release met die feature gaat.
 - **Attributie hoort alleen op deze branch**, en dat geldt ook voor de
-  commit-**auteur**, niet alleen de trailers. Zie K-01 en de wachter.
+  commit-**auteur**. Zie K-01 en `tools/check-patch-clean.sh`.
 - **`origin/ansifi/learn-and-test-7.0`** is referentiemateriaal, geen basis.

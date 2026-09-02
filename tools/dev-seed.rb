@@ -6,6 +6,7 @@
 require 'tempfile'
 
 PASSWORD = ENV.fetch('REDMINE_ADMIN_PASSWORD', 'GEOxyzDev123!')
+LONG_SUBJECT = 'Pump alignment survey report northern wind farm'
 
 admin = User.find_by_login('admin') ||
         User.new(login: 'admin', firstname: 'Redmine', lastname: 'Admin', mail: 'admin@example.net')
@@ -64,6 +65,16 @@ if project.issues.count < 6
       assigned_to: (n.even? ? User.find_by_login('dev') : nil)
     )
   end
+end
+
+# A subject with seven distinct words, so a text filter can be given more than
+# the five tokens the search engine caps at.
+unless project.issues.exists?(subject: LONG_SUBJECT)
+  Issue.create!(
+    project: project, tracker: Tracker.first, author: admin,
+    status: IssueStatus.where(is_closed: false).first, priority: IssuePriority.first,
+    subject: LONG_SUBJECT
+  )
 end
 
 project.create_wiki!(start_page: 'Wiki') if project.wiki.nil?

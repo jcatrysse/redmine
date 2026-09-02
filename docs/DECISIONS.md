@@ -52,11 +52,32 @@
 | 2026-09-01 | Commits op `patch/<slug>` en `7.0-stable-GEOxyz` worden geschreven als **Jan Catrysse <jan.catrysse@geoxyz.eu>** | `git format-patch` zet de auteur in de `From:`-regel van het bestand dat aan het issue hangt. Een tool-identiteit daar is net zo goed een AI-spoor als één in het bericht (INV-4). Gevonden door de patch te exporteren en te lezen; `tools/check-patch-clean.sh` controleert het nu mechanisch. |
 | 2026-09-01 | ~~De geneste indeling geldt **alleen** voor `with_attachments=1`~~ — **vervallen**, Jan trok het door naar altijd genest, zie "Beslist (Jan)" | Jan koos B maar niet de scoping, en ik had er twee genoemd met elk een prijs. Dit is de enige die niets breekt: een export die vier maanden geleden is uitgekomen verandert niet voor mensen die nooit om bijlagen vroegen. Het bezwaar "twee indelingen achter één actie" is echt, en het antwoord staat in het dossier: de mappen bestaan om bijlagen naast hun pagina te zetten, dus zonder bijlagen zouden het lege omhulsels rond één bestand zijn. Aantoonbaar: de gewone ZIP van een gepatchte instance is `cmp`-identiek aan die van een schone trunk. |
 | 2026-09-01 | `tools/dev-server.sh` wijst elke worktree naar **één** map voor bijlagen (`/tmp/redmine-dev-files`) | De dev-database is gedeeld tussen worktrees, `files/` niet. Een bijlage die je uploadt terwijl worktree A draait, is onleesbaar vanuit worktree B en verdwijnt stil uit alles wat `Attachment#readable?` controleert. Dit kostte precies één valse "de feature werkt niet" tijdens G9 — het bewijs dat G9 zijn geld waard is. |
+| 2026-09-02 | `search-token-limit` wordt **geen instelling** maar het terugzetten van de vijf-tokenlimiet naar `Redmine::Search::Fetcher` | De limiet is in r21238 (2021) per ongeluk van de zoekmachine naar de gedeelde `Tokenizer` gereisd toen dat blok woordelijk werd verplaatst zodat filters het tokeniseren konden hergebruiken. Een instelling vraagt een beheerder om te configureren hoeveel van de zoekwoorden van zijn gebruikers stil weggegooid worden; niemand kan daar een goed getal voor noemen. De eerste inzending (#43701, januari 2026, de instelling-variant) kreeg in zeven maanden geen reactie. |
+| 2026-09-02 | Geen `max_tokens:`-keyword op `Tokenizer`; de vijf staat als `.first(5)` bij de enige caller die hem nodig heeft | INV-6: de nulhypothese is dat nieuwe API niet nodig is. De 5.1-patch en de port hebben die parameter wel, en geen enkele caller geeft hem ooit door — dode API. Zonder parameter is de diff vier regels. |
+| 2026-09-02 | `tools/dev-seed.rb` krijgt één issue met een onderwerp van zeven woorden | Geen enkel bestaand gezaaid onderwerp is lang genoeg om een tekstfilter meer dan vijf bruikbare tokens te geven, dus G9 kon de fout niet laten zien. Idempotent toegevoegd. |
+| 2026-09-02 | Deze patch gaat als note op het **bestaande** issue #43701, niet op een nieuw issue | Het issue is van Jan, staat in de juiste categorie (Filters) en heeft de verwante issues al gelinkt. Een tweede issue voor hetzelfde probleem splitst de discussie. |
 | 2026-09-01 | Het dossier vraagt **wanneer** een GEOxyz-commit kan vervallen, niet of | Redmine backportt geen features naar een stable branch; een geaccepteerde patch komt in 7.1 of later. De commit blijft dus nodig tot GEOxyz die release haalt. |
 
 ## Open — keuze voor Jan
 
-Geen open keuzes.
+- **K-04 — heeft GEOxyz meer dan vijf zoekwoorden nodig in het globale zoekvak,
+  of alleen in de filters?**
+  De 5.1-instelling `search_token_limit` verhoogde **beide** grenzen tegelijk:
+  die van de tekstfilters én die van de zoekmachine achter het zoekvak
+  rechtsboven. De patch die nu klaarligt haalt de grens weg bij de filters en
+  laat de zoekmachine op vijf staan, want daar is de grens ooit voor geschreven
+  en daar kost elk extra woord een `LIKE` over elke soort en elk project.
+  - **Opties:** A) Zo laten: filters onbeperkt, zoekvak vijf woorden. B) Ook de
+    grens van het zoekvak instelbaar maken — dat is een tweede, apart issue met
+    een nieuwe instelling erin, en de kans dat upstream dat aanneemt is
+    duidelijk kleiner.
+  - **Aanbeveling:** A. De klacht in #43701 gaat letterlijk over filteroperatoren,
+    de instelling stond in 5.1 ook op het tabblad *Issues*, en de kans dat deze
+    patch geaccepteerd wordt is veel groter zonder instelling. Als het zoekvak
+    later toch blijkt te knellen, is dat een los issue dat deze patch niet
+    ophoudt.
+  - **Haast?** nee — we bouwden verder met A, en die is compleet en bewezen.
+    Optie B is er bovenop bij te bouwen zonder iets van A te veranderen.
 
 ### Gesloten
 
