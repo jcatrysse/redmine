@@ -23,6 +23,7 @@
 | 2026-09-01 | **K-03: de TXT-export vervalt.** `wiki-export-txt` gaat niet naar upstream en komt ook niet op de GEOxyz-branch | Jan: "we gebruiken de txt export niet". Daarmee is er geen reden om hem te bouwen of te verdedigen. De registerregel blijft staan met status vervallen, zodat volgende sessies niet opnieuw gaan afwegen. |
 | 2026-09-02 | **K-04: optie A.** De grens van het globale zoekvak blijft vijf woorden; alleen de tekstfilters worden onbeperkt | Jan: "keuze a". Daarmee gaat er geen instelling mee de patch in en blijft het een bugfix in plaats van een functieverzoek. Praktisch gevolg voor GEOxyz: het veld `search_token_limit` verdwijnt uit Beheer → Configuratie → Issues, filters gebruiken altijd alle getypte woorden zonder dat iemand iets instelt, en het zoekvak rechtsboven gebruikt weer de eerste vijf woorden in plaats van het ingestelde getal. Als dat laatste ooit knelt is het een los issue dat deze patch niet ophoudt. |
 | 2026-09-01 | AI-attributie (`Co-Authored-By`, `Claude-Session`) staat **wel** in commits van `geoxyz/framework`, **nooit** in commits van een `patch/<slug>`-branch of `7.0-stable-GEOxyz` (K-01, optie A) | Jan: "optie a". Jij bent de indiener en de patch is jouw werk om te verantwoorden; de herkomst staat volledig in je eigen repo. Redmine's Contribute-pagina vraagt niets over herkomst. INV-4 en `tools/check-patch-clean.sh` blijven dus ongewijzigd afdwingen, en de wachter kijkt nu ook op de `Claude-Session`-trailer. |
+| 2026-09-02 | **K-05: optie A.** `<< niemand >>` komt alleen in de lijst van het toewijzingsfilter, niet in "Doelversie" en "Categorie" | Jan: "optie a". Daarmee blijft de patch precies zo breed als issue #5535 zelf, en dat is het kleinste oppervlak om op afgewezen te worden. Er verandert niets aan de code: dit is wat er al gebouwd en bewezen is. Het mechanisme in `Query#sql_for_field` blijft generiek, dus `?v[fixed_version_id][]=none` werkt al; de bezwarentabel in het dossier zegt de reviewer expliciet dat de andere twee lijsten één regel per stuk zijn en dat de keuze de zijne is. Wil hij B, dan is dat twee regels erbij zonder herontwerp. |
 
 ## Beslist (autonoom)
 
@@ -68,24 +69,7 @@
 
 ## Open — keuze voor Jan
 
-- **K-05 — krijgt `<< niemand >>` ook een plek in de filters "Doelversie" en
-  "Categorie"?**
-  - **Waar het over gaat:** het mechanisme in deze patch werkt voor elk filter
-    waarvan de kolom leeg mag zijn, dus ook voor doelversie en categorie. Alleen
-    de *lijst* van de toewijzing is aangesloten. Aansluiten van de andere twee is
-    één regel per lijst.
-  - **Opties:**
-    A) Alleen de toewijzing, zoals nu gebouwd. Het issue #5535 gaat daarover, de
-       patch blijft klein, en de reviewer kan zelf zeggen of hij de andere twee
-       erbij wil.
-    B) Alle drie meteen. Dat is letterlijk wat Jean-Baptiste Barth in 2010 vroeg,
-       maar het maakt de patch breder dan het issue en geeft drie keer zoveel
-       oppervlak om op af te wijzen.
-  - **Aanbeveling:** A — de bezwarentabel in het dossier zegt expliciet dat het
-    mechanisme generiek is en dat de andere twee één regel zijn. Zo krijgt de
-    reviewer de keuze zonder dat wij de patch groter maken.
-  - **Haast?** nee — we bouwden verder met A. Het is geen blokkade; als de
-    reviewer B wil is dat twee regels erbij.
+Geen open keuzes.
 
 ### Gesloten
 
@@ -93,3 +77,4 @@
 - **K-02** — indeling van het ZIP-archief. Beslist 2026-09-01: genest naar de wikiboom, en doorgetrokken naar altijd, niet alleen bij bijlagen. De keuze bijlagen ja/nee zit in het exportkeuzevenster.
 - **K-03** — de TXT-export van de hele wiki. Beslist 2026-09-01: vervalt, GEOxyz gebruikt hem niet.
 - **K-04** — meer dan vijf zoekwoorden in het globale zoekvak. Beslist 2026-09-02: optie A, alleen de filters (zie "Beslist (Jan)").
+- **K-05** — `<< niemand >>` ook in "Doelversie" en "Categorie". Beslist 2026-09-02: optie A, alleen de toewijzing (zie "Beslist (Jan)").

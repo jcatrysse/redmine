@@ -11,7 +11,9 @@ bewezen en klaar. Patch tegen trunk r24882
 (`patches/assignee-nobody/2026-09-02-r24882-feature.patch`, één bestand,
 252 regels), dezelfde wijziging als één commit op `7.0-stable-GEOxyz`
 (`9d28be94d`), dossier compleet, veertien screenshots gemaakt en gelezen.
-Er hangt één keuze voor Jan aan (K-05), en die blokkeert niets.
+**K-05 is beslist** (2026-09-02, optie A): `<< niemand >>` komt alleen in de
+lijst van het toewijzingsfilter. Dat is wat er al gebouwd is, dus er is geen
+code veranderd. Er zijn geen open keuzes meer.
 
 **Wat het doet:** in het filter "Toegewezen aan" kun je nu `<< niemand >>`
 aanvinken náást echte gebruikers. "Toegewezen aan mij **of** nog aan niemand"
@@ -36,9 +38,12 @@ ontwerp:
 Daarom zit de afhandeling **generiek** in `Query#sql_for_field`, niet in een
 eigen `sql_for_assigned_to_id_field`: elke filter van type `list_optional` of
 `list_optional_with_history` leest de waarde `'none'` nu als "deze kolom is
-NULL". Alleen de *lijst* van de toewijzing is aangesloten (K-05). Barths eerste
-punt is vanzelf verdwenen: trunk heeft al jaren een aparte
-`Query#author_values`.
+NULL". Alleen de *lijst* van de toewijzing is aangesloten — dat is K-05, en Jan
+koos optie A. Doelversie en categorie werken dus al via een URL
+(`?v[fixed_version_id][]=none`) maar krijgen geen eigen ingang in het
+filterformulier; het dossier zegt de reviewer expliciet dat dat één regel per
+lijst is en dat de keuze de zijne is. Barths eerste punt is vanzelf verdwenen:
+trunk heeft al jaren een aparte `Query#author_values`.
 
 **Het tweede probleem, dat pas zichtbaar wordt als de waarde bestaat.** Het
 toewijzingsfilter biedt **zeven** operatoren aan (`=`, `!`, `ev`, `!ev`, `cf`,
@@ -98,11 +103,8 @@ staan in `docs/features/assignee-nobody/shots/`.
 - `wiki-export-attachments` — het issue is nog niet aangemaakt. Follow-up van
   [#43978](https://www.redmine.org/issues/43978), twee patchbestanden.
 
-**K-05 staat open maar blokkeert niets** (zie `docs/DECISIONS.md`): moeten de
-filters "Doelversie" en "Categorie" ook een `<< niemand >>` in hun lijst
-krijgen? Het mechanisme dekt ze al; het is één regel per lijst. Gebouwd met
-optie A (alleen toewijzing), en het dossier zegt de reviewer expliciet dat de
-andere twee één regel zijn.
+**Er zijn geen open keuzes meer.** K-05 (krijgen "Doelversie" en "Categorie"
+ook een `<< niemand >>`?) is beslist op optie A: nee, alleen de toewijzing.
 
 **Volgende sessie:** `version-subprojects`, de volgende regel in het register.
 Wat er al van bekend is staat onder "Wat er per feature al bekend is": de

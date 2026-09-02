@@ -17,6 +17,8 @@
 - **Wat jij nog moet doen:** de nieuwe patch als note hangen aan
   [#5535](https://www.redmine.org/issues/5535) en zeggen waarom hij anders is
   dan jouw patch van november.
+- **Keuzes:** geen open keuzes. K-05 beslist op 2026-09-02, optie A: alleen de
+  toewijzingslijst krijgt `<< niemand >>`, doelversie en categorie niet.
 
 ## Trunk check (G1)
 
