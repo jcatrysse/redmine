@@ -17,6 +17,8 @@
 | 2026-09-01 | `revision-branches` wordt **niet** gesplitst en krijgt **geen** DB-cache. Git-only, het commando eronder blijft, en de vier instellingen blijven staan | Jan: "alleen git, voorlopig geen db cache maar gewoon zoals het is met een commando onderliggend. We zien wel wat ze ermee doen. Ik zou de instellingen ook houden en zien of ze comments hebben." Bewust: eerst de reactie van het core-team afwachten in plaats van vooraf inbinden. Mijn splitsingsadvies (2026-09-01, eerder die dag) is hiermee vervallen. |
 | 2026-09-01 | ~~INV-5: `en.yml` plus `nl.yml`~~ → **`en`, `nl`, `fr`, `de`, `es`** | Jan: "Ik zou toch graag wat meer talen hebben... zeker ook Nederlands, Frans, Duits, Spaans." Het zijn GEOxyz' werktalen. Ik had bezwaar gemaakt (onverifieerbare vertalingen kosten de patch geloofwaardigheid); Jan heeft dat gehoord en beslist. Twee mechanismen dekken het risico: elke vertaling wordt afgeleid van de dichtstbijzijnde bestaande sleutel in hetzelfde bestand en die sleutel wordt in het dossier genoemd, en de patch wordt gesplitst in feature (code + `en.yml`) en vertalingen. |
 | 2026-09-01 | ~~`fr.yml` niet meesturen~~ — vervallen, zie hierboven | — |
+| 2026-09-01 | **K-02: geneste indeling (optie B).** Het ZIP-archief mét bijlagen volgt de wikiboom: één map per pagina, genest onder de ouder, met het paginabestand en de bijlagen van die pagina erin | Jan: "keuze b". Daarmee staat een bijlage naast de paginatekst die ernaar verwijst, dus `!diagram.png!` werkt gewoon als je het archief uitpakt. Dat is de derde ontwerpvraag die Go MAEDA in #43978 openliet, en die is nu beantwoord zonder de geëxporteerde tekst aan te raken. Scoping heb ik zelf ingevuld (zie hieronder): alleen de variant mét bijlagen is genest. |
+| 2026-09-01 | **K-03: de TXT-export vervalt.** `wiki-export-txt` gaat niet naar upstream en komt ook niet op de GEOxyz-branch | Jan: "we gebruiken de txt export niet". Daarmee is er geen reden om hem te bouwen of te verdedigen. De registerregel blijft staan met status vervallen, zodat volgende sessies niet opnieuw gaan afwegen. |
 | 2026-09-01 | AI-attributie (`Co-Authored-By`, `Claude-Session`) staat **wel** in commits van `geoxyz/framework`, **nooit** in commits van een `patch/<slug>`-branch of `7.0-stable-GEOxyz` (K-01, optie A) | Jan: "optie a". Jij bent de indiener en de patch is jouw werk om te verantwoorden; de herkomst staat volledig in je eigen repo. Redmine's Contribute-pagina vraagt niets over herkomst. INV-4 en `tools/check-patch-clean.sh` blijven dus ongewijzigd afdwingen, en de wachter kijkt nu ook op de `Claude-Session`-trailer. |
 
 ## Beslist (autonoom)
@@ -46,43 +48,16 @@
 | 2026-09-01 | Bijlagen zijn **opt-in** via de queryparameter `with_attachments`, en de platte indeling van 7.0.0 blijft ongewijzigd | `bulk_download_max_size` moet gelden zodra er bijlagen in gaan. Onvoorwaardelijk meesturen zou de wiki-export laten falen voor een project met veel bijlagen — een regressie op wat vandaag werkt. Bewezen: met de limiet op 0 levert de gewone ZIP nog steeds hetzelfde bestand. |
 | 2026-09-01 | Bijlagen worden gefilterd op `readable?`, niet op `visible?` | Precies wat `Attachment.archive_attachments` doet. De controller heeft het verzoek al geautoriseerd op `:export_wiki_pages`, en de bestaande export geeft dezelfde gebruiker toch al de volledige tekst van elke pagina. `readable?` houdt een rij waarvan het bestand van schijf verdwenen is buiten het archief én buiten `File.binread`. |
 | 2026-09-01 | Commits op `patch/<slug>` en `7.0-stable-GEOxyz` worden geschreven als **Jan Catrysse <jan.catrysse@geoxyz.eu>** | `git format-patch` zet de auteur in de `From:`-regel van het bestand dat aan het issue hangt. Een tool-identiteit daar is net zo goed een AI-spoor als één in het bericht (INV-4). Gevonden door de patch te exporteren en te lezen; `tools/check-patch-clean.sh` controleert het nu mechanisch. |
+| 2026-09-01 | De geneste indeling geldt **alleen** voor `with_attachments=1`; de gewone ZIP-link blijft plat en byte-identiek aan wat 7.0.0 levert | Jan koos B maar niet de scoping, en ik had er twee genoemd met elk een prijs. Dit is de enige die niets breekt: een export die vier maanden geleden is uitgekomen verandert niet voor mensen die nooit om bijlagen vroegen. Het bezwaar "twee indelingen achter één actie" is echt, en het antwoord staat in het dossier: de mappen bestaan om bijlagen naast hun pagina te zetten, dus zonder bijlagen zouden het lege omhulsels rond één bestand zijn. Aantoonbaar: de gewone ZIP van een gepatchte instance is `cmp`-identiek aan die van een schone trunk. |
 | 2026-09-01 | `tools/dev-server.sh` wijst elke worktree naar **één** map voor bijlagen (`/tmp/redmine-dev-files`) | De dev-database is gedeeld tussen worktrees, `files/` niet. Een bijlage die je uploadt terwijl worktree A draait, is onleesbaar vanuit worktree B en verdwijnt stil uit alles wat `Attachment#readable?` controleert. Dit kostte precies één valse "de feature werkt niet" tijdens G9 — het bewijs dat G9 zijn geld waard is. |
 | 2026-09-01 | Het dossier vraagt **wanneer** een GEOxyz-commit kan vervallen, niet of | Redmine backportt geen features naar een stable branch; een geaccepteerde patch komt in 7.1 of later. De commit blijft dus nodig tot GEOxyz die release haalt. |
 
 ## Open — keuze voor Jan
 
-### K-02 — indeling van het ZIP-archief met bijlagen
-
-- **Keuze:** hoe ziet het archief eruit als je de bijlagen meestuurt?
-- **Opties:**
-  - **A) Plat (nu gebouwd).** De paginabestanden blijven exact waar ze nu
-    staan, en elke pagina met bijlagen krijgt er een map naast:
-    `Child_one.txt` plus `Child_one/diagram.txt`.
-  - **B) Genest naar de wikiboom.** `Wiki/Wiki.txt`,
-    `Wiki/Child_one/Child_one.txt`, met de bijlagen naast hun eigen
-    paginabestand. Dan klopt de mappenstructuur met de wiki, én een
-    afbeeldingsverwijzing als `!diagram.png!` werkt gewoon als je de map in
-    een markdown-editor opent, omdat het bestand ernaast staat.
-- **Aanbeveling:** A voor de patch, B als apart voorstel later. B verandert de
-  indeling van een export die vier maanden geleden in 7.0.0 is uitgekomen, en
-  verandert die ook voor mensen die helemaal geen bijlagen willen. Dat maakt
-  het een aparte discussie, geen onderdeel van deze.
-- **Haast?** nee — we bouwden verder met A, en A en B sluiten elkaar niet uit.
-
-### K-03 — de TXT-export van de hele wiki
-
-- **Keuze:** dienen we de tweede helft van de 5.1-commit (één samengevoegd
-  `.txt`-bestand van de hele wiki) ook in bij Redmine, of alleen op GEOxyz?
-- **Opties:**
-  - **A) Ook indienen**, als eigen issue.
-  - **B) Alleen op GEOxyz** houden.
-- **Aanbeveling:** A, maar met lage verwachting. Sinds april 2026 heeft trunk
-  de ZIP-export die per pagina een `.txt` geeft; een reviewer zal vragen wat
-  één samengevoegd bestand daar nog aan toevoegt. Het antwoord "je plakt het
-  in één keer in een AI-tool of grept erdoorheen" is echt, maar dun.
-- **Haast?** nee — het staat als eigen regel `wiki-export-txt` in het register
-  en komt aan de beurt na deze feature.
+Geen open keuzes.
 
 ### Gesloten
 
 - **K-01** — AI-attributie in patchcommits. Beslist 2026-09-01: optie A (zie "Beslist (Jan)").
+- **K-02** — indeling van het ZIP-archief met bijlagen. Beslist 2026-09-01: optie B, genest naar de wikiboom.
+- **K-03** — de TXT-export van de hele wiki. Beslist 2026-09-01: vervalt, GEOxyz gebruikt hem niet.

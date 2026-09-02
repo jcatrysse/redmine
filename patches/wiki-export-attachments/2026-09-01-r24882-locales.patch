@@ -1,15 +1,19 @@
-From 98318cdfd01ac8dcdb6342990081659c7b1997f6 Mon Sep 17 00:00:00 2001
+From 2cb6231c719d73ee82a93808077cb03018acf58e Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Tue, 1 Sep 2026 21:42:39 +0000
+Date: Wed, 2 Sep 2026 06:31:42 +0000
 Subject: [PATCH] Add wiki page attachments to the wiki ZIP export.
 
 The ZIP export added in #43978 exports page sources only. With
-with_attachments, each page that has readable attachments also gets a
-directory named after its own entry, holding those attachments. Without
-the parameter the archive is unchanged.
+with_attachments, the archive mirrors the wiki hierarchy instead: one
+directory per page, nested by parent, holding that page's source and its
+attachments. A bare-filename reference in the source, such as
+!diagram.png!, therefore resolves once the archive is unpacked.
+
+Without the parameter the archive is unchanged, byte for byte.
 
 The total attachment size is checked against bulk_download_max_size, as
-AttachmentsController#download_all does.
+AttachmentsController#download_all does, so the text-only export keeps
+working for a wiki whose attachments exceed the limit.
 ---
  config/locales/de.yml | 1 +
  config/locales/es.yml | 1 +
