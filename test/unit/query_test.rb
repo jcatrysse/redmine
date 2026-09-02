@@ -1001,6 +1001,101 @@ class QueryTest < ActiveSupport::TestCase
     end
   end
 
+  def test_filter_assigned_to_nobody_or_user
+    user = User.find(2)
+    assigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => user)
+    unassigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
+    other = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to_id => 3)
+
+    query = IssueQuery.new(:name => '_')
+    query.add_filter('assigned_to_id', '=', ['none', user.id.to_s])
+    result = find_issues_with_query(query)
+
+    assert_include assigned, result
+    assert_include unassigned, result
+    assert_not_include other, result
+  end
+
+  def test_filter_assigned_to_not_nobody_and_not_user
+    user = User.find(2)
+    assigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => user)
+    unassigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
+    other = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to_id => 3)
+
+    query = IssueQuery.new(:name => '_')
+    query.add_filter('assigned_to_id', '!', ['none', user.id.to_s])
+    result = find_issues_with_query(query)
+
+    assert_not_include assigned, result
+    assert_not_include unassigned, result
+    assert_include other, result
+  end
+
+  def test_filter_assigned_to_nobody_alone_should_match_the_none_operator
+    query = IssueQuery.new(:name => '_')
+    query.add_filter('assigned_to_id', '=', ['none'])
+    none_query = IssueQuery.new(:name => '_')
+    none_query.add_filter('assigned_to_id', '!*', [''])
+
+    assert_equal find_issues_with_query(none_query).map(&:id).sort,
+                 find_issues_with_query(query).map(&:id).sort
+  end
+
+  def test_filter_assigned_to_not_nobody_alone_should_match_the_any_operator
+    query = IssueQuery.new(:name => '_')
+    query.add_filter('assigned_to_id', '!', ['none'])
+    any_query = IssueQuery.new(:name => '_')
+    any_query.add_filter('assigned_to_id', '*', [''])
+
+    assert_equal find_issues_with_query(any_query).map(&:id).sort,
+                 find_issues_with_query(query).map(&:id).sort
+  end
+
+  def test_operator_has_been_nobody
+    User.current = User.find(1)
+    issue = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
+    issue.init_journal(User.current)
+    issue.update(:assigned_to_id => 2)
+    always_assigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to_id => 2)
+
+    query = IssueQuery.new(:name => '_')
+    query.add_filter('assigned_to_id', 'ev', ['none'])
+    result = find_issues_with_query(query)
+
+    assert_include issue, result
+    assert_not_include always_assigned, result
+  end
+
+  def test_operator_has_never_been_nobody
+    User.current = User.find(1)
+    issue = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
+    issue.init_journal(User.current)
+    issue.update(:assigned_to_id => 2)
+    always_assigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to_id => 2)
+
+    query = IssueQuery.new(:name => '_')
+    query.add_filter('assigned_to_id', '!ev', ['none'])
+    result = find_issues_with_query(query)
+
+    assert_not_include issue, result
+    assert_include always_assigned, result
+  end
+
+  def test_operator_changed_from_nobody
+    User.current = User.find(1)
+    issue = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
+    issue.init_journal(User.current)
+    issue.update(:assigned_to_id => 2)
+    unassigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
+
+    query = IssueQuery.new(:name => '_')
+    query.add_filter('assigned_to_id', 'cf', ['none'])
+    result = find_issues_with_query(query)
+
+    assert_include issue, result
+    assert_not_include unassigned, result
+  end
+
   def test_filter_notes
     user = User.generate!
     Journal.create!(:user_id => user.id, :journalized => Issue.find(2), :notes => 'Notes.')
@@ -3471,6 +3566,13 @@ class QueryTest < ActiveSupport::TestCase
     assert_equal 'board', query.display_type
   end
 
+  def test_assigned_to_values_should_include_nobody
+    set_language_if_valid('en')
+
+    assert_include ["<< #{l(:label_nobody)} >>", 'none'],
+                   IssueQuery.new(:name => '_').assigned_to_values
+  end
+
   def test_assigned_to_values_should_be_sorted_by_status_and_name
     User.delete_all
     20.times do |i|
@@ -3483,6 +3585,6 @@ class QueryTest < ActiveSupport::TestCase
 
     expected_names = User.order(:status, :firstname).all.map(&:name)
     assigned_to_values = query.assigned_to_values
-    assert_equal expected_names, assigned_to_values[1..].map(&:first)
+    assert_equal expected_names, assigned_to_values[2..].map(&:first)
   end
 end

@@ -893,9 +893,10 @@ class QueriesControllerTest < Redmine::ControllerTest
     assert_equal 'application/json', response.media_type
     json = ActiveSupport::JSON.decode(response.body)
 
-    assert_equal 6, json.count
-    # "me" value should not be grouped
+    assert_equal 7, json.count
+    # "me" and "nobody" values should not be grouped
     assert_include ["<< me >>", "me"], json
+    assert_include ["<< nobody >>", "none"], json
     assert_include ["Dave Lopper", "3", "active"], json
     assert_include ["Dave2 Lopper2", "5", "locked"], json
   end
