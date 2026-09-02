@@ -77,6 +77,32 @@ unless project.issues.exists?(subject: LONG_SUBJECT)
   )
 end
 
+# Two issues the assignee filter needs: one assigned to a second user, so
+# "nobody or dev" has something to exclude, and one that was unassigned and then
+# assigned, so the history operators have a journal to find.
+tester = User.find_by_login('tester')
+unless project.issues.exists?(subject: 'Assigned to the tester')
+  Issue.create!(
+    project: project, tracker: Tracker.first, author: admin,
+    status: IssueStatus.where(is_closed: false).first, priority: IssuePriority.first,
+    subject: 'Assigned to the tester', assigned_to: tester
+  )
+end
+
+picked = project.issues.find_by(subject: 'Picked up from the queue') || Issue.create!(
+  project: project, tracker: Tracker.first, author: admin,
+  status: IssueStatus.where(is_closed: false).first, priority: IssuePriority.first,
+  subject: 'Picked up from the queue'
+)
+# The journal is what the history operators read, so the assignment has to
+# happen as a second, journalled update — and it is the assignee, not the
+# issue, that says whether that already happened.
+if picked.assigned_to.nil?
+  picked.reload
+  picked.init_journal(admin)
+  picked.update!(assigned_to: User.find_by_login('dev'))
+end
+
 project.create_wiki!(start_page: 'Wiki') if project.wiki.nil?
 wiki = project.wiki
 

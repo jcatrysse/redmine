@@ -6,111 +6,110 @@
 
 ## Huidige positie
 
-Twee features af. De tweede is **`search-token-limit`**, deze sessie gebouwd,
-bewezen en klaar. Patch tegen trunk r24882, dezelfde wijziging als één commit
-op `7.0-stable-GEOxyz` (`1c85728aa`), dossier compleet, tien screenshots
-gemaakt en gelezen. Er hangt één keuze voor Jan aan (K-04).
+Drie features af. De derde is **`assignee-nobody`**, deze sessie gebouwd,
+bewezen en klaar. Patch tegen trunk r24882
+(`patches/assignee-nobody/2026-09-02-r24882-feature.patch`, één bestand,
+252 regels), dezelfde wijziging als één commit op `7.0-stable-GEOxyz`
+(`9d28be94d`), dossier compleet, veertien screenshots gemaakt en gelezen.
+Er hangt één keuze voor Jan aan (K-05), en die blokkeert niets.
 
-**Het belangrijkste van deze sessie is de trunk-check, niet de code.** Het issue
-bestaat al: [#43701](https://www.redmine.org/issues/43701), door Jan aangemaakt
-op 2026-01-21, met de 5.1-patch eraan, en in zeven maanden geen enkele reactie.
-Die patch voegt een instelling `search_token_limit` toe (51,6 kB, 48
-locale-bestanden) om een limiet te overrulen.
+**Wat het doet:** in het filter "Toegewezen aan" kun je nu `<< niemand >>`
+aanvinken náást echte gebruikers. "Toegewezen aan mij **of** nog aan niemand"
+is daarmee één filter in plaats van twee aparte lijsten.
 
-Wat de git-geschiedenis van trunk laat zien: die limiet van vijf tokens is
-nooit voor filters bedacht. Tot r21238 (2021-10-05, #35148) stond het
-tokeniseren inline in `Redmine::Search::Fetcher#initialize` en eindigde het op
-`@tokens.slice! 5..-1` — een grens van de **zoekmachine**, die per token een
-LIKE over elke soort en elk project legt. Die commit verplaatste het blok
-woordelijk naar een nieuwe klasse `Tokenizer` zodat tekstfilters en de
-issue-autocomplete het tokeniseren konden hergebruiken, en de limiet ging mee.
-Sindsdien gooien vijf filteroperatoren (`~`, `!~`, `*~`, `^`, `$`) stil alles
-weg wat een gebruiker na het vijfde woord typt.
+**Net als vorige sessie was de trunk-check beslissend.** Het issue bestaat al:
+[Patch #5535](https://www.redmine.org/issues/5535), aangemaakt in **2010**,
+status nog altijd New, met Feature #28924 eraan gekoppeld als duplicaat. Jan
+heeft er op 2025-11-22 zelf de 5.1-patch aan gehangen. In zestien jaar staan er
+maar twee inhoudelijke opmerkingen van een committer op, en allebei sturen het
+ontwerp:
 
-Dus geen instelling. De patch zet de vijf terug bij de enige caller die hem
-nodig heeft:
+1. **Jean-Baptiste Barth (2010):** "I'd prefer a generic solution which would
+   consist in having a `<< none >>` option in some fields: assigned to, target
+   version, category, etc. But only when it makes sense." En: de patch van 2010
+   raakte ook `author_id`, want die deelde toen de waardelijst — "not the
+   correct behavior, since author cannot be none".
+2. **Marius Bălteanu (2018):** "Which will be the difference between 'Assignee
+   None' and 'Assignee Is \<nobody\>'?" — beantwoord in dezelfde draad door
+   Radek Antoniuk: je wil "issues assigned to me + the queue".
 
-    -        @tokens = Tokenizer.new(@question).tokens
-    +        # no more than 5 tokens to search for
-    +        @tokens = Tokenizer.new(@question).tokens.first(5)
+Daarom zit de afhandeling **generiek** in `Query#sql_for_field`, niet in een
+eigen `sql_for_assigned_to_id_field`: elke filter van type `list_optional` of
+`list_optional_with_history` leest de waarde `'none'` nu als "deze kolom is
+NULL". Alleen de *lijst* van de toewijzing is aangesloten (K-05). Barths eerste
+punt is vanzelf verdwenen: trunk heeft al jaren een aparte
+`Query#author_values`.
 
-    -        # no more than 5 tokens to search for
-    -        tokens.uniq.select{|w| ... }.first 5
-    +        tokens.uniq.select{|w| ... }
+**Het tweede probleem, dat pas zichtbaar wordt als de waarde bestaat.** Het
+toewijzingsfilter biedt **zeven** operatoren aan (`=`, `!`, `ev`, `!ev`, `cf`,
+`!*`, `*`), en de waardelijst is voor alle zeven dezelfde. De patches op #5535,
+inclusief die van Jan, behandelen `'none'` alleen bij `=`. Bij vier van de
+overige operatoren belandt de string in een vergelijking met de integerkolom
+`issues.assigned_to_id` → `PG::InvalidTextRepresentation` → **HTTP 500**. Bij
+`cf` geen fout maar een stil lege lijst, want `journal_details.old_value` is een
+tekstkolom waar niets gelijk is aan `'none'`. Die stille variant is erger dan de
+500. Alle zeven zijn nu gedekt; de before-screenshots tonen vijf keer een echte
+500-pagina en één keer "No data to display".
 
-Vier regels in één bestand. `app/models/query.rb` en `app/models/issue.rb`
-worden niet aangeraakt: die roepen `Tokenizer.new(value).tokens` al aan en
-krijgen nu alles terug. Geen instelling, geen migratie, geen route, geen
-permissie, en **geen enkele nieuwe string** — dus ook geen locale-patch en geen
-tweede patchbestand. Het exportbestand is 114 regels tegen 51,6 kB.
+**Bewijs.** Trunk met patch 5798 runs / 30700 assertions / 27 failures /
+2 errors, schone trunk 5790 / 30686 / 27 / 2 — **de 29 faalnamen zijn letterlijk
+identiek** (`diff` leeg), allemaal repository- of changeset-tests die `svn`,
+`hg`, `bzr` of `cvs` nodig hebben. GEOxyz-branch **helemaal groen**: 5803 runs,
+30987 assertions, 0 failures, 0 errors. RuboCop 0 aan beide kanten, baseline
+ook 0. `tools/check-patch-clean.sh` PASS, `tools/check-geoxyz-branch.sh` PASS.
 
-Geen enkele bestaande test in trunk legde die vijf vast, dus er breekt niets —
-het tegenovergestelde van `wiki-export-attachments`, dat twee trunk-tests
-veranderde.
+**Twee bestaande trunk-tests aangepast, geen enkele verzwakt.**
+`test_assigned_to_values_should_be_sorted_by_status_and_name` telt met `[1..]`
+de pseudo-waarden weg vóór de echte gebruikers; dat wordt `[2..]`.
+`QueriesControllerTest#test_assignee_filter_should_return_active_and_locked_users_grouped_by_status`
+telt de JSON-waarden: 6 → 7, met één `assert_include` erbij zodat de reden in de
+test zelf staat. **Die tweede is alleen gevonden doordat G3 de volledige suite
+eist** — de aangeraakte bestanden waren groen, en de eerste volledige run gaf
+28 failures in plaats van 27. Dat is precies waar die gate voor is.
 
-Bewijs: trunk met patch 5924 runs / 31456 assertions / 27 failures / 2 errors,
-schone trunk 5920 / 31452 / 27 / 2 — **test voor test dezelfde 29 namen**, alle
-29 repository- of changeset-tests die `svn`, `hg`, `bzr` of `cvs` nodig hebben
-(niet in het image). De patch voegt precies 4 runs en 4 assertions toe.
-GEOxyz-branch **helemaal groen**: 5925 runs, 31738 assertions, 0 failures,
-0 errors. RuboCop 0, baseline 0, aan beide kanten.
+Geen nieuwe instelling, migratie, route, permissie of gem, en **geen enkele
+nieuwe string**: `label_nobody` bestaat al in alle 63 locale-bestanden, en
+`assigned_to_id => 'none'` is al wat Redmine zelf gebruikt in het
+bulk-bewerkformulier en het contextmenu. Dus geen locale-patch en geen tweede
+patchbestand.
 
-De trunk-suite is daarna nog één keer gedraaid op exact de geëxporteerde commit
-(twee testmethodes verplaatst, verder identiek) en gaf toen 3 errors in plaats
-van 2. De derde is `OauthProviderSystemTest`, een Selenium-race in Chrome
-(*"Node with given id does not belong to the document"*) terwijl twee volledige
-suites samen op vier cores liepen. Los gedraaid op dezelfde commit: 1 run,
-13 assertions, 0 failures. Staat zo in het dossier — niet weggemoffeld, en ook
-niet "flaky" genoemd zonder het na te lopen.
-
-G9 heeft de fout zichtbaar gemaakt in een echte browser, en dat is het
-overtuigendste stuk van het dossier: `before-filter-contains.png` toont het
-filter "Subject contains: pump alignment survey report northern zzz" met
-daaronder één resultaat, issue #7 "Pump alignment survey report northern wind
-farm" — een issue dat `zzz` niet bevat. Na de patch: "No data to display". De
-twee zoekpagina-screenshots markeren de gebruikte tokens en daar zijn er
-precies vijf gemarkeerd, voor én na: dat is het bewijs dat de grens van de
-zoekmachine blijft staan.
-
-`tools/dev-seed.rb` zaait nu ook één issue met een onderwerp van zeven woorden.
-Zonder dat kon G9 de fout niet laten zien: geen bestaand gezaaid onderwerp is
-lang genoeg om een filter meer dan vijf bruikbare tokens te geven.
+`tools/dev-seed.rb` zaait nu ook een issue toegewezen aan `tester` en een issue
+dat van niemand naar `dev` ging mét journal. Zonder de eerste heeft
+"niemand of dev" niets om uit te sluiten; zonder de tweede hebben de
+historie-operatoren geen journalregel om te vinden.
 
 ## Volgende stap
 
 **Jan, één ding:** hang
-`patches/search-token-limit/2026-09-02-r24882-feature.patch` als note aan het
-bestaande issue [#43701](https://www.redmine.org/issues/43701) en leg in één
-alinea uit waarom de vorm veranderd is: geen instelling meer, het is de limiet
-terugzetten waar hij hoort. De Engelse tekst staat kant-en-klaar in
-`docs/features/search-token-limit.md`, alles vanaf "The problem". De
-voor/na-screenshots zitten in `docs/features/search-token-limit/shots/`.
-Vergeet niet de oude bijlage als achterhaald te benoemen.
+`patches/assignee-nobody/2026-09-02-r24882-feature.patch` als note aan het
+bestaande issue [#5535](https://www.redmine.org/issues/5535) en leg in één
+alinea uit wat er anders is aan deze vorm: de afhandeling zit generiek in
+`sql_for_field` (dat is wat Barth in noot 4 vroeg) en alle zeven operatoren zijn
+gedekt in plaats van alleen `=`. Noem je eigen bijlage van november als
+achterhaald. De Engelse tekst staat kant-en-klaar in
+`docs/features/assignee-nobody.md`, alles vanaf "The problem"; de voor/na-paren
+staan in `docs/features/assignee-nobody/shots/`.
 
-**K-04 is beslist** (2026-09-02, optie A): de grens van het globale zoekvak
-blijft vijf woorden, alleen de tekstfilters worden onbeperkt. Er zijn geen open
-keuzes meer.
+**Nog open van eerdere sessies, allebei alleen jouw handeling:**
 
-Voor de volgende sessie, want Jan vroeg er expliciet naar en het antwoord hoort
-hier te staan: **het verschil tussen de patch van januari en deze.** De patch
-van januari voegde een instelling `search_token_limit` toe (standaard 5) op het
-tabblad Issues; de tokenizer las die, en die tokenizer wordt door twee dingen
-gebruikt, de tekstfilters én het zoekvak rechtsboven. Standaardgedrag bleef dus
-5 overal, en een beheerder moest een getal invullen om meer te krijgen — voor
-filters en zoekvak tegelijk. Deze patch heeft geen instelling: filters zijn
-altijd onbeperkt, het zoekvak blijft op 5. Praktisch voor GEOxyz: het veld
-verdwijnt uit het configuratiescherm, filters werken zonder dat iemand iets
-instelt, en het zoekvak gaat terug van het ingestelde getal naar 5.
+- `search-token-limit` — `patches/search-token-limit/2026-09-02-r24882-feature.patch`
+  hangen aan [#43701](https://www.redmine.org/issues/43701), met de uitleg dat
+  de instelling eruit is.
+- `wiki-export-attachments` — het issue is nog niet aangemaakt. Follow-up van
+  [#43978](https://www.redmine.org/issues/43978), twee patchbestanden.
 
-Ook nog open van de vorige sessie: het issue voor `wiki-export-attachments` is
-nog niet aangemaakt. Dat is een follow-up van
-[#43978](https://www.redmine.org/issues/43978) met twee patchbestanden.
+**K-05 staat open maar blokkeert niets** (zie `docs/DECISIONS.md`): moeten de
+filters "Doelversie" en "Categorie" ook een `<< niemand >>` in hun lijst
+krijgen? Het mechanisme dekt ze al; het is één regel per lijst. Gebouwd met
+optie A (alleen toewijzing), en het dossier zegt de reviewer expliciet dat de
+andere twee één regel zijn.
 
-**Volgende sessie:** `assignee-nobody`, de volgende regel in het register.
-Daar is al iets van bekend, zie "Wat er per feature al bekend is": de
-5.1-aanpak geeft een `500` op PostgreSQL bij de operatoren `!`, `ev`, `!ev` en
-`cf`, en dat is reproduceerbaar. Reken erop dat dat een echte bug is die bij
-deze feature hoort.
+**Volgende sessie:** `version-subprojects`, de volgende regel in het register.
+Wat er al van bekend is staat onder "Wat er per feature al bekend is": de
+5.1-override vervangt `project.shared_versions` door
+`Version.visible.where(project_statement)` en verliest daarmee versies die van
+elders gedeeld zijn (`sharing: 'system'`), gereproduceerd. Union in plaats van
+vervanging.
 
 ## Feature-register
 
@@ -126,7 +125,7 @@ in productie op 7.0? **Upstream** = waar staat de patch?
 | `wiki-export-attachments` | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` (deel) | live (`28c618860`) | patch klaar | `patches/wiki-export-attachments/2026-09-01-r24882-{feature,locales}.patch` | — (follow-up van #43978) |
 | `wiki-export-txt` | Hele wiki als één TXT-bestand | `3c3e9368e` (deel) | n.v.t. | vervallen | — | — |
 | `search-token-limit` | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | `patches/search-token-limit/2026-09-02-r24882-feature.patch` | [#43701](https://www.redmine.org/issues/43701) (bestaat, patch nog niet vervangen) |
-| `assignee-nobody` | "Niet toegewezen" combineerbaar met gekozen gebruikers | `9b03b74b2` | todo | todo | — | — |
+| `assignee-nobody` | "Niet toegewezen" combineerbaar met gekozen gebruikers | `9b03b74b2` | live (`9d28be94d`) | patch klaar | `patches/assignee-nobody/2026-09-02-r24882-feature.patch` | [#5535](https://www.redmine.org/issues/5535) (bestaat sinds 2010, patch nog niet vervangen) |
 | `version-subprojects` | Doelversiefilter incl. subproject-versies | `89752a599` | todo | todo | — | — |
 | `mypage-query-blocks` | Configureerbaar max issuequery-blokken op Mijn pagina | `0214f3ecc` | todo | todo | — | — |
 | `webhook-tracker-filter` | Webhook beperken tot gekozen trackers | `25220b45d` (deel) | todo | todo | — | — |
@@ -142,7 +141,7 @@ in productie op 7.0? **Upstream** = waar staat de patch?
 | `netimap-cve` | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — | — |
 | `auto-watch-defaults` | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — | — |
 
-Achttien regels. **Twee af**, negen te gaan upstream, vijf nooit, twee
+Achttien regels. **Drie af**, acht te gaan upstream, vijf nooit, twee
 vervallen, één al binnen.
 
 ## Wat er per feature al bekend is
@@ -164,15 +163,15 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
   volgen: zoek de commit die de regel invoerde, niet alleen de regel.**
 - **`wiki-export-txt`** — vervallen. GEOxyz gebruikt de TXT-export niet. Niet
   opnieuw afwegen.
-- **`assignee-nobody`** — de 5.1-aanpak zet een pseudo-waarde in de generieke
-  `Query#assigned_to_values` en behandelt die in een `elsif` in
-  `Query#statement`, alleen voor operator `=`. Bij `!` en bij de
-  history-operatoren (`ev`, `!ev`, `cf`, die al in 5.1 bestonden) belandt de
-  string `'none'` in een vergelijking met een integerkolom → `500` op
-  PostgreSQL. Reproduceerbaar. Upstream-vorm: een echte
-  `sql_for_assigned_to_id_field` op `IssueQuery`, dekkend voor alle operatoren
-  van `list_optional_with_history`. En de twee rode tests horen bij deze
-  feature.
+- **`assignee-nobody`** — af. De verwachting uit de doorlichting klopte, met
+  één correctie: `cf` geeft géén 500 maar stil nul resultaten, omdat
+  `journal_details.old_value` een tekstkolom is. Vier van de zeven operatoren
+  gaven wél een 500. De verwachte upstream-vorm (een eigen
+  `sql_for_assigned_to_id_field` op `IssueQuery`) is bij het bouwen verworpen:
+  die zou de journal-subquery van de historie-operatoren moeten dupliceren. Het
+  is generiek in `Query#sql_for_field` geworden, wat niet groter is, geen kopie
+  heeft en bovendien letterlijk beantwoordt wat de enige committer op #5535 in
+  2010 vroeg.
 - **`version-subprojects`** — de override vervangt `project.shared_versions`
   door `Version.visible.where(project_statement)` en verliest daarmee versies
   die van elders gedeeld zijn (`sharing: 'system'` is niet meer filterbaar,
@@ -232,6 +231,27 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
   `dev-server.sh` (`/tmp/redmine-dev-files`), maar weet waarom: een bijlage die
   je uploadt terwijl worktree A draait, is onleesbaar vanuit worktree B, en
   `Attachment#readable?` laat hem dan stil vallen.
+- **De volledige suite is niet optioneel, en dat is deze sessie bewezen.** De
+  aangeraakte testbestanden waren groen; de volledige run vond
+  `QueriesControllerTest#test_assignee_filter_should_return_active_and_locked_users_grouped_by_status`,
+  dat het *aantal* waarden in de filter-JSON telt. Elke feature die een
+  waardelijst uitbreidt raakt zulke tests, en ze staan nooit in het bestand dat
+  je aan het bewerken bent.
+- **Zoek een bestaand issue op redmine.org met één trefwoord, niet met een
+  zin.** `titles_only=1` plus meerdere woorden is een AND over de titel en geeft
+  nul resultaten; *unassigned filter* vond niets bruikbaars, *nobody filter*
+  vond #5535 en #28924 meteen. Twee sessies op rij bleek er al een issue te
+  bestaan, dus dit is de regel en niet de uitzondering.
+- **Een filterwaarde die niet in de `<select>` staat, kan de browser niet
+  selecteren.** In een before-screenshot valt de widget dan terug op de eerste
+  optie (`<< me >>`) terwijl de URL iets anders vroeg. Dat is echt bewijs, geen
+  kapotte check — maar assert er niet op in `MODE=before`, en zeg het in het
+  dossier, anders leest de screenshot verkeerd.
+- **`git worktree` + een draaiende suite + een dev-server op dezelfde worktree
+  gaan prima samen** zolang ze verschillende databases hebben. Wat níét kan is
+  de working tree wijzigen terwijl de suite loopt; om een test rood te bewijzen
+  op de oude code, kopieer `app/models/query.rb` weg, `git checkout --` het
+  bestand, draai, en zet het terug — met de volledige suite *niet* actief.
 - **`test:all` is waardeloos zonder `tools/test-env.sh`** — ~260 fouten in de
   systeemtests die niets met je patch te maken hebben.
 - **Alleen git is beschikbaar als SCM.** `svn`, `hg`, `bzr` en `cvs` staan niet

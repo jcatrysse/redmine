@@ -58,10 +58,34 @@
 | 2026-09-02 | `tools/dev-seed.rb` krijgt één issue met een onderwerp van zeven woorden | Geen enkel bestaand gezaaid onderwerp is lang genoeg om een tekstfilter meer dan vijf bruikbare tokens te geven, dus G9 kon de fout niet laten zien. Idempotent toegevoegd. |
 | 2026-09-02 | Deze patch gaat als note op het **bestaande** issue #43701, niet op een nieuw issue | Het issue is van Jan, staat in de juiste categorie (Filters) en heeft de verwante issues al gelinkt. Een tweede issue voor hetzelfde probleem splitst de discussie. |
 | 2026-09-01 | Het dossier vraagt **wanneer** een GEOxyz-commit kan vervallen, niet of | Redmine backportt geen features naar een stable branch; een geaccepteerde patch komt in 7.1 of later. De commit blijft dus nodig tot GEOxyz die release haalt. |
+| 2026-09-02 | `assignee-nobody` wordt **generiek** afgehandeld in `Query#sql_for_field`, niet in een eigen `sql_for_assigned_to_id_field` op `IssueQuery` | De eigen methode was het eerste ontwerp en is de voor de hand liggende naad (`statement` zoekt er zelf naar), maar hij zou de vijftien regels journal-subquery van de historie-operatoren moeten dupliceren en voor altijd in de pas houden. De generieke vorm is niet groter en heeft geen kopie. Bijkomend: het is letterlijk wat Jean-Baptiste Barth in 2010 in #5535 vroeg ("liever een generieke oplossing … assigned to, target version, category"), en dat is het enige inhoudelijke bezwaar van een committer dat in zestien jaar op dat issue is gemaakt. |
+| 2026-09-02 | Alle **zeven** operatoren van het toewijzingsfilter worden gedekt, ook `ev`, `!ev` en `cf` | Het filter biedt ze aan; de waardelijst is dezelfde voor elke operator. Vier ervan gaven een HTTP 500 op PostgreSQL met de bestaande patches, en `cf` gaf stil een lege lijst — erger dan de 500, want niets wijst de gebruiker erop. Een pseudo-waarde die maar bij één operator werkt is geen feature maar een val. |
+| 2026-09-02 | Geen nieuwe locale-sleutel: `label_nobody` en de waarde `'none'` worden hergebruikt | Beide bestaan al in trunk en betekenen daar exact dit: `bulk_edit.html.erb` en het contextmenu gebruiken `assigned_to_id => 'none'` voor "haal de toewijzing weg", en `label_nobody` staat in alle 63 locale-bestanden die Redmine meelevert. Dus geen vertaalpatch en geen tweede patchbestand. |
+| 2026-09-02 | De pseudo-waarde wordt **alleen** in de toewijzingslijst gezet, niet in doelversie en categorie | INV-6: de nulhypothese is dat het niet nodig is. Het mechanisme dekt ze al (`?v[fixed_version_id][]=none` werkt met deze patch), dus toevoegen is één regel per lijst. #5535 gaat over de toewijzing; de rest is de keuze van de reviewer, en dat staat zo in het dossier. |
+| 2026-09-02 | Custom fields zijn uitgesloten via `is_custom_filter` | Een lijst-custom-field mag "none" gewoon als echte waarde hebben. Nagekeken: elk niet-custom `list_optional`-filter in core houdt numerieke ids of een korte vaste woordenlijst, en de `cf_<id>.<attribuut>`-filters zijn `:date` en `:list`, dus buiten de poort. |
+| 2026-09-02 | Twee bestaande trunk-tests **aangepast**, niet verzwakt | `test_assigned_to_values_should_be_sorted_by_status_and_name` telt met `[1..]` de pseudo-waarden weg die vóór de echte gebruikers staan; dat wordt `[2..]`. `QueriesControllerTest#test_assignee_filter_should_return_active_and_locked_users_grouped_by_status` telt de JSON-waarden: 6 wordt 7, met één `assert_include` erbij zodat de reden in de test zelf staat. Beide assertions houden hun oorspronkelijke bedoeling. Die tweede is alleen gevonden doordat G3 de **volledige** suite eist — de aangeraakte bestanden waren groen. |
+| 2026-09-02 | `tools/dev-seed.rb` krijgt twee extra issues: één toegewezen aan `tester`, en één dat van niemand naar `dev` ging met een journal | Zonder de eerste heeft "niemand of dev" niets om uit te sluiten en bewijst de screenshot niets; zonder de tweede hebben de historie-operatoren geen journalregel om te vinden. Idempotent op de toewijzing, niet op het bestaan van het issue — de eerste versie sloeg de journal over zodra het issue er al stond. |
 
 ## Open — keuze voor Jan
 
-Geen open keuzes.
+- **K-05 — krijgt `<< niemand >>` ook een plek in de filters "Doelversie" en
+  "Categorie"?**
+  - **Waar het over gaat:** het mechanisme in deze patch werkt voor elk filter
+    waarvan de kolom leeg mag zijn, dus ook voor doelversie en categorie. Alleen
+    de *lijst* van de toewijzing is aangesloten. Aansluiten van de andere twee is
+    één regel per lijst.
+  - **Opties:**
+    A) Alleen de toewijzing, zoals nu gebouwd. Het issue #5535 gaat daarover, de
+       patch blijft klein, en de reviewer kan zelf zeggen of hij de andere twee
+       erbij wil.
+    B) Alle drie meteen. Dat is letterlijk wat Jean-Baptiste Barth in 2010 vroeg,
+       maar het maakt de patch breder dan het issue en geeft drie keer zoveel
+       oppervlak om op af te wijzen.
+  - **Aanbeveling:** A — de bezwarentabel in het dossier zegt expliciet dat het
+    mechanisme generiek is en dat de andere twee één regel zijn. Zo krijgt de
+    reviewer de keuze zonder dat wij de patch groter maken.
+  - **Haast?** nee — we bouwden verder met A. Het is geen blokkade; als de
+    reviewer B wil is dat twee regels erbij.
 
 ### Gesloten
 

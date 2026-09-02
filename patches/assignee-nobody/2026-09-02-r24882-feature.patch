@@ -1,0 +1,252 @@
+From d6f6a73255f43c41599f8197cc14da469d1561b8 Mon Sep 17 00:00:00 2001
+From: Jan Catrysse <jan.catrysse@geoxyz.eu>
+Date: Wed, 2 Sep 2026 20:10:57 +0000
+Subject: [PATCH] Assigned to issuelist filter: added <nobody> value (#5535).
+
+The assignee filter can select users, and it can select "none" as an
+operator, but not both at once: a filter row has one operator, so
+"assigned to me or not yet assigned" cannot be expressed.
+
+Adds a << nobody >> pseudo-value to the assignee value list, and teaches
+sql_for_field to read the value 'none' as a NULL column value on filters of
+type list_optional and list_optional_with_history. All seven operators
+the assignee filter offers are covered, including the history operators
+"has been", "has never been" and "changed from", which read the value
+from journal_details.old_value.
+
+Custom field filters are excluded, since a list custom field may have
+"none" among its own possible values.
+---
+ app/models/query.rb                        |  24 ++++-
+ test/functional/queries_controller_test.rb |   5 +-
+ test/unit/query_test.rb                    | 104 ++++++++++++++++++++-
+ 3 files changed, 127 insertions(+), 6 deletions(-)
+
+diff --git a/app/models/query.rb b/app/models/query.rb
+index 7558f7409..d5447340c 100644
+--- a/app/models/query.rb
++++ b/app/models/query.rb
+@@ -651,6 +651,7 @@ class Query < ApplicationRecord
+   def assigned_to_values
+     assigned_to_values = []
+     assigned_to_values << ["<< #{l(:label_me)} >>", "me"] if User.current.logged?
++    assigned_to_values << ["<< #{l(:label_nobody)} >>", "none"]
+     assigned_to_values +=
+       (Setting.issue_group_assignment? ? principals : users).sort_by{|p| [p.status, p]}.
+         collect{|s| [s.name, s.id.to_s, l("status_#{User::LABEL_BY_STATUS[s.status]}")]}
+@@ -1244,6 +1245,10 @@ class Query < ApplicationRecord
+   # Helper method to generate the WHERE sql for a +field+, +operator+ and a +value+
+   def sql_for_field(field, operator, value, db_table, db_field, is_custom_filter=false)
+     sql = ''
++    match_null =
++      !is_custom_filter && value.include?('none') &&
++      [:list_optional, :list_optional_with_history].include?(type_for(field))
++    value -= ['none'] if match_null
+     case operator
+     when "="
+       if value.any?
+@@ -1282,6 +1287,7 @@ class Query < ApplicationRecord
+         # IN an empty set
+         sql = "1=0"
+       end
++      sql = "#{db_table}.#{db_field} IS NULL OR (#{sql})" if match_null
+     when "!"
+       if value.any?
+         sql =
+@@ -1293,6 +1299,7 @@ class Query < ApplicationRecord
+         # NOT IN an empty set
+         sql = "1=1"
+       end
++      sql = "#{db_table}.#{db_field} IS NOT NULL AND (#{sql})" if match_null
+     when "!*"
+       sql = "#{db_table}.#{db_field} IS NULL"
+       sql += " OR #{db_table}.#{db_field} = ''" if is_custom_filter || [:text, :string].include?(type_for(field))
+@@ -1468,7 +1475,7 @@ class Query < ApplicationRecord
+       sql = sql_contains("#{db_table}.#{db_field}", value.first, :ends_with => true)
+     when "ev", "!ev", "cf"
+       # has been,  has never been, changed from
+-      if queried_class == Issue && value.present?
++      if queried_class == Issue && (value.present? || match_null)
+         neg = (operator.start_with?('!') ? 'NOT' : '')
+         subquery =
+           "SELECT 1 FROM #{Journal.table_name}" +
+@@ -1479,11 +1486,11 @@ class Query < ApplicationRecord
+           " AND #{JournalDetail.table_name}.property = 'attr'" +
+           " AND #{JournalDetail.table_name}.prop_key = '#{db_field}'" +
+           " AND " +
+-          queried_class.send(:sanitize_sql_for_conditions, ["#{JournalDetail.table_name}.old_value IN (?)", value.map(&:to_s)]) +
++          sql_for_in_or_null("#{JournalDetail.table_name}.old_value", value, match_null) +
+           ")"
+         sql_ev =
+           if %w[ev !ev].include?(operator)
+-            " OR " + queried_class.send(:sanitize_sql_for_conditions, ["#{db_table}.#{db_field} IN (?)", value.map(&:to_s)])
++            " OR " + sql_for_in_or_null("#{db_table}.#{db_field}", value, match_null)
+           else
+             ''
+           end
+@@ -1498,6 +1505,17 @@ class Query < ApplicationRecord
+     return sql
+   end
+ 
++  # Returns a SQL condition matching the given values, NULL values included
++  # if match_null is true
++  def sql_for_in_or_null(column, value, match_null)
++    conditions = []
++    conditions << "#{column} IS NULL" if match_null
++    if value.any?
++      conditions << queried_class.send(:sanitize_sql_for_conditions, ["#{column} IN (?)", value.map(&:to_s)])
++    end
++    conditions.size > 1 ? "(#{conditions.join(' OR ')})" : conditions.first
++  end
++
+   # Returns a SQL LIKE statement with wildcards
+   #
+   # valid options:
+diff --git a/test/functional/queries_controller_test.rb b/test/functional/queries_controller_test.rb
+index 297bfa232..04d4d600c 100644
+--- a/test/functional/queries_controller_test.rb
++++ b/test/functional/queries_controller_test.rb
+@@ -893,9 +893,10 @@ class QueriesControllerTest < Redmine::ControllerTest
+     assert_equal 'application/json', response.media_type
+     json = ActiveSupport::JSON.decode(response.body)
+ 
+-    assert_equal 6, json.count
+-    # "me" value should not be grouped
++    assert_equal 7, json.count
++    # "me" and "nobody" values should not be grouped
+     assert_include ["<< me >>", "me"], json
++    assert_include ["<< nobody >>", "none"], json
+     assert_include ["Dave Lopper", "3", "active"], json
+     assert_include ["Dave2 Lopper2", "5", "locked"], json
+   end
+diff --git a/test/unit/query_test.rb b/test/unit/query_test.rb
+index ebf7fc991..2fb7dce47 100644
+--- a/test/unit/query_test.rb
++++ b/test/unit/query_test.rb
+@@ -1001,6 +1001,101 @@ class QueryTest < ActiveSupport::TestCase
+     end
+   end
+ 
++  def test_filter_assigned_to_nobody_or_user
++    user = User.find(2)
++    assigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => user)
++    unassigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
++    other = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to_id => 3)
++
++    query = IssueQuery.new(:name => '_')
++    query.add_filter('assigned_to_id', '=', ['none', user.id.to_s])
++    result = find_issues_with_query(query)
++
++    assert_include assigned, result
++    assert_include unassigned, result
++    assert_not_include other, result
++  end
++
++  def test_filter_assigned_to_not_nobody_and_not_user
++    user = User.find(2)
++    assigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => user)
++    unassigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
++    other = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to_id => 3)
++
++    query = IssueQuery.new(:name => '_')
++    query.add_filter('assigned_to_id', '!', ['none', user.id.to_s])
++    result = find_issues_with_query(query)
++
++    assert_not_include assigned, result
++    assert_not_include unassigned, result
++    assert_include other, result
++  end
++
++  def test_filter_assigned_to_nobody_alone_should_match_the_none_operator
++    query = IssueQuery.new(:name => '_')
++    query.add_filter('assigned_to_id', '=', ['none'])
++    none_query = IssueQuery.new(:name => '_')
++    none_query.add_filter('assigned_to_id', '!*', [''])
++
++    assert_equal find_issues_with_query(none_query).map(&:id).sort,
++                 find_issues_with_query(query).map(&:id).sort
++  end
++
++  def test_filter_assigned_to_not_nobody_alone_should_match_the_any_operator
++    query = IssueQuery.new(:name => '_')
++    query.add_filter('assigned_to_id', '!', ['none'])
++    any_query = IssueQuery.new(:name => '_')
++    any_query.add_filter('assigned_to_id', '*', [''])
++
++    assert_equal find_issues_with_query(any_query).map(&:id).sort,
++                 find_issues_with_query(query).map(&:id).sort
++  end
++
++  def test_operator_has_been_nobody
++    User.current = User.find(1)
++    issue = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
++    issue.init_journal(User.current)
++    issue.update(:assigned_to_id => 2)
++    always_assigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to_id => 2)
++
++    query = IssueQuery.new(:name => '_')
++    query.add_filter('assigned_to_id', 'ev', ['none'])
++    result = find_issues_with_query(query)
++
++    assert_include issue, result
++    assert_not_include always_assigned, result
++  end
++
++  def test_operator_has_never_been_nobody
++    User.current = User.find(1)
++    issue = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
++    issue.init_journal(User.current)
++    issue.update(:assigned_to_id => 2)
++    always_assigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to_id => 2)
++
++    query = IssueQuery.new(:name => '_')
++    query.add_filter('assigned_to_id', '!ev', ['none'])
++    result = find_issues_with_query(query)
++
++    assert_not_include issue, result
++    assert_include always_assigned, result
++  end
++
++  def test_operator_changed_from_nobody
++    User.current = User.find(1)
++    issue = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
++    issue.init_journal(User.current)
++    issue.update(:assigned_to_id => 2)
++    unassigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
++
++    query = IssueQuery.new(:name => '_')
++    query.add_filter('assigned_to_id', 'cf', ['none'])
++    result = find_issues_with_query(query)
++
++    assert_include issue, result
++    assert_not_include unassigned, result
++  end
++
+   def test_filter_notes
+     user = User.generate!
+     Journal.create!(:user_id => user.id, :journalized => Issue.find(2), :notes => 'Notes.')
+@@ -3449,6 +3544,13 @@ class QueryTest < ActiveSupport::TestCase
+     assert_equal 'board', query.display_type
+   end
+ 
++  def test_assigned_to_values_should_include_nobody
++    set_language_if_valid('en')
++
++    assert_include ["<< #{l(:label_nobody)} >>", 'none'],
++                   IssueQuery.new(:name => '_').assigned_to_values
++  end
++
+   def test_assigned_to_values_should_be_sorted_by_status_and_name
+     User.delete_all
+     20.times do |i|
+@@ -3461,6 +3563,6 @@ class QueryTest < ActiveSupport::TestCase
+ 
+     expected_names = User.order(:status, :firstname).all.map(&:name)
+     assigned_to_values = query.assigned_to_values
+-    assert_equal expected_names, assigned_to_values[1..].map(&:first)
++    assert_equal expected_names, assigned_to_values[2..].map(&:first)
+   end
+ end
+-- 
+2.43.0
+
