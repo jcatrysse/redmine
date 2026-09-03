@@ -17,7 +17,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
-| [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86`) | patch klaar | — |
+| [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041`) | patch klaar | — |
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`28c618860`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
 | [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | todo | nooit | — |
@@ -165,9 +165,9 @@ De Engelse tekst staat in `dossier.md` vanaf "The problem"; de voor/na-paren in
 Maak een **nieuw** issue op redmine.org aan als follow-up van
 [#29664](https://www.redmine.org/issues/29664) — dus niet als note aan #29664
 zelf, dat issue is gesloten met target version 7.0.0. Hang er
-`patches/webhook-tracker-filter/2026-09-03-r24882-feature.patch` en
-`-locales.patch` aan. De Engelse issuetekst staat kant-en-klaar in
-`dossier.md` vanaf "The problem".
+`patches/webhook-tracker-filter/2026-09-03-r24882-feature.patch` (code +
+`en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`) aan. De Engelse
+issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem".
 
 Zeg in de beschrijving expliciet dat dit **note 37 van Holger Just op #29664
 beantwoordt**: hij vroeg om de monolithische 5.1-patch op te splitsen in losse
@@ -183,6 +183,11 @@ vóórdat iemand ernaar vraagt:
   een upgrade. Er is een unittest die dat vastlegt en die **ongewijzigd groen
   staat op trunk**, plus een screenshot van een echte levering die het in een
   draaiende Redmine laat zien.
+- De vertalingen zitten in een **apart** patchbestand. Zeg er expliciet bij dat
+  een committer de feature-patch alleen kan aannemen en de vertalingen kan laten
+  liggen als hij die liever van de taalteams krijgt — dan is er niets te
+  herschrijven. Dat haalt het enige bezwaar weg dat de vier extra talen kunnen
+  oproepen.
 - De patch voegt `preload(:trackers)` toe zodat `hooks_for` niet één query per
   hook gaat doen. Noem #44386 erbij — daar haalde Marius Bălteanu een week
   eerder een N+1 uit ditzelfde model, dus het is duidelijk dat het onderwerp

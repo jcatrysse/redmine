@@ -3,7 +3,7 @@ slug: webhook-tracker-filter
 feature: Webhook beperken tot gekozen trackers
 commit_51: 25220b45d (deel)
 geoxyz: live
-geoxyz_commit: f2242bd86 + 2606201d0
+geoxyz_commit: f2242bd86 + 646008041
 upstream: patch klaar
 patch: patches/webhook-tracker-filter/2026-09-03-r24882-feature.patch
 issue:
@@ -39,10 +39,11 @@ vuurt de hook voor alle trackers, precies zoals nu.
   2 errors, 92 skips**. Faalnamen identiek: **ja** — 29 namen, byte-identieke
   lijst, allemaal repository-/changeset-/`SysController`-tests die een
   SCM-binary nodig hebben die dit image niet heeft.
-- Volledige suite op `7.0-stable-GEOxyz`, laatste run met beide eigen commits
-  erop: **5963 runs, 31861 assertions, 0 failures, 0 errors, 39 skips** — daar
-  is het echt 0/0. (Eerdere runs op tussenstanden: 5951/31818 en 5963/31858,
-  ook alle drie 0 failures.)
+- Volledige suite op de **werkelijke tip** van `7.0-stable-GEOxyz`
+  (`646008041`, dus met beide eigen commits erop én de commits van de twee
+  parallelle sessies eronder): **5986 runs, 31936 assertions, 0 failures,
+  0 errors, 39 skips**. Dat is de boom die GEOxyz draait. (Eerdere runs op
+  tussenstanden: 5951/31818, 5963/31858 en 5963/31861 — alle vier 0 failures.)
 - Locale-consistentietest van Redmine zelf
   (`test/unit/lib/redmine/i18n_test.rb`) samen met de webhooksuites, aan beide
   kanten: **69 runs, 950 assertions, 0 failures, 0 errors**.

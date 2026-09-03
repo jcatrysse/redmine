@@ -280,12 +280,13 @@ would have made the diff larger for no gain.
   **5926 runs, 31473 assertions, 27 failures, 2 errors, 92 skips**
 - **full** suite on a pristine `origin/master` worktree, same command:
   **5920 runs, 31455 assertions, 27 failures, 2 errors, 92 skips**
-- **full** suite on `7.0-stable-GEOxyz` with the same change applied:
-  **5951 runs, 31818 assertions, 0 failures, 0 errors, 39 skips** — 7.0-stable
-  does not carry the trunk tests that need the missing SCM binaries, so there it
-  is genuinely clean. Re-run on the branch tip after a parallel session's commit
-  landed underneath it: **5963 runs, 31858 assertions, 0 failures, 0 errors,
-  39 skips**
+- **full** suite on `7.0-stable-GEOxyz` with the same change applied, on the
+  branch tip: **5986 runs, 31936 assertions, 0 failures, 0 errors, 39 skips** —
+  7.0-stable does not carry the trunk tests that need the missing SCM binaries,
+  so there it is genuinely clean
+- Redmine's own locale-consistency suite
+  (`test/unit/lib/redmine/i18n_test.rb`) run together with the webhook suites,
+  on both branches: **69 runs, 950 assertions, 0 failures, 0 errors**
 - **failure names identical on both** — 29 named failures, byte-identical lists.
   All 29 are repository, changeset and `SysController` tests that need an SCM
   binary this container does not have (only `git` is installed); none of them is
