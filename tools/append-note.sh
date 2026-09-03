@@ -58,7 +58,15 @@ for attempt in 1 2 3 4 5; do
     echo "note  nothing to add — that block is already there"
     exit 0
   fi
-  git commit -q -m "${MSG:-$(basename "$FILE" .md): $(printf '%s' "$BLOCK" | head -1 | cut -c1-60)}"
+  # The attribution trailer belongs on geoxyz/framework and nowhere else
+  # (INV-4, K-01 option A). This tool only ever pushes there.
+  subject="${MSG:-$(basename "$FILE" .md): $(printf '%s' "$BLOCK" | head -1 | cut -c1-60)}"
+  if [ -n "${CLAUDE_CODE_REMOTE_SESSION_ID:-}" ]; then
+    git commit -q -m "$subject" -m "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/$CLAUDE_CODE_REMOTE_SESSION_ID"
+  else
+    git commit -q -m "$subject"
+  fi
 
   if git push -q origin geoxyz/framework 2>/dev/null; then
     echo "PASS  appended to $FILE"
