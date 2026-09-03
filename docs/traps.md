@@ -33,6 +33,21 @@
 
 ## Voordat je bouwt
 
+- **Een slot moet uit verschillende bestandsnamen bestaan.** De eerste versie van
+  `tools/claim.sh` zette een `claimed:`-regel in `status.md`. Twee sessies die
+  dezelfde regel schrijven geven een **conflict op de replay**, geen winnaar —
+  precies het tegenovergestelde van een slot. Nu is het één bestand per sessie
+  (`docs/claims/<slug>--<sessie>`), dus verschillende paden, dus geen conflict,
+  en beide kanten breken de knoop op dezelfde manier.
+- **Een retry mag alleen zijn eigen commit terugdraaien.** `append-note.sh` deed
+  eerst `git reset --hard origin/geoxyz/framework` in de retrylus; dat gooit ook
+  de nog niet gepushte commits van je eigen sessie weg. `HEAD~1` is wat je wil.
+- **Een push-race test je niet in één clone.** Twee commits achter elkaar in
+  dezelfde clone staan al op elkaar, dus de push wordt niet geweigerd en je test
+  niets. Twee losse clones op dezelfde commit, één pusht, de ander niet-fetchen
+  en dan pushen: dat is de race.
+
+
 - **Zoek op redmine.org vóór je begint, met één trefwoord.** Vier sessies op rij
   bestond er al een issue. Bij `version-subprojects` had een **kerncommitter er
   zelf al aan gewerkt**; bij `mypage-query-blocks` had de **projectleider het

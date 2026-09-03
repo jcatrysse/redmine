@@ -88,12 +88,28 @@ onder aan `config/locales/{nl,fr,de,es}.yml` zetten op `7.0-stable-GEOxyz`.
 Oplossing is altijd **beide kanten houden**; er is niets te kiezen.
 `tools/session-push.sh` zegt dat ook als het gebeurt.
 
-## Wat er nog nooit gebeurd is
+## Bewijs dat dit werkt
 
-Er heeft nog geen sessie met een andere sessie tegelijk gelopen. Alles hierboven
-is ontworpen en de tools zijn getest met een gesimuleerde tweede sessie, maar de
-eerste echte parallelle run is nog niet gedaan. Als er iets misgaat, hoort dat
-in `docs/traps.md`.
+Er heeft nog geen sessie met een echte andere sessie tegelijk gelopen — de
+eerste parallelle run is nog niet gedaan. De machinerie is wel uitgeprobeerd,
+met een tweede sessie erbij verzonnen (2026-09-03):
+
+| Wat | Uitkomst |
+|---|---|
+| `tools/claim.sh <slug>` | PASS, claim staat op de branch |
+| tweede sessie claimt dezelfde slug | stapt terug, exit 1, verwijdert zijn eigen claimbestand — de eerste houdt hem |
+| `--list`, `--release`, `--force` | alle drie doen wat ze zeggen |
+| `git push` met de remote één commit voor | geweigerd, non-fast-forward |
+| `tools/session-push.sh` in dezelfde situatie | speelt de eigen commit erbovenop en pusht; **beide** commits blijven, historie blijft lineair |
+| `tools/append-note.sh docs/traps.md` | PASS |
+| `tools/append-note.sh` op een bestand van één feature | geweigerd, met de reden |
+| `tools/check-ownership.sh` op een schone boom | PASS |
+| idem met een regel in `CLAUDE.md` erbij | FAIL, noemt het bestand, exit 1 |
+| `tools/register.sh --write` | achttien features, klopt met het oude register |
+
+De race is getest met **twee losse clones** op dezelfde commit, niet met twee
+commits in één clone — dat laatste reproduceert de race niet. Als er in een
+echte parallelle run alsnog iets misgaat, hoort dat in `docs/traps.md`.
 
 ## Voorgeschiedenis, kort
 
