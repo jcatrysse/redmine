@@ -341,3 +341,47 @@
   `NoMethodError` in plaats van de bedoelde melding. Ik had die tak zelf net
   geschreven en goedgekeurd; de test die erbij hoorde viel meteen om.
   `CGI.parse('')` als leeg resultaat teruggeven bewaart het contract.
+
+## Uit webhook-tracker-filter, tweede ronde (2026-09-03)
+
+- **K-nummers botsen tussen parallelle sessies.** Drie sessies deelden op één
+  dag `docs/DECISIONS.md` en twee kozen onafhankelijk **K-06**: één voor de
+  talenkeuze van het trackerfilter, één voor de `client_credentials`-grant van
+  imap-oauth. Het bestand is append-only, dus terugkomen en hernummeren kan
+  niet — je kunt alleen een blok toevoegen dat het uitlegt. Neem dus vóór je een
+  K-nummer uitdeelt het **hoogste** nummer dat in het bestand voorkomt en tel
+  daar bij op, en fetch eerst:
+  `git fetch origin geoxyz/framework && git show origin/geoxyz/framework:docs/DECISIONS.md | grep -oE 'K-[0-9]+' | sort -u | tail -1`.
+- **Redmine's locale-bestanden zijn niet allemaal even ver, en dat bepaalt hoe
+  je vertaalt.** De webhookblok in `nl.yml`, `fr.yml` en `es.yml` staat nog
+  volledig in het Engels; alleen `de.yml` is vertaald. De dichtstbijzijnde
+  sleutel is daar dus Engels, en de vertaling moet uit **andere** sleutels in
+  datzelfde bestand komen. Zoek per begrip apart (`gebeurtenis`, `geselecteerd`,
+  `verstuurd`, `alle`) in plaats van naar de buursleutel te kijken.
+- **`label_tracker_all` is goud voor een vertaling met "alle trackers" erin.**
+  `fr.yml` heeft "Tous les trackers", `es.yml` heeft "Todos los tipos" — precies
+  de zinsnede, al vertaald, door een echte translator.
+- **In het Spaans is een tracker een `tipo`.** `label_tracker: Tipo`,
+  `label_tracker_plural: Tipos de peticiones`. Een uit het Engels gecomponeerde
+  Spaanse zin zegt "trackers" en botst dan met de legenda die er letterlijk
+  boven staat. Dit is precies de fout waar INV-5 voor bestaat, en hij is alleen
+  te zien op een **uitsnede van het element zelf** naast de legenda —
+  `locator.screenshot()`, niet de paginabrede afbeelding.
+- **`nl.yml` heeft geen woord voor aanvinken.** Grep op `vink` geeft nul
+  resultaten. "Leave all trackers unchecked" letterlijk vertalen betekent dus
+  vocabulaire verzinnen; "selecteer geen enkele tracker" gebruikt wat er wél
+  staat (`text_select_mail_notifications`).
+- **`fr.yml` bevat het woord `événement` nergens.** Voor een webhook-hint over
+  events is er dus niets om op te patronen. Zeg dat dan expliciet in het
+  dossier in plaats van te doen alsof het herleid is — het is geen Redmine-
+  vakterm, dus het mag, maar de lezer hoort te weten welk woord niet gedekt is.
+- **Kopieer geen tikfout uit een locale-bestand.** De enige bestaande
+  `sélectionné` in `fr.yml` staat in `text_issues_destroy_confirmation` en mist
+  zijn accent ("selectionnée"). "Match de bestaande sleutel" betekent niet de
+  spelfout meenemen; er stond een correcte vorm in `text_user_mail_option`.
+- **Op `patch/<slug>` amendeer je, op `7.0-stable-GEOxyz` niet.** Een tweede
+  commit op de patchbranch geeft `git format-patch` twee patch-mails per
+  bestandsgroep, wat aan een redmine.org-issue rommelig hangt. Amenderen en
+  force-pushen mag daar: die branch bestaat alleen om de patch uit te draaien en
+  niemand baseert er werk op. Op de GEOxyz-branch is het omgekeerde waar — daar
+  een tweede commit, nooit een rewrite.
