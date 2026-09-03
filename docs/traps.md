@@ -223,3 +223,40 @@
   groepeer-link op precies die twee pagina's: die link deed dus nooit iets. Dit
   is de G9-fout in zijn oervorm — grep waar een JS-bestand ingeladen wordt
   vóórdat je erop bouwt.
+
+## Uit `imap-oauth` (2026-09-03)
+
+- **Pak de git-fixtures ook uit in de GEOxyz-worktree.** De runbook zegt het al
+  voor de patch-worktree, en toch gebeurde het hier: zonder
+  `tmp/test/git_repository` **slaan de repository-tests stil over** en gaf de
+  suite op `7.0-stable-GEOxyz` `5727 runs, 0 failures` — na het uitpakken
+  `5827 runs, 0 failures`. Honderd tests die groen léken en niet liepen. Doe het
+  in élke worktree waar je een suite draait, meteen na `db:migrate`.
+- **De adversariële herlezing van je diff hoort vóór de suite, niet erna.** De
+  trap "wijzig de working tree niet terwijl de suite daar loopt" zegt "lint
+  eerst"; lint is niet genoeg. Deze sessie vond bij het kritisch herlezen een
+  echte verbetering (`JSON.parse(nil)` in een rescue-pad) terwijl de volledige
+  suite al twintig minuten liep, en die suite moest dus helemaal opnieuw. Doe
+  G5 op hetzelfde moment als G4: lint, herlees, commit, *dan* starten.
+- **Een verificatieharnas dat te toegeeflijk is maakt je before-run ten
+  onrechte groen.** De nep-IMAP-server accepteerde `LOGIN` klakkeloos, dus de
+  "before"-run op schone trunk **slaagde** en maakte een issue aan — precies
+  het tegendeel van wat bewezen moest worden. Een harnas moet de echte
+  weigering nabootsen (Exchange Online antwoordt
+  `NO [AUTHENTICATIONFAILED] basic authentication is disabled`), en het issue
+  dat de te makkelijke run aanmaakte moest uit `redmine_dev` verwijderd worden
+  voordat de before-screenshot klopte.
+- **`net-imap` stuurt geen SASL initial response als de greeting geen `SASL-IR`
+  adverteert.** Een nep-IMAP-server die alleen `AUTHENTICATE <mech> <base64>`
+  op één regel begrijpt krijgt dan `AUTHENTICATE XOAUTH2` zonder meer, en
+  weigert een geldige credential. Hij moet ook de `+ `-continuation kunnen: `+ `
+  sturen en de base64 op de volgende regel lezen.
+- **`pkill -f <script>` doodt ook je eigen shell**, niet alleen `rails server`.
+  De runbook waarschuwt hiervoor voor `rails server`; het geldt voor élk
+  patroon, ook `pkill -f imap_server.rb`. Dat kostte hier één commando
+  (exit 144) en de herstart die erin stond liep niet meer. Kill op pid uit
+  `ps -eo pid,cmd`.
+- **`bin/rails zeitwerk:check` is de goedkoopste gate voor een nieuw bestand
+  onder `lib/redmine/`.** Hij eager-loadt de hele applicatie zoals productie
+  dat doet, dus hij vindt een verkeerd genoemde constante die de testsuite mist
+  (de suite laadt lazy). Kost tien seconden.
