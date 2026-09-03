@@ -170,6 +170,30 @@ class WebhookTest < ActiveSupport::TestCase
     assert_equal [hook], Webhook.hooks_for('issue.deleted', @issue)
   end
 
+  test "should find hook for issue of a selected tracker" do
+    hook = create_hook
+    hook.update! trackers: [Tracker.find(1)]
+    assert_equal [hook], Webhook.hooks_for('issue.created', Issue.find(1))
+  end
+
+  test "should not find hook for issue of a tracker that is not selected" do
+    hook = create_hook
+    hook.update! trackers: [Tracker.find(1)]
+    assert_equal [], Webhook.hooks_for('issue.created', Issue.find(2))
+  end
+
+  test "should find hook for issue of any tracker when no tracker is selected" do
+    hook = create_hook
+    assert_equal [hook], Webhook.hooks_for('issue.created', Issue.find(1))
+    assert_equal [hook], Webhook.hooks_for('issue.created', Issue.find(2))
+  end
+
+  test "should find hook for object without a tracker when trackers are selected" do
+    hook = create_hook events: ['news.created']
+    hook.update! trackers: [Tracker.find(1)]
+    assert_equal [hook], Webhook.hooks_for('news.created', News.find(1))
+  end
+
   test "schedule should enqueue jobs for hooks" do
     with_settings webhooks_enabled: '1' do
       hook = create_hook
