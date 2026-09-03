@@ -304,11 +304,41 @@ the images rather than by the assertions.
    can see. The select is therefore also cropped on its own
    (`select-*.png`), where the grey/black pair is unambiguous.
 
+# What asynchronous loading would and would not fix
+
+Note-9 is the one objection standing between #27313 and a decision, so it is
+worth being precise about what it buys. Measured on this patch, one public
+`IssueQuery` per block, counting `sql.active_record` outside SCHEMA and CACHE:
+
+| Blocks | SQL queries for `GET /my/page` | Response body |
+|---|---|---|
+| 0 | 10 | 13 KB |
+| 1 | 41 | 30 KB |
+| 3 | 85 | 65 KB |
+| 6 | 151 | 118 KB |
+
+Loading the blocks asynchronously spreads those 151 queries over six separate
+requests. The total is unchanged and slightly higher, because each request
+repeats the session lookup, `User.current` and the render setup. What it buys is
+perceived latency: the page shell arrives at once and one slow block no longer
+holds up the rest. What note-5 describes — a server brought down by five blocks
+on a page auto-refreshed every minute — is load, and async does not reduce load.
+
+There is also no cheap N+1 hiding here. Of the ~41 queries a single block costs,
+25 are `issue_count` plus `issues(:limit => 10)` themselves, 7 are
+`available_filters` and 6 `available_columns`; and the count does not scale with
+the number of rows (10 issues → 41 queries, 1 issue → 40). The cost is the query
+work, not overhead.
+
+So the two changes answer different problems, and this one answers note-5's:
+an administrator gets a ceiling, in both directions, and nothing is raised for
+anybody who does not set it.
+
 # Anticipated objections
 
 | Objection | Answer |
 |---|---|
-| "We should load content asynchronously before raising the number of queries that can be displayed." (note-9, #27313) | Agreed, and this patch raises nothing. The default is 3, so an installation that does not touch the setting renders exactly what it renders today — `before-select-at-default-maximum.png` and `select-at-default-maximum.png` are the same picture. The async work is a prerequisite for a higher *default*, not for letting an administrator choose. It also cuts the other way: today an installation that is suffering from dashboard queries cannot ask for fewer than three, and note-5 on the same issue is exactly that installation. |
+| "We should probably load content asynchronously before raising the number of queries that can be displayed." (note-9, #27313) | Agreed, and this patch raises nothing. The default is 3, so an installation that does not touch the setting renders exactly what it renders today — `before-select-at-default-maximum.png` and `select-at-default-maximum.png` are the same picture. The async work is a prerequisite for a higher *default*, not for letting an administrator choose. It also cuts the other way: today an installation that is suffering from dashboard queries cannot ask for fewer than three, and note-5 on the same issue is exactly that installation. |
 | Why not simply `max_occurs => 5`, as proposed in note-8? | That is the change note-9 declined, it costs every installation whether it wanted it or not, and 5 is as arbitrary as 3. See "Alternatives considered". |
 | A setting is permanent API and translation surface; is one number worth it? | The number is already core's, in a constant nobody can reach. This adds one `format: int` row to `config/settings.yml`, one field on an existing tab and one locale key — the same shape as `feeds_limit`, `gantt_items_limit` and `issues_export_limit`. No migration, no permission, no route. |
 | Should the setting be capped, as #27313's description suggests? | We did not cap it, because core does not cap `issues_export_limit`, `gantt_items_limit` or `activity_days_default` either, and any cap is another arbitrary number. If you want one, it is one line in `MyPage.max_occurs`. |
