@@ -142,6 +142,12 @@ verder met `en.yml` alleen.
 - **`after_save_commit`, dus ook een issue dat direct gesloten wordt
   aangemaakt.** Dat is Redmine's eigen definitie: `Issue#closing?` geeft voor
   een nieuw record `closed?` terug. Er is een test voor.
+- **Een beheerder die een bestaande status op "gesloten" zet veroorzaakt geen
+  leveringsstorm.** `IssueStatus#handle_is_closed_change` vult `closed_on` bij
+  met twee `Issue.where(...).update_all(...)`-statements, en `update_all` draait
+  geen callbacks — dus vuurt noch `issue.closed` noch het bestaande
+  `issue.updated`. Nagekeken in `app/models/issue_status.rb`; het staat als
+  verwacht bezwaar in het dossier.
 - **De callback staat met opzet niet in de `case` van
   `acts_as_webhookable`.** Die `case` mapt actienamen op Rails-lifecycle-
   callbacks en "closed" is er geen. De `case` heeft geen `else`, en trunks

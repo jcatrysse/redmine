@@ -405,11 +405,12 @@ report.
 | `closed` is in the `acts_as_webhookable` array but the `case` in that method has no branch for it. Is that not a bug? | No, it is the seam. Registering an event without a generic lifecycle callback is supported and trunk's own payload test does it (`should generate payload for custom event`, registering `news.commented`). "Closed" is not a lifecycle callback, so it is fired from `Issue::Webhookable` instead, next to the journal enrichment that is also issue-specific. `Issue#attachment_removed` calls `Webhook.trigger` directly for the same reason. |
 | This should be `after_update_commit`, not `after_save_commit`. | `after_save_commit` also covers an issue created directly in a closed status, which is a closing by Redmine's own definition (`Issue#closing?` returns `closed?` for a new record, and `update_closed_on` stamps `closed_on` on that create). Restricting it to updates would make the event silently miss that case. There is a test for it. |
 | Does an existing installation start getting extra deliveries? | No. Existing hooks' `events` arrays do not contain `issue.closed`, so `hooks_for` never returns them for it. Nothing changes until somebody ticks the box. |
-| Then a receiver gets two deliveries for one closing, `issue.updated` and `issue.closed`. | Only if it subscribes to both, which it no longer needs to. The point of the event is that a receiver interested only in closings ticks one box and gets one delivery per closing — six deliveries down to two in the browser verification below. |
+| Then a receiver gets two deliveries for one closing, `issue.updated` and `issue.closed`. | Only if it subscribes to both, which it no longer needs to. The point of the event is that a receiver interested only in closings ticks one box and gets one delivery per closing — six deliveries down to two in the browser verification above. |
 | Two closed statuses in a row (`Closed` → `Rejected`) — surely that is a closing too? | It is a change between two closed states, and `closed_on` is deliberately left alone by core in that case, so the issue's recorded closing time does not move. Firing again would tell a receiver "this was closed now" about an issue that was already closed. There is a test. |
+| An administrator ticks "Issue closed" on an existing status. Does every issue in that status now POST to the hook? | No. `IssueStatus#handle_is_closed_change` backfills `closed_on` on those issues with two `Issue.where(...).update_all(...)` statements, and `update_all` runs no callbacks — so neither `issue.closed` nor the existing `issue.updated` fires. Which is right: the issues were not closed, the definition of closed changed. Deleting such a status is not a route in either: `IssueStatus#check_integrity` refuses while any issue still uses it. |
 | Why not add it to `Version` too, which also has a closed status? | Out of scope for this patch and it would double what has to be reviewed. The design generalises: `Version::Webhookable` gains the same three lines with its own predicate. Happy to add it if wanted. |
 | The four other translations are missing. | On purpose, and the reasoning is in "Locales — why `en.yml` only": in 43 of the 49 non-English locale files the three sibling keys are still the verbatim English string, `i18n.fallbacks` is on, and `rake locales:update` is Redmine's mechanism for propagating a new `en` key with its English value. The six languages that did translate the group translated all three together — that is the unit of work, and a language team will pick the fourth up the same way. |
-| Eight added lines of production code and eight tests is a lot of test for a little code. | The code is small because the condition is exactly right; the tests are what establish that. Seven of the eight are one row of the transition table each, and that table is the whole specification of the feature. |
+| Eight added lines of production code and eight tests is a lot of test for a little code. | The code is small because the condition is exactly right; the tests are what establish that. Six of the eight are one row of the transition table each, and that table is the whole specification of the feature; the other two pin the payload's journal and its timestamp. |
 
 ---
 
@@ -424,10 +425,10 @@ report.
 ## GEOxyz
 
 - **Commit op `7.0-stable-GEOxyz`:** `827e9e7d5`
-- **Suites daar groen:** **PENDING**
+- **Suites daar groen:** **PENDING2**
 - **`nl.yml` toegevoegd:** nee — zie de localesectie; `en.yml` alleen, aan
   beide kanten identiek, dus geen INV-10-afwijking
-- **`tools/check-geoxyz-branch.sh`:** **PENDING**
+- **`tools/check-geoxyz-branch.sh`:** **PASS** (merge met upstream `7.0-stable`: niets te mergen, al current; lint 0 op 33 gewijzigde Ruby-bestanden; locales binnen en/nl/fr/de/es; eigen commits kloppen met het register)
 - **Wanneer kan deze commit vervallen?** Trunk staat op `7.0.0 devel` en
   Redmine backportt geen features naar een stable branch, dus een geaccepteerde
   patch komt in **7.1 of later**. De GEOxyz-commit blijft nodig tot GEOxyz zelf
