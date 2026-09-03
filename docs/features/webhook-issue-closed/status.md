@@ -61,9 +61,10 @@ heropenen, wél opnieuw als het issue daarna weer dichtgaat.
   1057 assertions, 0 failures, 0 errors**.
 - RuboCop op de gewijzigde bestanden: **0** (baseline op dezelfde bestanden op
   de merge-base: **0**). Ook 0 in de GEOxyz-worktree.
-- Rood op oude code: **4 van de 8** nieuwe tests falen op een schone
-  trunk-worktree (`ArgumentError: invalid event: issue.closed`,
-  `Validation failed: Events is invalid`, en twee keer
+- Rood op oude code: **60 runs, 213 assertions, 2 failures, 3 errors** met de
+  twee testbestanden op een schone trunk-worktree, dus **5 van de 8** nieuwe
+  tests falen daar (drie keer `ArgumentError: invalid event: issue.closed` of
+  `Validation failed: Events is invalid`, twee keer
   `expected exactly once, invoked never`). De andere **drie zijn bewakers** met
   een `.never`-verwachting (gesloten→gesloten, heropenen, en een gewone edit
   van een gesloten issue) en staan aan **beide** kanten groen; ze bewijzen niet
@@ -184,11 +185,22 @@ verder met `en.yml` alleen.
    `shots/before-webhook-form.png`, waar vier van de vijf blokken staan. In
    productie is `eager_load = true` en is het er wel. Reproduceerbaar op schone
    trunk, niets met deze patch te maken, en een eigen bugrapport waard.
-2. **`webhook_event_created` / `_updated` / `_deleted` staan in álle
-   taalbestanden onvertaald**, ook in `de.yml`. Al gemeld bij
-   `webhook-tracker-filter`; deze patch voegt er een vierde onvertaalbare
-   sleutel aan toe en dat is precies waarom K-09 openstaat.
-3. **`object_name` wordt niet gelokaliseerd.** `_form.html.erb` geeft
+2. **`webhook_event_created` / `_updated` / `_deleted` staan in 43 van de 49
+   niet-Engelse taalbestanden onvertaald**, `nl`, `fr`, `de` en `es`
+   inbegrepen; zes talen (`bg`, `cs`, `gl`, `hu`, `ja`, `zh-TW`) hebben de groep
+   wél gedaan. Al gemeld bij `webhook-tracker-filter`; deze patch voegt er een
+   vierde Engelse sleutel aan toe en dat is precies waarom K-09 openstaat.
+3. **De trunk-test `should generate payload for custom event` laat `News`
+   dubbel vuren voor de rest van het proces.** Hij roept
+   `News.acts_as_webhookable %w(created updated deleted commented)` aan, en dat
+   registreert de drie bestaande `after_*_commit`-callbacks een **tweede** keer
+   naast de eerste. Elke News-create in datzelfde testproces triggert daarna
+   twee keer `news.created`. Vandaag valt het niet op omdat geen enkele test
+   News-webhookleveringen telt (nagekeken: `webhook_test.rb` raakt News niet
+   aan, en `news_test.rb` / `news_controller_test.rb` noemen `Webhook`
+   nergens). Wie die test ooit wél schrijft, verliest er een middag aan.
+   Bestaand trunk-gedrag, niets met deze patch te maken.
+4. **`object_name` wordt niet gelokaliseerd.** `_form.html.erb` geeft
    `:object_name => type.to_s.humanize` door — een Engelse klassenaam — terwijl
    de legenda erboven `l(:"label_#{type}_plural")` gebruikt. Al gemeld bij
    `webhook-tracker-filter`. Het is de reden dat vertalen van deze sleutel

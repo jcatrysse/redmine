@@ -198,8 +198,9 @@ own payload test (`should generate payload for custom event`, which registers
 callback is a supported thing to do. So the event is registered generically and
 fired from `Issue::Webhookable`, which is the file that exists for
 issue-specific webhook behaviour and where the journal enrichment already
-lives. `Issue#attachment_removed` in trunk calls `Webhook.trigger` directly for
-the same kind of reason.
+lives. `Issue#attachment_removed` in trunk calls `Webhook.trigger` directly
+for the same kind of reason — the commit that added it is "Trigger issue webhook
+when attachment is deleted via AJAX UI (#43889, #29664)".
 
 **Deriving the transition from `status_id` instead of `closed_on`.** The 5.1
 implementation did this: `saved_change_to_status_id?`, then
@@ -278,7 +279,8 @@ three lines with its own predicate.
 - RuboCop on the changed files: **0** offences (baseline on the same files at
   the merge base: **0**).
 - **Red on the old code:** the two test files were copied onto a pristine trunk
-  worktree and run there. **4 of the 8 new tests fail**, with these messages:
+  worktree and run there — **60 runs, 213 assertions, 2 failures, 3 errors**.
+  So **5 of the 8 new tests fail**, with these messages:
   - `issue closed payload should contain journal` →
     `ArgumentError: invalid event: issue.closed`
   - `issue closed payload should use the issue timestamp when there is no journal`
@@ -288,7 +290,8 @@ three lines with its own predicate.
   - `should trigger issue closed webhook when an issue is created with a closed status`
     and `should trigger issue closed webhook again when a reopened issue is closed`
     → `expected exactly once, invoked never: Webhook.trigger("issue.closed", …)`
-  - The other **three are guards** and are green on **both** sides by design:
+    (these two are the 2 failures; the three above are the 3 errors)
+  - The remaining **three are guards** and are green on **both** sides by design:
     the `.never` expectations for closed→closed, for reopening, and for editing
     a closed issue. On old code they pass because the event does not exist; on
     new code they pass because the condition is right. Said plainly so nobody
@@ -339,8 +342,9 @@ So there are three options and none of them is "translate it":
    unit of work.
 
 Option 1 is what is built. There is a real thing to fix here, but it is the
-whole `webhook_event_*` group in all five languages plus the unlocalised
-`object_name`, and that is its own patch. It is logged as **K-09** for Jan.
+whole `webhook_event_*` group in `nl`, `fr`, `de` and `es` together, plus the
+unlocalised `object_name`, and that is its own patch. It is logged as **K-09**
+for Jan.
 
 # Live verification (G9)
 
