@@ -36,7 +36,6 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 - `geoxyz-hosts` — cse_01Qva82Wk9LSY7HNksMqNZkP sinds 2026-09-03
 - `gitignore-credentials` — cse_01Qva82Wk9LSY7HNksMqNZkP sinds 2026-09-03
 - `ldap-mail-prefs` — cse_01Qva82Wk9LSY7HNksMqNZkP sinds 2026-09-03
-- `members-pagination` — cse_01RwWDy9tYqyvviASn8U6ZCj sinds 2026-09-03
 
 ## Openstaand voor Jan
 
