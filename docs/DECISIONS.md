@@ -191,3 +191,23 @@ eerst binnen wat een andere sessie toevoegde.
 - **Haast?** nee — we bouwden verder met A, en de patch is klaar om in te
   dienen zonder groepering. Kies je B of C, dan is dat een nieuwe regel op het
   register, geen wijziging van deze patch.
+
+## Beslist (Jan) — 2026-09-03, imap-oauth
+
+- **K-06, de `client_credentials`-grant: optie A.** Alleen de
+  refresh-token-grant gaat mee in de inzending. Wie app-only wil, mint het
+  token zelf en geeft het met `oauth2_token=`. K-06 is hiermee gesloten; als
+  GEOxyz later een servicemailbox app-only wil laten lopen, is optie B ongeveer
+  zes regels en een halve sessie.
+- **De eenmalige toestemmingsstap moet in de patch, en doenbaar voor iedereen.**
+  Jan: "we hebben wel een eenvoudige manier nodig die iedereen kan doen om stap
+  1 te doen ... het mag geen stunt en vliegwerk zijn". Het eerste ontwerp van
+  die sessie liet die stap volledig buiten Redmine, met twee `curl`-commando's
+  in de documentatie als antwoord. Dat is teruggedraaid: er is nu één taak,
+  `redmine:email:oauth2_authorize`.
+  Wat **niet** terugkomt, en dat is de reden dat dit geen terugkeer naar de
+  oude patch is: geen twee provider-specifieke init-taken, geen scope-lijsten
+  of endpoint-paden in Redmine's code, geen tokencache op schijf, geen nieuwe
+  gem. De taak weet niets over Microsoft of Google; die kennis staat in het
+  credentialsbestand van de beheerder en in de walkthroughs die op de
+  `EmailConfiguration`-wikipagina horen.
