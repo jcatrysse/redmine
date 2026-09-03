@@ -52,4 +52,17 @@ class GroupsHelperTest < Redmine::HelperTest
     assert_equal 2, user_pages.per_page
     assert_equal group.users.count, user_count
   end
+
+  def test_paginate_group_users_clamps_a_page_past_the_last_one
+    stubs(:per_page_option).returns(2)
+    group = Group.generate!
+    3.times {group.users << User.generate!}
+    params['users_page'] = '9'
+
+    users, user_pages, user_count = paginate_group_users(group)
+
+    assert_equal 3, user_count
+    assert_equal 2, user_pages.page
+    assert_equal 1, users.size
+  end
 end

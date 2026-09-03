@@ -57,7 +57,11 @@ module GroupsHelper
   def paginate_group_users(group)
     scope = group.users.sorted
     user_count = scope.count
-    user_pages = Redmine::Pagination::Paginator.new(user_count, per_page_option, params['users_page'], 'users_page')
+    per_page = per_page_option
+    # Clamped to the last page, because removing the last user of a page must
+    # not leave the tab on a page that no longer exists.
+    page = [params['users_page'].to_i, (user_count + per_page - 1) / per_page].min
+    user_pages = Redmine::Pagination::Paginator.new(user_count, per_page, page, 'users_page')
     users = scope.limit(user_pages.per_page).offset(user_pages.offset).to_a
     [users, user_pages, user_count]
   end

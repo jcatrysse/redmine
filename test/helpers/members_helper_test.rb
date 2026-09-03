@@ -68,4 +68,17 @@ class MembersHelperTest < Redmine::HelperTest
     assert_equal member_count, members.size
     assert_equal project.memberships.count, member_count
   end
+
+  def test_paginate_members_clamps_a_page_past_the_last_one
+    stubs(:per_page_option).returns(2)
+    project = Project.generate!
+    3.times {User.add_to_project(User.generate!, project)}
+    params['members_page'] = '9'
+
+    members, member_pages, member_count = paginate_members(project)
+
+    assert_equal 3, member_count
+    assert_equal 2, member_pages.page
+    assert_equal 1, members.size
+  end
 end
