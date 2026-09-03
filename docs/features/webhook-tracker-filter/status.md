@@ -40,7 +40,10 @@ vuurt de hook voor alle trackers, precies zoals nu.
   lijst, allemaal repository-/changeset-/`SysController`-tests die een
   SCM-binary nodig hebben die dit image niet heeft.
 - Volledige suite op `7.0-stable-GEOxyz`: **5951 runs, 31818 assertions,
-  0 failures, 0 errors, 39 skips** — daar is het echt 0/0.
+  0 failures, 0 errors, 39 skips** — daar is het echt 0/0. En daarna nog een
+  keer op de **werkelijke branchtip** `f2242bd86`, dus met de imap-oauth-commit
+  van de parallelle sessie eronder: **5963 runs, 31858 assertions, 0 failures,
+  0 errors, 39 skips**. Dat is de boom die GEOxyz draait.
 - Webhooksuites apart (`webhook_test`, `webhook_payload_test`,
   `webhooks_controller_test` in één proces): 66 runs, 246 assertions, 0 failures.
 - RuboCop op de gewijzigde bestanden: **0** (baseline op dezelfde bestanden op

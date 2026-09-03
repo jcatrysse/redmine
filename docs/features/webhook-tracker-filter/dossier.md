@@ -277,7 +277,9 @@ would have made the diff larger for no gain.
 - **full** suite on `7.0-stable-GEOxyz` with the same change applied:
   **5951 runs, 31818 assertions, 0 failures, 0 errors, 39 skips** — 7.0-stable
   does not carry the trunk tests that need the missing SCM binaries, so there it
-  is genuinely clean
+  is genuinely clean. Re-run on the branch tip after a parallel session's commit
+  landed underneath it: **5963 runs, 31858 assertions, 0 failures, 0 errors,
+  39 skips**
 - **failure names identical on both** — 29 named failures, byte-identical lists.
   All 29 are repository, changeset and `SysController` tests that need an SCM
   binary this container does not have (only `git` is installed); none of them is
