@@ -273,3 +273,21 @@ eerst binnen wat een andere sessie toevoegde.
     register.
   - **Haast?** nee — we bouwden verder met A. Het blokkeert het indienen niet;
     het is één regel bijwerken als je B of C wil.
+- **K-09, correctie op de feiten (de keuze zelf staat en de aanbeveling
+  verandert niet).** Het blok hierboven zegt dat de drie zustersleutels
+  `webhook_event_created` / `_updated` / `_deleted` in **elk** taalbestand
+  onvertaald Engels staan. Dat is te ruim geformuleerd en het is nagemeten:
+  ze staan in **alle 49** niet-Engelse taalbestanden, en in **43** daarvan is de
+  waarde nog de letterlijke Engelse string. **Zes** talen hebben die groep wél
+  vertaald: `bg`, `cs`, `gl`, `hu`, `ja` en `zh-TW`.
+
+  Waarom de keuze daardoor niet verandert: `nl`, `fr`, `de` en `es` — de vier
+  die wij meeleveren — zitten **niet** bij die zes. Daar staat nog steeds
+  `"%{object_name} created"` en zo verder, `de.yml` inbegrepen. De aanbeveling
+  blijft dus **A** (alleen `en.yml`).
+
+  Wat de correctie er wél aan toevoegt, en het is een argument vóór A: die zes
+  talen hebben **alle drie** de sleutels in één keer vertaald. Dat is de
+  eenheid van werk in deze groep — een taalteam pakt het blok op, niet één
+  label. Eén van de vier vertalen is dus niet alleen lelijk op het scherm, het
+  is ook niet hoe Redmine's vertalers met deze sleutels omgaan.
