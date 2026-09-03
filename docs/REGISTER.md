@@ -10,13 +10,13 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
 | [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | todo | todo | [#43355](https://www.redmine.org/issues/43355) |
-| [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | todo | todo | — |
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`9d28be94d`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`f117ea32e + 21c232ce1`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
+| [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`827e9e7d5`) | patch klaar | — |
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041`) | patch klaar | — |
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`28c618860`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
@@ -28,7 +28,16 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-18 features: 8 patch klaar, 5 nooit, 2 todo, 2 vervallen, 1 geaccepteerd.
+18 features: 9 patch klaar, 5 nooit, 2 vervallen, 1 geaccepteerd, 1 todo.
+
+## Nu in behandeling
+
+- `ar-sessions` — cse_01Qva82Wk9LSY7HNksMqNZkP sinds 2026-09-03
+- `geoxyz-hosts` — cse_01Qva82Wk9LSY7HNksMqNZkP sinds 2026-09-03
+- `gitignore-credentials` — cse_01Qva82Wk9LSY7HNksMqNZkP sinds 2026-09-03
+- `ldap-mail-prefs` — cse_01Qva82Wk9LSY7HNksMqNZkP sinds 2026-09-03
+- `members-pagination` — cse_01RwWDy9tYqyvviASn8U6ZCj sinds 2026-09-03
+- `webhook-issue-closed` — cse_01K9i76rQPZcLEWtK22rxFn7 sinds 2026-09-03
 
 ## Openstaand voor Jan
 
@@ -159,6 +168,47 @@ waarden. Noem de test die het vastlegt
 (`test_fixed_version_filter_should_include_versions_shared_from_outside_the_project_tree`).
 De Engelse tekst staat in `dossier.md` vanaf "The problem"; de voor/na-paren in
 `shots/`.
+
+### `webhook-issue-closed`
+
+Maak een **nieuw** issue op redmine.org aan als follow-up van
+[#29664](https://www.redmine.org/issues/29664) — dus niet als note aan #29664
+zelf, dat issue is gesloten met target version 7.0.0. Hang er
+`patches/webhook-issue-closed/2026-09-03-r24882-feature.patch` aan. Dat is
+**één** bestand: er is geen aparte locales-patch, en de reden daarvoor staat
+hieronder en in het dossier onder "Locales — why `en.yml` only". De Engelse
+issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem".
+
+Het sterkste argument staat in het issue zelf en het is jouw eigen tekst. Zeg
+in de beschrijving expliciet dat dit **punt 2 van je note 36 op #29664** is.
+Die note luidt verbatim: *"I revised this patch to include: 1. An option to
+select trackers. 2. An option to only trigger on issue close. 3.
+Documentation. 4. A full list of webhooks for admin users. 5. More languages.
+6. Amended testing."* En **note 37 van Holger Just** vroeg precies om dit: die
+monolithische patch opsplitsen in losse stukken, tegen de huidige trunk, met
+per stuk de reden erbij. Dit is punt 2, los, tegen r24882. `webhook-tracker-filter`
+was punt 1; dien ze los in, niet samen.
+
+Drie dingen die het waard zijn om erbij te zetten omdat ze de patch verdedigen
+vóórdat iemand ernaar vraagt:
+
+- **Niets verandert voor een bestaande installatie.** De `events`-array van een
+  bestaande hook bevat `issue.closed` niet, dus `hooks_for` geeft die hook
+  nooit terug voor dit event. Er is een end-to-end test die een hook met
+  **alleen** `issue.closed` sluit en precies één job verwacht, en een
+  screenshot van echte leveringen die het in een draaiende Redmine laat zien.
+- **De tabel met de acht overgangen** uit het dossier ("Which transitions fire,
+  and which do not"). Twee rijen daarvan zijn wat een ontvanger die dit uit
+  `issue.updated` reconstrueert als eerste fout doet: `Closed` → `Rejected` is
+  geen tweede sluiting, en een gewone edit van een gesloten issue is er ook
+  geen. Elke rij heeft een test.
+- **Er zit geen instelling, migratie, gem, route of permissie in.** Buiten de
+  tests acht toegevoegde en drie verwijderde regels, waarvan één toevoeging een
+  locale-string is.
+
+Er staat één keuze voor je open: **K-09** in `docs/DECISIONS.md`, over de
+vertalingen. Er is geen haast — het blokkeert het indienen niet, we bouwden
+verder met `en.yml` alleen.
 
 ### `webhook-tracker-filter`
 
