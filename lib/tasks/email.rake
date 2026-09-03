@@ -42,6 +42,16 @@ Available IMAP options:
   starttls=STARTTLS        Use STARTTLS? (default: false)
   username=USERNAME        IMAP account
   password=PASSWORD        IMAP password
+  oauth2_token=TOKEN       OAuth 2.0 access token to authenticate with instead
+                           of password, using the XOAUTH2 mechanism
+  oauth2_credentials=FILE  path to a YAML file holding the OAuth 2.0 client
+                           credentials and the refresh token used to request
+                           an access token on each run:
+                             token_url: https://...
+                             client_id: ...
+                             client_secret: ...
+                             refresh_token: ...
+                             scope: ...
   folder=FOLDER            IMAP folder to read (default: INBOX)
 
 Processed emails control options:
@@ -106,6 +116,16 @@ Examples:
     project=foo \\
     tracker=bug \\
     allow_override=tracker,priority
+
+
+  # Mailbox that does not accept a password, authenticated with an OAuth 2.0
+  # access token requested from the credentials file on each run:
+
+  rake redmine:email:receive_imap RAILS_ENV="production" \\
+    host=outlook.office365.com port=993 ssl=1 \\
+    username=redmine@example.net \\
+    oauth2_credentials=/etc/redmine/imap_oauth2.yml \\
+    project=foo
 END_DESC
 
     task :receive_imap => :environment do
@@ -115,6 +135,8 @@ END_DESC
                       :starttls => ENV['starttls'],
                       :username => ENV['username'],
                       :password => ENV['password'],
+                      :oauth2_token => ENV['oauth2_token'],
+                      :oauth2_credentials => ENV['oauth2_credentials'],
                       :folder => ENV['folder'],
                       :move_on_success => ENV['move_on_success'],
                       :move_on_failure => ENV['move_on_failure']}
