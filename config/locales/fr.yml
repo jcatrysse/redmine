@@ -1531,3 +1531,4 @@ fr:
   error_issue_status_in_use_by_issues: Ce statut est utilisé par certaines demandes
   error_issue_status_default_for_trackers: Ce statut est utilisé comme statut par défaut par certains trackers
   text_users_remove_from_group_confirmation: Êtes-vous sûr de vouloir retirer le(s) utilisateur(s) sélectionné(s) du groupe %{group} ?
+  setting_my_page_max_issuequery_blocks: Nombre maximum de rapports personnalisés affichés sur Ma page

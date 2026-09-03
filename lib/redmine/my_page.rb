@@ -23,12 +23,17 @@ module Redmine
 
     CORE_GROUPS = ['top', 'left', 'right']
 
+    # Upper bound of the my_page_max_issuequery_blocks setting. It is a guard
+    # against a typo rather than a recommendation: every block on My page runs
+    # its own query when the page is rendered
+    MAX_ISSUEQUERY_BLOCKS = 20
+
     CORE_BLOCKS = {
       'issuesassignedtome' => {:label => :label_assigned_to_me_issues},
       'issuesreportedbyme' => {:label => :label_reported_issues},
       'issuesupdatedbyme' => {:label => :label_updated_issues},
       'issueswatched' => {:label => :label_watched_issues},
-      'issuequery' => {:label => :label_issue_plural, :max_occurs => 3},
+      'issuequery' => {:label => :label_issue_plural, :max_occurs => :my_page_max_issuequery_blocks},
       'news' => {:label => :label_news_latest},
       'calendar' => {:label => :label_calendar},
       'documents' => {:label => :label_document_plural},
@@ -56,13 +61,20 @@ module Redmine
 
         occurs = indexes.size
         block_id = indexes.any? ? "#{block}__#{indexes.max + 1}" : block
-        disabled = (occurs >= (Redmine::MyPage.blocks[block][:max_occurs] || 1))
+        disabled = (occurs >= max_occurs(block))
         block_id = nil if disabled
 
         label = block_options[:label]
         options << [l("my.blocks.#{label}", :default => [label, label.to_s.humanize]), block_id]
       end
       options
+    end
+
+    # Returns the maximum number of occurrences of the given block, reading the
+    # setting named by :max_occurs when the limit is configurable
+    def self.max_occurs(block)
+      max_occurs = blocks.fetch(block, {})[:max_occurs] || 1
+      max_occurs.is_a?(Symbol) ? Setting[max_occurs].to_i : max_occurs
     end
 
     def self.valid_block?(block, blocks_in_use=[])

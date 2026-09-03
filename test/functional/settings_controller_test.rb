@@ -155,6 +155,44 @@ class SettingsControllerTest < Redmine::ControllerTest
     end
   end
 
+  def test_post_edit_with_my_page_max_issuequery_blocks_over_the_upper_bound_should_error
+    with_settings :my_page_max_issuequery_blocks => '3' do
+      post :edit, :params => {
+        :settings => {
+          :my_page_max_issuequery_blocks => (Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS + 1).to_s
+        }
+      }
+      assert_response :success
+      assert_select '#errorExplanation'
+      assert_equal '3', Setting.my_page_max_issuequery_blocks
+    end
+  end
+
+  def test_post_edit_with_negative_my_page_max_issuequery_blocks_should_error
+    with_settings :my_page_max_issuequery_blocks => '3' do
+      post :edit, :params => {
+        :settings => {
+          :my_page_max_issuequery_blocks => '-1'
+        }
+      }
+      assert_response :success
+      assert_select '#errorExplanation'
+      assert_equal '3', Setting.my_page_max_issuequery_blocks
+    end
+  end
+
+  def test_post_edit_with_my_page_max_issuequery_blocks_set_to_zero
+    with_settings :my_page_max_issuequery_blocks => '3' do
+      post :edit, :params => {
+        :settings => {
+          :my_page_max_issuequery_blocks => '0'
+        }
+      }
+      assert_redirected_to '/settings'
+      assert_equal '0', Setting.my_page_max_issuequery_blocks
+    end
+  end
+
   def test_post_edit_with_invalid_setting_should_not_error
     post :edit, :params => {
       :settings => {
