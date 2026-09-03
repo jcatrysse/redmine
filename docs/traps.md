@@ -182,3 +182,44 @@
   vraagt een force-push, precies wat "nooit rebasen op deze branch" wil
   voorkomen. Zet een correctie liever in een tweede commit.
 - **`origin/ansifi/learn-and-test-7.0`** is referentiemateriaal, geen basis.
+
+## Repositories en SCM (uit revision-branches)
+
+- **Een `scm_*_path_regexp` onder `default:` in `config/configuration.yml`
+  sloopt de testsuite.** Sinds r24882 (#43209) mag een adapter alleen gebruikt
+  worden als die sleutel gezet is, en `dev-server.sh` zet hem niet. Zet je hem
+  onder `default:` om de dev-server een Git-repository te laten maken, dan geldt
+  hij ook in de testomgeving: `test/test_helper.rb` zet elke
+  `scm_*_path_regexp` op `'.*'` met `||=`, dus jouw waarde wint en elke
+  Git-repository in de suite wordt ongeldig. Kostte hier **46 extra fouten in
+  `RepositoriesGitControllerTest`** die eruitzagen als de schuld van de patch
+  (`UrlGenerationError … :repository_id=>nil`, want de `create` in `setup`
+  faalde stil). Zet hem onder **`development:`**.
+- **`Setting.enabled_scm` is `[]` in de dev-database.** `Repository` valideert
+  zijn `type` tegen die lijst, dus een Git-repository aanmaken faalt met
+  "Type is invalid" tot je `Setting.enabled_scm = Setting.enabled_scm | ['Git']`
+  doet. Zelfde foutmelding als het path-regexp-probleem hierboven, andere
+  oorzaak — check ze allebei.
+- **`git branch --contains` levert een prefix van twee tekens per regel op**
+  (`'  '`, `'* '` voor de huidige branch, `'+ '` voor een branch die in een
+  andere worktree uitgechecked staat) en bij een losse HEAD een regel
+  `* (HEAD detached at …)`. `line[2..]` plus een `start_with?('(')`-guard dekt
+  alles; de 5.1-versie deed `gsub(/\* ?/, '')` en sloopte daarmee elke
+  branchnaam met een sterretje erin.
+- **Branchnamen moeten door `scm_iconv`.** De testfixture
+  `git_repository.tar.gz` heeft twee Latin-1 branchnamen, precies om dit te
+  betrappen (#21really 21141). De 5.1-versie loste het op met
+  `force_encoding("UTF-8")` in de view; het hoort in de adapter, zoals
+  `branches` en `tags` het al doen.
+- **`link_to(:action => 'show', :rev => <branchnaam>)` kiest per branchnaam een
+  andere route.** De route `revisions/:rev/show` heeft constraint
+  `/[a-z0-9.\-_]+/`, dus `release/7.0` en `Feature-1` vallen door naar
+  `?rev=release%2F7.0`. Beide werken, geen `UrlGenerationError` — maar test het,
+  want het is niet vanzelfsprekend.
+- **`public/javascripts/repository_navigation.js` wordt alleen ingeladen door
+  `app/views/repositories/_navigation.html.erb`,** en die partial staat op
+  `repositories/show`, **niet** op `repositories/revision` en niet op de
+  issuepagina. De GEOxyz-5.1-code hing daar een klikhandler in voor een
+  groepeer-link op precies die twee pagina's: die link deed dus nooit iets. Dit
+  is de G9-fout in zijn oervorm — grep waar een JS-bestand ingeladen wordt
+  vóórdat je erop bouwt.
