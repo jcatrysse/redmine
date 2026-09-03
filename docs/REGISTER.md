@@ -22,13 +22,22 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | todo | nooit | — |
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | todo | nooit | — |
-| [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key en credentials.yml.enc negeren | `8ec9951d3` | todo | nooit | — |
+| [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key en credentials.yml.enc negeren | `8ec9951d3` | live (`e2c0447b6`) | nooit | — |
 | [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: mailvoorkeuren dempen voor LDAP-only users | `9e2c38e2d` | todo | nooit | — |
 | [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | live (`GEOXYZ_COMMITS_FM`) | nooit | [#43355](https://www.redmine.org/issues/43355) |
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `ar-sessions` — cse_01Qva82Wk9LSY7HNksMqNZkP sinds 2026-09-03
+- `geoxyz-hosts` — cse_01Qva82Wk9LSY7HNksMqNZkP sinds 2026-09-03
+- `gitignore-credentials` — cse_01Qva82Wk9LSY7HNksMqNZkP sinds 2026-09-03
+- `ldap-mail-prefs` — cse_01Qva82Wk9LSY7HNksMqNZkP sinds 2026-09-03
+- `members-pagination` — cse_01RwWDy9tYqyvviASn8U6ZCj sinds 2026-09-03
+- `webhook-issue-closed` — cse_01K9i76rQPZcLEWtK22rxFn7 sinds 2026-09-03
 
 ## Nu in behandeling
 
