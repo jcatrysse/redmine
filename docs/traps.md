@@ -311,3 +311,33 @@
   bestaande tests erroren in plaats van alleen de nieuwe. Laat de helper staan en
   zet het nieuwe veld in de test zelf (`hook.update! trackers: [...]`): dan is
   het rood precies jouw tests, en de diff is kleiner.
+
+## Uit `imap-oauth`, tweede ronde (2026-09-03)
+
+- **Een migratie van een andere sessie maakt jouw suite rood met "Migrations are
+  pending".** Op `7.0-stable-GEOxyz` landde tijdens deze sessie
+  `20260903081500_create_trackers_webhooks.rb` van een parallelle sessie. Na de
+  replay van `session-push.sh` staat die migratie in jouw worktree maar niet in
+  jouw testdatabase, en de hele suite stopt vóór de eerste test met exit 1. Dus
+  na elke `session-push.sh` op die branch: `RAILS_ENV=test bundle exec ruby
+  bin/rails db:migrate`, en dán de suite.
+- **Een suite die klaar was vóórdat `session-push.sh` andermans commits onder de
+  jouwe zette, dekt de branchtip niet meer.** Twee parallelle sessies bewijzen
+  elk hun eigen stapel en niemand de combinatie. Draai de volledige suite daarom
+  nog één keer op de tip zoals hij ná de push is, en zet dat aantal apart in het
+  statusbestand naast het aantal van je eigen stapel (hier: 5836 voor de eigen
+  stapel, 5856 voor de tip).
+- **`tools/append-note.sh` weigert met "could not replay" zolang je working tree
+  vuil is.** Dat leest als een pushprobleem maar is het niet: commit eerst je
+  eigen werk en push dat, en append daarna. Het blok is dan ook níet toegevoegd,
+  dus opnieuw aanroepen is veilig.
+- **`rm -f <map>/*_test.rb` wist álle tests in die map, niet alleen die van
+  jou.** Gebeurde hier in de wegwerp-worktree bij het opruimen van twee
+  gekopieerde bestanden; `git checkout -- <map>` zette het terug omdat het een
+  schone checkout was. Verwijder gekopieerde bestanden op naam.
+- **De adversariële herlezing vindt fouten, maar een test vindt ze harder.** De
+  vangnet-tak voor een onparseerbaar geplakt adres gaf `{}` terug waar
+  `CGI.parse` een hash met default `[]` geeft; de regel erna gaf dus
+  `NoMethodError` in plaats van de bedoelde melding. Ik had die tak zelf net
+  geschreven en goedgekeurd; de test die erbij hoorde viel meteen om.
+  `CGI.parse('')` als leeg resultaat teruggeven bewaart het contract.
