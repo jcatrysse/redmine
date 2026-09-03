@@ -190,15 +190,17 @@ class QueryTest < ActiveSupport::TestCase
   end
 
   def test_fixed_version_filter_should_respect_selected_subprojects
-    version1 = Version.create!(:project => Project.find(3), :name => 'Subproject 1 version')
-    version2 = Version.create!(:project => Project.find(4), :name => 'Subproject 2 version')
-    query = IssueQuery.new(:project => Project.find(1), :name => '_')
-    query.add_filter('subproject_id', '=', [Project.find(3).id.to_s])
-    filter = query.available_filters["fixed_version_id"]
-    assert_not_nil filter
-    values = filter[:values].map(&:second)
-    assert_include version1.id.to_s, values
-    assert_not_include version2.id.to_s, values
+    with_settings :display_subprojects_issues => '0' do
+      version1 = Version.create!(:project => Project.find(3), :name => 'Subproject 1 version')
+      version2 = Version.create!(:project => Project.find(4), :name => 'Subproject 2 version')
+      query = IssueQuery.new(:project => Project.find(1), :name => '_')
+      query.add_filter('subproject_id', '=', [Project.find(3).id.to_s])
+      filter = query.available_filters["fixed_version_id"]
+      assert_not_nil filter
+      values = filter[:values].map(&:second)
+      assert_include version1.id.to_s, values
+      assert_not_include version2.id.to_s, values
+    end
   end
 
   def test_fixed_version_filter_should_include_all_subproject_versions_when_filtering_any_subproject
