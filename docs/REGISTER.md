@@ -23,7 +23,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | live (`fe737441b`) | nooit | — |
 | [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key en credentials.yml.enc negeren | `8ec9951d3` | live (`e2c0447b6`) | nooit | — |
-| [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: mailvoorkeuren dempen voor LDAP-only users | `9e2c38e2d` | todo | nooit | — |
+| [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: mailvoorkeuren dempen voor LDAP-only users | `9e2c38e2d` | live (`add935736`) | nooit | — |
 | [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | live (`351fe9e54 + 55ae9d1dd + 885f04097`) | nooit | [#43355](https://www.redmine.org/issues/43355) |
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
