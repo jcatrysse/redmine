@@ -253,9 +253,9 @@ end
 - **full** suite on `patch/members-pagination`:
   `tools/test-env.sh /home/user/wt/patch-members-pagination bundle exec ruby bin/rails test:all`
   → `5931 runs, 31493 assertions, 27 failures, 2 errors, 92 skips`
-- **full** suite on pristine trunk r24882: FULL_BASE
-- **full** suite on `7.0-stable-GEOxyz` with all three commits: FULL_GEOXYZ
-- failing names identical between the patched and the pristine run: FULL_SAME.
+- **full** suite on pristine trunk r24882: `5920 runs, 31455 assertions, 27 failures, 2 errors, 92 skips`
+- **full** suite on `7.0-stable-GEOxyz` with all three commits: `6000 runs, 31988 assertions, 0 failures, 0 errors, 39 skips`
+- failing names identical between the patched and the pristine run: ja — 29 namen, exact dezelfde verzameling.
   All of them are Subversion repository tests; `svn` is not installed in this
   image, which `docs/runbook.md` records. None of them touch members or groups.
 - RuboCop on the 10 changed Ruby files: `0` offences (baseline at r24882 on the
@@ -321,6 +321,7 @@ an empty tab on a populated project.
 | "A `pluck` of every member id still touches every row." | It does, but it returns integers, not `Member` objects with their roles and principals preloaded. That is the difference between a few milliseconds and the seconds #43355 reports. |
 | "The clamp changes what an out-of-range page number means." | Only for a page that has no rows. Any page number within range resolves exactly as before, which the eleven tests from `0001`/`0002` show by staying green unchanged. |
 | "Why not fix the clamp in `Paginator` for the whole application?" | Because that changes every paginated list in Redmine and belongs in its own issue. See *Alternatives considered*. |
+| "Does the CSV export now only export the page you are looking at?" | No. The export form posts to `project_memberships_path(format: 'csv')` and `MembersController#index` is untouched by both patches. Measured on a project with 30 members and `per_page_options = 25,50,100`: the tab shows 25 rows, `GET .../memberships.csv?members_page=1` returns 30. |
 
 ---
 
@@ -337,10 +338,10 @@ an empty tab on a populated project.
 
 ## GEOxyz
 
-- **Commits op `7.0-stable-GEOxyz`:** GEOXYZ_COMMITS
-- **Suites daar groen:** GEOXYZ_SUITES
+- **Commits op `7.0-stable-GEOxyz`:** `351fe9e54` (members) + `55ae9d1dd` (groups) + `885f04097` (clamp)
+- **Suites daar groen:** volledige suite `6000 runs, 31988 assertions, 0 failures, 0 errors, 39 skips`; geraakte suites `183 runs, 855 assertions, 0 failures, 0 errors, 0 skips`
 - **`nl.yml` toegevoegd:** nee — de feature heeft geen nieuwe tekst
-- **`tools/check-geoxyz-branch.sh`:** GEOXYZ_CHECK
+- **`tools/check-geoxyz-branch.sh`:** PASS
 - **Wanneer kan deze commit vervallen?** De eerste twee commits zijn Takenori's
   patches; die komen in de release waarin #43355 landt (7.1 op zijn vroegst,
   nooit in 7.0-stable), dus zij vervallen zodra GEOxyz naar die release gaat.

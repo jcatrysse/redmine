@@ -3,7 +3,7 @@ slug: members-pagination
 feature: Paginatie op projectleden en groepsleden
 commit_51: 455f5753c
 geoxyz: live
-geoxyz_commit: GEOXYZ_COMMITS_FM
+geoxyz_commit: 351fe9e54 + 55ae9d1dd + 885f04097
 upstream: nooit
 patch:
 issue: 43355
@@ -47,9 +47,9 @@ als je een lid toevoegt, bewerkt of verwijdert.
 - Geraakte suites met `0001` + `0002`: `180 runs, 844 assertions, 0 failures, 0 errors, 0 skips`
 - Geraakte suites met de clamp erbij: `183 runs, 855 assertions, 0 failures, 0 errors, 0 skips`
 - Volledige suite met patch (`patch/members-pagination`): `5931 runs, 31493 assertions, 27 failures, 2 errors, 92 skips`
-- Volledige suite op schone trunk r24882: FULL_BASE
-- Volledige suite op `7.0-stable-GEOxyz`: FULL_GEOXYZ
-- Faalnamen identiek met de schone run: FULL_SAME. Alle betrokken tests zijn
+- Volledige suite op schone trunk r24882: `5920 runs, 31455 assertions, 27 failures, 2 errors, 92 skips`
+- Volledige suite op `7.0-stable-GEOxyz`: `6000 runs, 31988 assertions, 0 failures, 0 errors, 39 skips`
+- Faalnamen identiek met de schone run: ja — 29 namen, exact dezelfde verzameling. Alle betrokken tests zijn
   Subversion-repositorytests; `svn` zit niet in dit image (zie
   `docs/runbook.md`). Geen enkele raakt leden of groepen.
 - RuboCop op de 10 gewijzigde Ruby-bestanden: `0` (baseline op dezelfde 10
@@ -59,7 +59,7 @@ als je een lid toevoegt, bewerkt of verwijdert.
   `"nodata" found in ...`. De clamp is uit beide helpers gehaald, de tests zijn
   gedraaid, alle drie faalden, daarna is de clamp teruggezet.
 - `tools/check-patch-clean.sh patch/members-pagination`: PASS ·
-  `tools/check-geoxyz-branch.sh`: GEOXYZ_CHECK
+  `tools/check-geoxyz-branch.sh`: PASS
 - Screenshots: 11, gelezen: ja
 
 ## Wat Jan nog moet doen
