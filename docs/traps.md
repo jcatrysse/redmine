@@ -496,3 +496,15 @@
   (`grep -q '^  webhook_event_created: "%{object_name} created"'`).
   `docs/DECISIONS.md` is append-only, dus een te ruime bewering daarin kost je
   een correctieblok.
+- **`tools/session-push.sh` zet de committer terug op de git-config-identiteit.**
+  De replay is een rebase, en een rebase zet de committer op wie de rebase
+  draait — in deze container `Claude <noreply@anthropic.com>`. Bij
+  `members-pagination` waren de drie commits op `7.0-stable-GEOxyz` met
+  `-c user.name`/`-c user.email` op Jan gezet, en na de push stond de committer
+  er alsnog als Claude op (de **auteur** bleef wel Jan, en dat is wat
+  `git format-patch` meeneemt). Op een `patch/<slug>`-branch, die niet gepusht
+  wordt, speelt dit niet — daar is `-c` genoeg en `check-patch-clean.sh` gaat
+  door. Voor de GEOxyz-branch dus:
+  `GIT_COMMITTER_NAME="Jan Catrysse" GIT_COMMITTER_EMAIL="jan.catrysse@geoxyz.eu" tools/session-push.sh 7.0-stable-GEOxyz`.
+  Achteraf rechtzetten kan alleen met een force-push, en dat is het niet waard
+  op een branch waar parallelle sessies op pushen.
