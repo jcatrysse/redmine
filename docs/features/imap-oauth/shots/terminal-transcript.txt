@@ -42,3 +42,52 @@ Net::IMAP::NoResponseError: Invalid credentials (Net::IMAP::NoResponseError)
 /home/user/wt/patch-imap-oauth/lib/redmine/imap.rb:46:in `check'
 /home/user/wt/patch-imap-oauth/lib/tasks/email.rake:145:in `block (4 levels) in <top (required)>'
 /home/user/wt/patch-imap-oauth/app/models/mailer.rb:661:in `with_synched_deliveries'
+===== STAP 1 — redmine:email:oauth2_authorize, één keer per mailbox =====
+$ rake redmine:email:oauth2_authorize oauth2_credentials=/etc/redmine/imap_oauth2.yml
+Open this URL in a browser and sign in as the mailbox owner:
+
+https://login.example.net:8443/oauth2/v2.0/authorize?response_type=code&client_id=a-client-id&redirect_uri=http%3A%2F%2Flocalhost&scope=https%3A%2F%2Foutlook.office.com%2FIMAP.AccessAsUser.All+offline_access
+
+Then paste the whole address you were redirected to: 
+Add this line to /tmp/claude-0/-home-user-redmine/f5afc07b-d15e-5ad8-90ca-416283edc536/scratchpad/g9/imap_oauth2_step1.yml:
+
+refresh_token: a-refresh-token-from-consent
+
+===== STAP 2 en 3 — de cron-run, met precies dat credentialsbestand =====
+$ rake redmine:email:receive_imap host=... oauth2_credentials=/etc/redmine/imap_oauth2.yml
+(geen uitvoer betekent geslaagd)
+
+===== FAALPADEN VAN STAP 1 =====
+
+--- geen oauth2_credentials meegegeven ---
+Missing oauth2_credentials=FILE
+
+--- authorize_url ontbreekt in het bestand ---
+/tmp/claude-0/-home-user-redmine/f5afc07b-d15e-5ad8-90ca-416283edc536/scratchpad/g9/imap_oauth2_noauthurl.yml is missing authorize_url
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:79:in `read_credentials'
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:41:in `authorize_url'
+/home/user/wt/patch-imap-oauth/lib/tasks/email.rake:184:in `block (3 levels) in <top (required)>'
+
+--- de gebruiker klikte op weigeren ---
+The authorization was refused (access_denied)
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:92:in `authorization_code'
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:63:in `refresh_token'
+/home/user/wt/patch-imap-oauth/lib/tasks/email.rake:188:in `block (3 levels) in <top (required)>'
+
+--- alleen de code geplakt in plaats van de hele adresregel ---
+No code parameter in the address, paste the whole address the browser was redirected to
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:97:in `authorization_code'
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:63:in `refresh_token'
+/home/user/wt/patch-imap-oauth/lib/tasks/email.rake:188:in `block (3 levels) in <top (required)>'
+
+--- de code is al gebruikt of verlopen ---
+OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:122:in `token_from'
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:66:in `refresh_token'
+/home/user/wt/patch-imap-oauth/lib/tasks/email.rake:188:in `block (3 levels) in <top (required)>'
+
+--- iets geplakt dat geen adres is ---
+
+https://login.example.net:8443/oauth2/v2.0/authorize?response_type=code&client_id=a-client-id&redirect_uri=http%3A%2F%2Flocalhost&scope=https%3A%2F%2Foutlook.office.com%2FIMAP.AccessAsUser.All+offline_access
+
+Then paste the whole address you were redirected to: 

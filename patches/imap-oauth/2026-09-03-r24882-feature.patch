@@ -1,16 +1,16 @@
-From a505c268d81a8aef02f9f4cb4cae5fe1474c211d Mon Sep 17 00:00:00 2001
+From d63cb35a5bf3a15883b2ca53d8f2059cdb02e439 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Thu, 3 Sep 2026 11:51:09 +0000
 Subject: [PATCH] Authenticate IMAP inbound mail with an OAuth 2.0 access token
  (#43023).
 
 ---
- lib/redmine/imap.rb                         |  16 ++-
- lib/redmine/oauth2_client.rb                |  92 +++++++++++++
- lib/tasks/email.rake                        |  22 +++
- test/unit/lib/redmine/imap_test.rb          |  78 +++++++++++
- test/unit/lib/redmine/oauth2_client_test.rb | 144 ++++++++++++++++++++
- 5 files changed, 351 insertions(+), 1 deletion(-)
+ lib/redmine/imap.rb                         |  16 +-
+ lib/redmine/oauth2_client.rb                | 158 ++++++++++++
+ lib/tasks/email.rake                        |  69 ++++++
+ test/unit/lib/redmine/imap_test.rb          |  78 ++++++
+ test/unit/lib/redmine/oauth2_client_test.rb | 261 ++++++++++++++++++++
+ 5 files changed, 581 insertions(+), 1 deletion(-)
  create mode 100644 lib/redmine/oauth2_client.rb
  create mode 100644 test/unit/lib/redmine/imap_test.rb
  create mode 100644 test/unit/lib/redmine/oauth2_client_test.rb
@@ -51,10 +51,10 @@ index 77b8da80f..b94d95694 100644
        end
 diff --git a/lib/redmine/oauth2_client.rb b/lib/redmine/oauth2_client.rb
 new file mode 100644
-index 000000000..e4c7748c2
+index 000000000..31e5db334
 --- /dev/null
 +++ b/lib/redmine/oauth2_client.rb
-@@ -0,0 +1,92 @@
+@@ -0,0 +1,158 @@
 +# frozen_string_literal: true
 +
 +# Redmine - project management software
@@ -76,39 +76,62 @@ index 000000000..e4c7748c2
 +
 +module Redmine
 +  module Oauth2Client
-+    REQUIRED_CREDENTIALS = %w(token_url client_id client_secret refresh_token)
++    DEFAULT_REDIRECT_URI = 'http://localhost'
 +
 +    class << self
 +      # Requests an access token with the refresh token grant, using the
 +      # credentials read from the given YAML file. The token is not cached: it
 +      # is short lived and requesting one costs a single request.
 +      def access_token(credentials_file)
-+        credentials = read_credentials(credentials_file)
-+        response = request_token(credentials)
-+        unless response.is_a?(Net::HTTPSuccess)
-+          message = "OAuth 2.0 token request failed with #{response.code} #{response.message}"
-+          error = error_code(response)
-+          message += " (#{error})" if error
-+          raise message
-+        end
++        credentials = read_credentials(credentials_file, %w(token_url client_id client_secret refresh_token))
++        response = post_to_token_endpoint(
++          credentials,
++          'grant_type' => 'refresh_token',
++          'refresh_token' => credentials['refresh_token']
++        )
++        token_from(response, 'access_token')
++      end
 +
-+        token = JSON.parse(response.body)['access_token']
-+        if token.blank?
-+          raise "OAuth 2.0 token request returned no access token"
++      # The URL the mailbox owner opens to consent, first leg of the
++      # authorization code grant.
++      def authorize_url(credentials_file)
++        credentials = read_credentials(credentials_file, %w(authorize_url client_id))
++        uri = https_uri(credentials['authorize_url'], 'authorize_url')
++        params = {}
++        if credentials['authorize_params'].is_a?(Hash)
++          params.merge!(credentials['authorize_params'].transform_keys(&:to_s))
 +        end
++        params['response_type'] = 'code'
++        params['client_id'] = credentials['client_id']
++        params['redirect_uri'] = redirect_uri(credentials)
++        params['scope'] = credentials['scope'] if credentials['scope'].present?
++        uri.query = URI.encode_www_form(params)
++        uri.to_s
++      end
 +
-+        token
++      # Exchanges the authorization code carried by the address the browser was
++      # redirected to for a refresh token, second leg of the authorization code
++      # grant.
++      def refresh_token(credentials_file, redirect_url)
++        credentials = read_credentials(credentials_file, %w(token_url client_id client_secret))
++        response = post_to_token_endpoint(
++          credentials,
++          'grant_type' => 'authorization_code',
++          'code' => authorization_code(redirect_url),
++          'redirect_uri' => redirect_uri(credentials)
++        )
++        token_from(response, 'refresh_token')
 +      end
 +
 +      private
 +
-+      def read_credentials(credentials_file)
++      def read_credentials(credentials_file, required)
 +        credentials = YAML.safe_load_file(credentials_file)
 +        unless credentials.is_a?(Hash)
 +          raise "#{credentials_file} does not contain OAuth 2.0 credentials"
 +        end
 +
-+        missing = REQUIRED_CREDENTIALS.reject {|key| credentials[key].present?}
++        missing = required.reject {|key| credentials[key].present?}
 +        if missing.any?
 +          raise "#{credentials_file} is missing #{missing.join(', ')}"
 +        end
@@ -116,24 +139,67 @@ index 000000000..e4c7748c2
 +        credentials
 +      end
 +
-+      def request_token(credentials)
-+        uri = URI.parse(credentials['token_url'])
-+        unless uri.is_a?(URI::HTTPS)
-+          raise "token_url must be an https URL"
++      def redirect_uri(credentials)
++        credentials['redirect_uri'].presence || DEFAULT_REDIRECT_URI
++      end
++
++      def authorization_code(redirect_url)
++        query = redirect_query(redirect_url)
++        if (error = query['error'].first).present?
++          raise "The authorization was refused (#{error})"
 +        end
 +
-+        params = {
-+          'grant_type' => 'refresh_token',
++        code = query['code'].first
++        if code.blank?
++          raise "No code parameter in the address, paste the whole address the browser was redirected to"
++        end
++
++        code
++      end
++
++      def redirect_query(redirect_url)
++        CGI.parse(URI.parse(redirect_url.to_s.strip).query.to_s)
++      rescue URI::InvalidURIError
++        CGI.parse('')
++      end
++
++      def post_to_token_endpoint(credentials, params)
++        uri = https_uri(credentials['token_url'], 'token_url')
++        form = {
 +          'client_id' => credentials['client_id'],
-+          'client_secret' => credentials['client_secret'],
-+          'refresh_token' => credentials['refresh_token']
-+        }
-+        params['scope'] = credentials['scope'] if credentials['scope'].present?
++          'client_secret' => credentials['client_secret']
++        }.merge(params)
++        form['scope'] = credentials['scope'] if credentials['scope'].present?
 +        request = Net::HTTP::Post.new(uri)
-+        request.set_form_data(params)
++        request.set_form_data(form)
 +        Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 60, read_timeout: 60) do |http|
 +          http.request(request)
 +        end
++      end
++
++      def token_from(response, name)
++        unless response.is_a?(Net::HTTPSuccess)
++          message = "OAuth 2.0 token request failed with #{response.code} #{response.message}"
++          error = error_code(response)
++          message += " (#{error})" if error
++          raise message
++        end
++
++        token = JSON.parse(response.body)[name]
++        if token.blank?
++          raise "OAuth 2.0 token request returned no #{name.tr('_', ' ')}"
++        end
++
++        token
++      end
++
++      def https_uri(url, name)
++        uri = URI.parse(url)
++        unless uri.is_a?(URI::HTTPS)
++          raise "#{name} must be an https URL"
++        end
++
++        uri
 +      end
 +
 +      # The error field of a failed token response, which names the cause
@@ -148,10 +214,10 @@ index 000000000..e4c7748c2
 +  end
 +end
 diff --git a/lib/tasks/email.rake b/lib/tasks/email.rake
-index 4ba669510..9024bc7de 100644
+index 4ba669510..9bf22d9f9 100644
 --- a/lib/tasks/email.rake
 +++ b/lib/tasks/email.rake
-@@ -42,6 +42,16 @@ Available IMAP options:
+@@ -42,6 +42,19 @@ Available IMAP options:
    starttls=STARTTLS        Use STARTTLS? (default: false)
    username=USERNAME        IMAP account
    password=PASSWORD        IMAP password
@@ -165,10 +231,13 @@ index 4ba669510..9024bc7de 100644
 +                             client_secret: ...
 +                             refresh_token: ...
 +                             scope: ...
++                           Run redmine:email:oauth2_authorize once to obtain
++                           the refresh token. See the guides at:
++                           http://www.redmine.org/projects/redmine/wiki/EmailConfiguration
    folder=FOLDER            IMAP folder to read (default: INBOX)
  
  Processed emails control options:
-@@ -106,6 +116,16 @@ Examples:
+@@ -106,6 +119,16 @@ Examples:
      project=foo \\
      tracker=bug \\
      allow_override=tracker,priority
@@ -185,7 +254,7 @@ index 4ba669510..9024bc7de 100644
  END_DESC
  
      task :receive_imap => :environment do
-@@ -115,6 +135,8 @@ END_DESC
+@@ -115,6 +138,8 @@ END_DESC
                        :starttls => ENV['starttls'],
                        :username => ENV['username'],
                        :password => ENV['password'],
@@ -194,6 +263,57 @@ index 4ba669510..9024bc7de 100644
                        :folder => ENV['folder'],
                        :move_on_success => ENV['move_on_success'],
                        :move_on_failure => ENV['move_on_failure']}
+@@ -124,6 +149,50 @@ END_DESC
+       end
+     end
+ 
++    desc <<-END_DESC
++Obtain the refresh token that receive_imap needs, once, for one mailbox.
++
++This is interactive on purpose: only the mailbox owner can consent, in a
++browser. The task prints a URL to open, and the browser is then redirected to
++redirect_uri. That address usually fails to load, which is expected - copy it
++out of the address bar and paste it back here.
++
++Available options:
++  oauth2_credentials=FILE  the YAML file described in receive_imap, with
++                           everything except refresh_token filled in, plus:
++                             authorize_url: https://...
++                             redirect_uri: http://localhost (the default; it
++                               must be registered with the provider)
++                             authorize_params:  extra query parameters the
++                               provider needs, as name: value pairs
++
++Provider specific values belong in that file rather than in Redmine. The
++guides for Gmail and Microsoft 365 are at:
++http://www.redmine.org/projects/redmine/wiki/EmailConfiguration
++
++Example:
++  rake redmine:email:oauth2_authorize RAILS_ENV="production" \\
++    oauth2_credentials=/etc/redmine/imap_oauth2.yml
++END_DESC
++
++    task :oauth2_authorize => :environment do
++      credentials_file = ENV['oauth2_credentials']
++      abort 'Missing oauth2_credentials=FILE' if credentials_file.blank?
++
++      puts "Open this URL in a browser and sign in as the mailbox owner:"
++      puts
++      puts Redmine::Oauth2Client.authorize_url(credentials_file)
++      puts
++      print "Then paste the whole address you were redirected to: "
++      redirect_url = STDIN.gets
++      refresh_token = Redmine::Oauth2Client.refresh_token(credentials_file, redirect_url)
++
++      puts
++      puts "Add this line to #{credentials_file}:"
++      puts
++      puts "refresh_token: #{refresh_token}"
++    end
++
+     desc <<-END_DESC
+ Read emails from an POP3 server.
+ 
 diff --git a/test/unit/lib/redmine/imap_test.rb b/test/unit/lib/redmine/imap_test.rb
 new file mode 100644
 index 000000000..2b09001da
@@ -280,10 +400,10 @@ index 000000000..2b09001da
 +end
 diff --git a/test/unit/lib/redmine/oauth2_client_test.rb b/test/unit/lib/redmine/oauth2_client_test.rb
 new file mode 100644
-index 000000000..b42583576
+index 000000000..6b18bbd93
 --- /dev/null
 +++ b/test/unit/lib/redmine/oauth2_client_test.rb
-@@ -0,0 +1,144 @@
+@@ -0,0 +1,261 @@
 +# frozen_string_literal: true
 +
 +# Redmine - project management software
@@ -346,6 +466,123 @@ index 000000000..b42583576
 +      'https://outlook.office.com/IMAP.AccessAsUser.All',
 +      URI.decode_www_form(request.body).to_h['scope']
 +    )
++  end
++
++  def test_authorize_url_should_carry_the_authorization_code_grant_parameters
++    with_credentials(CREDENTIALS.merge('authorize_url' => 'https://login.example.net/oauth2/v2.0/authorize')) do |file|
++      url = URI.parse(Redmine::Oauth2Client.authorize_url(file))
++
++      assert_equal 'login.example.net', url.host
++      assert_equal '/oauth2/v2.0/authorize', url.path
++      assert_equal(
++        {
++          'response_type' => 'code',
++          'client_id' => 'a-client-id',
++          'redirect_uri' => 'http://localhost'
++        },
++        URI.decode_www_form(url.query).to_h
++      )
++    end
++  end
++
++  def test_authorize_url_should_use_the_configured_redirect_uri_and_extra_parameters
++    credentials = CREDENTIALS.merge(
++      'authorize_url' => 'https://login.example.net/oauth2/v2.0/authorize',
++      'redirect_uri' => 'http://localhost:8080/oauth2',
++      'scope' => 'https://mail.google.com/',
++      'authorize_params' => {'access_type' => 'offline', 'prompt' => 'consent'}
++    )
++    with_credentials(credentials) do |file|
++      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file)).query).to_h
++
++      assert_equal 'http://localhost:8080/oauth2', params['redirect_uri']
++      assert_equal 'https://mail.google.com/', params['scope']
++      assert_equal 'offline', params['access_type']
++      assert_equal 'consent', params['prompt']
++    end
++  end
++
++  def test_authorize_url_should_not_let_the_extra_parameters_override_the_grant
++    credentials = CREDENTIALS.merge(
++      'authorize_url' => 'https://login.example.net/oauth2/v2.0/authorize',
++      'authorize_params' => {'response_type' => 'token', 'client_id' => 'someone-else'}
++    )
++    with_credentials(credentials) do |file|
++      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file)).query).to_h
++
++      assert_equal 'code', params['response_type']
++      assert_equal 'a-client-id', params['client_id']
++    end
++  end
++
++  def test_authorize_url_should_raise_when_the_authorize_url_is_not_https
++    with_credentials(CREDENTIALS.merge('authorize_url' => 'http://login.example.net/authorize')) do |file|
++      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.authorize_url(file)}
++      assert_equal 'authorize_url must be an https URL', error.message
++    end
++  end
++
++  def test_refresh_token_should_exchange_the_code_from_the_redirect_address
++    request = nil
++    expect_token_request(response(Net::HTTPOK, '200', 'OK', {'refresh_token' => 'a-refresh-token'}.to_json)) {|req| request = req}
++
++    with_credentials(CREDENTIALS) do |file|
++      assert_equal(
++        'a-refresh-token',
++        Redmine::Oauth2Client.refresh_token(file, "http://localhost/?code=the-code&session_state=abc\n")
++      )
++    end
++
++    assert_equal(
++      {
++        'grant_type' => 'authorization_code',
++        'client_id' => 'a-client-id',
++        'client_secret' => 'a-client-secret',
++        'code' => 'the-code',
++        'redirect_uri' => 'http://localhost'
++      },
++      URI.decode_www_form(request.body).to_h
++    )
++  end
++
++  def test_refresh_token_should_raise_when_the_provider_refused_the_authorization
++    Net::HTTP.expects(:start).never
++
++    with_credentials(CREDENTIALS) do |file|
++      error = assert_raise(RuntimeError) do
++        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?error=access_denied')
++      end
++      assert_equal 'The authorization was refused (access_denied)', error.message
++    end
++  end
++
++  def test_refresh_token_should_raise_when_the_address_carries_no_code
++    Net::HTTP.expects(:start).never
++
++    with_credentials(CREDENTIALS) do |file|
++      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.refresh_token(file, 'http://localhost/')}
++      assert_include 'paste the whole address', error.message
++    end
++  end
++
++  def test_refresh_token_should_raise_when_the_address_cannot_be_parsed
++    Net::HTTP.expects(:start).never
++
++    with_credentials(CREDENTIALS) do |file|
++      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.refresh_token(file, 'not an address at all')}
++      assert_include 'paste the whole address', error.message
++    end
++  end
++
++  def test_refresh_token_should_raise_when_the_response_holds_no_refresh_token
++    expect_token_request(response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token'}.to_json))
++
++    with_credentials(CREDENTIALS) do |file|
++      error = assert_raise(RuntimeError) do
++        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?code=the-code')
++      end
++      assert_include 'no refresh token', error.message
++    end
 +  end
 +
 +  def test_access_token_should_raise_when_a_credential_is_missing

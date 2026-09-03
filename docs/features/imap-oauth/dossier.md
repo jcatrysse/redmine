@@ -5,7 +5,9 @@
 - **Wat het doet, in gewone taal:** Redmine kan post ophalen uit een Gmail- of
   Office 365-mailbox zonder wachtwoord, met OAuth 2.0. Microsoft heeft
   wachtwoord-login op IMAP uitgezet, dus zonder dit werkt inkomende mail daar
-  helemaal niet meer.
+  helemaal niet meer. De eenmalige toestemmingsstap zit erin als één taak, en
+  de walkthroughs voor beide providers staan hieronder onder "Setting it up,
+  once, per mailbox" klaar voor de wikipagina.
 - **Waar het vandaan komt:** 5.1-commit `bbf5c0eb3`, en de patch die daaruit
   kwam hangt al aan je eigen issue #43023 (versie 3, 49 kB).
 - **Doel:** upstream + GEOxyz
@@ -13,8 +15,8 @@
 - **Kans dat Redmine dit aanneemt:** redelijk — het issue staat op naam van
   kerncommitter Marius BĂLTEANU met doelversie 7.1.0, dus ze *willen* de
   functie; wat er nu hangt is te groot (1197 regels, twee nieuwe gems, vier
-  nieuwe rake-taken). Deze herschrijving is ~90 regels productiecode, nul
-  nieuwe gems en nul nieuwe rake-taken.
+  nieuwe rake-taken). Deze herschrijving is ~230 regels productiecode, nul
+  nieuwe gems en één nieuwe rake-taak in plaats van vier.
 - **Wat jij nog moet doen:** zie `status.md` — één note aan #43023, plus één
   keuze (K-nn in `docs/DECISIONS.md`).
 
@@ -100,8 +102,9 @@ mechanism used to authenticate belongs in the same place as the other three.
 
 # Proposed change
 
-Two new options on the existing `redmine:email:receive_imap` task. No new task
-family, no new task, no interactive flow inside Redmine.
+Two new options on the existing `redmine:email:receive_imap`, and one new task
+for the one-off setup step. No parallel task family, and no provider knowledge
+anywhere in Redmine.
 
     oauth2_token=TOKEN        an OAuth 2.0 access token, used instead of
                               password= and authenticated with XOAUTH2
@@ -109,27 +112,44 @@ family, no new task, no interactive flow inside Redmine.
                               and refresh token; Redmine requests an access
                               token with them on each run
 
+    rake redmine:email:oauth2_authorize oauth2_credentials=FILE
+
 `oauth2_token=` covers the case where the operator's own tooling already holds a
 token (Azure managed identity, the `client_credentials` grant, `oauth2l`, a
-secrets manager). `oauth2_credentials=` covers the normal unattended case: the
-administrator authorises once, out of band, and gives Redmine the long-lived
-refresh token.
+secrets manager). `oauth2_credentials=` covers the normal unattended case.
 
-The credentials file:
+`oauth2_authorize` is the authorization code grant, run once per mailbox. It
+prints the URL the mailbox owner opens to consent, reads back the address the
+browser was redirected to, and prints the `refresh_token:` line to add to the
+same file. It is deliberately provider-agnostic: the endpoints, the scope and
+any provider-specific query parameters come out of the administrator's file, so
+Redmine carries no knowledge of Microsoft's or Google's OAuth quirks.
+
+The credentials file, complete:
 
 ```yaml
+authorize_url: https://login.microsoftonline.com/TENANT_ID/oauth2/v2.0/authorize
 token_url: https://login.microsoftonline.com/TENANT_ID/oauth2/v2.0/token
 client_id: 00000000-0000-0000-0000-000000000000
 client_secret: SECRET
-refresh_token: REFRESH_TOKEN
 scope: https://outlook.office.com/IMAP.AccessAsUser.All offline_access
+redirect_uri: http://localhost
+refresh_token: REFRESH_TOKEN
 ```
+
+`authorize_url`, `redirect_uri` and `authorize_params` are read only by
+`oauth2_authorize`; `receive_imap` ignores them. `redirect_uri` defaults to
+`http://localhost`, and `authorize_params` is a plain map of extra query
+parameters: Google needs `access_type: offline` and `prompt: consent` there,
+Microsoft needs `offline_access` in the scope instead. That is the one place
+where the providers differ, and it is in the administrator's file rather than
+in Redmine.
 
 | File | Change |
 |---|---|
 | `lib/redmine/imap.rb` | authenticate with `XOAUTH2` when an access token is available, `login` otherwise; resolve the token from the two new options |
-| `lib/redmine/oauth2_client.rb` | new, ~55 lines: read the credentials file, POST the refresh token grant, return the access token |
-| `lib/tasks/email.rake` | pass the two options through; document them, and add one worked example per provider |
+| `lib/redmine/oauth2_client.rb` | new, ~140 lines: read the credentials file, build the authorization URL, and POST either the refresh token grant or the authorization code grant |
+| `lib/tasks/email.rake` | pass the two options through and document them; add the `oauth2_authorize` task and one worked example |
 | `test/unit/lib/redmine/imap_test.rb` | new: first tests for `Redmine::IMAP` |
 | `test/unit/lib/redmine/oauth2_client_test.rb` | new |
 
@@ -160,21 +180,23 @@ touched.
 
 # Alternatives considered
 
-**Put the whole authorization flow in Redmine (what is attached to #43023
-today).** Four new rake tasks — `o365_oauth2_init`, `google_oauth2_init`,
-`receive_imap_oauth2`, `oauth2_status` — plus a `help` task, two provider
-documents, two gems, and a token cache written to `config/` with `chmod 0600`.
-1197 lines. It has been on the issue for over a year and has slipped two target
-versions. Rejected for three reasons, in order of weight:
+**The shape attached to #43023 today.** Four new rake tasks —
+`o365_oauth2_init`, `google_oauth2_init`, `receive_imap_oauth2`,
+`oauth2_status` — plus a `help` task, two provider documents, two gems, and a
+token cache written to `config/` with `chmod 0600`. 1197 lines. It has been on
+the issue for over a year and has slipped two target versions. The one-off
+authorization step it provides is kept here, in one task; the rest is rejected
+for three reasons, in order of weight:
 
-1. *The interactive part cannot be maintained and cannot be tested.* It prints
-   an authorize URL, waits on `STDIN` for the operator to paste back a redirect
-   URL, and exchanges the code. That needs a human and real provider
-   credentials, so it can never have a test, and it hardcodes each provider's
-   scope list and endpoint paths — Microsoft's and Google's, which Redmine would
-   then be on the hook to track. Doing the one-time authorization out of band
-   (Google's OAuth playground, `az`, `oauth2l`, a five-line script) costs the
-   administrator one afternoon, once, and costs Redmine nothing forever.
+1. *Two provider-specific init tasks means Redmine tracks two providers' OAuth
+   quirks.* They hardcode each provider's endpoint paths, scope list and
+   consent parameters, in Redmine's code. `oauth2_authorize` does the same job
+   as one task, with every provider-specific value in the administrator's
+   credentials file — which is where the client id and secret already have to
+   live. Redmine ends up knowing nothing about Microsoft or Google, and the two
+   walk-throughs go on the `EmailConfiguration` wiki page, where Redmine
+   already keeps this kind of guidance and where they can be corrected without
+   a release.
 2. *The token cache is what makes it complicated.* Almost half the helper code
    in that patch — `normalize_token_file`, `secure_file`, the `PERMITTED`
    whitelist of YAML symbols, `mask_token`, the refresh-and-rewrite branch —
@@ -191,7 +213,17 @@ versions. Rejected for three reasons, in order of weight:
 six-line patch, and it would be accepted quickly, but it does not close
 #37688: the administrator still needs an external tool to turn a refresh token
 into an access token every hour, which is exactly today's situation. Kept as
-half of the design rather than as the whole of it.
+one third of the design rather than as the whole of it.
+
+**Leave the one-off authorization to external tools and document that.**
+Considered and rejected. It is doable — two `curl` commands, or Google's OAuth
+playground — but the first of those two commands means hand-encoding a scope
+into a query string, and the authorization code it produces is single use and
+expires in minutes, so one typo means starting over. A step that an
+administrator has to get right in one attempt with no feedback is the wrong
+place to save fifty lines. `oauth2_authorize` builds the URL, and its error
+messages name the actual mistake: the authorization was refused, the code has
+already been used, only the code was pasted instead of the whole address.
 
 **Support the `client_credentials` grant as well as `refresh_token`.** About six
 more lines, and it is what Microsoft recommends for a service mailbox
@@ -227,31 +259,40 @@ Neither `Redmine::IMAP` nor `Redmine::POP3` had a single test before this patch;
 | `Oauth2ClientTest#test_access_token_should_raise_with_the_error_code_of_a_failed_request` | a 400 response yields `OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)` — the provider's error code, which is the whole diagnosis, and nothing else from the body |
 | `Oauth2ClientTest#test_access_token_should_raise_when_a_failed_request_has_no_json_body` | a 502 with an HTML body still gives a clean message rather than a `JSON::ParserError` masking the real failure |
 | `Oauth2ClientTest#test_access_token_should_raise_when_the_response_holds_no_token` | a 200 without an `access_token` is an error, not a `nil` token handed to the IMAP server |
+| `Oauth2ClientTest#test_authorize_url_should_carry_the_authorization_code_grant_parameters` | the consent URL is the `authorize_url` from the file, with exactly `response_type=code`, the client id and the redirect URI |
+| `Oauth2ClientTest#test_authorize_url_should_use_the_configured_redirect_uri_and_extra_parameters` | a non-default `redirect_uri`, the scope, and `authorize_params` (Google's `access_type` and `prompt`) all reach the URL |
+| `Oauth2ClientTest#test_authorize_url_should_not_let_the_extra_parameters_override_the_grant` | `authorize_params` cannot replace `response_type` or `client_id`, so a mistake in the file cannot silently turn the request into a different grant |
+| `Oauth2ClientTest#test_authorize_url_should_raise_when_the_authorize_url_is_not_https` | the same https guard as the token endpoint |
+| `Oauth2ClientTest#test_refresh_token_should_exchange_the_code_from_the_redirect_address` | the code is pulled out of a pasted address that also carries `session_state` and a trailing newline, and exchanged with `grant_type=authorization_code` and the same `redirect_uri` |
+| `Oauth2ClientTest#test_refresh_token_should_raise_when_the_provider_refused_the_authorization` | `?error=access_denied` is reported as a refusal, and no request is made |
+| `Oauth2ClientTest#test_refresh_token_should_raise_when_the_address_carries_no_code` | pasting only the code instead of the whole address says so |
+| `Oauth2ClientTest#test_refresh_token_should_raise_when_the_address_cannot_be_parsed` | pasting something that is not an address at all gives the same advice rather than a `URI::InvalidURIError`. This test found a real bug on its first run: the guard returned a plain `{}` where `CGI.parse` returns a hash defaulting to `[]`, so the next line raised `NoMethodError` |
+| `Oauth2ClientTest#test_refresh_token_should_raise_when_the_response_holds_no_refresh_token` | a provider that returns only an access token, which is what happens when `offline_access` or `access_type: offline` is missing, is reported as such |
 
 **Evidence (INV-8 — figures, not claims):**
 
 - **full** suite with the patch: `RAILS_ENV=test bundle exec ruby bin/rails test`
-  → ``5802 runs, 30727 assertions, 27 failures, 2 errors, 92 skips``
+  → `5811 runs, 30751 assertions, 27 failures, 2 errors, 92 skips`
 - **full** suite on a pristine trunk worktree at the same revision, own
   database → `5790 runs, 30686 assertions, 27 failures, 2 errors, 92 skips`
 - the failing test names are **identical** on both sides (`diff` empty):
-  29 names, and 5802 - 5790 = 12 is exactly the number of
-  new tests. All 29 are repository, changeset and `SysController` tests that
+  29 names, and 5811 - 5790 = 21 is exactly the number of new
+  tests. All 29 are repository, changeset and `SysController` tests that
   need `svn`, `hg`, `bzr` or `cvs`, none of which exist in this image.
-- the two new files run together in one process: `12 runs, 43 assertions,
+- the two new files run together in one process: `21 runs, 71 assertions,
   0 failures, 0 errors, 0 skips`
 - RuboCop on the changed files: `0` offences (baseline at the merge base on the
   same files: `0`). `lib/tasks/email.rake` is not linted — `lib/tasks/**/*` is
   excluded in Redmine's own `.rubocop.yml`, so that file had human review only.
 - each new test verified red on the old code: the two files were copied into a
   throwaway pristine-trunk worktree with its own database and run there →
-  `12 runs, 10 assertions, 7 failures, 4 errors`. **11 of the 12 are red**, and
-  the single green one is
-  `test_check_should_login_with_the_password` — the guard, which must be green
-  on both sides. Being honest about *why* each is red: the eight
-  `Oauth2ClientTest` cases and
-  `ImapTest#test_check_should_authenticate_with_the_token_requested_from_the_credentials_file`
-  and `..._when_the_oauth2_options_are_blank` fail with
+  `21 runs, 15 assertions, 12 failures, 8 errors`. **20 of the 21 are red**,
+  and the single green one is `test_check_should_login_with_the_password` — the
+  guard, which must be green on both sides. That was established by name and
+  not by counting: the list of test method names in the two files, minus the
+  names that appear in the failure output, leaves exactly that one. Being
+  honest about *why* each is red: all seventeen `Oauth2ClientTest` cases and
+  two of the four `ImapTest` cases fail with
   `NameError: uninitialized constant Redmine::Oauth2Client`, which is real but
   is the class not existing rather than behaviour differing. The one test whose
   red is purely behavioural is
@@ -280,7 +321,23 @@ that arrived in Redmine. Both servers are in
 - `token_endpoint.rb` serves the token endpoint over TLS with a self-signed
   certificate, so the client's certificate verification is genuinely exercised
   (the run points `SSL_CERT_FILE` at that certificate; the failure table below
-  shows what happens when it does not).
+  shows what happens when it does not). It also serves the authorization
+  endpoint and redirects like a provider's consent screen, so the one-off
+  `oauth2_authorize` step could be driven for real too.
+
+**The whole chain was run in order, not the three legs separately.**
+`oauth2_authorize` printed a consent URL; that URL was followed the way a
+browser follows it, which produced a redirect to
+`http://localhost?code=the-consent-code&session_state=fake`; that address was
+pasted back, and the task printed `refresh_token: a-refresh-token-from-consent`.
+That line was appended to the credentials file, and `receive_imap` with nothing
+but `oauth2_credentials=` pointing at that file fetched a message and created
+issue #15. The token endpoint's own log shows both grants arriving in order,
+first `authorization_code`, then `refresh_token`, with the scope intact:
+
+    authorize endpoint: client_id=a-client-id scope=https://outlook.office.com/IMAP.AccessAsUser.All offline_access redirect_uri=http://localhost
+    token endpoint: {"grant_type"=>"authorization_code", "code"=>"the-consent-code", ...}
+    token endpoint: {"grant_type"=>"refresh_token", ...}
 
 Nothing left the machine and no real credentials were used. Screenshots in
 `docs/features/imap-oauth/shots/`, terminal transcripts in
@@ -291,6 +348,7 @@ Nothing left the machine and no real credentials were used. Screenshots in
 | The mailbox before any mail is fetched | `before-issues-list.png` | nine issues in the verification project, none from mail. Taken against the **pristine trunk** worktree |
 | Mail fetched with a token minted by Redmine, and with a token supplied on the command line | `issues-list.png` | issues #12 (`oauth2_credentials=`), #13 (`oauth2_token=`) and #14 (the unchanged `password=` path) |
 | The issue built from the fetched mail | `issue-from-xoauth2-mail.png` | Bug #12, author Dev Verify0 resolved from the `From:` header, description as sent |
+| Mail fetched with a refresh token that `oauth2_authorize` itself produced | `issues-list.png` | issue #15, the end of the three-step chain above |
 
 The before/after pair is the point: on trunk the same command line fails,
 because `oauth2_credentials=` is not an option it knows and it falls back to
@@ -310,6 +368,20 @@ Failure paths verified, all five with the patch applied:
 | access token rejected by the mailbox | the server's own reason | `Net::IMAP::NoResponseError: Invalid credentials` |
 | no OAuth option at all | byte-identical to trunk | the IMAP server logged `LOGIN redmine@example.net a-mailbox-password`, and issue #14 was created |
 
+And the six failure paths of the one-off `oauth2_authorize` step, which is
+where an administrator setting this up for the first time will actually make
+mistakes:
+
+| Case | Observed |
+|---|---|
+| `oauth2_credentials=` not given | `Missing oauth2_credentials=FILE` |
+| `authorize_url` missing from the file | `<file> is missing authorize_url` |
+| `authorize_url` is `http://` | `authorize_url must be an https URL` |
+| the mailbox owner clicked deny | `The authorization was refused (access_denied)` |
+| only the code pasted, not the whole address | `No code parameter in the address, paste the whole address the browser was redirected to` |
+| something pasted that is not an address at all | the same message, rather than `URI::InvalidURIError` |
+| the code already used or expired | `OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)` |
+
 **No credential appears in any message.** That was checked deliberately,
 because the patch on #43023 prints the full access token when `imap_debug=1` is
 set: it does `puts imap_options.inspect`, and `imap_options[:password]` is the
@@ -322,11 +394,130 @@ three present with the right trackers, and `issue-from-xoauth2-mail.png` for the
 author having been resolved to the Redmine user behind the `From:` address
 (which proves `MailHandler` ran, not just that IMAP connected).
 
+# Setting it up, once, per mailbox
+
+This is the text for the `EmailConfiguration` wiki page. Redmine keeps provider
+walk-throughs on the wiki rather than in `doc/`, which holds only `INSTALL`,
+`UPGRADING`, `CHANGELOG`, `COPYING`, `README_FOR_APP`, `RUNNING_TESTS` and
+`licenses`; `config/configuration.yml.example` already points at that wiki page
+for mail, and the two task descriptions now point at it as well.
+
+Both providers follow the same three steps: register an application, write a
+credentials file, run `redmine:email:oauth2_authorize` once.
+
+**The browser part is not a stunt, and it works on a server with no browser.**
+The task prints a URL. Open it on your own laptop, sign in as the mailbox
+owner, approve. The provider then redirects your browser to
+`http://localhost`, which shows "This site can't be reached" - that is
+expected and it is the whole point: the address bar now holds
+`http://localhost/?code=0.AXoA...`. Copy that entire address and paste it back
+into the terminal. Nothing has to be reachable, nothing listens on that port,
+and the redirect happens in your browser and not on the server.
+
+## Microsoft 365 / Exchange Online
+
+1. Microsoft Entra admin center, **App registrations**, **New registration**.
+   Name it something recognisable, keep "Accounts in this organizational
+   directory only", and add a redirect URI of platform **Web** with the value
+   `http://localhost`. Under the Web platform, `http://localhost` is the one
+   address allowed without https.
+2. Note the **Application (client) ID** and the **Directory (tenant) ID** from
+   the overview page.
+3. **Certificates & secrets**, **New client secret**. Copy the value now; it is
+   shown once.
+4. **API permissions**, **Add a permission**, **APIs my organization uses**,
+   search for *Office 365 Exchange Online*, **Delegated permissions**, tick
+   `IMAP.AccessAsUser.All`. Add it, and grant admin consent if your tenant
+   requires it.
+5. Make sure IMAP is on for the mailbox. In Exchange Online PowerShell:
+   `Set-CASMailbox -Identity mailbox@example.com -ImapEnabled $true`
+
+Credentials file, `/etc/redmine/imap_oauth2.yml`:
+
+```yaml
+authorize_url: https://login.microsoftonline.com/TENANT_ID/oauth2/v2.0/authorize
+token_url: https://login.microsoftonline.com/TENANT_ID/oauth2/v2.0/token
+client_id: APPLICATION_CLIENT_ID
+client_secret: CLIENT_SECRET_VALUE
+scope: https://outlook.office.com/IMAP.AccessAsUser.All offline_access
+redirect_uri: http://localhost
+```
+
+`offline_access` in the scope is what makes Microsoft hand back a refresh
+token. Without it the authorize task ends with "returned no refresh token".
+
+Then:
+
+```
+rake redmine:email:oauth2_authorize RAILS_ENV=production \
+  oauth2_credentials=/etc/redmine/imap_oauth2.yml
+```
+
+Add the `refresh_token:` line it prints to the same file, and fetch mail with:
+
+```
+rake redmine:email:receive_imap RAILS_ENV=production \
+  host=outlook.office365.com port=993 ssl=1 \
+  username=mailbox@example.com \
+  oauth2_credentials=/etc/redmine/imap_oauth2.yml \
+  project=support
+```
+
+## Gmail and Google Workspace
+
+1. Google Cloud console, create or pick a project, and **enable the Gmail API**
+   for it.
+2. **OAuth consent screen**: choose *Internal* for a Workspace domain. For a
+   personal Gmail account only *External* is available, and an External app
+   left in *Testing* has its refresh tokens expire after seven days - publish
+   the app, or expect to re-authorize weekly.
+3. **Credentials**, **Create credentials**, **OAuth client ID**, application
+   type **Desktop app**. Note the client ID and client secret. A Desktop app
+   client is the one that accepts a `http://localhost` redirect.
+4. Enable IMAP in the mailbox itself: Gmail settings, *Forwarding and POP/IMAP*,
+   *Enable IMAP*.
+
+Credentials file:
+
+```yaml
+authorize_url: https://accounts.google.com/o/oauth2/v2/auth
+token_url: https://oauth2.googleapis.com/token
+client_id: SOMETHING.apps.googleusercontent.com
+client_secret: CLIENT_SECRET
+scope: https://mail.google.com/
+redirect_uri: http://localhost
+authorize_params:
+  access_type: offline
+  prompt: consent
+```
+
+Google's equivalent of `offline_access` is `access_type: offline`, and it only
+returns a refresh token on the *first* consent, so `prompt: consent` keeps it
+working when you re-authorize. Those two are exactly why `authorize_params`
+exists: the provider's quirks live in the administrator's file, not in
+Redmine's code.
+
+Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
+
+## Afterwards
+
+- The file holds a client secret and a refresh token. Give it to the Redmine
+  user only: `chown redmine: /etc/redmine/imap_oauth2.yml && chmod 600` it.
+- A refresh token is long lived but not eternal. It stops working if it is
+  revoked, if the account's password policy forces it, or in the Google
+  *Testing* case above. Re-run `oauth2_authorize` and replace the line; nothing
+  else changes.
+- `receive_imap` says which of the two it is:
+  `invalid_grant` means the refresh token is no longer accepted, `invalid_client`
+  means the client id or secret is wrong.
+
 # Anticipated objections
 
 | Objection | Answer |
 |---|---|
-| "This does not do the OAuth authorization flow, so an administrator still has manual work." | Once, out of band, to get a refresh token — the same one-off consent step every OAuth setup needs, and there are five well-trodden ways to do it (Google's OAuth playground, `az`, `oauth2l`, `getmail-gmail-xoauth-tokens`, a five-line script). After that the cron job runs unattended forever. What is *not* in Redmine is the part that would need Redmine to track two providers' authorize endpoints, scope lists and consent quirks. |
+| "The one-off authorization needs a browser, and my Redmine server has none." | The redirect happens in *your* browser, not on the server. Run the task over SSH, open the printed URL on your own machine, and paste the address back into the terminal. Nothing has to listen on `localhost` and nothing has to be reachable from the provider. |
+| "Why is there an interactive rake task at all? Nothing else in Redmine reads from stdin." | Because only the mailbox owner can consent, and there is no non-interactive way to obtain a refresh token for a delegated grant. The alternative is telling administrators to hand-build an authorization URL and `curl` a single-use code within its expiry, which is the kind of instruction that gets one attempt and no feedback. The interactive part is four lines of the task; everything under it is ordinary, tested code. |
+| "Then Redmine now carries Microsoft's and Google's OAuth details after all." | It does not. `oauth2_authorize` reads the authorization endpoint, the scope, the redirect URI and any extra query parameters out of the administrator's file. Google's `access_type=offline` and `prompt=consent`, and Microsoft's `offline_access` scope, are values in that file. The two walk-throughs belong on the `EmailConfiguration` wiki page, where a provider changing its console can be corrected without a Redmine release. |
 | "Why not use the `oauth2` gem, which is already in the Gemfile?" | It is in the `:test` group, for testing Redmine's own OAuth **provider** (Doorkeeper). Using it here would move a test dependency into production for one form POST. `Net::HTTP` and `JSON` are stdlib, and `app/models/webhook.rb` already establishes how core makes an outbound HTTP request. |
 | "Why not `gmail_xoauth`, as the earlier patch does?" | Redundant. `Net::IMAP::SASL::XOAuth2Authenticator` is in the pinned `net-imap ~> 0.6.1`, and 0.4.x already carried it as `Net::IMAP::XOauth2Authenticator`. The patch calls the mechanism by name — `imap.authenticate('XOAUTH2', username, token)` — rather than the constant, so it does not depend on which of the two names a given net-imap exposes. |
 | "An access token per run is wasteful." | One form POST next to an IMAP session that is about to open anyway. In exchange, nothing is written to disk, so there is no token file to create, permission, rotate, corrupt or leak — and roughly half the helper code in the earlier patch existed only to manage that file. If a busy site ever needs caching it can be added behind the same option without changing the interface. |

@@ -16,18 +16,30 @@ issue: 43023
 Af, en herschreven. De patch die al een jaar aan Jans eigen issue
 [#43023](https://www.redmine.org/issues/43023) hangt is 1197 regels met twee
 nieuwe gems en vier nieuwe rake-taken; deze is 351 regels, nul nieuwe gems en
-nul nieuwe taken — twee opties op de bestaande `receive_imap`. Alles is
-bewezen: volledige suites aan beide kanten, RuboCop nul, de patch applyt op een
-schone trunk r24882, en de functie is end-to-end nagelopen tegen een échte
-IMAP-server en een échte HTTPS-tokenendpoint, met de issues die daaruit in
-Redmine aankwamen als bewijs. De commit staat ook op `7.0-stable-GEOxyz`, dus
-GEOxyz kan dit draaien.
+nul nieuwe taakfamilies: twee opties op de bestaande `receive_imap`, plus één
+taak voor de eenmalige toestemmingsstap. Alles is bewezen: volledige suites aan
+beide kanten, RuboCop nul, de patch applyt op een schone trunk r24882, en de
+hele keten is end-to-end gedraaid tegen een échte IMAP-server en een échte
+HTTPS-tokenendpoint, met de issues die daaruit in Redmine aankwamen als bewijs.
+Twee commits staan op `7.0-stable-GEOxyz`.
 
-De blokkade die in dit statusbestand stond — "de OAuth-autorisatieflow heeft
-een mens en echte credentials nodig, dus die kan nooit een test zijn" — is weg,
-en niet door hem te omzeilen: die flow zit **niet meer in de patch**. De
-beheerder autoriseert één keer buiten Redmine en geeft Redmine het refresh
-token. Daarmee is alles wat we leveren testbaar.
+**Jan vroeg (2026-09-03) om stap 1 zelf ook doenbaar te maken**, en dat heeft
+het ontwerp op één punt veranderd. Eerst zat de toestemmingsstap er helemaal
+niet in en moest de beheerder het refresh token buiten Redmine regelen. Nu is
+er één taak, `redmine:email:oauth2_authorize`, die het doet. Wat er nadrukkelijk
+**niet** terug is gekomen: de twee provider-specifieke init-taken uit de oude
+code. De nieuwe taak weet niets over Microsoft of Google; de endpoints, de scope
+en de provider-eigenaardigheden staan in het credentialsbestand van de
+beheerder. De walkthroughs voor beide providers staan kant-en-klaar in
+`dossier.md` onder "Setting it up, once, per mailbox", bedoeld voor de
+`EmailConfiguration`-wikipagina van Redmine.
+
+Daarmee is ook de blokkade weg die in dit bestand stond — "de
+OAuth-autorisatieflow heeft een mens en echte credentials nodig, dus die kan
+nooit een test zijn". De enige regel die een mens vraagt is `STDIN.gets`; al het
+overige (de URL bouwen, de code uit het geplakte adres halen, hem inwisselen,
+alle faalpaden) is gewone geteste code, en de hele keten is met een lokale
+nep-provider echt gedraaid.
 
 ## Wat het doet
 
@@ -35,27 +47,40 @@ Redmine haalt inkomende mail uit een mailbox die geen wachtwoord meer accepteert
 (Microsoft 365, Gmail), door zich met een OAuth 2.0 access token aan te melden.
 Twee nieuwe opties op `rake redmine:email:receive_imap`: `oauth2_token=` voor
 een token dat elders gemaakt is, en `oauth2_credentials=<bestand>` waarmee
-Redmine per run zelf een token opvraagt met een refresh token.
+Redmine per run zelf een token opvraagt met een refresh token. En één nieuwe
+taak, `rake redmine:email:oauth2_authorize`, die dat refresh token één keer per
+mailbox ophaalt: hij print een URL, de mailboxeigenaar geeft in zijn browser
+toestemming, plakt het adres terug waar hij op uitkwam, en de taak print de
+regel die in het credentialsbestand moet.
 
 ## Bewijs
 
-- Volledige suite met patch: 5802 runs, 30727 assertions, 27 failures,
+- Volledige suite met patch: 5811 runs, 30751 assertions, 27 failures,
   2 errors, 92 skips
 - Schone trunk (eigen database, zelfde revisie): 5790 runs, 30686 assertions,
   27 failures, 2 errors, 92 skips — dezelfde 29 faalnamen, `diff` leeg; alle 29
   zijn repository-/changeset-/`SysController`-tests die `svn`, `hg`, `bzr` of
-  `cvs` nodig hebben, en die staan niet in dit image
-- Volledige suite op `7.0-stable-GEOxyz`: 5827 runs, 31068 assertions,
-  0 failures, 0 errors, 39 skips
-- De twee nieuwe testbestanden samen in één proces: 12 runs, 43 assertions,
+  `cvs` nodig hebben, en die staan niet in dit image. 5811 - 5790 = 21, precies
+  het aantal nieuwe tests
+- Volledige suite op `7.0-stable-GEOxyz` met alleen deze feature erop:
+  5836 runs, 31100 assertions, 0 failures, 0 errors, 39 skips.
+  SUITE_MERGED
+- De twee nieuwe testbestanden samen in één proces: 21 runs, 71 assertions,
   0 failures, 0 errors
-- Rood bewezen op de oude code: 11 van de 12 nieuwe tests vallen om in een
-  wegwerp-worktree op schone trunk (12 runs, 7 failures, 4 errors). De ene
-  groene is de bewaker die aan beide kanten groen moet zijn. Eerlijk erbij: tien
-  van die elf zijn rood door `NameError: uninitialized constant
-  Redmine::Oauth2Client`; de enige puur gedragsmatige rode is
+- Rood bewezen op de oude code: 20 van de 21 nieuwe tests vallen om in een
+  wegwerp-worktree op schone trunk (21 runs, 12 failures, 8 errors). De ene
+  groene is de bewaker die aan beide kanten groen moet zijn, en dat is per
+  **naam** vastgesteld en niet door te tellen: de lijst testmethodenamen minus
+  de namen in de faaluitvoer laat precies `test_check_should_login_with_the_password`
+  over. Eerlijk erbij: negentien van die twintig zijn rood door
+  `NameError: uninitialized constant Redmine::Oauth2Client`; de enige puur
+  gedragsmatige rode is
   `test_check_should_authenticate_with_xoauth2_when_an_access_token_is_given`,
   die op `lib/redmine/imap.rb:44` faalt omdat trunk daar `login` doet
+- Eén nieuwe test vond bij zijn eerste run een echte fout in mijn eigen code:
+  de vangnet-tak voor een onparseerbaar geplakt adres gaf `{}` terug waar
+  `CGI.parse` een hash met default `[]` geeft, dus de regel erna gaf
+  `NoMethodError`. Nu `CGI.parse('')`
 - RuboCop op de gewijzigde bestanden: 0 (baseline 0). `lib/tasks/email.rake`
   wordt niet gelint (`lib/tasks/**/*` staat in Redmine's eigen `.rubocop.yml`
   onder Exclude), dus daar is menselijke review de enige controle
@@ -64,8 +89,15 @@ Redmine per run zelf een token opvraagt met een refresh token.
 - `tools/check-patch-clean.sh`: PASS · `tools/check-geoxyz-branch.sh`: PASS
 - Patch applyt met `git am` op een verse `origin/master`-checkout: ja
 - Screenshots: drie (één before), gelezen: ja. Plus
-  `shots/terminal-transcript.txt` met de before-run, de drie geslaagde runs en
-  de vijf faalpaden
+  `shots/terminal-transcript.txt`: de before-run op schone trunk, de vier
+  geslaagde runs, de vijf faalpaden van het ophalen en de zes faalpaden van de
+  toestemmingsstap
+- De hele keten is in volgorde gedraaid, niet de drie stukken los:
+  `oauth2_authorize` printte een URL, die URL is gevolgd zoals een browser hem
+  volgt, het redirect-adres is teruggeplakt, de taak printte de
+  `refresh_token:`-regel, die regel ging in het bestand, en `receive_imap`
+  maakte daarmee issue #15 aan. Het log van de tokenendpoint laat beide grants
+  in de juiste volgorde langskomen
 
 ## Wat Jan nog moet doen
 
@@ -77,7 +109,7 @@ issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 7.1.0. Zeg in die note dat dit een **vervanging** is van
 `..._version3.patch`, niet een aanvulling, en waarom hij zoveel kleiner is:
 
-- 351 regels in plaats van 1197, en **geen** nieuwe gem. `oauth2` en
+- 581 regels in plaats van 1197, en **geen** nieuwe gem. `oauth2` en
   `gmail_xoauth` zijn er beide uit. `gmail_xoauth` was overbodig:
   `Net::IMAP::SASL::XOAuth2Authenticator` zit in de `net-imap ~> 0.6.1` die
   Redmine al pint, en 0.4.x had hem onder de oude naam
@@ -86,10 +118,13 @@ issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 - Geen nieuwe taakfamilie. Twee opties op de bestaande `receive_imap` in plaats
   van een tweede `receive_imap_oauth2` die `host`, `port`, `ssl`, `starttls`,
   `folder`, `move_on_success` en `move_on_failure` dupliceert.
-- De interactieve autorisatieflow zit er niet in. Die kan per definitie geen
-  test hebben en zet Microsofts en Googles endpoints, scopes en
-  consent-eigenaardigheden in Redmine's onderhoud. Eenmalig buiten Redmine
-  autoriseren kost de beheerder één keer een middag.
+- **Eén** taak voor de toestemmingsstap in plaats van twee provider-specifieke,
+  en die ene weet niets over Microsoft of Google: de endpoints, de scope en de
+  extra queryparameters komen uit het credentialsbestand. Googles
+  `access_type=offline` en `prompt=consent` en Microsofts `offline_access` zijn
+  dus waarden in dat bestand, geen code in Redmine. De walkthroughs horen op de
+  `EmailConfiguration`-wikipagina, waar Redmine dit soort uitleg al zet en waar
+  een providerwijziging zonder release gecorrigeerd kan worden.
 - Geen tokencache op schijf, en daarmee vervallen `normalize_token_file`,
   `secure_file`, de YAML-symbolenwhitelist, `mask_token` en de
   refresh-en-herschrijf-tak — ruwweg de helft van de hulpcode.
@@ -107,17 +142,22 @@ inclusief de tabel met verwachte bezwaren.
 **2. Eén keer tegen een echte mailbox bevestigen.** Alles is nagelopen tegen
 een lokale IMAP-server en tokenendpoint die het protocol echt spreken, maar
 niemand kan namens jou bij een echte Office 365- of Gmail-mailbox. Dat is de
-enige stap die jouw handen vraagt: één keer autoriseren, het
-credentialsbestand vullen en `rake redmine:email:receive_imap
-oauth2_credentials=...` draaien. Het bestand ziet zo uit:
+enige stap die jouw handen vraagt, en hij is nu ook de test van de
+walkthroughs zelf:
 
-```yaml
-token_url: https://login.microsoftonline.com/TENANT_ID/oauth2/v2.0/token
-client_id: ...
-client_secret: ...
-refresh_token: ...
-scope: https://outlook.office.com/IMAP.AccessAsUser.All offline_access
-```
+1. registreer de applicatie zoals in `dossier.md` onder "Setting it up, once,
+   per mailbox" beschreven staat
+2. schrijf het credentialsbestand, alles behalve `refresh_token`
+3. `rake redmine:email:oauth2_authorize oauth2_credentials=/etc/redmine/imap_oauth2.yml`
+4. zet de regel die hij print in het bestand
+5. `rake redmine:email:receive_imap host=outlook.office365.com port=993 ssl=1
+   username=... oauth2_credentials=... project=...`
+
+**Let op bij die walkthroughs:** de stappen in de Azure- en Google-consoles zijn
+naar beste weten opgeschreven en niet tegen een echt tenant uitgevoerd, want dat
+kan hier niet. Als een menu ergens anders staat of een stap ontbreekt, corrigeer
+het in `dossier.md` voordat de wikipagina de deur uit gaat. Wat wél getest is,
+is alles wat Redmine zelf doet.
 
 En er staat één keuze voor je open: **K-06** in `docs/DECISIONS.md`, over de
 `client_credentials`-grant (app-only, Microsofts aanbeveling voor een
@@ -157,10 +197,23 @@ servicemailbox). Er is geen haast: we bouwden verder zonder.
   wél een). Niet toevoegen.
 - **Er zijn geen locale-sleutels**, en dat is geen omissie: de patch voegt geen
   door een gebruiker geziene string toe. Geen `-locales.patch`.
+- **De toestemmingsstap zit er wél in, maar provider-agnostisch.** Dat is een
+  bewuste terugdraai van het eerste ontwerp van deze sessie, op Jans vraag
+  (2026-09-03) om stap 1 doenbaar te houden. Wat er niet terugkomt: twee
+  provider-specifieke init-taken, scope-lijsten of endpoint-paden in Redmine's
+  code, en de tokencache. Ga dus niet opnieuw afwegen of de taak weg moet;
+  ga wél na of hij nog steeds niets over de providers weet.
+- **`authorize_params` bestaat om precies één reden:** Google heeft
+  `access_type=offline` plus `prompt=consent` nodig om een refresh token te
+  geven, Microsoft doet het met `offline_access` in de scope. Zonder die
+  parameters eindigt de taak op "returned no refresh token", en dat is de meest
+  voorkomende beginnersfout. Hij staat daarom nadrukkelijk in beide
+  walkthroughs.
 - **De verificatieharnas staat in
   `docs/features/imap-oauth/verify-harness/`** en is herbruikbaar: een IMAP-
   server die alleen één `AUTHENTICATE XOAUTH2`-credential accepteert en `LOGIN`
-  weigert zoals Exchange Online doet, en een TLS-tokenendpoint. Twee dingen die
+  weigert zoals Exchange Online doet, en een TLS-tokenendpoint die ook de
+  autorisatie-endpoint en de `authorization_code`-grant nadoet. Twee dingen die
   tijd kostten: `net-imap` stuurt **geen** initial response als de greeting geen
   `SASL-IR` adverteert, dus de server moet de `+ `-continuation kunnen; en een
   IMAP-server die `LOGIN` klakkeloos accepteert maakt de before-run **ten

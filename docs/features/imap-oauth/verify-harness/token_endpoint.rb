@@ -4,6 +4,9 @@
 # can be pointed at it with SSL_CERT_FILE.
 #
 #   ruby token_endpoint.rb <port> <cert_path> <expected_refresh_token> <access_token>
+#
+# It also serves the authorization endpoint and the authorization_code grant,
+# so the one-off redmine:email:oauth2_authorize step can be driven for real.
 
 require 'webrick'
 require 'webrick/https'
@@ -47,13 +50,39 @@ server.mount_proc '/oauth2/v2.0/token' do |request, response|
   received = params.transform_values(&:first)
   warn "token endpoint: #{received.merge('client_secret' => '[redacted]', 'refresh_token' => '[redacted]')}"
   response['Content-Type'] = 'application/json'
-  if received['grant_type'] == 'refresh_token' && received['refresh_token'] == expected_refresh_token
-    response.status = 200
-    response.body = {'access_token' => access_token, 'token_type' => 'Bearer', 'expires_in' => 3599}.to_json
+  case received['grant_type']
+  when 'refresh_token'
+    if received['refresh_token'] == expected_refresh_token
+      response.status = 200
+      response.body = {'access_token' => access_token, 'token_type' => 'Bearer', 'expires_in' => 3599}.to_json
+    else
+      response.status = 400
+      response.body = {'error' => 'invalid_grant', 'error_description' => 'The refresh token is invalid.'}.to_json
+    end
+  when 'authorization_code'
+    if received['code'] == 'the-consent-code'
+      response.status = 200
+      response.body = {
+        'access_token' => access_token, 'refresh_token' => expected_refresh_token,
+        'token_type' => 'Bearer', 'expires_in' => 3599
+      }.to_json
+    else
+      response.status = 400
+      response.body = {'error' => 'invalid_grant', 'error_description' => 'The code is invalid.'}.to_json
+    end
   else
     response.status = 400
-    response.body = {'error' => 'invalid_grant', 'error_description' => 'The refresh token is invalid.'}.to_json
+    response.body = {'error' => 'unsupported_grant_type'}.to_json
   end
+end
+
+# Stands in for the provider's consent screen: whatever the mailbox owner
+# would see, the browser ends up redirected to redirect_uri with a code.
+server.mount_proc '/oauth2/v2.0/authorize' do |request, response|
+  redirect_uri = request.query['redirect_uri']
+  warn "authorize endpoint: client_id=#{request.query['client_id']} scope=#{request.query['scope']} redirect_uri=#{redirect_uri}"
+  response.status = 302
+  response['Location'] = "#{redirect_uri}?code=the-consent-code&session_state=fake"
 end
 
 trap('INT') {server.shutdown}
