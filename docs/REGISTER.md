@@ -17,7 +17,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
-| [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`135f15620`) | patch klaar | — |
+| [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86`) | patch klaar | — |
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`28c618860`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
 | [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | todo | nooit | — |

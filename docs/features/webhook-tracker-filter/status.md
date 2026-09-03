@@ -3,7 +3,7 @@ slug: webhook-tracker-filter
 feature: Webhook beperken tot gekozen trackers
 commit_51: 25220b45d (deel)
 geoxyz: live
-geoxyz_commit: 135f15620
+geoxyz_commit: f2242bd86
 upstream: patch klaar
 patch: patches/webhook-tracker-filter/2026-09-03-r24882-feature.patch
 issue:
@@ -15,7 +15,7 @@ issue:
 
 Af, op één ding na: Jan moet het issue op redmine.org aanmaken. De patch is
 gemaakt, bewezen en geëxporteerd (twee bestanden), en dezelfde wijziging staat
-als commit `135f15620` op `7.0-stable-GEOxyz`. De volledige suite is aan drie
+als commit `f2242bd86` op `7.0-stable-GEOxyz`. De volledige suite is aan drie
 kanten gedraaid (patch, schone trunk, GEOxyz), RuboCop is nul, en de functie is
 in een echte browser nagelopen met een echte HTTP-ontvanger die de uitgaande
 POSTs opving — voor en na.
