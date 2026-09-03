@@ -33,6 +33,15 @@ child.enabled_module_names = %w[issue_tracking wiki]
 child.trackers = Tracker.all
 child.save!
 
+# A second subproject, so a filter on one subproject can be shown to exclude
+# the other one's versions rather than merely to include its own.
+child2 = Project.find_by_identifier('geoxyz-verify-sub2') || Project.create!(
+  name: 'GEOxyz sub two', identifier: 'geoxyz-verify-sub2', parent: project
+)
+child2.enabled_module_names = %w[issue_tracking]
+child2.trackers = Tracker.all
+child2.save!
+
 %w[dev tester].each_with_index do |login, i|
   u = User.find_by_login(login) || User.new(
     login: login, firstname: login.capitalize, lastname: "Verify#{i}",
@@ -49,10 +58,23 @@ end
 group = Group.find_by_lastname('verify-group') || Group.create!(lastname: 'verify-group')
 group.users << User.find_by_login('dev') unless group.users.include?(User.find_by_login('dev'))
 
-[project, child].each do |p|
+[project, child, child2].each do |p|
   next if p.versions.any?
 
   p.versions.create!(name: "#{p.identifier}-1.0", status: 'open', sharing: 'none')
+end
+
+# A version shared system-wide from a project outside the verification tree.
+# The target version filter has always offered it, and a change that scopes the
+# list to the project tree is exactly what would silently drop it.
+other = Project.find_by_identifier('geoxyz-verify-other') || Project.create!(
+  name: 'GEOxyz other', identifier: 'geoxyz-verify-other'
+)
+other.enabled_module_names = %w[issue_tracking]
+other.trackers = Tracker.all
+other.save!
+unless other.versions.exists?(name: 'shared-systemwide-1.0')
+  other.versions.create!(name: 'shared-systemwide-1.0', status: 'open', sharing: 'system')
 end
 
 if project.issues.count < 6
@@ -101,6 +123,17 @@ if picked.assigned_to.nil?
   picked.reload
   picked.init_journal(admin)
   picked.update!(assigned_to: User.find_by_login('dev'))
+end
+
+# An issue in the subproject, on the subproject's own unshared version, so the
+# target version filter has something to return once that version is offered.
+unless child.issues.exists?(subject: 'Subproject issue on the subproject version')
+  Issue.create!(
+    project: child, tracker: Tracker.first, author: admin,
+    status: IssueStatus.where(is_closed: false).first, priority: IssuePriority.first,
+    subject: 'Subproject issue on the subproject version',
+    fixed_version: child.versions.first
+  )
 end
 
 project.create_wiki!(start_page: 'Wiki') if project.wiki.nil?
