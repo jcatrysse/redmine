@@ -9,7 +9,6 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
-| [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | todo | todo | [#43355](https://www.redmine.org/issues/43355) |
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`9d28be94d`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`f117ea32e + 21c232ce1`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
@@ -25,10 +24,11 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | todo | nooit | — |
 | [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key en credentials.yml.enc negeren | `8ec9951d3` | todo | nooit | — |
 | [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: mailvoorkeuren dempen voor LDAP-only users | `9e2c38e2d` | todo | nooit | — |
+| [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | live (`GEOXYZ_COMMITS_FM`) | nooit | [#43355](https://www.redmine.org/issues/43355) |
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-18 features: 9 patch klaar, 5 nooit, 2 vervallen, 1 geaccepteerd, 1 todo.
+18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
 
 ## Nu in behandeling
 
@@ -113,6 +113,27 @@ is alles wat Redmine zelf doet.
 En er staat één keuze voor je open: **K-06** in `docs/DECISIONS.md`, over de
 `client_credentials`-grant (app-only, Microsofts aanbeveling voor een
 servicemailbox). Er is geen haast: we bouwden verder zonder.
+
+### `members-pagination`
+
+Eén note aan **https://www.redmine.org/issues/43355** — geen nieuw issue, en
+geen patchbestand van ons erbij. Bedank Takenori TAKAKI (user:takenory) voor de
+rebase en de splitsing, bevestig dat zijn `0002-groups-pagination.patch` de
+groepsledenlijst en de gescheiden `members_page`/`users_page`-parameters dekt
+(dat was precies wat GEOxyz bovenop het oorspronkelijke issue nodig had, dus er
+ontbreekt niets), en meld dan de ene bevinding:
+
+> Removing the last row of the last page leaves the tab on a page that no
+> longer exists — "No data to display" on a project that has members, with no
+> pagination links to get back with.
+
+De Engelse tekst staat kant-en-klaar in `dossier.md` onder **"The finding"** en
+**"Suggested fix"**: de reproductie in drie stappen, de diff van vier regels
+voor `members_helper.rb` en `groups_helper.rb`, en de drie tests die zonder die
+diff rood staan. Hang er
+`docs/features/members-pagination/shots/defect-empty-page-after-delete.png` bij
+— dat is een screenshot van een project met zes leden waar "No data to display"
+staat, en dat overtuigt sneller dan de uitleg.
 
 ### `mypage-query-blocks`
 
