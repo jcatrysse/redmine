@@ -426,7 +426,14 @@ report.
 ## GEOxyz
 
 - **Commit op `7.0-stable-GEOxyz`:** `827e9e7d5`
-- **Suites daar groen:** **PENDING2**
+- **Suites daar groen:** ja — volledige suite op de branchtip `827e9e7d5`:
+  **5995 runs, 31969 assertions, 0 failures, 0 errors, 39 skips**. (Een eerdere
+  run van dezelfde tip, gelijktijdig met twee andere volledige suites, gaf
+  2 failures; beide waren browsergedreven systeemtests met een
+  inlograce-signature, beide bestanden daarna apart groen — 28 runs,
+  264 assertions, 0 failures — en de volledige suite alleen gedraaid dus ook.)
+  Webhooksuites plus de i18n-test daar: **102 runs, 1076 assertions,
+  0 failures**. RuboCop in die worktree: **0**.
 - **`nl.yml` toegevoegd:** nee — zie de localesectie; `en.yml` alleen, aan
   beide kanten identiek, dus geen INV-10-afwijking
 - **`tools/check-geoxyz-branch.sh`:** **PASS** (merge met upstream `7.0-stable`: niets te mergen, al current; lint 0 op 33 gewijzigde Ruby-bestanden; locales binnen en/nl/fr/de/es; eigen commits kloppen met het register)

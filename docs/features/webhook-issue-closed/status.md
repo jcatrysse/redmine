@@ -50,7 +50,19 @@ heropenen, wél opnieuw als het issue daarna weer dichtgaat.
   Selenium-harnas van een Markdown-test die niets met webhooks te maken heeft.
   De patch introduceert dus **geen enkele** fout.
 - Volledige suite op de **werkelijke tip** van `7.0-stable-GEOxyz`
-  (`827e9e7d5`, met de zeven eerdere features eronder): **PENDING**
+  (`827e9e7d5`, met de zeven eerdere features eronder): **5995 runs,
+  31969 assertions, 0 failures, 0 errors, 39 skips**. Dat is de boom die GEOxyz
+  draait.
+  **Eerlijk erbij:** de eerste run van diezelfde tip gaf 2 failures, en beide
+  waren **systeemtests** (`OauthProviderSystemTest#test_application_creation_and_authorization`
+  met `expected "/" to equal "/login"`, en `IssuesSystemTest#test_bulk_edit`).
+  Die run liep gelijktijdig met de twee andere volledige suites, en drie
+  browsergedreven suites op 4 cores is precies de situatie waarin dit soort
+  inlograces omvalt — dezelfde signature viel in de schone-trunk-run op
+  `ListAutofillSystemTest`. Beide bestanden zijn daarna eerst samen apart
+  gedraaid (**28 runs, 264 assertions, 0 failures**) en daarna is de volledige
+  suite nog een keer alleen gedraaid: de nul hierboven. Dus flakes, niet de
+  patch — maar niet weggelaten.
 - Webhooksuites apart (`webhook_test`, `webhook_payload_test`,
   `webhooks_controller_test` in één proces): **68 runs, 254 assertions,
   0 failures, 0 errors**, tegen **60 runs, 226 assertions, 0 failures** op
