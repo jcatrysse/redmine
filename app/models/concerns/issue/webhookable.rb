@@ -20,9 +20,13 @@
 module Issue::Webhookable
   extend ActiveSupport::Concern
 
+  included do
+    after_save_commit ->{ Webhook.trigger(event_name('closed'), self) if saved_change_to_closed_on? }
+  end
+
   def webhook_payload(user, action)
     h = super
-    if action == 'updated' && current_journal.present?
+    if %w(updated closed).include?(action) && current_journal.present?
       journal = journals.visible(user).find_by_id(current_journal.id)
       if journal.present?
         h[:data][:journal] = journal_payload(journal, user)
