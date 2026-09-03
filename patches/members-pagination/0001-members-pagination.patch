@@ -1,0 +1,276 @@
+diff --git a/app/controllers/application_controller.rb b/app/controllers/application_controller.rb
+index 5b389ddc88..ad0b0dc8a7 100644
+--- a/app/controllers/application_controller.rb
++++ b/app/controllers/application_controller.rb
+@@ -669,6 +669,7 @@ class ApplicationController < ActionController::Base
+     end
+     per_page
+   end
++  helper_method :per_page_option
+ 
+   # Returns offset and limit used to retrieve objects
+   # for an API response based on offset, limit and page parameters
+diff --git a/app/controllers/members_controller.rb b/app/controllers/members_controller.rb
+index 84be32d42c..eb82e4d990 100644
+--- a/app/controllers/members_controller.rb
++++ b/app/controllers/members_controller.rb
+@@ -138,6 +138,14 @@ class MembersController < ApplicationController
+   private
+ 
+   def redirect_to_settings_in_projects
+-    redirect_to settings_project_path(@project, :tab => 'members')
++    redirect_to settings_project_path(@project, members_settings_query)
++  end
++
++  # Keeps the members tab and its pagination when redirecting after add/edit/remove
++  def members_settings_query
++    query = {:tab => 'members'}
++    query[:members_page] = params[:members_page] if params[:members_page].present?
++    query[:per_page] = params[:per_page] if params[:per_page].present?
++    query
+   end
+ end
+diff --git a/app/helpers/members_helper.rb b/app/helpers/members_helper.rb
+index 195f8c0c0c..8b2cce0fb9 100644
+--- a/app/helpers/members_helper.rb
++++ b/app/helpers/members_helper.rb
+@@ -48,6 +48,25 @@ module MembersHelper
+     s + content_tag('span', links, :class => 'pagination')
+   end
+ 
++  # Returns the requested page of the project's members together with its
++  # paginator and the total member count. Member.sorted joins roles (a member
++  # may have several roles), so the sorted ids are collected first (duplicates
++  # removed, keeping the lowest role position) and only the current page is
++  # loaded; this paginates members rather than join rows.
++  def paginate_members(project)
++    ordered_ids =
++      project.memberships.
++        left_joins(:member_roles => :role).joins(:principal).
++        reorder("#{Role.table_name}.position").
++        order(Principal.fields_for_order_statement).
++        pluck("#{Member.table_name}.id").uniq
++    member_pages = Redmine::Pagination::Paginator.new(ordered_ids.size, per_page_option, params['members_page'], 'members_page')
++    page_ids = ordered_ids[member_pages.offset, member_pages.per_page] || []
++    members_by_id = project.memberships.where(:id => page_ids).preload(:project, :principal, :roles).index_by(&:id)
++    members = page_ids.filter_map {|id| members_by_id[id]}
++    [members, member_pages, ordered_ids.size]
++  end
++
+   # Returns inheritance information for an inherited member role
+   def render_role_inheritance(member, role)
+     content = member.role_inheritance(role).filter_map do |h|
+diff --git a/app/views/members/_edit.html.erb b/app/views/members/_edit.html.erb
+index 8b05ae92f6..09369dc76a 100644
+--- a/app/views/members/_edit.html.erb
++++ b/app/views/members/_edit.html.erb
+@@ -1,4 +1,4 @@
+-<%= form_for(@member, :url => membership_path(@member),
++<%= form_for(@member, :url => membership_path(@member, :members_page => params[:members_page]),
+                       :as => :membership,
+                       :remote => request.xhr?,
+                       :method => :put) do |f| %>
+diff --git a/app/views/members/_new_modal.html.erb b/app/views/members/_new_modal.html.erb
+index 3cb3360f5e..9719a254df 100644
+--- a/app/views/members/_new_modal.html.erb
++++ b/app/views/members/_new_modal.html.erb
+@@ -1,6 +1,6 @@
+ <h3 class="title"><%= l(:label_member_new) %></h3>
+ 
+-<%= form_for @member, :as => :membership, :url => project_memberships_path(@project), :remote => true, :method => :post do |f| %>
++<%= form_for @member, :as => :membership, :url => project_memberships_path(@project, :members_page => params[:members_page]), :remote => true, :method => :post do |f| %>
+   <%= render :partial => 'new_form' %>
+   <p class="buttons">
+     <%= submit_tag l(:button_add), :id => 'member-add-submit' %>
+diff --git a/app/views/projects/settings/_members.html.erb b/app/views/projects/settings/_members.html.erb
+index b046bf55f4..39595280d0 100644
+--- a/app/views/projects/settings/_members.html.erb
++++ b/app/views/projects/settings/_members.html.erb
+@@ -1,9 +1,13 @@
+-<% members = @project.memberships.preload(:project).sorted.to_a %>
++<%
++  # A dedicated 'members_page' parameter is used so it does not clash with the
++  # 'page' used by the new-member modal's principal list (render_principals_for_new_members).
++  members, member_pages, member_count = paginate_members(@project)
++%>
+ 
+ <% if User.current.admin? %>
+   <div class="contextual"><%= link_to sprite_icon('settings', l(:label_administration)), users_path, :class => "icon icon-settings" %></div>
+ <% end %>
+-<p><%= link_to sprite_icon('add', l(:label_member_new)), new_project_membership_path(@project), :remote => true, :class => "icon icon-add" %></p>
++<p><%= link_to sprite_icon('add', l(:label_member_new)), new_project_membership_path(@project, :members_page => params[:members_page]), :remote => true, :class => "icon icon-add" %></p>
+ 
+ <% if members.any? %>
+ <table class="list members">
+@@ -32,10 +36,10 @@
+   </td>
+   <td class="buttons">
+       <%= link_to sprite_icon('edit', l(:button_edit)),
+-                  edit_membership_path(member),
++                  edit_membership_path(member, :members_page => params[:members_page]),
+                   :remote => true,
+                   :class => 'icon icon-edit' %>
+-      <%= remove_link membership_path(member),
++      <%= remove_link membership_path(member, :members_page => params[:members_page]),
+                       :remote => true,
+                       :data => (!User.current.admin? && member.include?(User.current) ? {:confirm => l(:text_own_membership_delete_confirmation)} : {}) if member.deletable? %>
+   </td>
+@@ -44,6 +48,11 @@
+ <% end %>
+   </tbody>
+ </table>
++<span class="pagination">
++  <%= pagination_links_full(member_pages, member_count) do |text, parameters, options|
++        link_to text, settings_project_path(@project, 'members', request.query_parameters.merge(parameters)), options
++      end %>
++</span>
+ <% other_formats_links do |f| %>
+   <%= f.link_to_with_query_parameters "CSV", {}, :onclick => "showModal('csv-export-options', '330px'); return false;" %>
+ <% end %>
+diff --git a/test/functional/members_controller_test.rb b/test/functional/members_controller_test.rb
+index 1d9b00f363..df3068603d 100644
+--- a/test/functional/members_controller_test.rb
++++ b/test/functional/members_controller_test.rb
+@@ -224,6 +224,41 @@ class MembersControllerTest < Redmine::ControllerTest
+     assert_redirected_to '/projects/ecookbook/settings/members'
+   end
+ 
++  def test_update_xhr_should_keep_members_tab_in_pagination_links
++    project = Project.find(1)
++    26.times { User.add_to_project(User.generate!, project) }
++    @request.session[:user_id] = 2
++    with_settings :per_page_options => '25,50,100' do
++      put(
++        :update,
++        :params => {
++          :id => 2,
++          :membership => {:role_ids => [1]}
++        },
++        :xhr => true
++      )
++    end
++    assert_response :success
++    # The re-rendered members tab keeps its pagination links scoped to the members tab
++    assert_match %r{settings/members\?members_page=}, response.body
++  end
++
++  def test_edit_xhr_should_keep_current_page_in_form_action
++    @request.session[:user_id] = 2
++    get(:edit, :params => {:id => 2, :members_page => 2}, :xhr => true)
++    assert_response :success
++    # The edit form posts back with the current page so the list stays on it after saving
++    assert_match %r{/memberships/2\?members_page=2}, response.body
++  end
++
++  def test_new_xhr_should_keep_current_page_in_form_action
++    @request.session[:user_id] = 2
++    get(:new, :params => {:project_id => 1, :members_page => 2}, :xhr => true)
++    assert_response :success
++    # The new member form posts with the members-tab page so the list stays on it after adding
++    assert_match %r{/projects/ecookbook/memberships\?members_page=2}, response.body
++  end
++
+   def test_update_locked_member_should_be_allowed
+     User.find(3).lock!
+ 
+diff --git a/test/functional/projects_controller_test.rb b/test/functional/projects_controller_test.rb
+index 496ab7dee9..00980dc8ee 100644
+--- a/test/functional/projects_controller_test.rb
++++ b/test/functional/projects_controller_test.rb
+@@ -1030,6 +1030,58 @@ class ProjectsControllerTest < Redmine::ControllerTest
+     assert_select "tr#member-#{group_member.id} td.name a[href=?]", '/groups/10', :text => 'A Team'
+   end
+ 
++  def test_settings_members_should_be_paginated
++    project = Project.find(1)
++    per_page = 25
++    # Ensure there are more members than fit on a single page
++    (per_page + 5).times { User.add_to_project(User.generate!, project) }
++    @request.session[:user_id] = 2
++    with_settings :per_page_options => '25,50,100' do
++      get(
++        :settings,
++        :params => {:id => 'ecookbook', :tab => 'members'}
++      )
++    end
++    assert_response :success
++    assert_select 'div#tab-content-members table.list.members tbody tr.member', :count => per_page
++    assert_select 'div#tab-content-members span.pagination'
++    # Pagination links must keep the members tab in the path and use members_page
++    assert_select 'div#tab-content-members span.pagination a[href*=?]', 'settings/members?members_page='
++  end
++
++  def test_settings_members_with_multiple_roles_should_not_appear_on_two_pages
++    project = Project.find(1)
++    30.times { User.add_to_project(User.generate!, project) }
++    # A member with several roles must still be listed once (no join-row paging)
++    Member.where(:project_id => project.id).first.update!(:role_ids => [1, 2])
++    @request.session[:user_id] = 2
++    page1 = page2 = nil
++    with_settings :per_page_options => '25,50,100' do
++      get(:settings, :params => {:id => 'ecookbook', :tab => 'members'})
++      page1 = css_select('div#tab-content-members tr.member').pluck('id')
++      get(:settings, :params => {:id => 'ecookbook', :tab => 'members', :members_page => 2})
++      page2 = css_select('div#tab-content-members tr.member').pluck('id')
++    end
++    assert_not page1.intersect?(page2), 'a member must not appear on more than one page'
++  end
++
++  def test_settings_members_should_show_requested_page
++    project = Project.find(1)
++    per_page = 25
++    (per_page + 5).times { User.add_to_project(User.generate!, project) }
++    @request.session[:user_id] = 2
++    with_settings :per_page_options => '25,50,100' do
++      get(
++        :settings,
++        :params => {:id => 'ecookbook', :tab => 'members', :members_page => 2}
++      )
++    end
++    assert_response :success
++    # The second page holds the remaining members (fewer than a full page)
++    assert_select 'div#tab-content-members table.list.members tbody tr.member'
++    assert_select 'div#tab-content-members span.pagination'
++  end
++
+   def test_settings_should_show_tabs_depending_on_permission
+     @request.session[:user_id] = 3
+     project = Project.find(1)
+diff --git a/test/helpers/members_helper_test.rb b/test/helpers/members_helper_test.rb
+index 645ec99796..fc1de06369 100644
+--- a/test/helpers/members_helper_test.rb
++++ b/test/helpers/members_helper_test.rb
+@@ -39,4 +39,33 @@ class MembersHelperTest < Redmine::HelperTest
+     assert_select_in result, 'span.pagination li.current span', :text => '1'
+     assert_select_in result, 'a[href=?]', "/projects/#{project.identifier}/memberships/autocomplete.js?page=2", :text => '2'
+   end
++
++  def test_paginate_members_returns_only_the_requested_page
++    # per_page_option is provided by ApplicationController in the running app
++    stubs(:per_page_option).returns(3)
++    project = Project.generate!
++    5.times { User.add_to_project(User.generate!, project) }
++
++    members, member_pages, member_count = paginate_members(project)
++
++    assert_equal 3, members.size
++    assert_equal 3, member_pages.per_page
++    assert_equal project.memberships.count, member_count
++  end
++
++  def test_paginate_members_lists_a_member_with_several_roles_once
++    stubs(:per_page_option).returns(3)
++    project = Project.generate!
++    3.times { User.add_to_project(User.generate!, project) }
++    # Give one member several roles: Member.sorted would return it on multiple
++    # join rows, but it must still be listed only once.
++    Member.where(:project_id => project.id).first.update!(:role_ids => [1, 2])
++
++    members, _member_pages, member_count = paginate_members(project)
++
++    member_ids = members.map(&:id)
++    assert_equal member_ids.uniq, member_ids
++    assert_equal member_count, members.size
++    assert_equal project.memberships.count, member_count
++  end
+ end

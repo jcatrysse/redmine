@@ -1,0 +1,166 @@
+diff --git a/app/controllers/groups_controller.rb b/app/controllers/groups_controller.rb
+index 69f3cc77a3..07c619467c 100644
+--- a/app/controllers/groups_controller.rb
++++ b/app/controllers/groups_controller.rb
+@@ -119,7 +119,7 @@ class GroupsController < ApplicationController
+     respond_to do |format|
+       format.html do
+         flash[:notice] = l(:notice_successful_update)
+-        redirect_back_or_default edit_group_path(@group, :tab => 'users')
++        redirect_back_or_default edit_group_path(@group, group_users_query)
+       end
+       format.js
+       format.api do
+@@ -145,7 +145,7 @@ class GroupsController < ApplicationController
+       respond_to do |format|
+         format.html do
+           flash[:notice] = l(:notice_successful_delete)
+-          redirect_back_or_default edit_group_path(@group, :tab => 'users')
++          redirect_back_or_default edit_group_path(@group, group_users_query)
+         end
+         format.api {render_api_ok}
+       end
+@@ -174,4 +174,12 @@ class GroupsController < ApplicationController
+   def user_count_by_group_id
+     User.joins(:groups).group(:group_id).count.transform_keys(&:to_i)
+   end
++
++  # Keeps the users tab and its pagination when redirecting after add/remove
++  def group_users_query
++    query = {:tab => 'users'}
++    query[:users_page] = params[:users_page] if params[:users_page].present?
++    query[:per_page] = params[:per_page] if params[:per_page].present?
++    query
++  end
+ end
+diff --git a/app/helpers/groups_helper.rb b/app/helpers/groups_helper.rb
+index a8d624e459..367b21b522 100644
+--- a/app/helpers/groups_helper.rb
++++ b/app/helpers/groups_helper.rb
+@@ -50,4 +50,15 @@ module GroupsHelper
+       end
+     s + content_tag('span', links, :class => 'pagination')
+   end
++
++  # Returns the requested page of the group's users together with its paginator
++  # and the total user count, so the users tab loads only one page at a time
++  # instead of rendering every user of the group.
++  def paginate_group_users(group)
++    scope = group.users.sorted
++    user_count = scope.count
++    user_pages = Redmine::Pagination::Paginator.new(user_count, per_page_option, params['users_page'], 'users_page')
++    users = scope.limit(user_pages.per_page).offset(user_pages.offset).to_a
++    [users, user_pages, user_count]
++  end
+ end
+diff --git a/app/views/groups/_new_users_modal.html.erb b/app/views/groups/_new_users_modal.html.erb
+index c68d3f0602..ae956a8abd 100644
+--- a/app/views/groups/_new_users_modal.html.erb
++++ b/app/views/groups/_new_users_modal.html.erb
+@@ -1,6 +1,6 @@
+ <h3 class="title"><%= l(:label_user_new) %></h3>
+ 
+-<%= form_for(@group, :url => group_users_path(@group), :remote => true, :method => :post) do |f| %>
++<%= form_for(@group, :url => group_users_path(@group, :users_page => params[:users_page]), :remote => true, :method => :post) do |f| %>
+   <%= render :partial => 'new_users_form' %>
+   <p class="buttons">
+     <%= submit_tag l(:button_add) %>
+diff --git a/app/views/groups/_users.html.erb b/app/views/groups/_users.html.erb
+index 19aaab094a..019d973295 100644
+--- a/app/views/groups/_users.html.erb
++++ b/app/views/groups/_users.html.erb
+@@ -1,22 +1,32 @@
+-<p><%= link_to sprite_icon('add', l(:label_user_new)), new_group_users_path(@group), :remote => true, :class => "icon icon-add" %></p>
++<%
++  # A dedicated 'users_page' parameter is used so it does not clash with the
++  # 'page' used by the add-user modal's principal list (render_principals_for_new_group_users).
++  users, user_pages, user_count = paginate_group_users(@group)
++%>
++<p><%= link_to sprite_icon('add', l(:label_user_new)), new_group_users_path(@group, :users_page => params[:users_page]), :remote => true, :class => "icon icon-add" %></p>
+ 
+-<% if @group.users.any? %>
++<% if users.any? %>
+   <table class="list users">
+     <thead><tr>
+       <th><%= l(:label_user) %></th>
+       <th style="width:15%"></th>
+     </tr></thead>
+     <tbody>
+-    <% @group.users.sort.each do |user| %>
++    <% users.each do |user| %>
+       <tr id="user-<%= user.id %>">
+         <td class="name"><%= link_to_user user %></td>
+         <td class="buttons">
+-          <%= link_to sprite_icon('link-break', l(:button_remove)), group_users_path(@group, :user_id => user), :method => :delete, :class => 'icon icon-link-break' %>
++          <%= link_to sprite_icon('link-break', l(:button_remove)), group_users_path(@group, :user_id => user, :users_page => params[:users_page]), :method => :delete, :class => 'icon icon-link-break' %>
+         </td>
+       </tr>
+     <% end %>
+     </tbody>
+   </table>
++  <span class="pagination">
++    <%= pagination_links_full(user_pages, user_count) do |text, parameters, options|
++          link_to text, edit_group_path(@group, request.query_parameters.merge(parameters).merge(:tab => 'users')), options
++        end %>
++  </span>
+ <% else %>
+   <p class="nodata"><%= l(:label_no_data) %></p>
+ <% end %>
+diff --git a/test/functional/groups_controller_test.rb b/test/functional/groups_controller_test.rb
+index 8c012ffea6..bac0d22eee 100644
+--- a/test/functional/groups_controller_test.rb
++++ b/test/functional/groups_controller_test.rb
+@@ -169,6 +169,31 @@ class GroupsControllerTest < Redmine::ControllerTest
+     assert_select 'div#tab-content-memberships a.icon-link-break', :text => 'Remove'
+   end
+ 
++  def test_edit_users_tab_should_be_paginated
++    group = Group.generate!
++    3.times { group.users << User.generate! }
++
++    with_settings :per_page_options => '2,25,50' do
++      get(:edit, :params => {:id => group.id, :tab => 'users'})
++      assert_response :success
++      assert_select 'div#tab-content-users table.users tbody tr', :count => 2
++      assert_select 'div#tab-content-users span.pagination'
++      # Pagination links keep the users tab and use the users_page parameter
++      assert_select 'div#tab-content-users span.pagination a[href*=?]', 'users_page='
++
++      get(:edit, :params => {:id => group.id, :tab => 'users', :users_page => 2})
++      assert_response :success
++      assert_select 'div#tab-content-users table.users tbody tr', :count => 1
++    end
++  end
++
++  def test_new_users_xhr_should_keep_current_page_in_form_action
++    get(:new_users, :params => {:id => 10, :users_page => 2}, :xhr => true)
++    assert_response :success
++    # The add-user form posts with the current page so the list stays on it after adding
++    assert_match %r{/groups/10/users\?users_page=2}, response.body
++  end
++
+   def test_update
+     new_name = 'New name'
+     put(
+diff --git a/test/helpers/groups_helper_test.rb b/test/helpers/groups_helper_test.rb
+index 998c5c2956..8e648da5f8 100644
+--- a/test/helpers/groups_helper_test.rb
++++ b/test/helpers/groups_helper_test.rb
+@@ -39,4 +39,17 @@ class GroupsHelperTest < Redmine::HelperTest
+     assert_select_in result, 'span.pagination li.current span', :text => '1'
+     assert_select_in result, 'a[href=?]', "/groups/#{group.id}/autocomplete_for_user.js?page=2", :text => '2'
+   end
++
++  def test_paginate_group_users_returns_only_the_requested_page
++    # per_page_option is provided by ApplicationController in the running app
++    stubs(:per_page_option).returns(2)
++    group = Group.generate!
++    3.times { group.users << User.generate! }
++
++    users, user_pages, user_count = paginate_group_users(group)
++
++    assert_equal 2, users.size
++    assert_equal 2, user_pages.per_page
++    assert_equal group.users.count, user_count
++  end
+ end
