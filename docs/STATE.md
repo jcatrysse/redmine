@@ -6,112 +6,111 @@
 
 ## Huidige positie
 
-Drie features af. De derde is **`assignee-nobody`**, deze sessie gebouwd,
+Vier features af. De vierde is **`version-subprojects`**, deze sessie gebouwd,
 bewezen en klaar. Patch tegen trunk r24882
-(`patches/assignee-nobody/2026-09-02-r24882-feature.patch`, één bestand,
-252 regels), dezelfde wijziging als één commit op `7.0-stable-GEOxyz`
-(`9d28be94d`), dossier compleet, veertien screenshots gemaakt en gelezen.
-**K-05 is beslist** (2026-09-02, optie A): `<< niemand >>` komt alleen in de
-lijst van het toewijzingsfilter. Dat is wat er al gebouwd is, dus er is geen
-code veranderd. Er zijn geen open keuzes meer.
+(`patches/version-subprojects/2026-09-03-r24882-feature.patch`, vijf bestanden,
+173 regels), dezelfde wijziging als één commit op `7.0-stable-GEOxyz`
+(`20ed9e2d1`), dossier compleet, acht screenshots gemaakt en gelezen. Er zijn
+geen open keuzes.
 
-**Wat het doet:** in het filter "Toegewezen aan" kun je nu `<< niemand >>`
-aanvinken náást echte gebruikers. "Toegewezen aan mij **of** nog aan niemand"
-is daarmee één filter in plaats van twee aparte lijsten.
+**Wat het doet:** een projectissuelijst toont standaard ook de issues van zijn
+subprojecten. Die issues kunnen een doelversie hebben die van een subproject is
+en met niemand gedeeld — de kolom "Doelversie" toont hem, maar het *filter*
+"Doelversie" bood hem niet aan. Nu wel, precies voor zover die subprojecten in
+de query zitten.
 
-**Net als vorige sessie was de trunk-check beslissend.** Het issue bestaat al:
-[Patch #5535](https://www.redmine.org/issues/5535), aangemaakt in **2010**,
-status nog altijd New, met Feature #28924 eraan gekoppeld als duplicaat. Jan
-heeft er op 2025-11-22 zelf de 5.1-patch aan gehangen. In zestien jaar staan er
-maar twee inhoudelijke opmerkingen van een committer op, en allebei sturen het
-ontwerp:
+**De trunk-check was voor de derde sessie op rij beslissend, en deze keer op de
+scherpst mogelijke manier.** Het issue bestaat al —
+[#43534](https://www.redmine.org/issues/43534), door Jan aangemaakt op
+2025-11-26 — en **Go MAEDA, een kerncommitter, heeft op 2026-04-01 zelf een
+bijgewerkte patch bijgevoegd** (`43534-v2.patch`, "Updated the patch for the
+current trunk"). Dat is de sterkste indicatie die je kunt krijgen dat upstream
+de feature wil.
 
-1. **Jean-Baptiste Barth (2010):** "I'd prefer a generic solution which would
-   consist in having a `<< none >>` option in some fields: assigned to, target
-   version, category, etc. But only when it makes sense." En: de patch van 2010
-   raakte ook `author_id`, want die deelde toen de waardelijst — "not the
-   correct behavior, since author cannot be none".
-2. **Marius Bălteanu (2018):** "Which will be the difference between 'Assignee
-   None' and 'Assignee Is \<nobody\>'?" — beantwoord in dezelfde draad door
-   Radek Antoniuk: je wil "issues assigned to me + the queue".
+**En toch bevatten beide bestaande patches dezelfde regressie.** Ze *vervangen*
+`project.shared_versions` door `Version.visible.where(project_statement)`. Dat
+wint de subprojectversies en verliest elke versie die van búiten de bevraagde
+boom naar het project gedeeld is: `sharing: 'system'`, en versies die van een
+voorouder of over een boom heen gedeeld zijn. In Redmine's eigen fixtures zakt
+het filter van project 1 daardoor van zes waarden naar vier — de systeembreed
+gedeelde versie 7 ("OnlineStore - Systemwide visible version") en de gedeelde
+versie 6 van het privé-subproject verdwijnen allebei, zonder waarschuwing. Deze
+patch maakt er een **vereniging** van. De bijbehorende test
+(`test_fixed_version_filter_should_include_versions_shared_from_outside_the_project_tree`)
+is groen op kale trunk en op deze patch, en rood op `43534-v2.patch` met
+`"7" not found in ["3", "4", "2", "1"]`. Dat is het inhoudelijke argument voor
+de note aan Jan's issue.
 
-Daarom zit de afhandeling **generiek** in `Query#sql_for_field`, niet in een
-eigen `sql_for_assigned_to_id_field`: elke filter van type `list_optional` of
-`list_optional_with_history` leest de waarde `'none'` nu als "deze kolom is
-NULL". Alleen de *lijst* van de toewijzing is aangesloten — dat is K-05, en Jan
-koos optie A. Doelversie en categorie werken dus al via een URL
-(`?v[fixed_version_id][]=none`) maar krijgen geen eigen ingang in het
-filterformulier; het dossier zegt de reviewer expliciet dat dat één regel per
-lijst is en dat de keuze de zijne is. Barths eerste punt is vanzelf verdwenen:
-trunk heeft al jaren een aparte `Query#author_values`.
+**Drie kleinere verbeteringen op de bestaande patches.**
 
-**Het tweede probleem, dat pas zichtbaar wordt als de waarde bestaat.** Het
-toewijzingsfilter biedt **zeven** operatoren aan (`=`, `!`, `ev`, `!ev`, `cf`,
-`!*`, `*`), en de waardelijst is voor alle zeven dezelfde. De patches op #5535,
-inclusief die van Jan, behandelen `'none'` alleen bij `=`. Bij vier van de
-overige operatoren belandt de string in een vergelijking met de integerkolom
-`issues.assigned_to_id` → `PG::InvalidTextRepresentation` → **HTTP 500**. Bij
-`cf` geen fout maar een stil lege lijst, want `journal_details.old_value` is een
-tekstkolom waar niets gelijk is aan `'none'`. Die stille variant is erger dan de
-500. Alle zeven zijn nu gedekt; de before-screenshots tonen vijf keer een echte
-500-pagina en één keer "No data to display".
+1. De wijziging staat in `Query#fixed_version_values`, niet als override op
+   `IssueQuery` zoals de 5.1-commit deed. De methode is sinds r16170 (#24787,
+   2017, "Don't preload all query filters") generiek, en dus krijgt het filter
+   `issue.fixed_version_id` van `TimeEntryQuery` hem er gratis bij. Diezelfde
+   commit is ook de reden dat er een AJAX-endpoint bestaat: sinds r16170 worden
+   lambda-waardelijsten pas opgehaald als je het filter toevoegt.
+2. `q.build_from_params(params)` staat **ná** de `raise Unauthorized`, niet
+   ervoor. Het bouwen van de query evalueert `available_filters` en draait
+   daarmee meerdere queries voor een verzoek dat geweigerd gaat worden.
+3. De JavaScript zoekt het formulier via `$('#filters-table').closest('form')`.
+   De 5.1-patch noemde vijf formulier-id's, `43534-v2.patch` noemt er één
+   (`#query_form`); beide missen `#query-form` (met streepje) van
+   `queries/new` en `queries/edit` — precies de pagina waar je een query mét
+   subprojectfilter opslaat.
 
-**Bewijs.** Trunk met patch 5798 runs / 30700 assertions / 27 failures /
-2 errors, schone trunk 5790 / 30686 / 27 / 2 — **de 29 faalnamen zijn letterlijk
-identiek** (`diff` leeg), allemaal repository- of changeset-tests die `svn`,
-`hg`, `bzr` of `cvs` nodig hebben. GEOxyz-branch **helemaal groen**: 5803 runs,
-30987 assertions, 0 failures, 0 errors. RuboCop 0 aan beide kanten, baseline
-ook 0. `tools/check-patch-clean.sh` PASS, `tools/check-geoxyz-branch.sh` PASS.
+**Bewijs.** Trunk met patch 5796 runs / 30701 assertions / 27 failures /
+2 errors, schone trunk 5790 / 30684 / 27 / 2 — de **29 faalnamen zijn letterlijk
+identiek** (`diff` leeg), allemaal repository-, changeset- en
+`SysController`-tests die `svn`, `hg`, `bzr` of `cvs` nodig hebben.
+GEOxyz-branch **helemaal groen**: 5809 runs, 31001 assertions, 0 failures,
+0 errors. RuboCop 0 aan beide kanten, baseline ook 0.
+`tools/check-patch-clean.sh` PASS, `tools/check-geoxyz-branch.sh` PASS.
 
-**Twee bestaande trunk-tests aangepast, geen enkele verzwakt.**
-`test_assigned_to_values_should_be_sorted_by_status_and_name` telt met `[1..]`
-de pseudo-waarden weg vóór de echte gebruikers; dat wordt `[2..]`.
-`QueriesControllerTest#test_assignee_filter_should_return_active_and_locked_users_grouped_by_status`
-telt de JSON-waarden: 6 → 7, met één `assert_include` erbij zodat de reden in de
-test zelf staat. **Die tweede is alleen gevonden doordat G3 de volledige suite
-eist** — de aangeraakte bestanden waren groen, en de eerste volledige run gaf
-28 failures in plaats van 27. Dat is precies waar die gate voor is.
+Vier van de zes nieuwe tests zijn rood bewezen op de oude code. De twee andere
+zijn bewakers: ze zijn groen op trunk én op deze patch, en de belangrijkste
+ervan is rood op het afgewezen alternatief — dat is precies wat een bewaker
+hoort te doen, en het staat zo in het dossier.
 
-Geen nieuwe instelling, migratie, route, permissie of gem, en **geen enkele
-nieuwe string**: `label_nobody` bestaat al in alle 63 locale-bestanden, en
-`assigned_to_id => 'none'` is al wat Redmine zelf gebruikt in het
-bulk-bewerkformulier en het contextmenu. Dus geen locale-patch en geen tweede
-patchbestand.
+**Geen nieuwe instelling, migratie, route, permissie, gem of string.** Dus geen
+locale-patch en één patchbestand.
 
-`tools/dev-seed.rb` zaait nu ook een issue toegewezen aan `tester` en een issue
-dat van niemand naar `dev` ging mét journal. Zonder de eerste heeft
-"niemand of dev" niets om uit te sluiten; zonder de tweede hebben de
-historie-operatoren geen journalregel om te vinden.
+`tools/dev-seed.rb` zaait nu ook een tweede subproject, een project buiten de
+boom met een systeembreed gedeelde versie, en een subproject-issue op de eigen
+versie van dat subproject. Zonder het tweede subproject kun je niet tonen dat
+één gekozen subproject de versie van het ándere uitsluit; zonder de gedeelde
+versie van buiten kan een screenshot de regressie niet weerleggen.
 
 ## Volgende stap
 
 **Jan, één ding:** hang
-`patches/assignee-nobody/2026-09-02-r24882-feature.patch` als note aan het
-bestaande issue [#5535](https://www.redmine.org/issues/5535) en leg in één
-alinea uit wat er anders is aan deze vorm: de afhandeling zit generiek in
-`sql_for_field` (dat is wat Barth in noot 4 vroeg) en alle zeven operatoren zijn
-gedekt in plaats van alleen `=`. Noem je eigen bijlage van november als
-achterhaald. De Engelse tekst staat kant-en-klaar in
-`docs/features/assignee-nobody.md`, alles vanaf "The problem"; de voor/na-paren
-staan in `docs/features/assignee-nobody/shots/`.
+`patches/version-subprojects/2026-09-03-r24882-feature.patch` als note aan je
+eigen issue [#43534](https://www.redmine.org/issues/43534), en schrijf erbij dat
+`43534-v2.patch` van Go MAEDA een regressie bevat: het vervangt
+`project.shared_versions` in plaats van er een vereniging van te maken, waardoor
+versies die van buiten de projectboom gedeeld zijn stil uit het filter
+verdwijnen — met Redmine's eigen fixtures gaat project 1 van zes naar vier
+waarden. Noem de test die het vastlegt. De Engelse tekst staat kant-en-klaar in
+`docs/features/version-subprojects.md`, alles vanaf "The problem"; de
+voor/na-paren staan in `docs/features/version-subprojects/shots/`.
 
-**Nog open van eerdere sessies, allebei alleen jouw handeling:**
+**Nog open van eerdere sessies, allemaal alleen jouw handeling:**
 
 - `search-token-limit` — `patches/search-token-limit/2026-09-02-r24882-feature.patch`
   hangen aan [#43701](https://www.redmine.org/issues/43701), met de uitleg dat
   de instelling eruit is.
+- `assignee-nobody` — `patches/assignee-nobody/2026-09-02-r24882-feature.patch`
+  hangen aan [#5535](https://www.redmine.org/issues/5535), met de uitleg dat de
+  afhandeling generiek in `sql_for_field` zit en dat alle zeven operatoren
+  gedekt zijn in plaats van alleen `=`.
 - `wiki-export-attachments` — het issue is nog niet aangemaakt. Follow-up van
   [#43978](https://www.redmine.org/issues/43978), twee patchbestanden.
 
-**Er zijn geen open keuzes meer.** K-05 (krijgen "Doelversie" en "Categorie"
-ook een `<< niemand >>`?) is beslist op optie A: nee, alleen de toewijzing.
-
-**Volgende sessie:** `version-subprojects`, de volgende regel in het register.
-Wat er al van bekend is staat onder "Wat er per feature al bekend is": de
-5.1-override vervangt `project.shared_versions` door
-`Version.visible.where(project_statement)` en verliest daarmee versies die van
-elders gedeeld zijn (`sharing: 'system'`), gereproduceerd. Union in plaats van
-vervanging.
+**Volgende sessie:** `mypage-query-blocks`, de volgende regel in het register.
+Wat er al van bekend is: de 5.1-commit `0214f3ecc` maakt het maximumaantal
+issuequery-blokken op "Mijn pagina" configureerbaar. Doe eerst de trunk-check op
+de *herkomst* van die limiet (`git log --oneline -S "<de code>" -- <bestand>`),
+en zoek op redmine.org met **één** trefwoord — drie sessies op rij bleek er al
+een issue te bestaan.
 
 ## Feature-register
 
@@ -128,7 +127,7 @@ in productie op 7.0? **Upstream** = waar staat de patch?
 | `wiki-export-txt` | Hele wiki als één TXT-bestand | `3c3e9368e` (deel) | n.v.t. | vervallen | — | — |
 | `search-token-limit` | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | `patches/search-token-limit/2026-09-02-r24882-feature.patch` | [#43701](https://www.redmine.org/issues/43701) (bestaat, patch nog niet vervangen) |
 | `assignee-nobody` | "Niet toegewezen" combineerbaar met gekozen gebruikers | `9b03b74b2` | live (`9d28be94d`) | patch klaar | `patches/assignee-nobody/2026-09-02-r24882-feature.patch` | [#5535](https://www.redmine.org/issues/5535) (bestaat sinds 2010, patch nog niet vervangen) |
-| `version-subprojects` | Doelversiefilter incl. subproject-versies | `89752a599` | todo | todo | — | — |
+| `version-subprojects` | Doelversiefilter incl. subproject-versies | `89752a599` | live (`20ed9e2d1`) | patch klaar | `patches/version-subprojects/2026-09-03-r24882-feature.patch` | [#43534](https://www.redmine.org/issues/43534) (bestaat, Go MAEDA werkte de patch bij; onze versie repareert een regressie erin) |
 | `mypage-query-blocks` | Configureerbaar max issuequery-blokken op Mijn pagina | `0214f3ecc` | todo | todo | — | — |
 | `webhook-tracker-filter` | Webhook beperken tot gekozen trackers | `25220b45d` (deel) | todo | todo | — | — |
 | `webhook-issue-closed` | Apart `issue.closed`-event | `25220b45d` (deel) | todo | todo | — | — |
@@ -143,7 +142,7 @@ in productie op 7.0? **Upstream** = waar staat de patch?
 | `netimap-cve` | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — | — |
 | `auto-watch-defaults` | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — | — |
 
-Achttien regels. **Drie af**, acht te gaan upstream, vijf nooit, twee
+Achttien regels. **Vier af**, zeven te gaan upstream, vijf nooit, twee
 vervallen, één al binnen.
 
 ## Wat er per feature al bekend is
@@ -161,23 +160,18 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
   maar op een andere manier: niet "bestaat het al?" maar "wanneer is die
   constante er gekomen en waarom?". Het antwoord (r21238, een refactor die het
   blok woordelijk verplaatste) veranderde de patch van een instelling in een
-  fix van vier regels. **Dat is het patroon dat de volgende features moeten
-  volgen: zoek de commit die de regel invoerde, niet alleen de regel.**
+  fix van vier regels.
 - **`wiki-export-txt`** — vervallen. GEOxyz gebruikt de TXT-export niet. Niet
   opnieuw afwegen.
-- **`assignee-nobody`** — af. De verwachting uit de doorlichting klopte, met
-  één correctie: `cf` geeft géén 500 maar stil nul resultaten, omdat
-  `journal_details.old_value` een tekstkolom is. Vier van de zeven operatoren
-  gaven wél een 500. De verwachte upstream-vorm (een eigen
-  `sql_for_assigned_to_id_field` op `IssueQuery`) is bij het bouwen verworpen:
-  die zou de journal-subquery van de historie-operatoren moeten dupliceren. Het
-  is generiek in `Query#sql_for_field` geworden, wat niet groter is, geen kopie
-  heeft en bovendien letterlijk beantwoordt wat de enige committer op #5535 in
-  2010 vroeg.
-- **`version-subprojects`** — de override vervangt `project.shared_versions`
-  door `Version.visible.where(project_statement)` en verliest daarmee versies
-  die van elders gedeeld zijn (`sharing: 'system'` is niet meer filterbaar,
-  gereproduceerd). Union in plaats van vervanging.
+- **`assignee-nobody`** — af. Generiek in `Query#sql_for_field`, alle zeven
+  operatoren gedekt; vier ervan gaven een HTTP 500 met de bestaande patches en
+  `cf` gaf stil nul resultaten.
+- **`version-subprojects`** — af. De verwachting uit de doorlichting klopte
+  precies: de override vervangt in plaats van te verenigen en verliest daarmee
+  `sharing: 'system'`. Wat de doorlichting *niet* wist, is dat dezelfde fout in
+  de patch zit die een kerncommitter in april zelf heeft bijgewerkt en aan het
+  issue heeft gehangen — dus die fout is nu het inhoudelijke argument van onze
+  note, niet alleen een interne verbetering.
 - **`revision-branches`** — vier bezwaren, alle vier terecht: een
   git-subproces per pageview (Redmine cachet changesets juist om de SCM buiten
   het renderen te houden), alleen de Git-adapter van zes, vier nieuwe
@@ -199,93 +193,96 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
 
 ## Bekende valkuilen
 
-- **Doe de trunk-check op de *herkomst* van een constante, niet alleen op het
-  bestaan van de feature.** `search-token-limit` werd een vierregelige fix in
-  plaats van een instelling omdat `git log -S` liet zien wanneer en waarom die
-  `.first 5` daar terechtkwam. `git log --oneline -S "<de code>" -- <bestand>`
-  is het commando, en daarna de commit zelf lezen.
-- **Zoek ook op redmine.org vóór je begint.** Voor deze feature bestond al een
-  issue van Jan zelf (#43701), met de 5.1-patch eraan. Dat verandert de
-  inzending van "nieuw issue" in "note met een betere patch, en zeg waarom".
+- **Zoek op redmine.org vóór je begint, met één trefwoord.** Drie sessies op
+  rij bestond er al een issue, en deze keer had een **kerncommitter er zelf al
+  aan gewerkt**. Dat verandert de inzending van "nieuw issue" in "note met een
+  betere patch, en zeg precies waarom". `titles_only=1` plus meerdere woorden
+  is een AND over de titel en geeft nul resultaten.
+- **Lees de patch die al aan het issue hangt, ook als een committer hem heeft
+  bijgewerkt.** `43534-v2.patch` is van Go MAEDA en bevat een regressie die met
+  Redmine's eigen fixtures aantoonbaar is. Een bijgewerkte patch van een
+  committer is een sterk signaal dat de feature gewenst is, geen bewijs dat de
+  implementatie klopt. Download hem (`/attachments/download/<id>/<naam>`), pas
+  hem toe in een wegwerp-worktree en draai jouw tests ertegen.
+- **Doe de trunk-check op de *herkomst* van een constante of methode, niet
+  alleen op het bestaan van de feature.** `git log --oneline -S "<de code>" --
+  <bestand>` wees hier r16170 aan, en die ene commit verklaarde zowel waarom de
+  methode generiek hoort te zijn als waarom er überhaupt een AJAX-endpoint is.
 - **De trunk-mirror loopt achter.** `origin/master` staat op r24882 van
   2026-08-03. Redmine's bron is SVN en deze fork synchroniseert niet vanzelf.
   Altijd verse fetch vóór een patch, en de revisie noemen in het issue.
 - **De sessie-omgeving zet je op een verkeerde branch.** Elke sessie krijgt een
   eigen `claude/...`-branch. Meteen `git checkout geoxyz/framework` en
-  `git merge --ff-only origin/geoxyz/framework`. Deze sessie stond de vorige
-  sessie zijn werk op de `claude/...`-branch en op `geoxyz/framework`, dus de
-  lokale `geoxyz/framework` liep 14 commits achter — fast-forwarden loste dat op.
+  `git merge --ff-only origin/geoxyz/framework`.
 - **De worktrees zijn er niet meer bij een nieuwe sessie.** De container is
   leeg. Opnieuw aanmaken, en per worktree een `config/database.yml` schrijven
-  **vóór** `bundle install` (de Gemfile leest dat bestand). Kost ~5 minuten per
-  worktree; start ze parallel in de achtergrond.
+  **vóór** `bundle install` (de Gemfile leest dat bestand). Schrijf meteen ook
+  een `development:`-sectie erin, anders start de dev-server later niet — 
+  `dev-server.sh` schrijft het bestand alleen als het nog niet bestaat. Kost
+  ~4 minuten per worktree; start ze parallel in de achtergrond.
 - **Ook de remote branches zijn er niet.** `git ls-remote --heads origin` en dan
-  gericht fetchen: `7.0-stable-GEOxyz`, `7.0-stable`, `5.1-stable-GEOxyz` (daar
-  staan de 5.1-commits), `ansifi/learn-and-test-7.0`, `master`.
-- **`dev-server.sh` schrijft `config/database.yml` alleen als het niet bestaat.**
-  Heb je er al een met alleen een `test:`-sectie (voor de suite), dan mist de
-  `development:`-sectie en start de dev-server niet. Zelf toevoegen.
-- **Er is één dev-database en één poort.** Voor/na-screenshots gaan dus na
-  elkaar: eerst de dev-server op een schone-trunk-worktree voor de
-  `before-`shots, dan stoppen en opnieuw starten op de patch-worktree. Doe dat
-  **niet** met `git stash` in een worktree waar op dat moment een suite loopt.
-- **Bijlagen leven per worktree, de dev-database niet.** Opgelost in
-  `dev-server.sh` (`/tmp/redmine-dev-files`), maar weet waarom: een bijlage die
-  je uploadt terwijl worktree A draait, is onleesbaar vanuit worktree B, en
-  `Attachment#readable?` laat hem dan stil vallen.
-- **De volledige suite is niet optioneel, en dat is deze sessie bewezen.** De
-  aangeraakte testbestanden waren groen; de volledige run vond
-  `QueriesControllerTest#test_assignee_filter_should_return_active_and_locked_users_grouped_by_status`,
-  dat het *aantal* waarden in de filter-JSON telt. Elke feature die een
-  waardelijst uitbreidt raakt zulke tests, en ze staan nooit in het bestand dat
-  je aan het bewerken bent.
-- **Zoek een bestaand issue op redmine.org met één trefwoord, niet met een
-  zin.** `titles_only=1` plus meerdere woorden is een AND over de titel en geeft
-  nul resultaten; *unassigned filter* vond niets bruikbaars, *nobody filter*
-  vond #5535 en #28924 meteen. Twee sessies op rij bleek er al een issue te
-  bestaan, dus dit is de regel en niet de uitzondering.
-- **Een filterwaarde die niet in de `<select>` staat, kan de browser niet
-  selecteren.** In een before-screenshot valt de widget dan terug op de eerste
-  optie (`<< me >>`) terwijl de URL iets anders vroeg. Dat is echt bewijs, geen
-  kapotte check — maar assert er niet op in `MODE=before`, en zeg het in het
-  dossier, anders leest de screenshot verkeerd.
-- **`git worktree` + een draaiende suite + een dev-server op dezelfde worktree
-  gaan prima samen** zolang ze verschillende databases hebben. Wat níét kan is
-  de working tree wijzigen terwijl de suite loopt; om een test rood te bewijzen
-  op de oude code, kopieer `app/models/query.rb` weg, `git checkout --` het
-  bestand, draai, en zet het terug — met de volledige suite *niet* actief.
-- **`test:all` is waardeloos zonder `tools/test-env.sh`** — ~260 fouten in de
-  systeemtests die niets met je patch te maken hebben.
-- **Alleen git is beschikbaar als SCM.** `svn`, `hg`, `bzr` en `cvs` staan niet
-  in het image, dus 29 repository- en changeset-tests falen op trunk ongeacht je
-  patch. Draai altijd een tweede volledige suite op een schone trunk-worktree
-  (`redmine_test_base`) en `diff` de lijst met faalnamen; dat is het enige
-  sluitende bewijs. Op `7.0-stable` falen diezelfde bestanden niet.
+  gericht fetchen: `master`, `7.0-stable`, `7.0-stable-GEOxyz`,
+  `5.1-stable-GEOxyz` (daar staan de 5.1-commits), `ansifi/learn-and-test-7.0`.
 - **Drie testdatabases** (`redmine_test`, `redmine_test_geoxyz`,
   `redmine_test_base`) zodat de patch, de GEOxyz-branch en de schone
   trunk-referentie tegelijk kunnen draaien. Met 4 cores lopen twee suites
-  comfortabel parallel, drie is krap.
+  comfortabel parallel, drie is krap. Eén volledige suite duurt ~9 minuten.
+- **Wijzig de working tree niet terwijl de suite daar loopt.** Deze sessie is de
+  patch-suite één keer herstart omdat RuboCop een naamgevingsoffence
+  (`version_1` → `version1`, `Naming/VariableNumber`) in een testbestand
+  aanwees nadat de run al begonnen was. Lint dus *vóór* je de suite start.
+- **Er is één dev-database en één poort.** Voor/na-screenshots gaan dus na
+  elkaar: eerst de dev-server op de schone-trunk-worktree (`base`) voor de
+  `before-`shots, dan stoppen en opnieuw starten op de patch-worktree. Een
+  dev-server op een worktree waar tegelijk een suite draait is prima — andere
+  database.
+- **Verander het verify-script niet meer nadat de before-shots gemaakt zijn.**
+  Doe je het toch, draai dan beide kanten opnieuw, anders vergelijk je twee
+  verschillende renderingen. Deze sessie gebeurde dat één keer.
+- **Een `<select multiple>` opent op een vaste hoogte.** De opties eronder
+  staan wél in de DOM en zijn dus assert-baar, maar staan **niet op de
+  screenshot** — en G9 gaat over de afbeelding. Zet `el.size` op het aantal
+  opties voordat je schiet.
+- **Een filterwaarde die niet in de `<select>` staat, kan de browser niet
+  selecteren.** In een before-screenshot valt de widget dan terug op de eerste
+  optie terwijl de URL iets anders vroeg. Dat is echt bewijs, geen kapotte
+  check — maar assert er niet op in `MODE=before`, en zeg het in het dossier.
+- **De eerste `dev-seed.rb`-run na `load_default_data` kan op een nested-set
+  fout stuiten** (`Project#shared_versions` leest `r.lft`, dat nog nil is voor
+  een net aangemaakt subproject). De tweede run loopt schoon door; de seed is
+  idempotent. Controleer dus na `dev-server.sh` dat de gezaaide rijen er echt
+  zijn in plaats van op PASS te vertrouwen.
 - **Het filterformulier van Redmine is JavaScript.** De filterrij is
   `div.filter#tr_<veld>` in `#filters-table`, aangemaakt door `addFilter()`, en
-  de gekozen operator en de waarde staan alleen in de DOM-*properties*, niet in
-  de HTML. In Playwright dus `inputValue()` op `#operators_<veld>` en
-  `#values_<veld>`, niet `getAttribute`. Een selector op `tr#tr_<veld>` vindt
-  niets.
-- **`lib/tasks/**/*` is uitgesloten in Redmine's `.rubocop.yml`.** Rake-code
-  wordt dus niet gelint.
+  de gekozen operator en de waarde staan alleen in de DOM-*properties*. In
+  Playwright dus `inputValue()` op `#operators_<veld>` en `#values_<veld>`.
+- **Twee formulier-id's, niet één.** Lijstpagina's gebruiken `#query_form`
+  (underscore), `queries/new` en `queries/edit` gebruiken `#query-form`
+  (streepje). `$('#filters-table').closest('form')` dekt allebei zonder een
+  lijst bij te houden.
+- **De volledige suite is niet optioneel.** Bij `assignee-nobody` vond alleen de
+  volledige run de test die filterwaarden telt. Bij deze feature was de
+  volledige run schoon, maar dat weet je pas achteraf.
+- **Alleen git is beschikbaar als SCM.** `svn`, `hg`, `bzr` en `cvs` staan niet
+  in het image, dus 29 repository-, changeset- en `SysController`-tests falen op
+  trunk ongeacht je patch. Draai altijd een tweede volledige suite op een schone
+  trunk-worktree (`redmine_test_base`) en `diff` de lijst met faalnamen. Op
+  `7.0-stable` falen diezelfde bestanden niet — daar is de suite echt 0/0.
+- **`test:all` is waardeloos zonder `tools/test-env.sh`** — ~260 fouten in de
+  systeemtests die niets met je patch te maken hebben.
+- **`lib/tasks/**/*` is uitgesloten in Redmine's `.rubocop.yml`.**
 - **Redmine laadt hele suites in één proces.** Draai testbestanden dus altijd
   ook samen.
 - **RuboCop leest de working tree, niet een ref.** Lint dus altijd binnen een
   worktree die op de juiste commit staat.
-- **Een geaccepteerde trunk-patch komt niet in 7.0-stable.** Elke GEOxyz-commit
-  blijft dus nodig tot GEOxyz zelf naar de release met die feature gaat.
+- **Een geaccepteerde trunk-patch komt niet in 7.0-stable.** Trunk staat nog op
+  `7.0.0 devel`, dus deze patches landen in 7.1 of later. Elke GEOxyz-commit
+  blijft nodig tot GEOxyz zelf naar die release gaat.
 - **Attributie hoort alleen op deze branch**, en dat geldt ook voor de
-  commit-**auteur**. Zie K-01 en `tools/check-patch-clean.sh`.
-- **Amend en push in de juiste volgorde op `7.0-stable-GEOxyz`.** Deze sessie is
-  daar één keer een commit ge-amend *nadat* hij al gepusht was, wat een
-  force-push nodig maakte — precies wat de regel "nooit rebasen op deze branch"
-  wil voorkomen. Risico was nul (de tussenversie stond een paar minuten op de
-  remote en niemand kan die gehaald hebben), maar doe het niet opnieuw: lees je
-  eigen diff adversarieel **voor** de eerste push, of zet een correctie in een
-  tweede commit.
+  commit-**auteur**. Commits op `patch/<slug>` en `7.0-stable-GEOxyz` staan op
+  naam van `Jan Catrysse <jan.catrysse@geoxyz.eu>`. Zie K-01 en
+  `tools/check-patch-clean.sh`.
+- **Lees je eigen diff adversarieel vóór de eerste push.** Een amend na een push
+  vraagt een force-push, precies wat "nooit rebasen op deze branch" wil
+  voorkomen. Zet een correctie liever in een tweede commit.
 - **`origin/ansifi/learn-and-test-7.0`** is referentiemateriaal, geen basis.

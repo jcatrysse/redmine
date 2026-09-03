@@ -269,10 +269,18 @@ screenshot.
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** `TBD`
-- **Suites daar groen:** `TBD`
+- **Commit op `7.0-stable-GEOxyz`:** `20ed9e2d1` — **letterlijk dezelfde diff**
+  als de patch (`git apply` van de trunk-diff liep schoon door, geen enkele
+  aanpassing nodig; 7.0-stable en trunk zijn identiek in deze drie bestanden)
+- **Suites daar groen:** `5809 runs, 31001 assertions, 0 failures, 0 errors,
+  39 skips` — helemaal groen, in tegenstelling tot trunk, waar 29 repository- en
+  changeset-tests falen omdat `svn`, `hg`, `bzr` en `cvs` niet in het image zitten
 - **`nl.yml` toegevoegd:** n.v.t. — geen nieuwe string
-- **`tools/check-geoxyz-branch.sh`:** TBD
+- **Live nagelopen op deze branch:** ja, dezelfde `verify/version-subprojects.mjs`
+  in `MODE=after` tegen een dev-server op de GEOxyz-worktree — PASS, en de
+  screenshot van het AJAX-geval is niet van de trunk-versie te onderscheiden
+- **`tools/check-geoxyz-branch.sh`:** PASS (current met `origin/7.0-stable`,
+  4 eigen commits, 0 lint-offences op 9 gewijzigde Ruby-bestanden, geen AI-sporen)
 - **Wanneer kan deze commit vervallen?** Een geaccepteerde trunk-patch komt in
   7.1 of later, nooit in 7.0-stable. Dus: pas als GEOxyz naar de release gaat
   die deze wijziging bevat.
