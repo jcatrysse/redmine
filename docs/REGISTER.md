@@ -19,7 +19,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041`) | patch klaar | — |
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`28c618860`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
-| [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | todo | nooit | — |
+| [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`95bbb9750`) | nooit | — |
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | live (`fe737441b`) | nooit | — |
 | [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key en credentials.yml.enc negeren | `8ec9951d3` | live (`e2c0447b6`) | nooit | — |
@@ -38,6 +38,29 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 - `ldap-mail-prefs` — cse_01Qva82Wk9LSY7HNksMqNZkP sinds 2026-09-03
 
 ## Openstaand voor Jan
+
+### `ar-sessions`
+
+**Twee dingen bij de deploy, en het eerste is niet optioneel.**
+
+1. `bundle install` moet gedraaid worden vóór de eerste start: er staat een
+   nieuwe gem in de `Gemfile` (`activerecord-session_store`). Zonder die gem
+   start Redmine niet — Rails geeft dan letterlijk de melding dat
+   `ActiveRecord::SessionStore` uit Rails is gehaald en een gem is.
+2. `bin/rails db:migrate` maakt de tabel aan. Op de bestaande database van
+   GEOxyz doet die migratie **niets**, want hij heeft hetzelfde nummer als op
+   5.1 en staat daar dus al in `schema_migrations`.
+
+En twee dingen om te weten:
+
+- **Iedereen is één keer uitgelogd** na de deploy. De oude cookies zijn
+  payloads, geen sessie-ids, dus ze worden niet herkend. Eén keer opnieuw
+  inloggen, daarna nooit meer.
+- **Zet `db:sessions:trim` in de cron.** De tabel groeit anders eindeloos; de
+  taak komt uit de gem en gooit standaard alles ouder dan 30 dagen weg
+  (`SESSION_DAYS_TRIM_THRESHOLD=<dagen>` om dat te wijzigen). De index op
+  `updated_at` in de migratie bestaat precies daarvoor — dat is de reden dat hij
+  er staat, niet netheid.
 
 ### `assignee-nobody`
 
