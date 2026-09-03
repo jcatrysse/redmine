@@ -467,6 +467,10 @@ en:
   setting_activity_days_default: Days displayed on project activity
   setting_my_page_max_issuequery_blocks: Maximum number of custom queries displayed on My page
   setting_display_subprojects_issues: Display subprojects issues on main projects by default
+  setting_display_revision_branches: Display branches on the revision page
+  setting_display_associated_revision_branches: Display branches in associated revisions
+  setting_revision_branches_excluded: Exclude branches by name
+  setting_revision_branches_enable_regex: Enable regular expressions
   setting_enabled_scm: Enabled SCM
   setting_mail_handler_body_delimiters: "Truncate emails after one of these lines"
   setting_mail_handler_enable_regex: "Enable regular expressions"
@@ -856,6 +860,7 @@ en:
   label_repository_new: New repository
   label_repository_plural: Repositories
   label_branch: Branch
+  label_branch_plural: Branches
   label_tag: Tag
   label_revision: Revision
   label_revision_plural: Revisions

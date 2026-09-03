@@ -32,6 +32,22 @@ module RepositoriesHelper
     end
   end
 
+  def link_to_revision_branches(changeset)
+    repository = changeset.repository
+    safe_join(
+      changeset.branches.map do |branch|
+        link_to(
+          branch,
+          {:controller => 'repositories', :action => 'show',
+           :id => repository.project,
+           :repository_id => repository.identifier_param,
+           :path => nil, :rev => branch}
+        )
+      end,
+      ', '
+    )
+  end
+
   def render_pagination
     pagination_links_each @paginator do |text, parameters, options|
       if entry = @entries[parameters[:page] - 1]

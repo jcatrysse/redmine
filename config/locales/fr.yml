@@ -425,6 +425,10 @@ fr:
   setting_user_format: Format d'affichage des utilisateurs
   setting_activity_days_default: Nombre de jours affichés sur l'activité des projets
   setting_display_subprojects_issues: Afficher par défaut les demandes des sous-projets sur les projets principaux
+  setting_display_revision_branches: Afficher les branches sur la page de révision
+  setting_display_associated_revision_branches: Afficher les branches dans les révisions associées
+  setting_revision_branches_excluded: Exclure les branches par leur nom
+  setting_revision_branches_enable_regex: Utiliser les expressions régulières
   setting_enabled_scm: SCM activés
   setting_mail_handler_body_delimiters: "Tronquer les emails après l'une de ces lignes"
   setting_mail_handler_enable_regex: "Utiliser les expressions regulières"
@@ -758,6 +762,7 @@ fr:
   label_repository_new: Nouveau dépôt
   label_repository_plural: Dépôts
   label_branch: Branche
+  label_branch_plural: Branches
   label_tag: Tag
   label_revision: Révision
   label_revision_plural: Révisions

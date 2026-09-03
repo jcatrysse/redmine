@@ -94,6 +94,24 @@ module Redmine
           nil
         end
 
+        def branches_containing(identifier)
+          return [] if identifier.blank?
+
+          names = []
+          cmd_args = ['branch', '--no-color', '--contains', identifier.to_s]
+          git_cmd(cmd_args) do |io|
+            io.each_line do |line|
+              name = line[2..].to_s.strip
+              next if name.blank? || name.start_with?('(')
+
+              names << scm_iconv('UTF-8', @path_encoding, name)
+            end
+          end
+          names.sort!
+        rescue ScmCommandAborted
+          []
+        end
+
         def tags
           return @tags if @tags
 

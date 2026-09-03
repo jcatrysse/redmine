@@ -114,6 +114,35 @@ class GitAdapterTest < ActiveSupport::TestCase
       assert_equal false, br_test.is_default
     end
 
+    def test_branches_containing
+      assert_equal(
+        ['master', 'master-20120212', 'test_branch'],
+        @adapter.branches_containing('fba357b886984ee71185ad2065e65fc0417d9b92')
+      )
+      assert_equal ['issue-8857'], @adapter.branches_containing('2a682156a3b6e77a8bf9cd4590e8db757f3c6c78')
+    end
+
+    def test_branches_containing_should_convert_branch_names_to_utf8
+      assert_equal(
+        [
+          "latin-1-branch-#{@char_1}-01",
+          "latin-1-branch-#{@char_1}-02",
+          'latin-1-path-encoding',
+          'master',
+          'master-20120212',
+          'test-latin-1',
+          'test_branch'
+        ],
+        @adapter.branches_containing('7234cb2750b63f47bff735edc50a1c0a433c2518')
+      )
+    end
+
+    def test_branches_containing_with_unknown_or_blank_revision_should_return_empty_array
+      assert_equal [], @adapter.branches_containing('0123456789012345678901234567890123456789')
+      assert_equal [], @adapter.branches_containing('')
+      assert_equal [], @adapter.branches_containing(nil)
+    end
+
     def test_default_branch
       assert_equal 'master-20120212', @adapter.default_branch
 
