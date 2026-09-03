@@ -3,7 +3,7 @@ slug: imap-oauth
 feature: IMAP inbound mail via OAuth 2.0 (Gmail / O365)
 commit_51: bbf5c0eb3
 geoxyz: live
-geoxyz_commit: f117ea32e
+geoxyz_commit: f117ea32e + 21c232ce1
 upstream: patch klaar
 patch: patches/imap-oauth/2026-09-03-r24882-feature.patch
 issue: 43023
@@ -64,7 +64,11 @@ regel die in het credentialsbestand moet.
   het aantal nieuwe tests
 - Volledige suite op `7.0-stable-GEOxyz` met alleen deze feature erop:
   5836 runs, 31100 assertions, 0 failures, 0 errors, 39 skips.
-  SUITE_MERGED
+  En nog een keer op de **branchtip zoals hij na de push is**, dus met de twee
+  features die parallelle sessies er ondertussen op zetten
+  (`revision-branches`, `webhook-tracker-filter`): 5856 runs, 31168 assertions,
+  0 failures, 0 errors, 39 skips. Dat tweede aantal is de branch die GEOxyz
+  echt draait; het eerste is alleen deze feature
 - De twee nieuwe testbestanden samen in één proces: 21 runs, 71 assertions,
   0 failures, 0 errors
 - Rood bewezen op de oude code: 20 van de 21 nieuwe tests vallen om in een
@@ -87,6 +91,8 @@ regel die in het credentialsbestand moet.
 - `bin/rails zeitwerk:check`: "All is good!" — het nieuwe `lib/redmine`-bestand
   laadt ook onder eager loading, wat productie doet
 - `tools/check-patch-clean.sh`: PASS · `tools/check-geoxyz-branch.sh`: PASS
+  (current met `origin/7.0-stable`, geen AI-sporen, 0 lint-offences op 29
+  gewijzigde Ruby-bestanden, locales binnen de vijf)
 - Patch applyt met `git am` op een verse `origin/master`-checkout: ja
 - Screenshots: drie (één before), gelezen: ja. Plus
   `shots/terminal-transcript.txt`: de before-run op schone trunk, de vier

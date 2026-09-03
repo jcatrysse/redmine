@@ -544,15 +544,19 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** `f117ea32e` — een `git cherry-pick` van de
-  patchcommit, zonder één aanpassing. `lib/redmine/imap.rb`,
+- **Commits op `7.0-stable-GEOxyz`:** `f117ea32e` (het ophalen) en `21c232ce1`
+  (de toestemmingsstap), samen exact de inhoud van de patchcommit, zonder één
+  aanpassing. Twee commits omdat de eerste al gepusht was toen de tweede erbij
+  kwam; op een gepubliceerde branch wordt niet geamendeerd. `lib/redmine/imap.rb`,
   `lib/tasks/email.rake`, `config/application.rb` en
   `config/initializers/zeitwerk.rb` zijn byte-identiek op trunk en op
   `7.0-stable-GEOxyz`, en de branch loopt niet achter op `origin/7.0-stable`.
-- **Suites daar groen:** `5827 runs, 31068 assertions, 0 failures, 0 errors,
-  39 skips`. De twee nieuwe testbestanden samen in één proces daar:
-  `12 runs, 43 assertions, 0 failures, 0 errors`. RuboCop op de gewijzigde
-  bestanden: 0.
+- **Suites daar groen:** met alleen deze feature erop `5836 runs, 31100
+  assertions, 0 failures, 0 errors, 39 skips`, en op de branchtip zoals hij na
+  de push is, dus met de twee features die parallelle sessies er ondertussen op
+  zetten, `5856 runs, 31168 assertions, 0 failures, 0 errors, 39 skips`. De
+  twee nieuwe testbestanden samen in één proces daar: `21 runs, 71 assertions,
+  0 failures, 0 errors`. RuboCop op de gewijzigde bestanden: 0.
 - **`nl.yml` toegevoegd:** n.v.t. — de patch voegt geen door een gebruiker
   geziene string toe, dus er is geen enkele locale-sleutel. Dat geldt aan beide
   kanten identiek (INV-10).
