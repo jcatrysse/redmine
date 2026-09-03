@@ -186,6 +186,18 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
   dat over *verhogen* gaat. Een instelling met default 3 verhoogt niets. Niet
   opnieuw gaan afwegen of we de standaard toch naar 5 moeten zetten — dat is
   precies de patch die al is afgewezen.
+  **En ook niet opnieuw afwegen of we JPL's asynchroon laden zelf moeten
+  bouwen.** Nagemeten en vastgelegd in het dossier onder "What asynchronous
+  loading would and would not fix": Mijn pagina kost 10 SQL-queries leeg en
+  ~22 per extra issuequery-blok (6 blokken = 151 queries, 118 KB). Asynchroon
+  laden verdeelt diezelfde queries over zes requests — het totaal blijft gelijk
+  en wordt iets hoger. Het wint *gevoelde* snelheid, niet belasting, en
+  belasting is precies waar note-5 over gaat. Er zit ook geen goedkope N+1 in:
+  25 van de ~41 queries per blok zijn `issue_count` + `issues(:limit => 10)`
+  zelf, en het schaalt niet met het aantal rijen. Bijkomend: `_issues.erb` zet
+  een Atom-`<link>` in de `<head>` via `content_for :header_tags`, plugins
+  hangen eigen blokpartials in `app/views/my/blocks/`, en de pagina zou leeg
+  zijn zonder JavaScript — drie keuzes die het core-team moet maken, niet wij.
 - **`revision-branches`** — vier bezwaren, alle vier terecht: een
   git-subproces per pageview (Redmine cachet changesets juist om de SCM buiten
   het renderen te houden), alleen de Git-adapter van zes, vier nieuwe
