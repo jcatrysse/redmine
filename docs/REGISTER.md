@@ -32,8 +32,8 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
+- `imap-oauth` — cse_01QYXRy2ENBtR4jhRGSbjnvv sinds 2026-09-03
 - `revision-branches` — cse_01VBjLCbuVExHTR6fTRWsuVd sinds 2026-09-03
-- `webhook-tracker-filter` — cse_01Sqv8jrv2Lwkym993GYrLg3 sinds 2026-09-03
 
 ## Openstaand voor Jan
 
