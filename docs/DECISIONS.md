@@ -240,3 +240,36 @@ eerst binnen wat een andere sessie toevoegde.
 
   De vertalingen zitten in een apart patchbestand, zodat een committer de
   feature zonder de vertalingen kan aannemen.
+- **K-09, krijgen `nl`, `fr`, `de` en `es` de sleutel `webhook_event_closed`?**
+  **Open — keuze voor Jan.** Bij `webhook-tracker-filter` koos je optie B van
+  K-08: alle vijf de talen krijgen de nieuwe sleutel. Deze sleutel is een ander
+  geval, en daarom ligt de vraag opnieuw voor: het gaat niet om een losse
+  hintzin maar om één van vier vinkjes die naast elkaar in hetzelfde blok
+  staan, en die andere drie (`webhook_event_created`, `_updated`, `_deleted`)
+  staan in **elk** taalbestand onvertaald in het Engels — ook in `de.yml`, dat
+  verder het best vertaalde van de vier is. Ze staan daar door
+  `rake locales:update`, dat nieuwe `en`-sleutels letterlijk naar alle
+  vijftig talen kopieert; dat is Redmine's eigen mechanisme hiervoor.
+
+  - **Opties:**
+    - **A) Alleen `en.yml`** (dit is gebouwd). `config.i18n.fallbacks` staat
+      aan, dus een taal zonder de sleutel toont exact dezelfde Engelse tekst
+      als wanneer we die er met de hand in zouden zetten. Nul verschil op het
+      scherm, één bestand in de patch.
+    - **B) De Engelse string kopiëren naar `nl`, `fr`, `de`, `es`.** Vier
+      bestanden erbij in de patch, geen enkele pixel anders, en een reviewer
+      vraagt terecht waarom juist die vier van de vijftig.
+    - **C) Echt vertalen.** Dan leest het blok *Issue created / Issue updated /
+      Ticket geschlossen / Issue deleted*, want de drie buren blijven Engels
+      **en** `_form.html.erb` vult `object_name` met een Engelse klassenaam
+      (`type.to_s.humanize`). Eén vertaald label van de vier is slechter dan
+      vier Engelse.
+  - **Aanbeveling:** **A**, omdat het op het scherm identiek is aan B en omdat
+    C alleen zin heeft als je de hele groep in één keer aanpakt.
+  - **Wat C wel waard is, als losse patch:** de vier `webhook_event_*`-sleutels
+    in vijf talen én `object_name` localiseren (de legenda erboven doet dat al
+    met `l(:"label_#{type}_plural")`). Dat is een eigen issue op redmine.org,
+    geen onderdeel van dit event. Zeg maar of je dat wil, dan zet ik het in het
+    register.
+  - **Haast?** nee — we bouwden verder met A. Het blokkeert het indienen niet;
+    het is één regel bijwerken als je B of C wil.
