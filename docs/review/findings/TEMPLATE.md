@@ -5,7 +5,8 @@
 
 - **Reviewer:** <tool + model, e.g. "Claude Code (Opus)" or "ChatGPT Codex">
 - **Reviewed:** `patch/<slug>` at `<short sha>` against `origin/master` `<short sha>`
-- **Dossier read:** `docs/features/<slug>.md` — yes / no
+- **Dossier read:** `docs/features/<slug>/dossier.md` — yes / no
+- **Status read:** `docs/features/<slug>/status.md` (the "already settled" section) — yes / no
 - **Ran the test suite:** yes / no — <if no, say why; it changes how findings should be read>
 - **Scope covered:** <which dimensions from the patch-review skill you actually got to>
 - **Scope NOT covered:** <be explicit — an unstated gap reads as "clean">

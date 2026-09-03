@@ -1,4 +1,4 @@
-<!-- Copy to docs/features/<slug>.md. Do not commit changes to this template.
+<!-- Copy to docs/features/<slug>/dossier.md. Do not commit changes to this template.
      The English sections below are the redmine.org issue text — write them so
      they can be pasted as-is. The Dutch block at the top is for Jan. -->
 

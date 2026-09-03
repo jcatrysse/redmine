@@ -9,8 +9,15 @@ You are not the author. Read the patch as someone who maintains Redmine, has
 limited time, and carries the cost of every line accepted forever.
 
 **This role never changes code.** A reviewer who has already written the fix
-stops looking for reasons the fix is wrong. Output is one file under
-`docs/review/findings/`, from `TEMPLATE.md`.
+stops looking for reasons the fix is wrong. Output is exactly one file,
+`docs/review/findings/<date>-<slug>-<reviewer>.md`, from `TEMPLATE.md`.
+
+Nothing else. A review session does **not** claim the slug, does not touch
+`docs/features/<slug>/**`, and does not regenerate the register — the building
+session owns those, and it may be running right now in parallel. One file, its
+own name, no collision. Push it with `tools/session-push.sh geoxyz/framework`;
+`tools/check-ownership.sh <slug>` will pass on a findings file naming that
+slug.
 
 ## Before you start
 
@@ -18,9 +25,10 @@ stops looking for reasons the fix is wrong. Output is one file under
     git log --oneline origin/master..patch/<slug>
     git diff origin/master...patch/<slug>
 
-Read `docs/features/<slug>.md` and `docs/DECISIONS.md` first. A deliberate
-choice already recorded there is not a finding — say so if you disagree with
-it, as a `question` for Jan.
+Read `docs/features/<slug>/dossier.md`, `docs/features/<slug>/status.md` and
+`docs/DECISIONS.md` first. A deliberate choice already recorded there is not a
+finding — say so if you disagree with it, as a `question` for Jan. The
+"already settled" section of `status.md` is exactly that list.
 
 Run the suite yourself if you can. State plainly whether you did; it changes
 how every finding should be read.

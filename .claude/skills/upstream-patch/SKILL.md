@@ -7,13 +7,26 @@ description: Turn one GEOxyz Redmine customisation into a Redmine core patch aga
 
 One feature per invocation. Finish it, then stop — CLAUDE.md's cadence rule.
 
-## 0. Establish what and where
+## 0. Claim it, then establish what and where
 
-Feature slug from Jan, or the next row in `docs/STATE.md`'s register.
+Sessions run in parallel. Before anything else:
+
+    git fetch origin geoxyz/framework
+    git checkout geoxyz/framework && git merge --ff-only origin/geoxyz/framework
+    cat docs/REGISTER.md
+    tools/claim.sh <slug>
+
+Feature slug from Jan, or the top `todo` row in `docs/REGISTER.md`. The claim is
+not optional: it is the only thing that stops a parallel session building the
+same feature. If it refuses, take another row.
+
+Then read `docs/features/<slug>/status.md` — the memory of this feature,
+including the section on what is already settled. A decision recorded there is
+not yours to re-open.
 
 Target defaults to **both, upstream-shaped**. Ask only in the two ambiguous
 cases CLAUDE.md names. If it is local-only, there is no patch: one commit on
-`7.0-stable-GEOxyz`, one line in the register, done.
+`7.0-stable-GEOxyz`, `status.md` updated, done.
 
 ## 1. Trunk check — G1, before anything else
 
@@ -49,9 +62,9 @@ sharing semantics, asset loading, per-row subprocesses.
 
 ## 3. Design, and write the dossier before the code
 
-Copy `docs/features/TEMPLATE.md` to `docs/features/<slug>.md` and fill in the
-problem, the design, the rejected alternatives and the anticipated objections
-*first*. If you cannot write the "why core and not a plugin" paragraph, the
+Copy `docs/features/TEMPLATE.md` to `docs/features/<slug>/dossier.md` and fill
+in the problem, the design, the rejected alternatives and the anticipated
+objections *first*. If you cannot write the "why core and not a plugin" paragraph, the
 patch is not ready to build.
 
 Design for what upstream accepts, not for what GEOxyz asked for. Where those
@@ -182,10 +195,25 @@ identical translations (INV-10).
 
 ## 8. Close out
 
-- register row in `docs/STATE.md`: status, patch branch, patch file, issue
-  number once Jan has one
-- `docs/DECISIONS.md`: Class A one-liners, Class B under "Open — keuze voor Jan"
-- anything found but deliberately not fixed: report it, do not fix it
-- the Dutch session report from CLAUDE.md
+In this order, because the last two steps must not fail on a race:
 
-Then stop. Do not start the next feature.
+1. **`docs/features/<slug>/status.md`** — front matter (`geoxyz`,
+   `geoxyz_commit`, `upstream`, `patch`, `issue`) and every section, from
+   `docs/features/STATUS-TEMPLATE.md`. This is the feature's memory: what
+   stands, the figures, what Jan must do, and what a later session must not
+   re-litigate.
+2. **`docs/features/<slug>/decisions.md`** — the Class A one-liners for this
+   feature. Class B goes to `docs/DECISIONS.md` under "Open — keuze voor Jan",
+   through `tools/append-note.sh`.
+3. **`tools/register.sh --write`** — regenerate `docs/REGISTER.md`.
+4. **`tools/check-ownership.sh <slug>`** — must pass. If it names a file you do
+   not own, you have written into another session's memory.
+5. **`tools/session-push.sh geoxyz/framework`**, and the same for
+   `7.0-stable-GEOxyz` from its worktree.
+6. New traps you hit: `tools/append-note.sh docs/traps.md`. Never edit that file
+   directly — a parallel session is appending to it too.
+7. Anything found but deliberately not fixed: report it, do not fix it.
+8. The Dutch session report from CLAUDE.md.
+
+Then stop. Do not start the next feature — and if you are stopping unfinished,
+`tools/claim.sh <slug> --release` so the row is free.
