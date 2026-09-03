@@ -508,3 +508,42 @@
   `GIT_COMMITTER_NAME="Jan Catrysse" GIT_COMMITTER_EMAIL="jan.catrysse@geoxyz.eu" tools/session-push.sh 7.0-stable-GEOxyz`.
   Achteraf rechtzetten kan alleen met een force-push, en dat is het niet waard
   op een branch waar parallelle sessies op pushen.
+
+## Uit de alleen-GEOxyz-ronde (2026-09-03)
+
+- **`git merge --ff-only origin/geoxyz/framework` kan falen met "refusing to
+  merge unrelated histories".** Deze branch is een orphan, en als hij ooit
+  opnieuw is aangemaakt staat je lokale checkout op een historie die niets met
+  de remote te maken heeft — deze sessie startte op `cc34375` (drie commits)
+  terwijl de remote op `75d768a` (vijftig commits) stond, met een **andere
+  wortel**. De `--ff-only` in `docs/STATE.md` doet het dan niet en de fout leest
+  als iets ergs. Het is het niet: `git reset --hard origin/geoxyz/framework`, en
+  je bent waar je hoort te zijn. Er is niets van jou om te bewaren, de remote is
+  het geheugen.
+- **`tools/…` werkt niet vanuit een worktree.** `cd /home/user/wt/geoxyz &&
+  tools/session-push.sh` geeft "No such file or directory": de tools staan
+  alleen in `/home/user/redmine`. Kostte hier twee commando's, bij
+  `session-push.sh` en bij `test-env.sh`. Roep ze altijd met het volle pad aan
+  (`/home/user/redmine/tools/...`); `REPO=` zet alleen waar het script kijkt,
+  niet waar bash het vindt.
+- **`tools/dev-server.sh` schrijft `attachments_storage_path` onder `default:`
+  in `config/configuration.yml`, en `default:` geldt óók in de testomgeving.**
+  Zelfde valkuil als `scm_*_path_regexp` hierboven, ander sleutelwoord: start je
+  de dev-server op een worktree waar een suite loopt, dan verhuist de
+  bijlageopslag onder de suite vandaan. Het script slaat het bestand over als
+  het al bestaat, dus schrijf het zelf eerst met de sleutel onder
+  **`development:`**. Zo is het hier gedaan en de suite bleef groen.
+- **`tools/check-ownership.sh <slug>` klopt niet meer als één sessie meerdere
+  slugs claimt.** Jan vroeg deze sessie om vier alleen-GEOxyz-items in één keer;
+  de check per slug noemt dan de mappen van de andere drie als "file(s) this
+  session does not own". Dat is een terecht mechanisme met een verkeerde
+  aanname. Oplossing zonder het script aan te raken: **commit en push per slug**,
+  in vier rondes. `BASE` is `origin/geoxyz/framework` en schuift dus mee, zodat
+  elke ronde precies drie bestanden ziet en vier keer PASS geeft.
+- **Bekende flake: `StickyIssueHeaderSystemTest#test_sticky_issue_header_appears_on_scroll`.**
+  Viel één keer om in een volledige `test:all` ("expected to find css
+  `#sticky-issue-header.is-visible`") en stond daarna groen in (a) een losse run
+  van datzelfde bestand, (b) een tweede volledige run op dezelfde commit en
+  (c) een volledige run op de schone branchtip. Het is een
+  scroll-en-render-timing in Chromium, geen regressie. Bewijs het wel zo, met
+  drie runs, in plaats van het "flake" te noemen.
