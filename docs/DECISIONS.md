@@ -92,3 +92,21 @@ Geen open keuzes.
 - **K-03** — de TXT-export van de hele wiki. Beslist 2026-09-01: vervalt, GEOxyz gebruikt hem niet.
 - **K-04** — meer dan vijf zoekwoorden in het globale zoekvak. Beslist 2026-09-02: optie A, alleen de filters (zie "Beslist (Jan)").
 - **K-05** — `<< niemand >>` ook in "Doelversie" en "Categorie". Beslist 2026-09-02: optie A, alleen de toewijzing (zie "Beslist (Jan)").
+## Beslist (autonoom) — vervolg, na de opsplitsing van 2026-09-03
+
+Vanaf 2026-09-03 staan **feature-specifieke** Class A-beslissingen in
+`docs/features/<slug>/decisions.md`, niet meer in de tabel hierboven. Dit
+bestand houdt wat het al had (de historie blijft staan, die is niet verplaatst)
+en krijgt alleen nog Jans beslissingen, de open keuzes K-nn, en beslissingen
+over het framework zelf. Reden: twee parallelle sessies die allebei een rij aan
+één tabel plakken conflicteren; per feature schrijven doet dat niet.
+
+Voeg hier alleen toe met `tools/append-note.sh docs/DECISIONS.md` — die haalt
+eerst binnen wat een andere sessie toevoegde.
+
+| Datum | Beslissing | Waarom |
+|---|---|---|
+| 2026-09-03 | Het geheugen gaat van één overschreven `docs/STATE.md` naar `docs/features/<slug>/status.md` per feature, met een afgeleid `docs/REGISTER.md` | Jan vroeg om parallelle sessies. Eén overschreven bestand is precies wat dat onmogelijk maakte: de tweede push verloor het geheugen van de eerste. Eén schrijver per bestand is de enige vorm die git conflictvrij samenvoegt. |
+| 2026-09-03 | Het slot is één bestand per sessie (`docs/claims/<slug>--<sessie>`), niet een regel in een gedeeld bestand | Een gedeeld pad conflicteert op de replay in plaats van een winnaar op te leveren. Met aparte paden landen beide claims en breken beide kanten de knoop op dezelfde manier: vroegste datum, dan sessie-id. Dat is deterministisch zonder dat de sessies elkaar kennen. |
+| 2026-09-03 | `docs/traps.md` en dit bestand blijven **één** gedeelde lijst, met een tool dat conflictvrij toevoegt, in plaats van opgesplitst per feature | Een valkuilenlijst is meer waard als één leesbaar bestand dan als veertig fragmenten. `tools/append-note.sh` doet de append ná de fetch, dus er is niets te mergen. |
+| 2026-09-03 | Op `7.0-stable-GEOxyz` wordt de eigen, nog niet gepushte commit **wel** opnieuw afgespeeld op de tip | "Nooit rebasen" gaat over gepubliceerde historie — dat maakt checkouts van GEOxyz ongeldig. Een commit die nog niemand heeft, is het omgekeerde, en het houdt de branch één lineaire commit per feature in plaats van een woud aan mergecommits uit parallelle sessies. |
