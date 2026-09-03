@@ -24,11 +24,13 @@ Gmail en Office 365.
 
 ## Wat Jan nog moet doen
 
-niets — maar reken erop dat de autorisatieflow op een moment jouw handen en
-echte credentials vraagt.
+niets
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
 
+- **Reken erop dat dit op een punt Jans handen vraagt.** De
+  OAuth-autorisatieflow heeft een mens en echte credentials nodig en kan dus
+  nooit een test zijn (CLAUDE.md, "Stop and ask Jan when").
 - De bestaande 5.1-rake is 435 regels met tien methodes en een constante op
   `Object`, en print het access token **volledig** bij `imap_debug=1`.
 - Hij trekt `gmail_xoauth` binnen terwijl `Net::IMAP::XOauth2Authenticator` al

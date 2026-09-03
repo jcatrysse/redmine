@@ -41,11 +41,6 @@ zijn in plaats van alleen `=`. Dat is het inhoudelijke verschil met de
 bestaande patches: vier van die operatoren gaven daar een HTTP 500 op
 PostgreSQL en `cf` gaf stil nul resultaten.
 
-### `imap-oauth`
-
-niets — maar reken erop dat de autorisatieflow op een moment jouw handen en
-echte credentials vraagt.
-
 ### `mypage-query-blocks`
 
 Hang `patches/mypage-query-blocks/2026-09-03-r24882-feature.patch` en
