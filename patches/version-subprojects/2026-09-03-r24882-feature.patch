@@ -1,4 +1,4 @@
-From 76983b3146c5c381c86e879a7a6cc114b41ef921 Mon Sep 17 00:00:00 2001
+From f4dd91175af1de9a298bd631d4b4cd351592455c Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Thu, 3 Sep 2026 05:29:18 +0000
 Subject: [PATCH] Target version filter offers the versions of the subprojects
@@ -27,8 +27,8 @@ along with the field name.
  app/controllers/queries_controller.rb        |  2 +
  app/models/query.rb                          |  4 +-
  test/functional/queries_controller_test.rb   | 21 ++++++++
- test/unit/query_test.rb                      | 51 ++++++++++++++++++++
- 5 files changed, 81 insertions(+), 2 deletions(-)
+ test/unit/query_test.rb                      | 53 ++++++++++++++++++++
+ 5 files changed, 83 insertions(+), 2 deletions(-)
 
 diff --git a/app/assets/javascripts/application-legacy.js b/app/assets/javascripts/application-legacy.js
 index d8317b3f1..0ae6529e8 100644
@@ -107,10 +107,10 @@ index 297bfa232..66a889881 100644
      @request.session[:user_id] = 2
      get(
 diff --git a/test/unit/query_test.rb b/test/unit/query_test.rb
-index ebf7fc991..68aec1307 100644
+index ebf7fc991..ca7edd6ac 100644
 --- a/test/unit/query_test.rb
 +++ b/test/unit/query_test.rb
-@@ -161,6 +161,57 @@ class QueryTest < ActiveSupport::TestCase
+@@ -161,6 +161,59 @@ class QueryTest < ActiveSupport::TestCase
      assert_include subproject_version.id.to_s, filter[:values].map(&:second)
    end
  
@@ -143,15 +143,17 @@ index ebf7fc991..68aec1307 100644
 +  end
 +
 +  def test_fixed_version_filter_should_respect_selected_subprojects
-+    version1 = Version.create!(:project => Project.find(3), :name => 'Subproject 1 version')
-+    version2 = Version.create!(:project => Project.find(4), :name => 'Subproject 2 version')
-+    query = IssueQuery.new(:project => Project.find(1), :name => '_')
-+    query.add_filter('subproject_id', '=', [Project.find(3).id.to_s])
-+    filter = query.available_filters["fixed_version_id"]
-+    assert_not_nil filter
-+    values = filter[:values].map(&:second)
-+    assert_include version1.id.to_s, values
-+    assert_not_include version2.id.to_s, values
++    with_settings :display_subprojects_issues => '0' do
++      version1 = Version.create!(:project => Project.find(3), :name => 'Subproject 1 version')
++      version2 = Version.create!(:project => Project.find(4), :name => 'Subproject 2 version')
++      query = IssueQuery.new(:project => Project.find(1), :name => '_')
++      query.add_filter('subproject_id', '=', [Project.find(3).id.to_s])
++      filter = query.available_filters["fixed_version_id"]
++      assert_not_nil filter
++      values = filter[:values].map(&:second)
++      assert_include version1.id.to_s, values
++      assert_not_include version2.id.to_s, values
++    end
 +  end
 +
 +  def test_fixed_version_filter_should_include_all_subproject_versions_when_filtering_any_subproject

@@ -9,9 +9,9 @@
 Vier features af. De vierde is **`version-subprojects`**, deze sessie gebouwd,
 bewezen en klaar. Patch tegen trunk r24882
 (`patches/version-subprojects/2026-09-03-r24882-feature.patch`, vijf bestanden,
-173 regels), dezelfde wijziging als één commit op `7.0-stable-GEOxyz`
-(`20ed9e2d1`), dossier compleet, acht screenshots gemaakt en gelezen. Er zijn
-geen open keuzes.
+175 regels), dezelfde wijziging als twee commits op `7.0-stable-GEOxyz`
+(`20ed9e2d1` + `d157934c0`), dossier compleet, acht screenshots gemaakt en
+gelezen. Er zijn geen open keuzes.
 
 **Wat het doet:** een projectissuelijst toont standaard ook de issues van zijn
 subprojecten. Die issues kunnen een doelversie hebben die van een subproject is
@@ -71,6 +71,23 @@ zijn bewakers: ze zijn groen op trunk én op deze patch, en de belangrijkste
 ervan is rood op het afgewezen alternatief — dat is precies wat een bewaker
 hoort te doen, en het staat zo in het dossier.
 
+**Na Jans vraag "werkt dit ook als subproject-issues standaard niet getoond
+worden?" is één test aangescherpt.** Het antwoord is ja:
+`Query#project_statement` kijkt eerst of er een `subproject_id`-filter staat en
+valt pas dán terug op de instelling, dus een expliciet subprojectfilter
+overstemt de instelling. Nagemeten in het model voor `=`, `!` en `*`, en in de
+browser voor de AJAX-weg met de instelling op `0`.
+`test_fixed_version_filter_should_respect_selected_subprojects` draaide op de
+standaardinstelling, waar het subproject toch al in scope zat; hij draait nu met
+`display_subprojects_issues => '0'` en bewijst daarmee dat het filter de lijst
+*verbreedt* voorbij de instelling in plaats van alleen binnen die instelling te
+versmallen. Rood op trunk met `"8" not found in ["3", "4", "6", "7", "2", "1"]`.
+Beide volledige suites zijn daarna opnieuw gedraaid met dezelfde cijfers. Op de
+patchbranch is die wijziging in de bestaande commit ge-amend (hij moet één
+commit blijven voor `git format-patch`, force-push met `--force-with-lease`); op
+`7.0-stable-GEOxyz` staat hij in een **tweede** commit, want daar wordt niet
+gerebased.
+
 **Geen nieuwe instelling, migratie, route, permissie, gem of string.** Dus geen
 locale-patch en één patchbestand.
 
@@ -127,7 +144,7 @@ in productie op 7.0? **Upstream** = waar staat de patch?
 | `wiki-export-txt` | Hele wiki als één TXT-bestand | `3c3e9368e` (deel) | n.v.t. | vervallen | — | — |
 | `search-token-limit` | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | `patches/search-token-limit/2026-09-02-r24882-feature.patch` | [#43701](https://www.redmine.org/issues/43701) (bestaat, patch nog niet vervangen) |
 | `assignee-nobody` | "Niet toegewezen" combineerbaar met gekozen gebruikers | `9b03b74b2` | live (`9d28be94d`) | patch klaar | `patches/assignee-nobody/2026-09-02-r24882-feature.patch` | [#5535](https://www.redmine.org/issues/5535) (bestaat sinds 2010, patch nog niet vervangen) |
-| `version-subprojects` | Doelversiefilter incl. subproject-versies | `89752a599` | live (`20ed9e2d1`) | patch klaar | `patches/version-subprojects/2026-09-03-r24882-feature.patch` | [#43534](https://www.redmine.org/issues/43534) (bestaat, Go MAEDA werkte de patch bij; onze versie repareert een regressie erin) |
+| `version-subprojects` | Doelversiefilter incl. subproject-versies | `89752a599` | live (`20ed9e2d1` + `d157934c0`) | patch klaar | `patches/version-subprojects/2026-09-03-r24882-feature.patch` | [#43534](https://www.redmine.org/issues/43534) (bestaat, Go MAEDA werkte de patch bij; onze versie repareert een regressie erin) |
 | `mypage-query-blocks` | Configureerbaar max issuequery-blokken op Mijn pagina | `0214f3ecc` | todo | todo | — | — |
 | `webhook-tracker-filter` | Webhook beperken tot gekozen trackers | `25220b45d` (deel) | todo | todo | — | — |
 | `webhook-issue-closed` | Apart `issue.closed`-event | `25220b45d` (deel) | todo | todo | — | — |
@@ -282,6 +299,14 @@ vertrekpunten — bij elke feature hoort de trunk-check (G1) nog te gebeuren.
   commit-**auteur**. Commits op `patch/<slug>` en `7.0-stable-GEOxyz` staan op
   naam van `Jan Catrysse <jan.catrysse@geoxyz.eu>`. Zie K-01 en
   `tools/check-patch-clean.sh`.
+- **`git checkout -- <bestand>` haalt HEAD terug, niet trunk.** Zodra je op de
+  patchbranch gecommit hebt, herstelt dat dus je eigen wijziging en lijkt een
+  nieuwe test ten onrechte groen op "de oude code". Gebruik
+  `git checkout origin/master -- <bestand>`. Kostte deze sessie één verkeerde
+  rood-bewijs-run; het eerdere bewijs klopte wel, want dat liep vóór de commit.
+- **PostgreSQL kan tussen commando's door omvallen** in deze container (een test
+  faalde met "Connection refused" terwijl er niets aan de hand was).
+  `service postgresql start` en opnieuw; het is geen probleem met je patch.
 - **Lees je eigen diff adversarieel vóór de eerste push.** Een amend na een push
   vraagt een force-push, precies wat "nooit rebasen op deze branch" wil
   voorkomen. Zet een correctie liever in een tweede commit.

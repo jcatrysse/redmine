@@ -182,7 +182,7 @@ code path.
 | `QueryTest#test_fixed_version_filter_should_include_versions_shared_from_outside_the_project_tree` | the system-shared version 7 is still offered — the regression guard against the replacement approach |
 | `QueryTest#test_fixed_version_filter_should_include_subproject_versions_when_displaying_subproject_issues` | an unshared subproject version is offered when subproject issues are displayed |
 | `QueryTest#test_fixed_version_filter_should_not_include_subproject_versions_when_not_displaying_subproject_issues` | and is not offered when they are not |
-| `QueryTest#test_fixed_version_filter_should_respect_selected_subprojects` | one selected subproject brings its own version and not the sibling's |
+| `QueryTest#test_fixed_version_filter_should_respect_selected_subprojects` | with subproject issues **hidden**, one selected subproject still brings its own version in, and not the sibling's — the filter widens the list past the setting, it does not only narrow within it |
 | `QueryTest#test_fixed_version_filter_should_include_all_subproject_versions_when_filtering_any_subproject` | the `*` operator on the subproject filter overrides the setting |
 | `QueriesControllerTest#test_filter_should_take_the_current_filters_into_account` | `GET /queries/filter` answers for the query in the request, not for a bare project |
 
@@ -200,7 +200,10 @@ code path.
 - each new test verified red on the old code: the four that assert the new
   behaviour were run against the unpatched `query.rb` and
   `queries_controller.rb` in the same worktree — 4 failures, each naming the
-  version id that is missing from the list. The two guard tests
+  version id that is missing from the list.
+  `..._should_respect_selected_subprojects` was re-verified after it was
+  tightened to run with `display_subprojects_issues` off, and fails on trunk
+  with `"8" not found in ["3", "4", "6", "7", "2", "1"]`. The two guard tests
   (`..._shared_from_outside_the_project_tree` and
   `..._not_include_subproject_versions_when_not_displaying...`) are green on
   trunk by design; the first was additionally run against the rejected
@@ -254,6 +257,7 @@ screenshot.
 | `build_from_params` on a public endpoint | It only builds a `Query` in memory from filter params, exactly as `IssuesController#retrieve_query` does, and it now runs *after* the `view_permission` check rather than before it. Unavailable filters are ignored by `add_filters`. |
 | The cached value list goes stale if the subproject filter is changed afterwards | True, and pre-existing for every remote filter; this patch does not touch that cache. Named under "Alternatives considered" so it is not mistaken for a regression. |
 | Why does the "Subproject" filter influence another filter's values at all? | Because `project_statement` is what decides which issues the list contains, and a filter whose values do not match its own list is the defect being fixed. |
+| Does it still work with `display_subprojects_issues` off? | Yes. `project_statement` consults an explicit `subproject_id` filter first and only falls back to the setting when there is none, so the filter widens the version list past the setting. Asserted by `..._should_respect_selected_subprojects` (`=`) and `..._when_filtering_any_subproject` (`*`), both with the setting off, and by `..._not_include_subproject_versions_when_not_displaying...` for the case with the setting off and no subproject filter, where nothing from a subproject may appear. |
 
 ---
 
@@ -269,11 +273,13 @@ screenshot.
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** `20ed9e2d1` — **letterlijk dezelfde diff**
+- **Commits op `7.0-stable-GEOxyz`:** `20ed9e2d1` + `d157934c0` (de aangescherpte
+  test, in een tweede commit omdat de eerste al gepusht was) — **letterlijk
+  dezelfde diff**
   als de patch (`git apply` van de trunk-diff liep schoon door, geen enkele
   aanpassing nodig; 7.0-stable en trunk zijn identiek in deze drie bestanden)
 - **Suites daar groen:** `5809 runs, 31001 assertions, 0 failures, 0 errors,
-  39 skips` — helemaal groen, in tegenstelling tot trunk, waar 29 repository- en
+  39 skips` (opnieuw gemeten na de aangescherpte test, zelfde cijfers) — helemaal groen, in tegenstelling tot trunk, waar 29 repository- en
   changeset-tests falen omdat `svn`, `hg`, `bzr` en `cvs` niet in het image zitten
 - **`nl.yml` toegevoegd:** n.v.t. — geen nieuwe string
 - **Live nagelopen op deze branch:** ja, dezelfde `verify/version-subprojects.mjs`
