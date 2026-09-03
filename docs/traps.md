@@ -385,3 +385,51 @@
   force-pushen mag daar: die branch bestaat alleen om de patch uit te draaien en
   niemand baseert er werk op. Op de GEOxyz-branch is het omgekeerde waar — daar
   een tweede commit, nooit een rewrite.
+## Uit webhook-issue-closed (2026-09-03)
+
+- **`ps | grep <patroon>` in een wachtlus matcht zichzelf, net als `pkill -f`.**
+  De valkuil hierboven gaat over `pkill`; hij geldt net zo hard voor
+  `until ! ps -eo pid,cmd | grep "bin/rails test:all" | grep -qv grep; do sleep 15; done`.
+  Het patroon staat in de commandoregel van de bash die de lus uitvoert, dus de
+  lus ziet altijd minstens één treffer en stopt **nooit**. Hier liep die
+  monitor tot hij handmatig gedood werd. Gebruik de bracket-truc:
+  `until [ "$(ps -eo cmd | grep -c '[b]in/rails test:all')" -eq 0 ]; do sleep 30; done`.
+- **`enqueued_jobs.last` is jouw job niet.** Een issue-wijziging zet ook
+  `Mailer::DeliveryJob` in de wachtrij, en die staat achteraan. Het kostte hier
+  één testronde met `TypeError: no implicit conversion of Hash into String`,
+  want de laatste arg van de mailerjob is een hash. `assert_enqueued_jobs 1,
+  only: WebhookJob` klopt wél; pak de job daarna met
+  `enqueued_jobs.detect{|job| job[:job] == WebhookJob}`.
+- **`Journal#created_on` en `Issue#updated_on` zijn twee losse
+  `current_time_from_proper_timezone`-aanroepen.** Een assertie als
+  `assert_equal issue.closed_on.iso8601, payload[:timestamp]` slaagt daarom
+  alleen doordat `iso8601` op seconden afkapt — over een secondegrens heen valt
+  hij om. Asserteer de waarde die de code echt gebruikt
+  (`issue.journals.last.created_on.iso8601`), niet een waarde die er meestal
+  gelijk aan is.
+- **`git cherry-pick -x` zet een `(cherry picked from commit …)`-regel in de
+  boodschap.** Die verwijst naar een SHA op een `patch/<slug>`-branch die in de
+  GEOxyz-historie niets betekent, en `git format-patch` zou hem in het
+  patchbestand meenemen. Cherry-pick zonder `-x`, of amendeer hem eruit vóór de
+  push (amenderen mag daar nog, na de push niet meer).
+- **`rake locales:update` kopieert nieuwe `en`-sleutels letterlijk naar álle
+  taalbestanden.** Dat is waarom `webhook_event_created`, `_updated` en
+  `_deleted` in elk van de vijftig bestanden in het Engels staan, ook in
+  `de.yml`. "Zoek de dichtstbijzijnde bestaande sleutel in datzelfde bestand"
+  levert dan een Engelse string op, en de herleide vertaling *is* dus Engels.
+  Met `config.i18n.fallbacks = true` (staat in `config/application.rb`) rendert
+  een taal zonder de sleutel exact diezelfde string, dus die vier bestanden
+  toevoegen verandert nul pixels. Zie K-09.
+- **Een formulier dat op een class-level registry leunt is in development
+  incompleet.** `/webhooks/new` mist het "Wiki pages"-blok omdat
+  `WebhookPayload.events` gevuld wordt als de modelklasse laadt en
+  `config.eager_load = false` in development staat. Vier van de vijf blokken op
+  de screenshot, in productie vijf. Bestaand trunk-gedrag, op beide kanten
+  reproduceerbaar — maar als je een G9-screenshot van zo'n formulier maakt,
+  weet dan dat wat er niet staat niet per se ontbreekt.
+- **Redmine heeft `Issue#closing?` al, maar niet in een `after_commit`.** Het
+  leest de dirty state van vóór de save (`status_id_changed?`, `status_was`) en
+  is in een `after_*_commit`-callback dus altijd `false`. Het equivalent daar is
+  `saved_change_to_closed_on?`, want `update_closed_on` schrijft `closed_on`
+  precies `if closing?` en `closed_on` staat in geen enkele
+  `safe_attributes`-lijst. Scheelt een extra query per statuswijziging.
