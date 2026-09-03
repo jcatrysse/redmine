@@ -21,7 +21,8 @@ schone trunk, GEOxyz), RuboCop is nul, en de functie is in een echte browser
 nagelopen met een echte HTTP-ontvanger die de uitgaande POSTs opving — voor en
 na, met dezelfde zeven wijzigingen aan hetzelfde issue.
 
-De patch is zes regels productiecode. Dat komt doordat trunk sinds
+Buiten de tests is de patch acht toegevoegde en drie verwijderde regels, over
+vier bestanden. Dat komt doordat trunk sinds
 `acts_as_webhookable` (2026-02-22) al een generieke webhooklaag heeft: de
 5.1-commit bouwde vier eigen `after_*_commit`-callbacks in `Issue`, en daarvan
 is niets meer nodig.
@@ -113,8 +114,9 @@ vóórdat iemand ernaar vraagt:
   `issue.updated` reconstrueert als eerste fout doet: `Closed` → `Rejected` is
   geen tweede sluiting, en een gewone edit van een gesloten issue is er ook
   geen. Elke rij heeft een test.
-- **Er zit geen instelling, migratie, gem, route of permissie in.** Zes regels
-  productiecode, waarvan één een locale-string.
+- **Er zit geen instelling, migratie, gem, route of permissie in.** Buiten de
+  tests acht toegevoegde en drie verwijderde regels, waarvan één toevoeging een
+  locale-string is.
 
 Er staat één keuze voor je open: **K-09** in `docs/DECISIONS.md`, over de
 vertalingen. Er is geen haast — het blokkeert het indienen niet, we bouwden
@@ -146,10 +148,13 @@ verder met `en.yml` alleen.
   `decisions.md`.
 - **Alleen `en.yml`, en dat is een beredeneerde keuze, geen vergeten stap.**
   De drie zustersleutels (`webhook_event_created`, `_updated`, `_deleted`)
-  staan in **elk** taalbestand en zijn in **allemaal** onvertaald Engels, ook
-  in `de.yml`. Ze staan daar door `rake locales:update`, dat nieuwe `en`-
-  sleutels letterlijk naar alle talen kopieert. En `config.i18n.fallbacks` staat
-  aan, dus een taal zonder de sleutel rendert exact dezelfde Engelse string.
+  staan in alle 49 niet-Engelse taalbestanden, en in **43** daarvan is de waarde
+  nog de letterlijke Engelse string. Ze staan daar door `rake locales:update`,
+  dat elke ontbrekende `en`-sleutel toevoegt **met de Engelse waarde**. Zes
+  talen hebben die groep inmiddels wél vertaald (`bg`, `cs`, `gl`, `hu`, `ja`,
+  `zh-TW`) — en `nl`, `fr`, `de` en `es` zitten daar niet bij. En
+  `config.i18n.fallbacks` staat aan, dus een taal zonder de sleutel rendert
+  exact dezelfde Engelse string.
   Eén van de vier labels vertalen zou het vinkjesblok half Engels maken, want
   `_form.html.erb` vult `object_name` met een Engelse klassenaam. Volledige
   onderbouwing in `dossier.md`.

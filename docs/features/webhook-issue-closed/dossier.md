@@ -18,9 +18,9 @@
   zijn zes uitbreidingen op en punt 2 is letterlijk *"An option to only trigger
   on issue close."*; **note 37** van Holger Just vraagt om precies dat: die
   monolithische patch opsplitsen in losse, tegen trunk gerebaseerde stukken met
-  per stuk de reden erbij. Dit is punt 2, los, tegen r24882. De patch is zes
-  regels productiecode en voegt geen instelling, migratie, gem, route of
-  permissie toe.
+  per stuk de reden erbij. Dit is punt 2, los, tegen r24882. Buiten de tests
+  zijn het acht toegevoegde en drie verwijderde regels, en er komt geen
+  instelling, migratie, gem, route of permissie bij.
 - **Wat jij nog moet doen:** een nieuw issue op redmine.org aanmaken als
   follow-up van #29664 en de patch eraan hangen. Er staat één keuze voor je
   open (**K-09**, over de vertalingen) die het indienen niet blokkeert.
@@ -133,7 +133,8 @@ previous status, or an instance variable carried from `before_save` into
 | `test/unit/webhook_test.rb` | six tests for the transitions, one of them end to end through `WebhookJob` |
 | `test/unit/webhook_payload_test.rb` | two tests for the payload |
 
-Six lines of production code, and one of those is a locale string.
+Outside the tests: **8 insertions, 3 deletions** across four files, one of the
+insertions being the locale string.
 
 **New setting / migration / gem / route / permission:** none. The event list is
 a serialized column that already exists; an existing hook simply does not
@@ -306,12 +307,18 @@ This is the one place where the patch deliberately does less than the framework
 usually asks for, and the reason is a fact about Redmine's own files.
 
 The new key's three siblings — `webhook_event_created`, `_updated` and
-`_deleted` — are present in **every** locale file and **untranslated** in all
-of them, English text included in `de.yml`, which is otherwise the best
-translated of the four. They are there because `rake locales:update` ("Updates
-language files based on en.yml content") copies new top-level `en` keys into
-every language file verbatim. That is Redmine's mechanism for this, not a
-feature patch's job.
+`_deleted` — are present in **all 49** non-English locale files, and in **43**
+of them the value is still the verbatim English string. They got there because
+`rake locales:update` ("Updates language files based on en.yml content") appends
+every `en` key a language file is missing, **with the English value**. That is
+Redmine's mechanism for this, not a feature patch's job.
+
+Six languages have since had a translator go through that group: `bg`, `cs`,
+`gl`, `hu`, `ja` and `zh-TW`. None of them is `nl`, `fr`, `de` or `es` — in all
+four of those the three keys still read `"%{object_name} created"` and so on,
+`de.yml` included, which is otherwise the best translated of the four. So the
+pattern in this exact group of keys is: the key ships in English, and each
+language team translates the group when it gets to it.
 
 So there are three options and none of them is "translate it":
 
@@ -322,12 +329,14 @@ So there are three options and none of them is "translate it":
    without any key at all the label reads "Issue closed".
 2. **Copy the English into `nl`, `fr`, `de`, `es`.** Four changed files, zero
    changed pixels, and an obvious question from a reviewer: why those four of
-   the fifty.
-3. **Actually translate it.** The fieldset would then read *Issue created /
-   Issue updated / Ticket geschlossen / Issue deleted*, because `_form.html.erb`
-   interpolates `:object_name => type.to_s.humanize` — an English class name —
-   and the three siblings stay English. One translated label out of four is
-   worse than four English ones.
+   the forty-nine.
+3. **Actually translate it.** In those four languages the fieldset would then
+   read *Issue created / Issue updated / Ticket geschlossen / Issue deleted*,
+   because `_form.html.erb` interpolates `:object_name => type.to_s.humanize` —
+   an English class name — and the three siblings stay English. One translated
+   label out of four is worse than four English ones. The six languages that
+   did translate the group translated all three at once, which is the right
+   unit of work.
 
 Option 1 is what is built. There is a real thing to fix here, but it is the
 whole `webhook_event_*` group in all five languages plus the unlocalised
@@ -395,8 +404,8 @@ report.
 | Then a receiver gets two deliveries for one closing, `issue.updated` and `issue.closed`. | Only if it subscribes to both, which it no longer needs to. The point of the event is that a receiver interested only in closings ticks one box and gets one delivery per closing — six deliveries down to two in the browser verification below. |
 | Two closed statuses in a row (`Closed` → `Rejected`) — surely that is a closing too? | It is a change between two closed states, and `closed_on` is deliberately left alone by core in that case, so the issue's recorded closing time does not move. Firing again would tell a receiver "this was closed now" about an issue that was already closed. There is a test. |
 | Why not add it to `Version` too, which also has a closed status? | Out of scope for this patch and it would double what has to be reviewed. The design generalises: `Version::Webhookable` gains the same three lines with its own predicate. Happy to add it if wanted. |
-| The four other translations are missing. | On purpose, and the reasoning is in "Locales — why `en.yml` only": the three sibling keys are untranslated in every language file, `i18n.fallbacks` is on, and `rake locales:update` is Redmine's mechanism for propagating a new `en` key. Translating one of the four labels would make the fieldset read half English. |
-| Six lines of production code and eight tests is a lot of test for a little code. | The code is small because the condition is exactly right; the tests are what establish that. Seven of the eight are one row of the transition table each, and that table is the whole specification of the feature. |
+| The four other translations are missing. | On purpose, and the reasoning is in "Locales — why `en.yml` only": in 43 of the 49 non-English locale files the three sibling keys are still the verbatim English string, `i18n.fallbacks` is on, and `rake locales:update` is Redmine's mechanism for propagating a new `en` key with its English value. The six languages that did translate the group translated all three together — that is the unit of work, and a language team will pick the fourth up the same way. |
+| Eight added lines of production code and eight tests is a lot of test for a little code. | The code is small because the condition is exactly right; the tests are what establish that. Seven of the eight are one row of the transition table each, and that table is the whole specification of the feature. |
 
 ---
 
