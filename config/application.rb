@@ -101,7 +101,7 @@ module RedmineApp
     config.log_level = Rails.env.production? ? :info : :debug
 
     config.session_store(
-      :cookie_store,
+      :active_record_store,
       :key => '_redmine_session',
       :path => config.relative_url_root || '/',
       :same_site => :lax
