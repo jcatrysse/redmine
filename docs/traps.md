@@ -561,3 +561,28 @@
   commits de divergentie veroorzaken vóór je iets repareert, en doe de
   upstream-merge als een eigen opdracht — nooit als bijzaak aan het eind van een
   feature, want de keuze bij een locale-conflict is inhoudelijk.
+## Locales-patches verouderen sneller dan feature-patches (2026-09-03, reviewronde 1)
+
+Alle elf **feature**-patches applyen nog op de trunk van vandaag, een maand en
+88 commits na de r24882 waartegen ze gemaakt zijn. Twee **locales**-patches
+niet meer: `mypage-query-blocks` en `webhook-tracker-filter`, beide op
+`config/locales/fr.yml`, beide door dezelfde trunk-commit
+`890812e49 French translation update (#44323)`.
+
+Dat is geen toeval maar de structuur van de zaak: een nieuwe sleutel komt
+onderaan een sectie in een locale-bestand, en de vertaalteams herschrijven
+precies die staarten. De contextregels van de hunk verdwijnen dan. Een
+feature-patch raakt code, en code onder een patch beweegt veel minder.
+
+Twee gevolgen:
+
+- **Test elk patchbestand apart tegen verse trunk vlak voor het indienen**,
+  niet alleen bij het maken. `git am --3way` is niet genoeg om op te vertrouwen:
+  bij deze twee faalt ook `--3way`.
+- De reflex om de patch dan opnieuw te genereren is goed, maar genereer hem uit
+  de **branch** en controleer eerst dat die branch nog het gekozen ontwerp
+  draagt — bij `wiki-export-attachments` was dat niet zo (zie de bevinding in
+  `docs/review/findings/2026-09-03-wiki-export-attachments-*.md`).
+
+Gemeten met een wegwerp-worktree op `origin/master` per bestand:
+`git am --3way`, bij falen `git apply --check`.
