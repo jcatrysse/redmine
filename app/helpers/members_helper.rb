@@ -60,7 +60,11 @@ module MembersHelper
         reorder("#{Role.table_name}.position").
         order(Principal.fields_for_order_statement).
         pluck("#{Member.table_name}.id").uniq
-    member_pages = Redmine::Pagination::Paginator.new(ordered_ids.size, per_page_option, params['members_page'], 'members_page')
+    per_page = per_page_option
+    # Clamped to the last page, because removing the last member of a page must
+    # not leave the tab on a page that no longer exists.
+    page = [params['members_page'].to_i, (ordered_ids.size + per_page - 1) / per_page].min
+    member_pages = Redmine::Pagination::Paginator.new(ordered_ids.size, per_page, page, 'members_page')
     page_ids = ordered_ids[member_pages.offset, member_pages.per_page] || []
     members_by_id = project.memberships.where(:id => page_ids).preload(:project, :principal, :roles).index_by(&:id)
     members = page_ids.filter_map {|id| members_by_id[id]}
