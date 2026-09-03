@@ -110,3 +110,27 @@ eerst binnen wat een andere sessie toevoegde.
 | 2026-09-03 | Het slot is één bestand per sessie (`docs/claims/<slug>--<sessie>`), niet een regel in een gedeeld bestand | Een gedeeld pad conflicteert op de replay in plaats van een winnaar op te leveren. Met aparte paden landen beide claims en breken beide kanten de knoop op dezelfde manier: vroegste datum, dan sessie-id. Dat is deterministisch zonder dat de sessies elkaar kennen. |
 | 2026-09-03 | `docs/traps.md` en dit bestand blijven **één** gedeelde lijst, met een tool dat conflictvrij toevoegt, in plaats van opgesplitst per feature | Een valkuilenlijst is meer waard als één leesbaar bestand dan als veertig fragmenten. `tools/append-note.sh` doet de append ná de fetch, dus er is niets te mergen. |
 | 2026-09-03 | Op `7.0-stable-GEOxyz` wordt de eigen, nog niet gepushte commit **wel** opnieuw afgespeeld op de tip | "Nooit rebasen" gaat over gepubliceerde historie — dat maakt checkouts van GEOxyz ongeldig. Een commit die nog niemand heeft, is het omgekeerde, en het houdt de branch één lineaire commit per feature in plaats van een woud aan mergecommits uit parallelle sessies. |
+
+## Open — keuze voor Jan (toegevoegd 2026-09-03, webhook-tracker-filter)
+
+- **K-06 — Keuze:** krijgt de nieuwe hint bij het trackerfilter een eigen
+  Nederlandse, Franse en Spaanse vertaling, of alleen Engels en Duits?
+- **Waarom dit een vraag is:** in `nl.yml`, `fr.yml` en `es.yml` staan de twee
+  buurhints op datzelfde webhookformulier (`webhook_url_info` en
+  `webhook_secret_info_html`) nog **onvertaald in het Engels**. Alleen `de.yml`
+  heeft dat blok vertaald. INV-5 zegt: vertaal door de dichtstbijzijnde
+  bestaande sleutel in hetzelfde bestand na te volgen — en die is daar Engels.
+- **Opties:**
+  A) Alleen `en` en `de`. Nederlands, Frans en Spaans laten Redmine's
+     terugval-mechanisme (`config.i18n.fallbacks = true`) de Engelse tekst
+     tonen, precies zoals bij de twee hints er direct boven.
+  B) Ook `nl`, `fr` en `es` met de hand schrijven. Dan staat er één Nederlandse
+     zin tussen twee Engelse op hetzelfde scherm, en een Redmine-committer
+     haalt zulke regels er meestal weer uit omdat vertalingen per taal via een
+     eigen issue van het taalteam binnenkomen (#43423 Japans, #43468 Bulgaars,
+     #43471 en #43847 Chinees, #44323 Frans — allemaal webhookstrings).
+- **Aanbeveling:** A. De gebruiker ziet in beide gevallen exact dezelfde tekst,
+  want de terugval levert het Engels; optie B voegt dus geen zichtbare
+  verbetering toe en maakt de patch minder waarschijnlijk om aangenomen te
+  worden.
+- **Haast?** nee — we bouwden verder met A. Optie B is later drie regels werk.
