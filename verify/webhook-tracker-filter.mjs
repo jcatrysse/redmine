@@ -272,21 +272,43 @@ if (after) {
     'The same hook with no tracker selected — both issues delivered, so an existing hook keeps firing for every tracker');
 }
 
-// 7. The German hint, because de.yml is the one locale whose webhook block is
-//    already translated upstream and therefore the one this patch translates.
-//    A translation nobody looked at in a browser is a string, not a translation.
+// 7. The hint in each of the five locales the patch ships. A translation
+//    nobody looked at in a browser is a string, not a translation — and these
+//    four are hand-written, so each one is asserted against the exact text in
+//    its own locale file and then photographed.
 if (after) {
-  const DE = 'Ticket-Ereignisse werden nur für die ausgewählten Tracker gesendet.';
-  await s.go('/my/account');
-  await s.page.selectOption('#user_language', 'de');
-  await submitForm('#user_language');
-  await s.go('/webhooks/new');
-  const hint = (await s.page.locator('#webhook_tracker_ids em.info').textContent()).trim();
-  if (!hint.startsWith(DE)) {
-    failures.push(`webhook-form-de: hint reads "${hint}"`);
+  const LOCALES = [
+    ['nl', 'Issue-gebeurtenissen worden alleen verstuurd voor de geselecteerde trackers.',
+     'Dutch — "gebeurtenissen" from label_user_mail_option_all, "verstuurd" from text_select_mail_notifications, "Trackers" from label_tracker_plural'],
+    ['fr', 'Les événements de demande ne sont envoyés que pour les trackers sélectionnés.',
+     'French — "demande" from label_issue, "sélectionnés" from text_user_mail_option, "tous les trackers" from label_tracker_all'],
+    ['de', 'Ticket-Ereignisse werden nur für die ausgewählten Tracker gesendet.',
+     'German — "Ticket" from label_issue, "Ereignisse" from label_webhook_events, "ausgewählten" from the webhook_url_info entry right above it'],
+    ['es', 'Los eventos de peticiones solo se envían para los tipos seleccionados.',
+     'Spanish — "peticiones" from label_issue_plural, and a tracker is a "tipo": "todos los tipos" from label_tracker_all'],
+  ];
+  for (const [loc, expected, caption] of LOCALES) {
+    await s.go('/my/account');
+    await s.page.selectOption('#user_language', loc);
+    await submitForm('#user_language');
+    await s.go('/webhooks/new');
+    const hint = (await s.page.locator('#webhook_tracker_ids em.info').textContent()).trim();
+    if (!hint.startsWith(expected)) {
+      failures.push(`webhook-form-${loc}: hint reads "${hint}"`);
+    }
+    // The sentence is the whole evidence and it is small on a page-wide image,
+    // so the fieldset itself is cropped as well.
+    await s.shot(`webhook-form-${loc}`, `The form with the interface in ${caption}`);
+    await s.page.locator('#webhook_tracker_ids').screenshot({
+      path: `${process.env.SHOT_DIR}/hint-${loc}.png`,
+    });
+    s.shots.push({
+      name: `hint-${loc}`,
+      caption: `Just the Trackers fieldset in ${loc} — the legend is Redmine's own label_tracker_plural, the sentence is the new key`,
+      file: `${process.env.SHOT_DIR}/hint-${loc}.png`,
+      url: s.page.url(),
+    });
   }
-  await s.shot('webhook-form-de',
-    'The same form with the interface in German — the hint is the de.yml string, patterned on the webhook_url_info entry above it');
   await s.go('/my/account');
   await s.page.selectOption('#user_language', 'en');
   await submitForm('#user_language');

@@ -35,12 +35,33 @@ opnieuw te wegen. Class B-keuzes staan in `docs/DECISIONS.md`.
   die alleen projecten. Die zin herschrijven betekent hem in alle ~50
   locale-bestanden verouderd achterlaten; de nieuwe hint staat naast het veld
   dat hij beschrijft.
-- **Beslist (autonoom):** alleen `en` en `de` krijgen de sleutel. In `nl.yml`,
-  `fr.yml` en `es.yml` staan de twee buursleutels op dit formulier
-  (`webhook_url_info`, `webhook_secret_info_html`) nog onvertaald in het Engels;
-  `config.i18n.fallbacks` is `true`, dus die drie talen tonen de Engelse tekst
-  hoe dan ook. Redmine's eigen proces is dat taalteams vertalingen per taal in
-  een eigen issue aanleveren. Zie ook de open keuze K-06 in `docs/DECISIONS.md`.
+- **Beslist door Jan (2026-09-03, K-08 optie B):** alle vijf de talen krijgen de
+  sleutel, dus ook `nl`, `fr` en `es` — niet alleen `en` en `de`. Ik had A
+  aanbevolen omdat de twee buursleutels op dit formulier
+  (`webhook_url_info`, `webhook_secret_info_html`) in die drie bestanden nog
+  onvertaald Engels zijn en `config.i18n.fallbacks` `true` is; Jan koos B.
+  Uitgevoerd, en elke term is herleid tot een bestaande sleutel in datzelfde
+  bestand — zie de vertalingstabel in `dossier.md`. Gevolg dat we accepteren:
+  op het Nederlandse, Franse en Spaanse formulier staat de nieuwe hint nu wél
+  vertaald en de twee erboven niet. Zichtbaar in `shots/webhook-form-es.png`.
+- **Beslist (autonoom):** de vertalingen gaan in een **apart** patchbestand
+  (`-locales.patch`), niet in het feature-patchbestand. Zo kan een committer die
+  vertalingen liever aan de taalteams laat de feature aannemen en de andere
+  weggooien, zonder dat er iets herschreven hoeft te worden.
+- **Beslist (autonoom):** in het Frans is `événements` het enige woord dat
+  **niet** herleid kon worden — `fr.yml` bevat het nergens. Het is geen
+  Redmine-vakterm (dat zijn *demande* en *trackers*, en die zijn wél herleid),
+  dus gebruikt en expliciet als zodanig gemeld in het dossier. In het Frans is
+  bovendien de enige bestaande `selectionnée` in `text_issues_destroy_confirmation`
+  een tikfout zonder accent; die is niet gekopieerd.
+- **Beslist (autonoom):** in het Nederlands wordt "unchecked" niet letterlijk
+  vertaald. `nl.yml` heeft geen enkel woord voor aanvinken (geen "aanvinken",
+  geen "vinkje"), dus de tweede zin gebruikt "selecteert", wat er wél in staat.
+- **Beslist (autonoom):** op `patch/<slug>` is de commit **geamendeerd** in
+  plaats van er een tweede naast te zetten, en force-gepusht. Die branch bestaat
+  alleen om er `git format-patch` op te draaien; twee commits geven twee
+  patch-mails per bestandsgroep. Op `7.0-stable-GEOxyz` is het wél een tweede
+  commit, want daar mag historie nooit herschreven worden.
 - **Beslist (autonoom):** `webhooks/index.html.erb` krijgt geen Trackers-kolom.
   Een lege cel daar leest als "geen trackers" terwijl hij "alle trackers"
   betekent, en #44337 stelt voor die lijst helemaal te herbouwen.

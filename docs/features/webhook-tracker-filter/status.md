@@ -3,7 +3,7 @@ slug: webhook-tracker-filter
 feature: Webhook beperken tot gekozen trackers
 commit_51: 25220b45d (deel)
 geoxyz: live
-geoxyz_commit: f2242bd86
+geoxyz_commit: f2242bd86 + 2606201d0
 upstream: patch klaar
 patch: patches/webhook-tracker-filter/2026-09-03-r24882-feature.patch
 issue:
@@ -33,17 +33,19 @@ vuurt de hook voor alle trackers, precies zoals nu.
 
 ## Bewijs
 
-- Volledige suite met patch: **5926 runs, 31473 assertions, 27 failures,
-  2 errors, 92 skips**
+- Volledige suite met patch (inclusief de vier vertalingen): **5926 runs,
+  31473 assertions, 27 failures, 2 errors, 92 skips**
 - Volledige suite op schone trunk: **5920 runs, 31455 assertions, 27 failures,
   2 errors, 92 skips**. Faalnamen identiek: **ja** — 29 namen, byte-identieke
   lijst, allemaal repository-/changeset-/`SysController`-tests die een
   SCM-binary nodig hebben die dit image niet heeft.
-- Volledige suite op `7.0-stable-GEOxyz`: **5951 runs, 31818 assertions,
-  0 failures, 0 errors, 39 skips** — daar is het echt 0/0. En daarna nog een
-  keer op de **werkelijke branchtip** `f2242bd86`, dus met de imap-oauth-commit
-  van de parallelle sessie eronder: **5963 runs, 31858 assertions, 0 failures,
-  0 errors, 39 skips**. Dat is de boom die GEOxyz draait.
+- Volledige suite op `7.0-stable-GEOxyz`, laatste run met beide eigen commits
+  erop: **5963 runs, 31861 assertions, 0 failures, 0 errors, 39 skips** — daar
+  is het echt 0/0. (Eerdere runs op tussenstanden: 5951/31818 en 5963/31858,
+  ook alle drie 0 failures.)
+- Locale-consistentietest van Redmine zelf
+  (`test/unit/lib/redmine/i18n_test.rb`) samen met de webhooksuites, aan beide
+  kanten: **69 runs, 950 assertions, 0 failures, 0 errors**.
 - Webhooksuites apart (`webhook_test`, `webhook_payload_test`,
   `webhooks_controller_test` in één proces): 66 runs, 246 assertions, 0 failures.
 - RuboCop op de gewijzigde bestanden: **0** (baseline op dezelfde bestanden op
@@ -59,7 +61,7 @@ vuurt de hook voor alle trackers, precies zoals nu.
   **PASS** (snelle checks; de suite is de andere helft en staat hierboven)
 - Beide patchbestanden appliceren los op een verse `origin/master`-checkout, en
   samen reproduceren ze de branch exact (gecontroleerd in een wegwerp-worktree).
-- Screenshots: **6**, gelezen: **ja** (zie de tabel in `dossier.md`; de twee
+- Screenshots: **14**, gelezen: **ja** (de vier `hint-<taal>.png`-uitsnedes woord voor woord tegen de vertalingstabel) (zie de tabel in `dossier.md`; de twee
   leveringstabellen zijn echte POSTs van de draaiende applicatie, opgevangen
   door een echte HTTP-server, niet een bewering erover).
 
@@ -68,9 +70,9 @@ vuurt de hook voor alle trackers, precies zoals nu.
 Maak een **nieuw** issue op redmine.org aan als follow-up van
 [#29664](https://www.redmine.org/issues/29664) — dus niet als note aan #29664
 zelf, dat issue is gesloten met target version 7.0.0. Hang er
-`patches/webhook-tracker-filter/2026-09-03-r24882-feature.patch` en
-`-locales.patch` aan. De Engelse issuetekst staat kant-en-klaar in
-`dossier.md` vanaf "The problem".
+`patches/webhook-tracker-filter/2026-09-03-r24882-feature.patch` (code +
+`en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`) aan. De Engelse
+issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem".
 
 Zeg in de beschrijving expliciet dat dit **note 37 van Holger Just op #29664
 beantwoordt**: hij vroeg om de monolithische 5.1-patch op te splitsen in losse
@@ -86,6 +88,11 @@ vóórdat iemand ernaar vraagt:
   een upgrade. Er is een unittest die dat vastlegt en die **ongewijzigd groen
   staat op trunk**, plus een screenshot van een echte levering die het in een
   draaiende Redmine laat zien.
+- De vertalingen zitten in een **apart** patchbestand. Zeg er expliciet bij dat
+  een committer de feature-patch alleen kan aannemen en de vertalingen kan laten
+  liggen als hij die liever van de taalteams krijgt — dan is er niets te
+  herschrijven. Dat haalt het enige bezwaar weg dat de vier extra talen kunnen
+  oproepen.
 - De patch voegt `preload(:trackers)` toe zodat `hooks_for` niet één query per
   hook gaat doen. Noem #44386 erbij — daar haalde Marius Bălteanu een week
   eerder een N+1 uit ditzelfde model, dus het is duidelijk dat het onderwerp
@@ -109,10 +116,14 @@ vóórdat iemand ernaar vraagt:
   daar als "geen trackers" terwijl hij "alle trackers" betekent, en #44337
   stelt voor die lijst helemaal te herbouwen. Als een reviewer erom vraagt is
   het twee regels.
-- **`nl`, `fr` en `es` krijgen de nieuwe sleutel niet** — de twee buurhints op
-  datzelfde formulier staan daar zelf nog onvertaald in het Engels, en
-  `config.i18n.fallbacks` is `true`. Dit is open keuze **K-06** in
-  `docs/DECISIONS.md`; we bouwden verder met optie A (alleen `en` en `de`).
+- **Alle vijf de talen krijgen de sleutel.** Jan koos op 2026-09-03 optie B van
+  keuze **K-08** (die stond eerst als K-06 in het log; een parallelle sessie
+  gebruikte dat nummer tegelijk voor iets anders). Niet opnieuw afwegen. Elke
+  term is herleid tot een bestaande sleutel in datzelfde locale-bestand; de
+  tabel in `dossier.md` noemt per taal welke. Twee dingen om te weten:
+  in het Frans is `événements` het enige niet-herleide woord (`fr.yml` bevat het
+  nergens), en in het Spaans is een tracker een **tipo**, niet een "tracker" —
+  wie dat mist krijgt een hint die botst met de legenda erboven.
 - **De vijf codebestanden die deze patch raakt zijn byte-identiek tussen
   `origin/master` en `7.0-stable-GEOxyz`.** Daarom is de GEOxyz-commit
   letterlijk dezelfde diff en is er geen INV-10-afwijking.

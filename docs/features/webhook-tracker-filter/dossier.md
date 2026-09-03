@@ -182,23 +182,29 @@ so it cannot widen anyone's access. Every existing check in `hooks_for`
 (visibility of the object to the hook's user, `:use_webhooks` on the project)
 still runs unchanged.
 
-**Translations** (INV-5 — every row names the existing key it was patterned on):
+**Translations** (INV-5 — every row names the existing key it was patterned on).
+One new key, `webhook_trackers_info`, in all five locales this work ships:
 
-| Key | Locale | Text | Patterned on |
-|---|---|---|---|
-| `webhook_trackers_info` | en | Issue events are only sent for the selected trackers. Leave all trackers unchecked to send them for every tracker. | `webhook_url_info` (same file, the hint directly above it on the same form) |
-| `webhook_trackers_info` | de | Ticket-Ereignisse werden nur für die ausgewählten Tracker gesendet. Wird kein Tracker ausgewählt, werden sie für alle Tracker gesendet. | `webhook_url_info` in `de.yml` ("… wenn eines der gewählten Ereignisse in einem der **ausgewählten** Projekte eintritt") for *ausgewählten*; `label_webhook_events: Ereignisse`; `label_issue: Ticket`; `label_tracker_plural: Tracker` |
+| Locale | Text | Derived from, in the same file |
+|---|---|---|
+| en | Issue events are only sent for the selected trackers. Leave all trackers unchecked to send them for every tracker. | `webhook_url_info`, the hint directly above it on the same form |
+| nl | Issue-gebeurtenissen worden alleen verstuurd voor de geselecteerde trackers. Als u geen enkele tracker selecteert, worden ze voor alle trackers verstuurd. | *issue* → `label_issue: Issue`; *gebeurtenis* → `label_user_mail_option_all` ("Bij elke gebeurtenis in al mijn projecten"); *verstuurd* and *selecteer* → `text_select_mail_notifications` ("Selecteer acties waarvoor mededelingen via e-mail moeten worden verstuurd"); *geselecteerde* → `label_user_mail_option_selected`; *trackers* → `label_tracker_plural`; *alle* → `field_is_for_all`. `nl.yml` has no check-box vocabulary at all (no "aanvinken", no "vinkje"), which is why the second sentence says *selecteert* rather than translating "unchecked" literally, and the formal *u* follows `text_user_mail_option`. |
+| fr | Les événements de demande ne sont envoyés que pour les trackers sélectionnés. Si aucun tracker n'est sélectionné, ils sont envoyés pour tous les trackers. | *demande* → `label_issue: Demande`; *envoyés* → `text_select_mail_notifications` ("une notification par e-mail est envoyée"); *sélectionnés* → `text_user_mail_option` ("Pour les projets non sélectionnés"); *aucun tracker* → `error_no_tracker_allowed_for_new_issue_in_project`; *tous les trackers* → `label_tracker_all` verbatim. **One word is not derived:** `fr.yml` contains no occurrence of *événement* anywhere, so there is nothing to pattern it on. It is the ordinary French word and not a Redmine domain term, and the two terms that *are* contested (*demande*, *trackers*) are both cited above. Also note `fr.yml`'s single existing *selectionnée* (in `text_issues_destroy_confirmation`) is missing its accent; the correctly accented form from `text_user_mail_option` was followed instead of copying that typo. |
+| de | Ticket-Ereignisse werden nur für die ausgewählten Tracker gesendet. Wird kein Tracker ausgewählt, werden sie für alle Tracker gesendet. | *Ticket* → `label_issue: Ticket`; *Ereignisse* → `label_webhook_events: Ereignisse`; *ausgewählten* → the German `webhook_url_info` right above it ("in einem der ausgewählten Projekte"); *Tracker* (unchanged in the plural) → `label_tracker_plural: Tracker`; *alle* → `field_is_for_all` |
+| es | Los eventos de peticiones solo se envían para los tipos seleccionados. Si no selecciona ningún tipo, se envían para todos los tipos. | *peticiones* → `label_issue_plural: Peticiones`; *eventos* → `label_user_mail_option_all` ("Para cualquier evento en todos mis proyectos") and `text_select_mail_notifications` ("Seleccionar los eventos a notificar"); *solo* → `label_user_mail_option_only_my_events`; *se envían* → `notice_email_sent` ("Se ha enviado un correo"); *seleccionados* → `label_bulk_edit_selected_issues`; *ningún* → `label_none: ninguno`; *todos los tipos* → `label_tracker_all` verbatim. **Spanish is the one that proves the rule:** in `es.yml` a tracker is a **tipo**, not a "tracker" (`label_tracker: Tipo`, `label_tracker_plural: Tipos de peticiones`). A sentence composed from the English would have said *trackers* and clashed with the fieldset legend printed directly above it — visible in `shots/hint-es.png`. |
 
-**nl, fr and es get no entry, on purpose.** In all three files the two sibling
-hints on this very form — `webhook_url_info` and `webhook_secret_info_html` —
-are still the untranslated English strings; only `de.yml` has that block
-translated. Writing a Dutch, French or Spanish sentence there would be an
-invented translation sitting between two English ones. `config.i18n.fallbacks`
-is `true`, so those three locales show the English text either way, which is
-exactly what a seeded English copy would have shown. Redmine's own process
-handles this: translations for a new feature arrive as separate per-language
+Honest note on `nl`, `fr` and `es`: in those three files the two sibling hints
+on this same form (`webhook_url_info` and `webhook_secret_info_html`) are still
+the untranslated English strings — only `de.yml` has that block translated. So
+after this patch the Trackers hint is in the user's language while the two hints
+above it are not, which `shots/webhook-form-es.png` shows plainly. Redmine's own
+process is that translations for a new feature arrive as separate per-language
 issues from the language teams (#43423 Japanese, #43468 Bulgarian, #43471 and
-#43847 Traditional Chinese, #44323 French — all of them webhook strings).
+#43847 Traditional Chinese, #44323 French — all webhook strings), and
+`config.i18n.fallbacks` is `true`, so dropping the three costs nothing but the
+translation. They are in a **separate patch file** from the feature precisely so
+that a reviewer who would rather leave them to the language teams can take the
+feature patch alone and discard the other. Say the word and they come out.
 
 **Backward compatibility:** an existing hook has no row in `trackers_webhooks`,
 `tracker_ids` is empty, `matches_tracker?` returns `true`, and the hook fires
@@ -332,7 +338,10 @@ container's own address rather than loopback, because
 | the selection round-trips | `webhook-form-edit-selected.png` | the saved hook re-opened: Bug checked, Feature and Support not |
 | delivery before the change | `before-deliveries-tracker-selected.png` | on unpatched trunk, one Bug issue and one Feature issue were created and **both** were delivered |
 | delivery with the filter on | `deliveries-tracker-selected.png` | hook limited to Bug, one issue of each tracker created, **only the Bug** delivered |
-| the German hint | `webhook-form-de.png` | the form with the interface in German, the new hint directly under Redmine's own German `webhook_url_info` and using the same words |
+| the hint in Dutch | `webhook-form-nl.png`, `hint-nl.png` | the form in Dutch; the cropped fieldset shows the sentence under Redmine's own `Trackers` legend |
+| the hint in French | `webhook-form-fr.png`, `hint-fr.png` | the form in French |
+| the hint in German | `webhook-form-de.png`, `hint-de.png` | the form in German, the new hint directly under Redmine's own German `webhook_url_info` and using the same words |
+| the hint in Spanish | `webhook-form-es.png`, `hint-es.png` | the form in Spanish. The legend reads `Tipos de peticiones` and the hint says `los tipos` — the one image that shows why the translations had to be derived rather than composed |
 
 Failure paths verified:
 
@@ -348,10 +357,12 @@ added after the first before-run, so the before-run was repeated.
 
 Screenshots read, not just generated: yes. `webhook-form.png` was checked for
 the fieldset being styled as a `box` like the Projects one next to it, for the
-toggle-all chevron in the legend, and for the hint being legible;
-`webhook-form-de.png` was checked word by word against the German strings above
-it. The two delivery tables were read for the tracker column and the issue
-subjects, which carry a per-run timestamp, so they cannot be a stale page.
+toggle-all chevron in the legend, and for the hint being legible. Each of the
+four `hint-<locale>.png` crops was read word by word against the table above,
+and against the legend printed immediately over it — that is how the Spanish
+*tipo* / *tracker* clash was caught before it shipped. The two delivery tables
+were read for the tracker column and the issue subjects, which carry a per-run
+timestamp, so they cannot be a stale page.
 
 Reading `webhook-form-de.png` also turned up two pre-existing upstream defects
 on that screen, **not touched by this patch** (INV-1) and worth their own
@@ -373,6 +384,7 @@ un-localised class name. The result is a German page whose fieldset legend reads
 | "Empty meaning 'all' is ambiguous." | It is, and it is the only choice that is backward compatible. The form says so in a hint next to the field, in the user's own language. Requiring a selection was tried in the 5.1 implementation and is rejected above. |
 | "You changed `hooks_for` — is it slower?" | One extra query in total, not one per hook, and the numbers are in the evidence section. `matches_tracker?` is evaluated before `object.visible?`, so a non-matching tracker now short-circuits *before* the visibility lookup the old code always did. |
 | "The webhook list does not show the tracker filter." | Deliberate, and argued above: #44337 proposes reworking that listing, and an empty cell there would read as the opposite of what it means. Two lines if it is wanted here. |
+| "Translations should come from the language teams, not from a feature patch." | Agreed, and that is why they are a second patch file you can take or leave: the feature patch touches only `en.yml`. The four are offered because they are derived rather than composed — every term is traced to an existing key in the same file in the table above, so each one can be checked in seconds. On `nl`, `fr` and `es` they will sit next to two hints that are still English until those teams get to the webhook block. |
 | "`setable_projects` looks different in trunk now." | #44386 (r25011) changed `setable_projects` and the `before_validation` after the revision this patch is made against. This patch does not touch either, so it rebases without conflict. |
 | "Should the tracker list be limited to the hook's projects?" | Argued above under alternatives: it needs JavaScript, it risks the N+1 that #44386 just fixed in this model, and selecting an unused tracker is harmless — the hook simply never matches it. |
 
@@ -383,7 +395,8 @@ un-localised class name. The result is a German page whose fieldset legend reads
 - **Issue:** nog aan te maken — nieuw issue, follow-up van
   [#29664](https://www.redmine.org/issues/29664)
 - **Patches attached:** `patches/webhook-tracker-filter/2026-09-03-r24882-feature.patch`
-  (code + `en.yml`) and `patches/webhook-tracker-filter/2026-09-03-r24882-locales.patch` (`de.yml`)
+  (code + `en.yml`) and `patches/webhook-tracker-filter/2026-09-03-r24882-locales.patch`
+  (`nl.yml`, `fr.yml`, `de.yml`, `es.yml`)
 - **Made against:** `origin/master` r24882 (`2563fa6a5`, 2026-08-03)
 - **Status:** klaar voor inzending
 - **Feedback en wat ermee gebeurde:** nog geen
@@ -392,7 +405,8 @@ un-localised class name. The result is a German page whose fieldset legend reads
 
 - **Commit op `7.0-stable-GEOxyz`:** zie `status.md`
 - **Suites daar groen:** zie `status.md`
-- **Locales toegevoegd:** `en` en `de`, letterlijk dezelfde strings als de patch
+- **Locales toegevoegd:** `en`, `nl`, `fr`, `de` en `es` — letterlijk dezelfde strings
+  als de patch (per locale gecontroleerd, regel voor regel identiek)
 - **`tools/check-geoxyz-branch.sh`:** zie `status.md`
 - **Wanneer kan deze commit vervallen?** Een geaccepteerde trunk-patch komt in
   7.1 of later, nooit in 7.0-stable. De GEOxyz-commit blijft dus nodig tot
