@@ -3,7 +3,7 @@ slug: webhook-issue-closed
 feature: Apart issue.closed-event op de webhook
 commit_51: 25220b45d (deel)
 geoxyz: live
-geoxyz_commit: PENDING
+geoxyz_commit: 827e9e7d5
 upstream: patch klaar
 patch: patches/webhook-issue-closed/2026-09-03-r24882-feature.patch
 issue:
@@ -15,7 +15,7 @@ issue:
 
 Af, op één ding na: Jan moet het issue op redmine.org aanmaken. De patch is
 gemaakt, bewezen en geëxporteerd (**één** bestand, geen aparte locales-patch —
-zie hieronder), en dezelfde wijziging staat als commit `PENDING` op
+zie hieronder), en dezelfde wijziging staat als commit `827e9e7d5` op
 `7.0-stable-GEOxyz`. De volledige suite is aan drie kanten gedraaid (patch,
 schone trunk, GEOxyz), RuboCop is nul, en de functie is in een echte browser
 nagelopen met een echte HTTP-ontvanger die de uitgaande POSTs opving — voor en
@@ -36,9 +36,20 @@ heropenen, wél opnieuw als het issue daarna weer dichtgaat.
 
 ## Bewijs
 
-- Volledige suite met patch: **PENDING**
-- Volledige suite op schone trunk: **PENDING**, faalnamen identiek: **PENDING**
-- Volledige suite op `7.0-stable-GEOxyz`: **PENDING**
+- Volledige suite met patch: **5929 runs, 31487 assertions, 27 failures,
+  2 errors, 92 skips**
+- Volledige suite op schone trunk: **5920 runs, 31449 assertions, 28 failures,
+  2 errors, 92 skips**. Faalnamen vergeleken, niet aantallen: de **29** namen
+  van de patchrun zijn een strikte **deelverzameling** van de **30** van de
+  schone run. Alle 29 zijn repository-/changeset-/`SysController`-tests die een
+  SCM-binary nodig hebben die dit image niet heeft. De ene naam die de schone
+  run extra had is
+  `ListAutofillSystemTest#test_remove_list_marker_with_single_halfwidth_space_variants`
+  (`expected "/my/page" to equal "/login"`) — een inlograce in de
+  Selenium-harnas van een Markdown-test die niets met webhooks te maken heeft.
+  De patch introduceert dus **geen enkele** fout.
+- Volledige suite op de **werkelijke tip** van `7.0-stable-GEOxyz`
+  (`827e9e7d5`, met de zeven eerdere features eronder): **PENDING**
 - Webhooksuites apart (`webhook_test`, `webhook_payload_test`,
   `webhooks_controller_test` in één proces): **68 runs, 254 assertions,
   0 failures, 0 errors**, tegen **60 runs, 226 assertions, 0 failures** op
@@ -57,9 +68,17 @@ heropenen, wél opnieuw als het issue daarna weer dichtgaat.
   van een gesloten issue) en staan aan **beide** kanten groen; ze bewijzen niet
   het nieuwe gedrag maar beschermen tegen een toekomstige regressie. Zo staat
   het ook in het dossier.
-- `tools/check-patch-clean.sh`: **PENDING** · `tools/check-geoxyz-branch.sh`:
-  **PENDING**
-- Screenshots: **PENDING**
+- Patchbestand appliceert los op een verse `origin/master`-checkout en
+  reproduceert de branch exact (gecontroleerd in een wegwerp-worktree).
+- `tools/check-patch-clean.sh`: **PASS** · `tools/check-geoxyz-branch.sh`:
+  **PASS** (snelle checks; de suite is de andere helft en staat hierboven)
+- Screenshots: **10**, gelezen: **ja** — de twee uitsnedes van het
+  vinkjesblok geteld (drie tegen vier) en het nieuwe label op zijn plek
+  gelezen, en beide leveringstabellen regel voor regel tegen het journaal in de
+  bijbehorende `issue-history`-shot gelegd. Daardoor zijn de vier
+  "geen levering"-gevallen conclusies en geen afwezigheden. De twee
+  leveringstabellen zijn echte POSTs van de draaiende applicatie, opgevangen
+  door een echte HTTP-server: **zes** leveringen voor, **twee** na.
 
 ## Wat Jan nog moet doen
 

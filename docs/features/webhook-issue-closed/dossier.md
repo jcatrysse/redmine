@@ -250,10 +250,24 @@ three lines with its own predicate.
 
 - **full** suite with the patch:
   `tools/test-env.sh /home/user/wt/patch-webhook-issue-closed bundle exec ruby bin/rails test:all`
-  → **PENDING**
+  → **5929 runs, 31487 assertions, 27 failures, 2 errors, 92 skips**
 - **full** suite on a pristine trunk worktree (same command, `wt/base`) →
-  **PENDING**. Failure names compared, not counts: two runs of the same tree
-  do not give the same assertion count because Redmine randomises test order.
+  **5920 runs, 31449 assertions, 28 failures, 2 errors, 92 skips**. The nine
+  extra runs are the eight new tests plus the one the existing parametrised
+  loop generates for the new event.
+- **Failure names compared, not counts.** The patch run's **29** failing names
+  are a strict **subset** of the pristine run's **30**: all 29 are the same
+  `RepositoriesControllerTest` (14), `Redmine::ApiTest::RepositoriesTest` (8),
+  `SysControllerTest` (5), `UserTest#test_destroy_should_nullify_changesets`
+  and
+  `Redmine::ApiTest::IssuesTest#test_GET_/issues/:id.xml_should_not_disclose_associated_changesets_from_projects_the_user_has_no_access_to`
+  — every one of them needs an SCM binary this container does not have
+  (`svn`, `hg`, `bzr`, `cvs` are all absent; only `git` is present). The one
+  name the pristine run has on top,
+  `ListAutofillSystemTest#test_remove_list_marker_with_single_halfwidth_space_variants`,
+  failed with `expected "/my/page" to equal "/login"` — a login race in the
+  Selenium harness, in a Markdown list-marker test that has nothing to do with
+  webhooks. So **the patch introduces no failure**.
 - webhook suites in one process (`webhook_test`, `webhook_payload_test`,
   `webhooks_controller_test`): **68 runs, 254 assertions, 0 failures, 0
   errors**, against **60 runs, 226 assertions, 0 failures** on pristine trunk.
@@ -279,8 +293,12 @@ three lines with its own predicate.
     new code they pass because the condition is right. Said plainly so nobody
     mistakes them for evidence of the new behaviour — they are evidence against
     a future regression.
-- patch applies to pristine `origin/master` r24882: **PENDING**
-- `tools/check-patch-clean.sh`: **PENDING**
+- patch applies to pristine `origin/master` r24882: **yes** — applied in a
+  throwaway worktree at `origin/master`, and the resulting diff is byte-for-byte
+  the branch's own diff (`index` and hunk-offset lines filtered out).
+- `tools/check-patch-clean.sh`: **PASS** (descends from trunk, 6 Redmine files,
+  locales `en.yml` only, no AI trace in message or authorship, applies to a
+  pristine checkout)
 
 # Locales — why `en.yml` only
 
@@ -330,9 +348,41 @@ Screenshots in `docs/features/webhook-issue-closed/shots/`.
 
 | Function | Screenshot | What it shows |
 |---|---|---|
-| | | **PENDING** |
+| The events fieldset | `before-webhook-form.png` | the whole form before the change: the Issues fieldset offers created, updated, deleted |
+| | `webhook-form.png` | the same form with the change: created, updated, **closed**, deleted |
+| The one changed pixel region | `before-issue-events.png` | just the Issues fieldset before — three check boxes |
+| | `issue-events.png` | just the Issues fieldset after — four, with "Issue closed" between updated and deleted |
+| The selection round-trips | `webhook-form-edit-selected.png` | the saved hook re-opened: only "Issue closed" is ticked, so the next editor does not silently drop it |
+| **The deliveries** — the feature itself | `before-deliveries.png` | unpatched, hook on `issue.updated`: the seven changes produced **six** POSTs, every one carrying `status_id` and no way to tell which two were closings |
+| | `deliveries.png` | patched, hook on `issue.closed` only: the same seven changes produced **two** POSTs, both `type: issue.closed`, both with status `Closed`, each carrying the closing note |
+| The issue that produced them | `before-issue-history.png` / `issue-history.png` | the full journal of the issue in each run, so every delivery above can be matched to the change that caused it |
 
-Screenshots read, not just generated: **PENDING**
+Failure paths verified:
+
+| Case | Screenshot | Expected | Observed |
+|---|---|---|---|
+| `Closed` → `Rejected` (closed to closed) | `deliveries.png` row absent | no delivery | no delivery — journal #4 in `issue-history.png` has no matching row |
+| reopened (`Rejected` → `In Progress`) | `deliveries.png` row absent | no delivery | no delivery — journal #5 has no matching row |
+| a note with no status change | `deliveries.png` row absent | no delivery | no delivery — journal #1 has no matching row |
+| "Enable webhooks" turned off, then reopen and close again | `deliveries-webhooks-disabled.png` | nothing at all | "0 POST request(s) received. No delivery received." — journals #7 and #8 in `issue-history.png` are that reopen and that closing |
+
+Screenshots read, not just generated: **yes.** What was looked for, and found:
+the two cropped fieldsets counted (three boxes vs four) and the new label read
+in place between "Issue updated" and "Issue deleted"; the tick in the reopened
+edit form confirmed to be on "Issue closed" and on nothing else; both delivery
+tables read row by row against the journal in the matching `issue-history`
+shot, which is how the four "no delivery" rows above are conclusions rather
+than absences; and the disabled-setting page read to say "0" and "No delivery
+received" rather than merely showing an empty table.
+
+One thing the screenshots show that is **not** this patch, mentioned so nobody
+reads it as a defect introduced here: `/webhooks/new` has no "Wiki pages"
+fieldset in either run. `WebhookPayload.events` is a class-level registry
+filled by `acts_as_webhookable` when the model class loads, and
+`config.eager_load = false` in development, so a model Zeitwerk has not touched
+yet is simply missing from the form. It is there in production, where
+`eager_load` is true. Reproducible on pristine trunk and worth its own bug
+report.
 
 # Anticipated objections
 
@@ -360,7 +410,7 @@ Screenshots read, not just generated: **PENDING**
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** **PENDING**
+- **Commit op `7.0-stable-GEOxyz`:** `827e9e7d5`
 - **Suites daar groen:** **PENDING**
 - **`nl.yml` toegevoegd:** nee — zie de localesectie; `en.yml` alleen, aan
   beide kanten identiek, dus geen INV-10-afwijking
