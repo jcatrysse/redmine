@@ -161,6 +161,57 @@ class QueryTest < ActiveSupport::TestCase
     assert_include subproject_version.id.to_s, filter[:values].map(&:second)
   end
 
+  def test_fixed_version_filter_should_include_versions_shared_from_outside_the_project_tree
+    system_shared_version = Version.find(7)
+    query = IssueQuery.new(:project => Project.find(1), :name => '_')
+    filter = query.available_filters["fixed_version_id"]
+    assert_not_nil filter
+    assert_include system_shared_version.id.to_s, filter[:values].map(&:second)
+  end
+
+  def test_fixed_version_filter_should_include_subproject_versions_when_displaying_subproject_issues
+    with_settings :display_subprojects_issues => '1' do
+      version = Version.create!(:project => Project.find(3), :name => 'Unshared subproject version')
+      query = IssueQuery.new(:project => Project.find(1), :name => '_')
+      filter = query.available_filters["fixed_version_id"]
+      assert_not_nil filter
+      assert_include version.id.to_s, filter[:values].map(&:second)
+    end
+  end
+
+  def test_fixed_version_filter_should_not_include_subproject_versions_when_not_displaying_subproject_issues
+    with_settings :display_subprojects_issues => '0' do
+      version = Version.create!(:project => Project.find(3), :name => 'Unshared subproject version')
+      query = IssueQuery.new(:project => Project.find(1), :name => '_')
+      filter = query.available_filters["fixed_version_id"]
+      assert_not_nil filter
+      assert_not_include version.id.to_s, filter[:values].map(&:second)
+    end
+  end
+
+  def test_fixed_version_filter_should_respect_selected_subprojects
+    version1 = Version.create!(:project => Project.find(3), :name => 'Subproject 1 version')
+    version2 = Version.create!(:project => Project.find(4), :name => 'Subproject 2 version')
+    query = IssueQuery.new(:project => Project.find(1), :name => '_')
+    query.add_filter('subproject_id', '=', [Project.find(3).id.to_s])
+    filter = query.available_filters["fixed_version_id"]
+    assert_not_nil filter
+    values = filter[:values].map(&:second)
+    assert_include version1.id.to_s, values
+    assert_not_include version2.id.to_s, values
+  end
+
+  def test_fixed_version_filter_should_include_all_subproject_versions_when_filtering_any_subproject
+    with_settings :display_subprojects_issues => '0' do
+      version = Version.create!(:project => Project.find(3), :name => 'Any subproject version')
+      query = IssueQuery.new(:project => Project.find(1), :name => '_')
+      query.add_filter('subproject_id', '*', [''])
+      filter = query.available_filters["fixed_version_id"]
+      assert_not_nil filter
+      assert_include version.id.to_s, filter[:values].map(&:second)
+    end
+  end
+
   def test_query_with_multiple_custom_fields
     query = IssueQuery.find(1)
     assert query.valid?

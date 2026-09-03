@@ -100,6 +100,8 @@ class QueriesController < ApplicationController
       raise Unauthorized
     end
 
+    q.build_from_params(params)
+
     filter = q.available_filters[params[:name].to_s]
     values = filter ? filter.values : []
 

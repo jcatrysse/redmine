@@ -823,6 +823,27 @@ class QueriesControllerTest < Redmine::ControllerTest
     assert_include ["eCookbook - 2.0", "3", "open"], json
   end
 
+  def test_filter_should_take_the_current_filters_into_account
+    version = Version.create!(:project => Project.find(3), :name => 'Unshared subproject version', :status => 'open')
+
+    @request.session[:user_id] = 2
+    get(
+      :filter,
+      :params => {
+        :project_id => 1,
+        :name => 'fixed_version_id',
+        :set_filter => '1',
+        :f => ['subproject_id'],
+        :op => {'subproject_id' => '='},
+        :v => {'subproject_id' => [version.project_id.to_s]}
+      }
+    )
+    assert_response :success
+    assert_equal 'application/json', response.media_type
+    json = ActiveSupport::JSON.decode(response.body)
+    assert_include ["eCookbook Subproject 1 - Unshared subproject version", version.id.to_s, "open"], json
+  end
+
   def test_version_filter_time_entries_with_project_id_should_return_filter_values
     @request.session[:user_id] = 2
     get(
