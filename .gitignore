@@ -8,8 +8,10 @@
 /.byebug_history
 /config/additional_environment.rb
 /config/configuration.yml
+/config/credentials.yml.enc
 /config/database.yml
 /config/email.yml
+/config/master.key
 /config/secrets.yml
 /config/initializers/session_store.rb
 /config/initializers/secret_token.rb
