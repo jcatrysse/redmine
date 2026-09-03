@@ -547,3 +547,17 @@
   (c) een volledige run op de schone branchtip. Het is een
   scroll-en-render-timing in Chromium, geen regressie. Bewijs het wel zo, met
   drie runs, in plaats van het "flake" te noemen.
+
+- **`origin/7.0-stable` kan middenin een sessie vooruitspringen.** Bij het begin
+  van deze sessie was `7.0-stable-GEOxyz` exact gelijk met upstream
+  (`git rev-list --count ... = 0`), aan het eind stond hij **32 commits achter**:
+  de fork synchroniseerde onderweg met upstream (tot `5132aaef6`,
+  "Merged r25031 from trunk"). `tools/check-geoxyz-branch.sh` slaat daar dan op
+  FAIL, en de merge conflicteert op `config/locales/fr.yml` — niet door de
+  nieuwe feature, maar doordat vier eerdere features daar sleutels
+  toevoegden waar upstream nu zelf ook aan gezeten heeft. Dus: de FAIL na je
+  werk is niet noodzakelijk jouw werk. Check met
+  `git log --oneline origin/7.0-stable..HEAD -- <het conflictbestand>` welke
+  commits de divergentie veroorzaken vóór je iets repareert, en doe de
+  upstream-merge als een eigen opdracht — nooit als bijzaak aan het eind van een
+  feature, want de keuze bij een locale-conflict is inhoudelijk.
