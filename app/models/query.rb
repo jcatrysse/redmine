@@ -661,7 +661,9 @@ class Query < ApplicationRecord
   def fixed_version_values
     versions = []
     if project
-      versions = project.shared_versions.to_a
+      versions =
+        project.shared_versions.to_a |
+        Version.visible.preload(:project).where(project_statement).to_a
     else
       versions = Version.visible.to_a
     end

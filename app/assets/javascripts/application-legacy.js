@@ -175,7 +175,10 @@ function addFilter(field, operator, values) {
   if (!filterOptions) return;
 
   if (filterOptions['remote'] && filterOptions['values'] == null) {
-    $.getJSON(filtersUrl, {'name': field}).done(function(data) {
+    var params = $('#filters-table').closest('form').serializeArray();
+    params.push({name: 'name', value: field});
+
+    $.getJSON(filtersUrl, params).done(function(data) {
       filterOptions['values'] = data;
       addFilter(field, operator, values) ;
     });
