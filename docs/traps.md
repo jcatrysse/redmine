@@ -260,3 +260,54 @@
   onder `lib/redmine/`.** Hij eager-loadt de hele applicatie zoals productie
   dat doet, dus hij vindt een verkeerd genoemde constante die de testsuite mist
   (de suite laadt lazy). Kost tien seconden.
+
+## Uit webhook-tracker-filter (2026-09-03)
+
+- **`pkill -f` op een testcommando doodt ook je eigen shell.** De regel over
+  `rails server` hierboven geldt net zo voor `pkill -f 'rails test:all'` — het
+  patroon staat in de commandoregel van de bash die het uitvoert. Deze sessie
+  kwam terug met exit 144 en de edits erna waren niet gedaan. Kill op pid:
+  `for p in $(ps -eo pid,cmd | grep 'bin/rails test:all' | grep -v grep | awk '{print $1}'); do kill "$p"; done`.
+- **`tools/session-push.sh` speelt je commit opnieuw af, dus de SHA verandert.**
+  Deze sessie had `135f15620` al in `status.md` en `docs/REGISTER.md` staan; na
+  de push op `7.0-stable-GEOxyz` (waar een parallelle sessie net imap-oauth op
+  had gezet) was het `f2242bd86`. Lees de SHA dus **na** de push uit, vul hem
+  dan in en draai `tools/register.sh --write` nog een keer.
+- **Na een replay op `7.0-stable-GEOxyz` dekt je suitebewijs de branch niet
+  meer.** Je hebt gemeten op jouw commit bovenop zes features; na de replay
+  staan er zeven onder je. Draai de volledige suite dus nog een keer op de
+  werkelijke tip — dát is de boom die GEOxyz draait.
+- **`tools/append-note.sh` weigert bij een vuile working tree** ("could not
+  replay"), want het rebaset. Commit en push je eigen wijzigingen eerst, dan de
+  note.
+- **Twee branches met "dezelfde" wijziging vergelijk je niet met een gewone
+  `diff` van twee `git diff`-uitvoeren.** De `index <hash>..<hash>`-regels en de
+  hunk-offsets verschillen altijd (hier `@@ -844` tegen `@@ -843`, omdat de
+  GEOxyz-branch één locale-sleutel meer heeft). Filter eerst:
+  `grep -E '^[+-]' | grep -vE '^(\+\+\+|---)'`. Dan is "identiek" ook echt
+  identiek.
+- **`WebhookEndpointValidator` weigert loopback en link-local
+  onvoorwaardelijk**, niet via de blocklist. Een G9-ontvanger op
+  `http://127.0.0.1:9099/` is dus nooit als webhook-URL op te slaan. Bind op het
+  eigen adres van de container (`hostname -I`, hier `192.0.2.2`); dat zit niet in
+  de standaard-blocklist. En er is in deze container **geen** `http_proxy` gezet
+  (alleen `https_proxy`), dus Ruby's `Net::HTTP` gaat voor plain HTTP direct —
+  een echte end-to-end levering is dus mogelijk, en dat is veel beter bewijs dan
+  een screenshot van een formulier.
+- **De instellingenpagina rendert álle tabs tegelijk, dus alle submitknoppen.**
+  `page.click('input[type=submit]')` op `/settings?tab=integrations` liep 30 s
+  in een timeout op een knop die niet zichtbaar is: er staan elf. Scope elke
+  submit op het formulier dat het veld bezit:
+  `form:has(#settings_webhooks_enabled) input[type=submit]`.
+- **`assert_select` normaliseert de tekst van een element.** Een `<label>` met
+  `<input> Bug` erin geeft `"Bug"`, niet `" Bug"`, dus een regex met een
+  voorloopspatie faalt. Assert de letterlijke string.
+- **De trackers in de dev-database heten anders dan in de fixtures.**
+  `load_default_data` geeft `Bug`, `Feature`, `Support`; de testfixtures geven
+  `Bug`, `Feature request`, `Support request`. Een verify-script dat de
+  fixturenaam gebruikt vindt de optie niet.
+- **Een testhelper uitbreiden kan het rood-bewijs verstoppen.** `create_hook` in
+  `webhook_test.rb` een `trackers:`-argument geven liet op schone trunk **17**
+  bestaande tests erroren in plaats van alleen de nieuwe. Laat de helper staan en
+  zet het nieuwe veld in de test zelf (`hook.update! trackers: [...]`): dan is
+  het rood precies jouw tests, en de diff is kleiner.
