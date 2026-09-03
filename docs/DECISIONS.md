@@ -211,3 +211,32 @@ eerst binnen wat een andere sessie toevoegde.
   gem. De taak weet niets over Microsoft of Google; die kennis staat in het
   credentialsbestand van de beheerder en in de walkthroughs die op de
   `EmailConfiguration`-wikipagina horen.
+
+## Beslist (Jan) — vervolg
+
+- **K-08, welke talen de nieuwe webhook-hint krijgen: optie B.** Jan: "b".
+  Alle vijf de talen krijgen `webhook_trackers_info`, dus ook `nl`, `fr` en
+  `es`, niet alleen `en` en `de`. Ik had A aanbevolen (terugval op Engels, zoals
+  de twee buurhints op datzelfde formulier die in die drie bestanden nog
+  onvertaald zijn); Jan koos B en dat is uitgevoerd.
+
+  **Nummering:** deze keuze stond eerst als K-06 in dit log. Een parallelle
+  sessie gebruikte op dezelfde dag K-06 voor de `client_credentials`-grant van
+  `imap-oauth`, en `revision-branches` had K-07 al. Om het log eenduidig te
+  houden heet de vertalingskeuze vanaf nu **K-08**; het oudere blok onder K-06
+  dat begint met "krijgt de nieuwe hint bij het trackerfilter" is dezelfde
+  vraag. Zie `docs/features/webhook-tracker-filter/`.
+
+  Wat de uitvoering veilig maakt: elke term is herleid tot een bestaande
+  sleutel in datzelfde locale-bestand, en de tabel in het dossier noemt per
+  taal welke. Twee vondsten die dat opleverde en die bewijzen dat de regel
+  nodig is: in `es.yml` is een tracker een **tipo**
+  (`label_tracker_plural: Tipos de peticiones`), dus een uit het Engels
+  gecomponeerde zin had "trackers" gezegd en gebotst met de legenda erboven; en
+  `nl.yml` heeft geen enkel woord voor aanvinken, dus "leave unchecked" is
+  "selecteer geen enkele tracker" geworden. Eén woord is niet herleidbaar:
+  `événements` staat nergens in `fr.yml` — gebruikt en als zodanig gemeld,
+  omdat het geen Redmine-vakterm is.
+
+  De vertalingen zitten in een apart patchbestand, zodat een committer de
+  feature zonder de vertalingen kan aannemen.
