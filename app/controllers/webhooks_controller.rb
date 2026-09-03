@@ -64,7 +64,7 @@ class WebhooksController < ApplicationController
   private
 
   def webhook_params
-    params.require(:webhook).permit(:url, :secret, :active, events: [], project_ids: [])
+    params.require(:webhook).permit(:url, :secret, :active, events: [], project_ids: [], tracker_ids: [])
   end
 
   def find_webhook
