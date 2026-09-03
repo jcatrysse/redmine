@@ -41,7 +41,13 @@ module Redmine
         if starttls
           imap.starttls
         end
-        imap.login(imap_options[:username], imap_options[:password]) unless imap_options[:username].nil?
+        unless imap_options[:username].nil?
+          if (access_token = oauth2_access_token(imap_options))
+            imap.authenticate('XOAUTH2', imap_options[:username], access_token)
+          else
+            imap.login(imap_options[:username], imap_options[:password])
+          end
+        end
         imap.select(folder)
         imap.uid_search(['NOT', 'SEEN']).each do |uid|
           msg = imap.uid_fetch(uid, 'RFC822')[0].attr['RFC822']
@@ -67,6 +73,14 @@ module Redmine
       end
 
       private
+
+      def oauth2_access_token(imap_options)
+        if imap_options[:oauth2_token].present?
+          imap_options[:oauth2_token]
+        elsif imap_options[:oauth2_credentials].present?
+          Oauth2Client.access_token(imap_options[:oauth2_credentials])
+        end
+      end
 
       def logger
         ::Rails.logger
