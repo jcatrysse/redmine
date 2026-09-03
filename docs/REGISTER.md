@@ -12,7 +12,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | todo | todo | [#43355](https://www.redmine.org/issues/43355) |
 | [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | todo | todo | — |
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`9d28be94d`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
-| [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`f117ea32e`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
+| [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`f117ea32e + 21c232ce1`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
@@ -29,10 +29,6 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 8 patch klaar, 5 nooit, 2 todo, 2 vervallen, 1 geaccepteerd.
-
-## Nu in behandeling
-
-- `imap-oauth` — cse_01QYXRy2ENBtR4jhRGSbjnvv sinds 2026-09-03
 
 ## Openstaand voor Jan
 
@@ -55,7 +51,7 @@ issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 7.1.0. Zeg in die note dat dit een **vervanging** is van
 `..._version3.patch`, niet een aanvulling, en waarom hij zoveel kleiner is:
 
-- 351 regels in plaats van 1197, en **geen** nieuwe gem. `oauth2` en
+- 581 regels in plaats van 1197, en **geen** nieuwe gem. `oauth2` en
   `gmail_xoauth` zijn er beide uit. `gmail_xoauth` was overbodig:
   `Net::IMAP::SASL::XOAuth2Authenticator` zit in de `net-imap ~> 0.6.1` die
   Redmine al pint, en 0.4.x had hem onder de oude naam
@@ -64,10 +60,13 @@ issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 - Geen nieuwe taakfamilie. Twee opties op de bestaande `receive_imap` in plaats
   van een tweede `receive_imap_oauth2` die `host`, `port`, `ssl`, `starttls`,
   `folder`, `move_on_success` en `move_on_failure` dupliceert.
-- De interactieve autorisatieflow zit er niet in. Die kan per definitie geen
-  test hebben en zet Microsofts en Googles endpoints, scopes en
-  consent-eigenaardigheden in Redmine's onderhoud. Eenmalig buiten Redmine
-  autoriseren kost de beheerder één keer een middag.
+- **Eén** taak voor de toestemmingsstap in plaats van twee provider-specifieke,
+  en die ene weet niets over Microsoft of Google: de endpoints, de scope en de
+  extra queryparameters komen uit het credentialsbestand. Googles
+  `access_type=offline` en `prompt=consent` en Microsofts `offline_access` zijn
+  dus waarden in dat bestand, geen code in Redmine. De walkthroughs horen op de
+  `EmailConfiguration`-wikipagina, waar Redmine dit soort uitleg al zet en waar
+  een providerwijziging zonder release gecorrigeerd kan worden.
 - Geen tokencache op schijf, en daarmee vervallen `normalize_token_file`,
   `secure_file`, de YAML-symbolenwhitelist, `mask_token` en de
   refresh-en-herschrijf-tak — ruwweg de helft van de hulpcode.
@@ -85,17 +84,22 @@ inclusief de tabel met verwachte bezwaren.
 **2. Eén keer tegen een echte mailbox bevestigen.** Alles is nagelopen tegen
 een lokale IMAP-server en tokenendpoint die het protocol echt spreken, maar
 niemand kan namens jou bij een echte Office 365- of Gmail-mailbox. Dat is de
-enige stap die jouw handen vraagt: één keer autoriseren, het
-credentialsbestand vullen en `rake redmine:email:receive_imap
-oauth2_credentials=...` draaien. Het bestand ziet zo uit:
+enige stap die jouw handen vraagt, en hij is nu ook de test van de
+walkthroughs zelf:
 
-```yaml
-token_url: https://login.microsoftonline.com/TENANT_ID/oauth2/v2.0/token
-client_id: ...
-client_secret: ...
-refresh_token: ...
-scope: https://outlook.office.com/IMAP.AccessAsUser.All offline_access
-```
+1. registreer de applicatie zoals in `dossier.md` onder "Setting it up, once,
+   per mailbox" beschreven staat
+2. schrijf het credentialsbestand, alles behalve `refresh_token`
+3. `rake redmine:email:oauth2_authorize oauth2_credentials=/etc/redmine/imap_oauth2.yml`
+4. zet de regel die hij print in het bestand
+5. `rake redmine:email:receive_imap host=outlook.office365.com port=993 ssl=1
+   username=... oauth2_credentials=... project=...`
+
+**Let op bij die walkthroughs:** de stappen in de Azure- en Google-consoles zijn
+naar beste weten opgeschreven en niet tegen een echt tenant uitgevoerd, want dat
+kan hier niet. Als een menu ergens anders staat of een stap ontbreekt, corrigeer
+het in `dossier.md` voordat de wikipagina de deur uit gaat. Wat wél getest is,
+is alles wat Redmine zelf doet.
 
 En er staat één keuze voor je open: **K-06** in `docs/DECISIONS.md`, over de
 `client_credentials`-grant (app-only, Microsofts aanbeveling voor een
