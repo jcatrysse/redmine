@@ -1,0 +1,44 @@
+===== BEFORE (trunk r24882) — the mailbox has basic authentication disabled =====
+$ rake redmine:email:receive_imap host=127.0.0.1 port=1143 username=redmine@example.net oauth2_credentials=.../imap_oauth2.yml project=geoxyz-verify tracker=Bug
+Net::IMAP::NoResponseError: basic authentication is disabled (Net::IMAP::NoResponseError)
+/home/user/wt/red/lib/redmine/imap.rb:44:in `check'
+/home/user/wt/red/lib/tasks/email.rake:123:in `block (4 levels) in <top (required)>'
+/home/user/wt/red/app/models/mailer.rb:661:in `with_synched_deliveries'
+/home/user/wt/red/lib/tasks/email.rake:122:in `block (3 levels) in <top (required)>'
+===== AFTER 1 — oauth2_credentials: Redmine mints an access token and authenticates with XOAUTH2 =====
+(no output means success)
+===== AFTER 2 — oauth2_token: an access token minted elsewhere is used directly =====
+(no output means success)
+===== BACKWARD COMPATIBILITY — no oauth option given, the password path is unchanged =====
+(no output means success)
+===== FAILURE PATHS =====
+
+--- revoked refresh token (the endpoint answers 400 invalid_grant) ---
+OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:32:in `access_token'
+/home/user/wt/patch-imap-oauth/lib/redmine/imap.rb:81:in `oauth2_access_token'
+/home/user/wt/patch-imap-oauth/lib/redmine/imap.rb:45:in `check'
+
+--- token_url is http, not https ---
+token_url must be an https URL
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:62:in `request_token'
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:30:in `access_token'
+/home/user/wt/patch-imap-oauth/lib/redmine/imap.rb:81:in `oauth2_access_token'
+
+--- TLS certificate of the token endpoint not trusted (no SSL_CERT_FILE) ---
+OpenSSL::SSL::SSLError: SSL_connect returned=1 errno=0 peeraddr=127.0.0.1:8443 state=error: certificate verify failed (self-signed certificate) (OpenSSL::SSL::SSLError)
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:74:in `request_token'
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:30:in `access_token'
+/home/user/wt/patch-imap-oauth/lib/redmine/imap.rb:81:in `oauth2_access_token'
+
+--- credentials file does not exist ---
+Errno::ENOENT: No such file or directory @ rb_sysopen - /etc/redmine/nope.yml (Errno::ENOENT)
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:46:in `read_credentials'
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:29:in `access_token'
+/home/user/wt/patch-imap-oauth/lib/redmine/imap.rb:81:in `oauth2_access_token'
+
+--- access token rejected by the mailbox ---
+Net::IMAP::NoResponseError: Invalid credentials (Net::IMAP::NoResponseError)
+/home/user/wt/patch-imap-oauth/lib/redmine/imap.rb:46:in `check'
+/home/user/wt/patch-imap-oauth/lib/tasks/email.rake:145:in `block (4 levels) in <top (required)>'
+/home/user/wt/patch-imap-oauth/app/models/mailer.rb:661:in `with_synched_deliveries'

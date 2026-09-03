@@ -9,12 +9,12 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
-| [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | todo | todo | — |
 | [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | todo | todo | [#43355](https://www.redmine.org/issues/43355) |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | todo | todo | — |
 | [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | todo | todo | — |
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | todo | todo | — |
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`9d28be94d`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
+| [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`f117ea32e`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
@@ -28,7 +28,13 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-18 features: 5 nooit, 5 patch klaar, 5 todo, 2 vervallen, 1 geaccepteerd.
+18 features: 6 patch klaar, 5 nooit, 4 todo, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `imap-oauth` — cse_01QYXRy2ENBtR4jhRGSbjnvv sinds 2026-09-03
+- `revision-branches` — cse_01VBjLCbuVExHTR6fTRWsuVd sinds 2026-09-03
+- `webhook-tracker-filter` — cse_01Sqv8jrv2Lwkym993GYrLg3 sinds 2026-09-03
 
 ## Openstaand voor Jan
 
@@ -40,6 +46,62 @@ generiek in `Query#sql_for_field` zit en dat **alle zeven operatoren** gedekt
 zijn in plaats van alleen `=`. Dat is het inhoudelijke verschil met de
 bestaande patches: vier van die operatoren gaven daar een HTTP 500 op
 PostgreSQL en `cf` gaf stil nul resultaten.
+
+### `imap-oauth`
+
+Twee dingen, en het eerste is het echte werk.
+
+**1. Hang `patches/imap-oauth/2026-09-03-r24882-feature.patch` als note aan je
+eigen issue [#43023](https://www.redmine.org/issues/43023)** — geen nieuw
+issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
+7.1.0. Zeg in die note dat dit een **vervanging** is van
+`..._version3.patch`, niet een aanvulling, en waarom hij zoveel kleiner is:
+
+- 351 regels in plaats van 1197, en **geen** nieuwe gem. `oauth2` en
+  `gmail_xoauth` zijn er beide uit. `gmail_xoauth` was overbodig:
+  `Net::IMAP::SASL::XOAuth2Authenticator` zit in de `net-imap ~> 0.6.1` die
+  Redmine al pint, en 0.4.x had hem onder de oude naam
+  `Net::IMAP::XOauth2Authenticator`. De patch roept de mechanismenaam aan, niet
+  de constante, dus hij hangt niet aan die naamswijziging.
+- Geen nieuwe taakfamilie. Twee opties op de bestaande `receive_imap` in plaats
+  van een tweede `receive_imap_oauth2` die `host`, `port`, `ssl`, `starttls`,
+  `folder`, `move_on_success` en `move_on_failure` dupliceert.
+- De interactieve autorisatieflow zit er niet in. Die kan per definitie geen
+  test hebben en zet Microsofts en Googles endpoints, scopes en
+  consent-eigenaardigheden in Redmine's onderhoud. Eenmalig buiten Redmine
+  autoriseren kost de beheerder één keer een middag.
+- Geen tokencache op schijf, en daarmee vervallen `normalize_token_file`,
+  `secure_file`, de YAML-symbolenwhitelist, `mask_token` en de
+  refresh-en-herschrijf-tak — ruwweg de helft van de hulpcode.
+- **Noem dit ook, het is een echt lek:** de patch die er nu hangt print het
+  volledige access token bij `imap_debug=1`, via
+  `puts "IMAP DEBUG: effective imap_options=#{imap_options.inspect}"`, waarin
+  `imap_options[:password]` het token is. Deze patch heeft geen debugoutput en
+  interpoleert token noch client secret in welke string dan ook.
+- `Redmine::IMAP` en `Redmine::POP3` hadden **geen enkele test**; deze
+  patch levert de eerste (12 tests, 43 assertions).
+
+De Engelse issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem",
+inclusief de tabel met verwachte bezwaren.
+
+**2. Eén keer tegen een echte mailbox bevestigen.** Alles is nagelopen tegen
+een lokale IMAP-server en tokenendpoint die het protocol echt spreken, maar
+niemand kan namens jou bij een echte Office 365- of Gmail-mailbox. Dat is de
+enige stap die jouw handen vraagt: één keer autoriseren, het
+credentialsbestand vullen en `rake redmine:email:receive_imap
+oauth2_credentials=...` draaien. Het bestand ziet zo uit:
+
+```yaml
+token_url: https://login.microsoftonline.com/TENANT_ID/oauth2/v2.0/token
+client_id: ...
+client_secret: ...
+refresh_token: ...
+scope: https://outlook.office.com/IMAP.AccessAsUser.All offline_access
+```
+
+En er staat één keuze voor je open: **K-06** in `docs/DECISIONS.md`, over de
+`client_credentials`-grant (app-only, Microsofts aanbeveling voor een
+servicemailbox). Er is geen haast: we bouwden verder zonder.
 
 ### `mypage-query-blocks`
 
