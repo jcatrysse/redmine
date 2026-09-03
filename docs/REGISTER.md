@@ -12,12 +12,12 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | todo | todo | [#43355](https://www.redmine.org/issues/43355) |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | todo | todo | — |
 | [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | todo | todo | — |
-| [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | todo | todo | — |
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`9d28be94d`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`f117ea32e`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
+| [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`135f15620`) | patch klaar | — |
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`28c618860`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
 | [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | todo | nooit | — |
@@ -28,7 +28,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-18 features: 6 patch klaar, 5 nooit, 4 todo, 2 vervallen, 1 geaccepteerd.
+18 features: 7 patch klaar, 5 nooit, 3 todo, 2 vervallen, 1 geaccepteerd.
 
 ## Nu in behandeling
 
@@ -133,6 +133,34 @@ waarden. Noem de test die het vastlegt
 (`test_fixed_version_filter_should_include_versions_shared_from_outside_the_project_tree`).
 De Engelse tekst staat in `dossier.md` vanaf "The problem"; de voor/na-paren in
 `shots/`.
+
+### `webhook-tracker-filter`
+
+Maak een **nieuw** issue op redmine.org aan als follow-up van
+[#29664](https://www.redmine.org/issues/29664) — dus niet als note aan #29664
+zelf, dat issue is gesloten met target version 7.0.0. Hang er
+`patches/webhook-tracker-filter/2026-09-03-r24882-feature.patch` en
+`-locales.patch` aan. De Engelse issuetekst staat kant-en-klaar in
+`dossier.md` vanaf "The problem".
+
+Zeg in de beschrijving expliciet dat dit **note 37 van Holger Just op #29664
+beantwoordt**: hij vroeg om de monolithische 5.1-patch op te splitsen in losse
+patches, elk met de reden erbij, en gerebaseerd op de huidige trunk. Dit is
+punt 1 van je eigen note 36, los, tegen r24882, met de probleembeschrijving en
+de afgewogen alternatieven erbij. Dat is het sterkste argument dat er is — een
+committer heeft precies hierom gevraagd.
+
+Twee dingen die het waard zijn om erbij te zetten omdat ze de patch verdedigen
+vóórdat iemand ernaar vraagt:
+
+- Leeg = alle trackers, dus geen enkele bestaande hook verandert van gedrag bij
+  een upgrade. Er is een unittest die dat vastlegt en die **ongewijzigd groen
+  staat op trunk**, plus een screenshot van een echte levering die het in een
+  draaiende Redmine laat zien.
+- De patch voegt `preload(:trackers)` toe zodat `hooks_for` niet één query per
+  hook gaat doen. Noem #44386 erbij — daar haalde Marius Bălteanu een week
+  eerder een N+1 uit ditzelfde model, dus het is duidelijk dat het onderwerp
+  leeft.
 
 ### `wiki-export-attachments`
 

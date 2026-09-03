@@ -1,0 +1,192 @@
+From 8e3503b5ee291e1b5ef9b1b2b8ac1a0d04c006ad Mon Sep 17 00:00:00 2001
+From: Jan Catrysse <jan.catrysse@geoxyz.eu>
+Date: Thu, 3 Sep 2026 12:17:30 +0000
+Subject: [PATCH] Limit an outgoing webhook to the trackers selected on it.
+
+A webhook can be restricted to a set of projects but not any further, so a hook
+that subscribes to issue events fires for every issue in those projects,
+whatever its tracker. Issues of trackers that have no integration behind them
+are posted to the endpoint as well.
+
+A webhook now carries a set of trackers. Issue events are sent only for the
+selected trackers; a hook with no tracker selected fires for every tracker, so
+existing hooks are unaffected. Events for objects that have no tracker are never
+filtered.
+---
+ app/controllers/webhooks_controller.rb        |  2 +-
+ app/models/webhook.rb                         | 14 +++++++++--
+ app/views/webhooks/_form.html.erb             |  8 +++++++
+ config/locales/en.yml                         |  1 +
+ ...20260903081500_create_trackers_webhooks.rb |  8 +++++++
+ test/functional/webhooks_controller_test.rb   | 18 ++++++++++++++
+ test/unit/webhook_test.rb                     | 24 +++++++++++++++++++
+ 7 files changed, 72 insertions(+), 3 deletions(-)
+ create mode 100644 db/migrate/20260903081500_create_trackers_webhooks.rb
+
+diff --git a/app/controllers/webhooks_controller.rb b/app/controllers/webhooks_controller.rb
+index 27b8d2ddd..d0fb64e4e 100644
+--- a/app/controllers/webhooks_controller.rb
++++ b/app/controllers/webhooks_controller.rb
+@@ -64,7 +64,7 @@ class WebhooksController < ApplicationController
+   private
+ 
+   def webhook_params
+-    params.require(:webhook).permit(:url, :secret, :active, events: [], project_ids: [])
++    params.require(:webhook).permit(:url, :secret, :active, events: [], project_ids: [], tracker_ids: [])
+   end
+ 
+   def find_webhook
+diff --git a/app/models/webhook.rb b/app/models/webhook.rb
+index 21a043e53..c644f941d 100644
+--- a/app/models/webhook.rb
++++ b/app/models/webhook.rb
+@@ -90,6 +90,7 @@ class Webhook < ApplicationRecord
+ 
+   belongs_to :user
+   has_and_belongs_to_many :projects # rubocop:disable Rails/HasAndBelongsToMany
++  has_and_belongs_to_many :trackers # rubocop:disable Rails/HasAndBelongsToMany
+ 
+   validates :url, presence: true, webhook_endpoint: true, length: { maximum: 2000 }
+   validates :secret, length: { maximum: 255 }, allow_blank: true
+@@ -118,19 +119,28 @@ class Webhook < ApplicationRecord
+ 
+   # Finds hooks for the given event and object.
+   # Returns an array of hooks that are active, have the given event in their list
+-  # of events, and whose user can see the object.
++  # of events, that accept the tracker of the object, and whose user can see the
++  # object.
+   #
+   # Object must have a project_id and respond to visible?(user)
+   def self.hooks_for(event, object)
+     Webhook.active
+       .joins("INNER JOIN projects_webhooks on projects_webhooks.webhook_id = webhooks.id")
+       .eager_load(:user)
++      .preload(:trackers)
+       .where(users: { status: User::STATUS_ACTIVE }, projects_webhooks: { project_id: object.project_id })
+       .to_a.select do |hook|
+-      hook.events.include?(event) && object.visible?(hook.user) && hook.user.allowed_to?(:use_webhooks, object.project)
++      hook.events.include?(event) && hook.matches_tracker?(object) && object.visible?(hook.user) && hook.user.allowed_to?(:use_webhooks, object.project)
+     end
+   end
+ 
++  # Returns true if the hook accepts the tracker of the object. A hook with no
++  # tracker selected accepts every tracker, and an object that has no tracker is
++  # never filtered out.
++  def matches_tracker?(object)
++    tracker_ids.blank? || !object.respond_to?(:tracker_id) || tracker_ids.include?(object.tracker_id)
++  end
++
+   def setable_projects
+     user = self.user || User.current
+     Project.visible(user).to_a.select{|p| user.allowed_to?(:use_webhooks, p)}
+diff --git a/app/views/webhooks/_form.html.erb b/app/views/webhooks/_form.html.erb
+index 2f99a6469..a9ec3f5e5 100644
+--- a/app/views/webhooks/_form.html.erb
++++ b/app/views/webhooks/_form.html.erb
+@@ -40,5 +40,13 @@
+       <%= hidden_field_tag('webhook[project_ids][]', '', :id => nil) %>
+     </fieldset>
+ 
++    <fieldset class="box" id="webhook_tracker_ids"><legend><%= toggle_checkboxes_link("#webhook_tracker_ids input[type=checkbox]") %><%= l(:label_tracker_plural) %></legend>
++      <% tracker_ids = @webhook.tracker_ids.to_a %>
++      <% Tracker.sorted.each do |tracker| %>
++        <label><%= check_box_tag('webhook[tracker_ids][]', tracker.id, tracker_ids.include?(tracker.id), :id => nil) %> <%= tracker.name %></label>
++      <% end %>
++      <%= hidden_field_tag('webhook[tracker_ids][]', '', :id => nil) %>
++      <em class="info"><%= l :webhook_trackers_info %></em>
++    </fieldset>
+   </div>
+ </div>
+diff --git a/config/locales/en.yml b/config/locales/en.yml
+index 6ebe23d46..86e98fe37 100644
+--- a/config/locales/en.yml
++++ b/config/locales/en.yml
+@@ -1199,6 +1199,7 @@ en:
+   webhook_event_deleted: "%{object_name} deleted"
+   webhook_url_info: Redmine will send a POST request to this URL whenever one of the selected events occurs in one of the selected projects.
+   webhook_secret_info_html: If provided, Redmine will use this to create a hash signature that is sent with each delivery as the value of the X-Redmine-Signature-256 header.
++  webhook_trackers_info: Issue events are only sent for the selected trackers. Leave all trackers unchecked to send them for every tracker.
+ 
+   button_login: Login
+   button_submit: Submit
+diff --git a/db/migrate/20260903081500_create_trackers_webhooks.rb b/db/migrate/20260903081500_create_trackers_webhooks.rb
+new file mode 100644
+index 000000000..dbcb01d06
+--- /dev/null
++++ b/db/migrate/20260903081500_create_trackers_webhooks.rb
+@@ -0,0 +1,8 @@
++class CreateTrackersWebhooks < ActiveRecord::Migration[8.1]
++  def change
++    create_table :trackers_webhooks do |t|
++      t.integer :tracker_id, null: false, index: true
++      t.integer :webhook_id, null: false, index: true
++    end
++  end
++end
+diff --git a/test/functional/webhooks_controller_test.rb b/test/functional/webhooks_controller_test.rb
+index 046be69ea..cf9de4ea3 100644
+--- a/test/functional/webhooks_controller_test.rb
++++ b/test/functional/webhooks_controller_test.rb
+@@ -71,6 +71,24 @@ class WebhooksControllerTest < Redmine::ControllerTest
+     assert_redirected_to webhooks_path
+   end
+ 
++  test "should create webhook with trackers" do
++    assert_difference 'Webhook.count' do
++      post :create, params: { webhook: { url: 'https://example.com/new/hook', events: %w(issue.created), project_ids: [@project.id], tracker_ids: [2] } }
++    end
++    assert_redirected_to webhooks_path
++    assert_equal [Tracker.find(2)], Webhook.order(:id).last.trackers
++  end
++
++  test "new should offer a check box per tracker" do
++    get :new
++    assert_response :success
++    assert_select 'fieldset#webhook_tracker_ids' do
++      assert_select 'input[type=checkbox][name=?]', 'webhook[tracker_ids][]', count: 3
++      assert_select 'label', text: 'Bug'
++      assert_select 'label', text: 'Feature request'
++    end
++  end
++
+   test "should get edit" do
+     get :edit, params: { id: @hook.id }
+     assert_response :success
+diff --git a/test/unit/webhook_test.rb b/test/unit/webhook_test.rb
+index e528a2a1c..e1bd4ce44 100644
+--- a/test/unit/webhook_test.rb
++++ b/test/unit/webhook_test.rb
+@@ -170,6 +170,30 @@ class WebhookTest < ActiveSupport::TestCase
+     assert_equal [hook], Webhook.hooks_for('issue.deleted', @issue)
+   end
+ 
++  test "should find hook for issue of a selected tracker" do
++    hook = create_hook
++    hook.update! trackers: [Tracker.find(1)]
++    assert_equal [hook], Webhook.hooks_for('issue.created', Issue.find(1))
++  end
++
++  test "should not find hook for issue of a tracker that is not selected" do
++    hook = create_hook
++    hook.update! trackers: [Tracker.find(1)]
++    assert_equal [], Webhook.hooks_for('issue.created', Issue.find(2))
++  end
++
++  test "should find hook for issue of any tracker when no tracker is selected" do
++    hook = create_hook
++    assert_equal [hook], Webhook.hooks_for('issue.created', Issue.find(1))
++    assert_equal [hook], Webhook.hooks_for('issue.created', Issue.find(2))
++  end
++
++  test "should find hook for object without a tracker when trackers are selected" do
++    hook = create_hook events: ['news.created']
++    hook.update! trackers: [Tracker.find(1)]
++    assert_equal [hook], Webhook.hooks_for('news.created', News.find(1))
++  end
++
+   test "schedule should enqueue jobs for hooks" do
+     with_settings webhooks_enabled: '1' do
+       hook = create_hook
+-- 
+2.43.0
+
