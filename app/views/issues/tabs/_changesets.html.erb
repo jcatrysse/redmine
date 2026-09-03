@@ -20,6 +20,10 @@
                        :path => "",
                        :rev => changeset.identifier) %>)
         <% end %>
+        <% if Setting.display_associated_revision_branches? &&
+              (branches = link_to_revision_branches(changeset)).present? %>
+          <em><%= l(:label_branch_plural) %>: <%= branches %></em>
+        <% end %>
       </p>
       <div class="wiki changeset-comments">
         <%= format_changeset_comments changeset %>

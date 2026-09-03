@@ -680,6 +680,10 @@ nl:
   setting_default_projects_public: Nieuwe projecten zijn standaard openbaar
   setting_diff_max_lines_displayed: Max aantal weergegeven diff regels
   setting_display_subprojects_issues: Standaardissues van subproject weergeven
+  setting_display_revision_branches: Branches weergeven op de revisiepagina
+  setting_display_associated_revision_branches: Branches weergeven bij geassociëerde revisies
+  setting_revision_branches_excluded: Branches uitsluiten op basis van naam
+  setting_revision_branches_enable_regex: Reguliere expressies gebruiken
   setting_emails_footer: Voettekst voor e-mails
   setting_enabled_scm: SCM ingeschakeld
   setting_feeds_limit: Feedinhoudlimiet
@@ -779,6 +783,7 @@ nl:
   label_view_all_revisions: Alle revisies bekijken
   label_tag: Tag
   label_branch: Branch
+  label_branch_plural: Branches
   error_no_tracker_in_project: Geen tracker is geassocieerd met dit project. Check de projectinstellingen.
   error_no_default_issue_status: Geen standaard issuestatus ingesteld. Check de configuratie (Ga naar "Administratie -> Issuestatussen").
   text_journal_changed: "%{label} gewijzigd van %{old} naar %{new}"

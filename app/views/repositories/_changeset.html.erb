@@ -20,6 +20,12 @@
               }.join(", ").html_safe %>
       </li>
     <% end %>
+    <% if Setting.display_revision_branches? && (branches = link_to_revision_branches(@changeset)).present? %>
+      <li>
+        <strong><%= l(:label_branch_plural) %></strong>
+        <%= branches %>
+      </li>
+    <% end %>
     <% if @changeset.children.present? %>
       <li>
         <strong><%= l(:label_child_revision) %></strong>

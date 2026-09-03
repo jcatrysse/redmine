@@ -3320,6 +3320,59 @@ class IssuesControllerTest < Redmine::ControllerTest
     end
   end
 
+  def test_show_changesets_tab_should_display_the_branches_of_each_revision
+    issue = Issue.find(9)
+    issue.changeset_ids = [102]
+    issue.save!
+    Changeset.any_instance.stubs(:branches).returns(['main', 'feature/1234'])
+
+    @request.session[:user_id] = 2
+    with_settings :display_associated_revision_branches => '1' do
+      get :issue_tab, :params => {:id => issue.id, :name => 'changesets'}, :xhr => true
+    end
+
+    assert_response :success
+    assert_select 'div#changeset-102 em' do
+      assert_select(
+        'a[href=?]', '/projects/ecookbook/repository/10/revisions/main/show',
+        :text => 'main'
+      )
+      assert_select(
+        'a[href=?]', '/projects/ecookbook/repository/10?rev=feature%2F1234',
+        :text => 'feature/1234'
+      )
+    end
+  end
+
+  def test_show_changesets_tab_should_not_display_branches_by_default
+    issue = Issue.find(9)
+    issue.changeset_ids = [102]
+    issue.save!
+    Changeset.any_instance.stubs(:branches).returns(['main'])
+
+    @request.session[:user_id] = 2
+    get :issue_tab, :params => {:id => issue.id, :name => 'changesets'}, :xhr => true
+
+    assert_response :success
+    assert_select 'div#changeset-102 em', :count => 0
+  end
+
+  def test_show_changesets_tab_should_not_display_branches_without_view_changesets_permission
+    Role.find(1).remove_permission! :view_changesets
+    issue = Issue.find(9)
+    issue.changeset_ids = [102]
+    issue.save!
+    Changeset.any_instance.stubs(:branches).returns(['main'])
+
+    @request.session[:user_id] = 2
+    with_settings :display_associated_revision_branches => '1' do
+      get :issue_tab, :params => {:id => issue.id, :name => 'changesets'}, :xhr => true
+    end
+
+    assert_response :success
+    assert_select 'div#changeset-102', :count => 0
+  end
+
   def test_show_render_changeset_comments_in_original_context
     issue = Issue.find(9)
     issue.changeset_ids = [110]

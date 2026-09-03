@@ -748,6 +748,47 @@ class RepositoriesGitControllerTest < Redmine::RepositoryControllerTest
       end
     end
 
+    def test_revision_should_show_the_branches_containing_the_revision
+      assert_equal 0, @repository.changesets.count
+      @repository.fetch_changesets
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
+      with_settings :display_revision_branches => '1' do
+        get(
+          :revision,
+          :params => {
+            :id => PRJ_ID,
+            :repository_id => @repository.id,
+            :rev => 'fba357b886984ee71185ad2065e65fc0417d9b92'
+          }
+        )
+      end
+      assert_response :success
+      assert_select 'ul.revision-info li strong', :text => 'Branches'
+      assert_select(
+        'ul.revision-info li a[href=?]',
+        "/projects/subproject1/repository/#{@repository.id}/revisions/test_branch/show",
+        :text => 'test_branch'
+      )
+    end
+
+    def test_revision_should_not_show_branches_by_default
+      assert_equal 0, @repository.changesets.count
+      @repository.fetch_changesets
+      @project.reload
+      assert_equal NUM_REV, @repository.changesets.count
+      get(
+        :revision,
+        :params => {
+          :id => PRJ_ID,
+          :repository_id => @repository.id,
+          :rev => 'fba357b886984ee71185ad2065e65fc0417d9b92'
+        }
+      )
+      assert_response :success
+      assert_select 'ul.revision-info li strong', :text => 'Branches', :count => 0
+    end
+
     def test_empty_revision
       assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets

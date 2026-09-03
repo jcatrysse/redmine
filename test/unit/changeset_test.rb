@@ -707,4 +707,10 @@ class ChangesetTest < ActiveSupport::TestCase
     c = Changeset.find_by_revision('1')
     assert_equal c.revision, c.identifier
   end
+
+  def test_branches_should_be_empty_for_a_scm_without_branch_support
+    c = Changeset.find(102)
+    assert_kind_of Repository::Subversion, c.repository
+    assert_equal [], c.branches
+  end
 end
