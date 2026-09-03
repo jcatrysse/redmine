@@ -46,7 +46,7 @@ als je een lid toevoegt, bewerkt of verwijdert.
 - Geraakte suites op schone trunk r24882: `169 runs, 803 assertions, 0 failures, 0 errors, 0 skips`
 - Geraakte suites met `0001` + `0002`: `180 runs, 844 assertions, 0 failures, 0 errors, 0 skips`
 - Geraakte suites met de clamp erbij: `183 runs, 855 assertions, 0 failures, 0 errors, 0 skips`
-- Volledige suite met patch (`patch/members-pagination`): `5931 runs, 31493 assertions, 27 failures, 2 errors, 92 skips`
+- Volledige suite met patch (`patch/members-pagination`, alle drie de commits): `5934 runs, 31506 assertions, 27 failures, 2 errors, 92 skips`
 - Volledige suite op schone trunk r24882: `5920 runs, 31455 assertions, 27 failures, 2 errors, 92 skips`
 - Volledige suite op `7.0-stable-GEOxyz`: `6000 runs, 31988 assertions, 0 failures, 0 errors, 39 skips`
 - Faalnamen identiek met de schone run: ja — 29 namen, exact dezelfde verzameling. Alle betrokken tests zijn
@@ -60,6 +60,16 @@ als je een lid toevoegt, bewerkt of verwijdert.
   gedraaid, alle drie faalden, daarna is de clamp teruggezet.
 - `tools/check-patch-clean.sh patch/members-pagination`: PASS ·
   `tools/check-geoxyz-branch.sh`: PASS
+- Eén restpunt, gemeld en niet stilgehouden: de drie GEOxyz-commits hebben
+  `Jan Catrysse` als **auteur** maar `Claude` als **committer**. Ze waren met
+  de juiste identiteit gecommit; `tools/session-push.sh` moest ze replayen
+  (een andere sessie was net voor) en een rebase zet de committer op wie de
+  rebase draait. Rechtzetten kan alleen met een force-push op een branch waar
+  parallelle sessies op pushen, dus dat is niet gedaan. Elf van de veertien
+  eigen commits op die branch hadden dit al. Het raakt geen patch: `format-patch`
+  neemt de **auteur** mee, en `patch/members-pagination` wordt niet gepusht en
+  heeft beide velden op Jan staan (`check-patch-clean.sh` PASS). Zie
+  `docs/traps.md` voor hoe je het de volgende keer voorkomt.
 - Screenshots: 11, gelezen: ja
 
 ## Wat Jan nog moet doen

@@ -250,9 +250,12 @@ end
 - affected suites, pristine trunk r24882: `169 runs, 803 assertions, 0 failures, 0 errors, 0 skips`
 - affected suites, + `0001` + `0002`: `180 runs, 844 assertions, 0 failures, 0 errors, 0 skips`
 - affected suites, + the clamp (on `7.0-stable-GEOxyz`): `183 runs, 855 assertions, 0 failures, 0 errors, 0 skips`
-- **full** suite on `patch/members-pagination`:
+- **full** suite on `patch/members-pagination`, all three commits:
   `tools/test-env.sh /home/user/wt/patch-members-pagination bundle exec ruby bin/rails test:all`
-  → `5931 runs, 31493 assertions, 27 failures, 2 errors, 92 skips`
+  → `5934 runs, 31506 assertions, 27 failures, 2 errors, 92 skips`
+  (an earlier run of the same worktree carrying only `0001` and `0002` gave
+  `5931 runs, 31493 assertions, 27 failures, 2 errors, 92 skips` — the three
+  clamp tests are the difference)
 - **full** suite on pristine trunk r24882: `5920 runs, 31455 assertions, 27 failures, 2 errors, 92 skips`
 - **full** suite on `7.0-stable-GEOxyz` with all three commits: `6000 runs, 31988 assertions, 0 failures, 0 errors, 39 skips`
 - failing names identical between the patched and the pristine run: ja — 29 namen, exact dezelfde verzameling.
