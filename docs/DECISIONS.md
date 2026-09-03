@@ -159,3 +159,35 @@ eerst binnen wat een andere sessie toevoegde.
 - **Haast?** nee — we bouwden verder met A, en A blokkeert niets: `oauth2_token=`
   dekt het geval al. Als GEOxyz zelf app-only wil gebruiken voor een
   servicemailbox, zeg het en dan is B een halve sessie werk.
+
+## Open — keuze voor Jan (toegevoegd 2026-09-03, revision-branches)
+
+- **K-07 — Keuze:** willen we de groepering van branchnamen terug, en zo ja,
+  waar?
+- **Waarom dit een vraag is:** de 5.1-versie zette branchnamen met een
+  gemeenschappelijk voorvoegsel achter één klikbare `[voorvoegsel...]`-link, met
+  een heuristiek die op cijfers en op `-`, `.` en `_` splitste. In de patch zit
+  die groepering **niet**, en dat is niet in de eerste plaats een inperking: de
+  klikhandler zat in `public/javascripts/repository_navigation.js`, en dat
+  bestand wordt alleen ingeladen door
+  `app/views/repositories/_navigation.html.erb` — een partial die op de
+  revisiepagina noch op de issuepagina staat. De link deed dus op beide plekken
+  niets; dat is nagelopen in de code en in een browser. Wat de groepering in de
+  praktijk moest oplossen (een onleesbaar lange lijst) doet nu de instelling
+  `revision_branches_excluded`, met een patroon in plaats van een heuristiek.
+- **Opties:**
+  A) Zo laten. Lange lijsten kort je in met een uitsluitingspatroon
+     (`dependabot/*`, `wip/*`), en dat is een keuze van de beheerder in plaats
+     van een aanname over hoe branches heten.
+  B) Groepering later apart bouwen, als eigen issue, mét werkende JavaScript.
+     Dan moet er ook worden besloten hoe er gegroepeerd wordt — een
+     hardgecodeerde heuristiek haalt core niet, dus het wordt een vijfde
+     instelling of een vast criterium zoals "alles tot de eerste `/`".
+  C) Groepering als permanente eigen patch alleen op de GEOxyz-branch. Dan
+     wijken GEOxyz en upstream af (INV-10) en blijft dat zo.
+- **Aanbeveling:** A. Het probleem is al opgelost met een instelling die
+  upstream precedent heeft, en de groepering heeft op 5.1 nooit gewerkt zonder
+  dat iemand het merkte — dat is een sterk signaal dat er niemand op klikte.
+- **Haast?** nee — we bouwden verder met A, en de patch is klaar om in te
+  dienen zonder groepering. Kies je B of C, dan is dat een nieuwe regel op het
+  register, geen wijziging van deze patch.
