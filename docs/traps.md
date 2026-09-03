@@ -208,7 +208,7 @@
   branchnaam met een sterretje erin.
 - **Branchnamen moeten door `scm_iconv`.** De testfixture
   `git_repository.tar.gz` heeft twee Latin-1 branchnamen, precies om dit te
-  betrappen (#21really 21141). De 5.1-versie loste het op met
+  betrappen (#21141). De 5.1-versie loste het op met
   `force_encoding("UTF-8")` in de view; het hoort in de adapter, zoals
   `branches` en `tags` het al doen.
 - **`link_to(:action => 'show', :rev => <branchnaam>)` kiest per branchnaam een
