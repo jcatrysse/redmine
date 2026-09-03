@@ -134,3 +134,28 @@ eerst binnen wat een andere sessie toevoegde.
   verbetering toe en maakt de patch minder waarschijnlijk om aangenomen te
   worden.
 - **Haast?** nee — we bouwden verder met A. Optie B is later drie regels werk.
+
+### K-06 — de `client_credentials`-grant erbij, of niet (imap-oauth)
+
+- **Keuze:** moet `oauth2_credentials=` naast de `refresh_token`-grant ook de
+  `client_credentials`-grant kunnen doen?
+- **Waar het over gaat, in gewone taal:** er zijn twee manieren waarop een
+  programma bij een Microsoft 365-mailbox mag. Bij de eerste doet een **mens**
+  één keer "ja, ik geef dit programma toegang tot mijn mailbox", en het
+  programma houdt daar een langlevend bewijsje van over (het refresh token).
+  Bij de tweede krijgt het **programma zelf** rechten op de mailbox van een
+  beheerder, en heeft het helemaal geen mens nodig — dat is wat Microsoft
+  aanraadt voor een postbus die van een dienst is en niet van een persoon
+  (`support@`, `helpdesk@`). Vandaag doet de patch alleen de eerste.
+- **Opties:**
+  A) Zo laten. Wie de tweede manier gebruikt, maakt het token met zijn eigen
+     scriptje en geeft het aan Redmine met `oauth2_token=`. Werkt vandaag al.
+  B) Erbij bouwen: staat er geen `refresh_token` in het credentialsbestand, dan
+     doet Redmine automatisch de tweede manier. Ongeveer zes regels code, één
+     extra test.
+- **Aanbeveling:** A voor de inzending, B zodra Redmine de patch aanneemt — één
+  grant onder review houden geeft de minste discussie, en de uitbreiding past
+  later zonder één bestaande optie te veranderen.
+- **Haast?** nee — we bouwden verder met A, en A blokkeert niets: `oauth2_token=`
+  dekt het geval al. Als GEOxyz zelf app-only wil gebruiken voor een
+  servicemailbox, zeg het en dan is B een halve sessie werk.
