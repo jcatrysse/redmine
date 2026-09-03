@@ -90,6 +90,7 @@ class Webhook < ApplicationRecord
 
   belongs_to :user
   has_and_belongs_to_many :projects # rubocop:disable Rails/HasAndBelongsToMany
+  has_and_belongs_to_many :trackers # rubocop:disable Rails/HasAndBelongsToMany
 
   validates :url, presence: true, webhook_endpoint: true, length: { maximum: 2000 }
   validates :secret, length: { maximum: 255 }, allow_blank: true
@@ -118,17 +119,26 @@ class Webhook < ApplicationRecord
 
   # Finds hooks for the given event and object.
   # Returns an array of hooks that are active, have the given event in their list
-  # of events, and whose user can see the object.
+  # of events, that accept the tracker of the object, and whose user can see the
+  # object.
   #
   # Object must have a project_id and respond to visible?(user)
   def self.hooks_for(event, object)
     Webhook.active
       .joins("INNER JOIN projects_webhooks on projects_webhooks.webhook_id = webhooks.id")
       .eager_load(:user)
+      .preload(:trackers)
       .where(users: { status: User::STATUS_ACTIVE }, projects_webhooks: { project_id: object.project_id })
       .to_a.select do |hook|
-      hook.events.include?(event) && object.visible?(hook.user) && hook.user.allowed_to?(:use_webhooks, object.project)
+      hook.events.include?(event) && hook.matches_tracker?(object) && object.visible?(hook.user) && hook.user.allowed_to?(:use_webhooks, object.project)
     end
+  end
+
+  # Returns true if the hook accepts the tracker of the object. A hook with no
+  # tracker selected accepts every tracker, and an object that has no tracker is
+  # never filtered out.
+  def matches_tracker?(object)
+    tracker_ids.blank? || !object.respond_to?(:tracker_id) || tracker_ids.include?(object.tracker_id)
   end
 
   def setable_projects

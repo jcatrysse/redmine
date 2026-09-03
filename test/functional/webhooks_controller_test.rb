@@ -71,6 +71,24 @@ class WebhooksControllerTest < Redmine::ControllerTest
     assert_redirected_to webhooks_path
   end
 
+  test "should create webhook with trackers" do
+    assert_difference 'Webhook.count' do
+      post :create, params: { webhook: { url: 'https://example.com/new/hook', events: %w(issue.created), project_ids: [@project.id], tracker_ids: [2] } }
+    end
+    assert_redirected_to webhooks_path
+    assert_equal [Tracker.find(2)], Webhook.order(:id).last.trackers
+  end
+
+  test "new should offer a check box per tracker" do
+    get :new
+    assert_response :success
+    assert_select 'fieldset#webhook_tracker_ids' do
+      assert_select 'input[type=checkbox][name=?]', 'webhook[tracker_ids][]', count: 3
+      assert_select 'label', text: 'Bug'
+      assert_select 'label', text: 'Feature request'
+    end
+  end
+
   test "should get edit" do
     get :edit, params: { id: @hook.id }
     assert_response :success
