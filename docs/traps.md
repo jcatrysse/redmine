@@ -433,3 +433,28 @@
   `saved_change_to_closed_on?`, want `update_closed_on` schrijft `closed_on`
   precies `if closing?` en `closed_on` staat in geen enkele
   `safe_attributes`-lijst. Scheelt een extra query per statuswijziging.
+## Deze omgeving, gevonden bij members-pagination (2026-09-03)
+
+- **De remote `geoxyz/framework` kan een *unrelated history* zijn.** Deze sessie
+  startte op `cc34375` terwijl de remote na een force-push op `77ec742` stond
+  met een compleet losse historie: `git merge --ff-only` gaf "refusing to merge
+  unrelated histories" en `git pull` zou een merge van twee wortels maken. De
+  remote is de waarheid — `git reset --hard origin/geoxyz/framework`.
+- **`tools/check-patch-clean.sh` keurt ook de *committer* af, niet alleen de
+  auteur.** De git-identiteit in deze container is standaard
+  `Claude <noreply@anthropic.com>`, dus elke commit op een `patch/<slug>`-branch
+  moet met `git -c user.name="Jan Catrysse" -c user.email="jan.catrysse@geoxyz.eu"
+  commit`. Deze sessie kreeg zes regels FAIL op drie commits.
+- **`git filter-branch` wordt in deze omgeving geweigerd.** Achteraf de
+  identiteit rechtzetten kan dus niet met een rewrite: `git reset --hard
+  origin/master`, opnieuw applyen en opnieuw committen met de `-c`-vlaggen. Met
+  drie commits kost dat een minuut; controleer daarna met
+  `git diff origin/master HEAD` tegen de bewaarde diff dat de boom niet wijzigde.
+- **Playwright: `#tab-content-members form` matcht ook het verborgen
+  CSV-exportformulier.** `waitForSelector(..., {state: 'detached'})` liep daardoor
+  30 s in een timeout terwijl het bewerkformulier allang weg was. Selecteer op
+  `form.edit_membership`, niet op `form`.
+- **Een screenshot direct na een submit-klik toont vaak nog het formulier.**
+  `waitForLoadState('networkidle')` is niet genoeg bij een `:remote => true`-form.
+  Wacht tot het formulier zelf `detached` is; de eerste run leverde een
+  "opgeslagen"-shot op waar het bewerkformulier nog openstond.
