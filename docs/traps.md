@@ -458,3 +458,41 @@
   `waitForLoadState('networkidle')` is niet genoeg bij een `:remote => true`-form.
   Wacht tot het formulier zelf `detached` is; de eerste run leverde een
   "opgeslagen"-shot op waar het bewerkformulier nog openstond.
+## Uit webhook-issue-closed, tweede ronde (2026-09-03)
+
+- **Drie volledige suites tegelijk maakt de systeemtests onbetrouwbaar.** De
+  runbook zegt "met 4 cores lopen twee suites comfortabel parallel, drie is
+  krap" — hier is wat "krap" betekent: de GEOxyz-run gaf 2 failures, en het
+  waren **allebei** browsergedreven systeemtests
+  (`OauthProviderSystemTest`, `IssuesSystemTest#test_bulk_edit`), en de
+  schone-trunk-run gaf er nóg een van dezelfde soort
+  (`ListAutofillSystemTest`, `expected "/my/page" to equal "/login"`). Alle
+  drie verdwenen bij een run alleen. Draai de derde suite dus **na** de eerste
+  twee, of reken erop dat je hem over moet doen — en zeg in het statusbestand
+  welke run je als bewijs neemt en waarom.
+- **Een failure in een systeemtest met een inlograce-signature is bijna altijd
+  contentie.** `expected "/" to equal "/login"` of `expected "/my/page" to
+  equal "/login"` betekent dat Capybara de loginpagina niet zag omdat de sessie
+  al ingelogd was of de pagina te laat kwam. Bewijs het wel: eerst de
+  betrokken bestanden **samen** opnieuw (samen, niet los — Redmine laadt hele
+  suites in één proces), dan de volledige suite alleen. Pas dan mag je "flake"
+  opschrijven, en schrijf het dan ook op in plaats van de eerste run weg te
+  laten.
+- **Tel de rood-bewijs-tests opnieuw als je er nog één bijschrijft.** Hier
+  stond "4 van de 8 falen" in het dossier terwijl er vijf namen onder stonden:
+  het rood-bewijs was gedraaid met **zeven** tests en daarna was er een achtste
+  bijgekomen. Opnieuw gedraaid: 2 failures, 3 errors, dus 5 van de 8. Het
+  aantal in het dossier moet uit dezelfde run komen als de namen eronder.
+- **Meet het aantal gewijzigde regels met `git diff --numstat`, niet met je
+  hoofd.** "Zes regels productiecode" stond drie keer in het dossier en het
+  waren er acht toegevoegd en drie verwijderd. `git diff --numstat
+  origin/master...HEAD -- . ':!test'` geeft het antwoord in één regel.
+- **"In alle taalbestanden onvertaald" is bijna altijd te ruim.** Nagemeten
+  voor `webhook_event_created`: 43 van de 49 niet-Engelse bestanden hebben nog
+  de letterlijke Engelse string, en **zes** talen (`bg`, `cs`, `gl`, `hu`,
+  `ja`, `zh-TW`) hebben de groep wél vertaald. Een `grep -c` met
+  `"%{object_name}` als prefix telt de Japanse vertaling mee, want die begint
+  ook met die interpolatie — vergelijk de **volledige** waarde
+  (`grep -q '^  webhook_event_created: "%{object_name} created"'`).
+  `docs/DECISIONS.md` is append-only, dus een te ruime bewering daarin kost je
+  een correctieblok.
