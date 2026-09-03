@@ -1,0 +1,417 @@
+# revision-branches — show which Git branches contain a revision
+
+## Voor Jan (Nederlands)
+
+- **Wat het doet, in gewone taal:** op de revisiepagina en bij "Geassociëerde
+  revisies" van een issue komt er een regel "Branches" te staan met de
+  Git-branches waar die commit in zit, elk als link naar de repository op die
+  branch. Uit met de standaardinstelling; een beheerder zet het aan en kan
+  branchnamen wegfilteren (bijvoorbeeld `dependabot/*`).
+- **Waar het vandaan komt:** 5.1-commit `cf826e3fd` ("Feature: add branches to
+  different views"). Volledig herschreven, niet geport: van die commit is de
+  bedoeling overgenomen en verder niets. Wat er mee zou zijn meegereisd staat
+  onder "Alternatives considered" en in `decisions.md`, waarvan de ergste een
+  klikbare link is die nergens op reageerde omdat zijn JavaScript op die twee
+  pagina's niet werd ingeladen.
+- **Doel:** upstream + GEOxyz
+- **Afwijking GEOxyz ↔ upstream:** geen
+- **Kans dat Redmine dit aanneemt:** twijfelachtig, maar beter dan de vorige
+  zeven pogingen. Het is 16 jaar gevraagd (#5386, 42 notes) en nooit afgewezen,
+  alleen nooit opgepakt. Kerncommitter Toshi MARUYAMA schreef er vier concrete
+  bezwaren bij (notes 4, 17, 18 en 20); die zijn hier woordelijk overgenomen en
+  het ontwerp is er op gebouwd in plaats van eromheen. Twee ervan
+  (branchgegevens verouderen na een force-push, en de kosten per revisie)
+  verwerpen precies wat alle eerdere patches deden: opslaan in de database. Wij
+  slaan niets op en zetten het standaard uit. Het vierde bezwaar — "als de
+  issuepagina git gaat aanroepen, moeten robots ook van de issuepagina worden
+  geweerd" — blijkt niet op te gaan, omdat het tabblad "Geassociëerde revisies"
+  pas via JavaScript wordt opgehaald; een crawler komt er dus nooit. Dat staat
+  nagekeken in het dossier.
+- **Wat jij nog moet doen:** het issue op redmine.org bijwerken. Dit hoort
+  **niet** als nieuw issue: **#5386** is de plek (Feature, New, category SCM,
+  jij staat er zelf in als note #42 van 2024-08-07). Hang de twee patches
+  eronder met de tekst vanaf "The problem". Zie ook één open keuze onderaan.
+
+## Trunk check (G1)
+
+- **Trunk-revisie nagekeken:** `2563fa6a5` = SVN r24882 van 2026-08-03 (de
+  mirror liep niet verder; dat is de laatste commit).
+- **Lost trunk dit al op?** Nee. `Redmine::Scm::Adapters::GitAdapter` heeft
+  `branches` (alle branches met hun tip) en `tags`, maar niets dat vraagt
+  *welke branches een gegeven commit bevatten*. `app/models/changeset.rb` heeft
+  geen `branches`. `app/views/repositories/_changeset.html.erb` toont ID,
+  parent en child, geen branches. `app/views/issues/tabs/_changesets.html.erb`
+  toont revisie plus diff-link, geen branches.
+- **Bestaand issue op redmine.org?** Ja, drie, en dat verandert het hele
+  verhaal:
+  - **#5386** Feature "Branch/Tags in Changeset Description" (2010, New,
+    category SCM) — het hoofdissue, 42 notes, met álle relevante discussie. De
+    laatste notes: #38 (Niklaus Giger, 2020-11-24) een patch met
+    geminimaliseerde instellingen, #39 (2022-11-14) een patch voor 4.2, #40/#41
+    (Marco Descher, 2024-08-06) werkt op 5.1 en de vraag of sponsoring helpt,
+    #42 (Jan Catrysse, 2024-08-07) draait productief op 5.0.
+  - **#7829** Patch "Show branches changsets belongs to on issue page" (2011,
+    New) — `Changeset#branches` + `GitAdapter#get_branches(scmid)` met
+    `git branch --no-color --contains`. Gerelateerd aan #5386. **Dezelfde
+    architectuur als deze patch**, en dat is geen toeval: het is de vorm die
+    hier past.
+  - **#38278** Patch "Basename of repository and Branch/Tags in Changeset
+    Description" (2023, New) — hetzelfde onderwerp, breder van opzet.
+  Gezocht met `branches` en `branch contains` (titles_only).
+- **Verandert iets in trunk het ontwerp?** Ja, twee dingen:
+  1. `app/views/issues/tabs/_changesets.html.erb` is sinds 5.1 opnieuw
+     geïndenteerd. De helft van de 5.1-diff in dat bestand was
+     herformattering; die is nu overbodig, wat de diff kleiner maakt (INV-1).
+  2. r24882 kent `scm_<type>_path_regexp` in `configuration.yml` als harde
+     voorwaarde om een adapter te mogen gebruiken (#43209). Dat raakt het
+     ontwerp niet, maar wel het opzetten van een testomgeving.
+
+---
+
+# The problem
+
+Redmine tells you everything about a revision except the one thing a reviewer
+or release manager asks first: **is this commit on the branch I care about?**
+The revision page shows the commit id, its parents and its children; the
+"Associated revisions" tab of an issue shows the revision and a link to its
+diff. Neither says which branches the commit is reachable from, so the question
+"has this fix landed on the release branch?" cannot be answered in Redmine at
+all. People answer it by leaving Redmine — `git branch --contains` on a
+checkout, or a second tool (note 6 on #5386: "without this patch my team still
+need to run gitweb").
+
+This has been requested since 2010. Feature #5386 has 42 notes and ten related
+issues, Patch #7829 proposes the same thing from the other end, and Patch
+#38278 asks again in 2023. Nobody has ever argued the information is not
+useful. What blocked it were four specific, correct objections from Toshi
+MARUYAMA, all about *how* the earlier patches got the data. They are the
+specification for this patch, so they are quoted rather than paraphrased:
+
+- **Note 4 (2011-10-13):** "Git branch is not stable. Git branch is the pointer
+  to the specific revision. So, Git branch cannot be stored in database.
+  Mercurial *named branch* is stable."
+- **Note 17 (2013-03-07):** "In following case, git branch becomes
+  **incorrect**. delete branch (`git branch -D branch`,
+  `git push somewhere :branch`) force push (`git push -f somewhere branch`)"
+- **Note 18 (2013-03-07):** "[The patch] calls 'git branch --contains hash' per
+  associated revisions. In the issue which has many associated revisions (e.g.
+  #61), It becomes terrible performance regression."
+- **Note 20 (2013-03-07):** "Repository page calls three git commands... So,
+  robot excludes repository page... Current issue page does not call git
+  command. If issue page will call git command, robot should exclude issue
+  page, too."
+
+Notes 4 and 17 say the same thing from two sides, and together they rule out
+the approach every patch on the issue took until 2014: storing branch
+membership in the database and refreshing it on rescan. Note 18 rules out doing
+the work unconditionally. Note 20 adds a condition on the issue page
+specifically. The design below is built to satisfy all four.
+
+# Why this belongs in core
+
+The information is derived from the SCM adapter, and the adapter is the part a
+plugin cannot reach cleanly. A plugin has to reopen
+`Redmine::Scm::Adapters::GitAdapter` to add a command, reopen `Changeset` to
+expose it, and patch two core partials that have no view hook at the place the
+row belongs — `_changeset.html.erb` has no hook at all, and
+`view_issues_history_changeset_bottom` fires *after* the changeset block, so a
+plugin cannot put the branches next to the revision link where they read as
+part of it.
+
+The honest counter-argument: the plugin exists. `redmine_revision_branches` was
+written in 2015 (note 36 on #5386) and ported to master in 2020 by a volunteer
+who offered to keep maintaining it (note 37). It works by doing exactly those
+three monkey-patches. That something this small needs three of them, and that
+it has been carried outside core for a decade while the issue stayed open, is
+the case for core rather than against it.
+
+# Proposed change
+
+Three layers, each with one job.
+
+1. `GitAdapter#branches_containing(identifier)` runs
+   `git branch --no-color --contains <identifier>` and returns the branch names
+   as UTF-8, sorted. It knows nothing about settings — an SCM adapter should
+   not read `Setting`.
+2. `Changeset#branches` asks the adapter (when it responds to
+   `branches_containing`, so every other SCM keeps working and Mercurial can be
+   added later without touching anything else) and drops the names an
+   administrator excluded.
+3. The two views render the list when their setting is on, using
+   `RepositoriesHelper#link_to_revision_branches`.
+
+Nothing is stored, so there is no cached copy to disagree with the repository
+after a branch is deleted or force-pushed (notes 4 and 17). Nothing runs unless
+an administrator turns it on, and the two pages are separate settings, so the
+cost note 18 describes is opt-in per page (note 18's own example, an issue with
+many associated revisions, is exactly what the second setting governs).
+
+Note 20's condition is met without any change to `robots.txt`, and the reason
+is worth spelling out because it is not obvious:
+
+- The **revision page** is already excluded. `app/views/welcome/robots.text.erb`
+  emits `Disallow: /projects/<project>/repository` for every project, and
+  `Disallow` is a prefix, so `/projects/<p>/repository/<id>/revisions/<rev>` is
+  covered.
+- The **issue page** never renders this at all for a robot. The associated
+  revisions tab is declared in `IssuesHelper#issue_history_tabs` with
+  `:remote => true` and no `:partial`, so `common/_tabs.html.erb` renders an
+  empty container and `getRemoteTab` fetches the content over XHR. A `GET
+  /issues/123` therefore does not call `issues#issue_tab`, does not render
+  `issues/tabs/_changesets`, and does not run the command. A crawler that
+  executes no JavaScript never triggers it — which is why the issue page still
+  does not need to be robot-excluded, note 20's "if" notwithstanding.
+
+| File | Change |
+|---|---|
+| `lib/redmine/scm/adapters/git_adapter.rb` | `branches_containing(identifier)`: 18 lines, patterned on the existing `branches` and `tags` |
+| `app/models/changeset.rb` | `branches`, plus the private `excluded_branch_patterns` |
+| `app/helpers/repositories_helper.rb` | `link_to_revision_branches(changeset)` — `safe_join` of links to the repository at that branch |
+| `app/views/repositories/_changeset.html.erb` | one `<li>` in `ul.revision-info`, between parent and child |
+| `app/views/issues/tabs/_changesets.html.erb` | one `<em>` after the diff link |
+| `app/views/settings/_repositories.html.erb` | the four settings, in the existing settings box |
+| `config/settings.yml` | the four settings, next to the other repository settings |
+| `config/locales/en.yml` | five keys |
+
+**New setting / migration / gem / route / permission:** four settings, no
+migration, no gem, no route, no permission. Justification per setting (INV-6):
+
+| Setting | Default | Why it cannot be dropped |
+|---|---|---|
+| `display_revision_branches` | `0` | The command must be opt-in, or every existing installation pays note 18's cost without asking. Off by default is what makes the patch safe to merge. |
+| `display_associated_revision_branches` | `0` | Separate from the first because the cost is different in kind: the issue tab renders N changesets, so N commands. An administrator who wants the cheap half must be able to take only the cheap half. |
+| `revision_branches_excluded` | `''` | A repository with `dependabot/*` branches produces a list nobody reads. Empty means exclude nothing, so this is inert until used. |
+| `revision_branches_enable_regex` | `0` | Direct precedent in core: `mail_handler_excluded_filenames` is paired with `mail_handler_enable_regex_excluded_filenames` in exactly this way, with the same glob-or-regex switch and the same shared label. `Changeset#excluded_branch_patterns` is `MailHandler#accept_attachment?` with the settings renamed. |
+
+They go on the **Repositories** tab, with the other SCM settings.
+`autofetch_changesets` and `repository_log_display_limit` are its neighbours;
+the feature is repository behaviour, and its first setting only does anything
+when the SCM is Git.
+
+**Translations** (INV-5 — every row names the existing key it was patterned on):
+
+| Key | en | nl | fr | de | es | Patterned on |
+|---|---|---|---|---|---|---|
+| `label_branch_plural` | Branches | Branches | Branches | Zweige | Ramas | `label_branch` in the same file (Branch / Branch / Branche / Zweig / Rama) — grammatical plural of it, and `label_x_plural` is Redmine's plural convention (`label_revision_plural`) |
+| `setting_display_revision_branches` | Display branches on the revision page | Branches weergeven op de revisiepagina | Afficher les branches sur la page de révision | Zweige auf der Revisionsseite anzeigen | Mostrar ramas en la página de revisión | `setting_display_subprojects_issues` for the verb and word order (weergeven / Afficher / anzeigen / Mostrar), `label_revision` for the noun (Revisie / révision / Revision / revisión) |
+| `setting_display_associated_revision_branches` | Display branches in associated revisions | Branches weergeven bij geassociëerde revisies | Afficher les branches dans les révisions associées | Zweige bei zugehörigen Revisionen anzeigen | Mostrar ramas en las revisiones asociadas | `label_associated_revisions` verbatim for the term (Geassociëerde revisies / Révisions associées / Zugehörige Revisionen / Revisiones asociadas), same verb source as above |
+| `setting_revision_branches_excluded` | Exclude branches by name | Branches uitsluiten op basis van naam | Exclure les branches par leur nom | Zweige nach Namen ausschließen | Excluir ramas por nombre | `setting_mail_handler_excluded_filenames` ("Exclude attachments by name") — same sentence with the object swapped |
+| `setting_revision_branches_enable_regex` | Enable regular expressions | Reguliere expressies gebruiken | Utiliser les expressions régulières | Reguläre Ausdrücke verwenden | Habilitar expresiones regulares | `setting_mail_handler_enable_regex` for de/es/fr; for **nl** that key is still untranslated English in core, so the Dutch is derived from `field_regexp` ("Reguliere expressie", nl.yml:275) plus the "… gebruiken" form of `setting_default_issue_start_date_to_creation_date` |
+
+No new key for the example hint: `text_regexp_info` already exists in all five
+files and is already used for this purpose in
+`app/views/custom_fields/formats/_regexp.html.erb`.
+
+**Backward compatibility:** both displays default to `0`, so an installation
+that upgrades sees no change and runs no extra command — the
+`before-revision-default.png` / `revision-default.png` pair is the same page.
+An empty `revision_branches_excluded` excludes nothing. No schema change, so
+downgrading is only a code revert. Non-Git repositories are unaffected:
+`Changeset#branches` returns `[]` unless the adapter responds to
+`branches_containing`.
+
+# Alternatives considered
+
+**Cache branch membership in the database, refreshed on rescan.** This is what
+every patch on #5386 before 2014 did, and it is what notes 4 and 17 reject: a
+Git branch is a pointer, so a deleted or force-pushed branch leaves Redmine
+showing a branch the repository no longer has, with no event to correct it. Running the command on demand is slower and
+always right. Note 16 (Colin Mollenhour, 2013-03-06) reports rescan times
+growing with the number of issues, which is the same problem from the other
+side.
+
+**One command for the whole page instead of one per revision.** Note 29
+(Anthony Mallet, 2014-02-25) proposes `git log --format=%h%d`, which decorates
+commits with the refs pointing *at* them — that is not the same question.
+Answering "which branches contain this commit" for N commits in one pass means
+`git branch --contains` per commit anyway, or walking the graph in Ruby. If a
+committer wants the issue tab bounded rather than opt-in, the honest fix is a
+limit on the number of revisions it will do this for, and that is a decision
+for whoever reviews this, not something to guess at.
+
+**Group branch names by a common prefix,** which the GEOxyz 5.1 code did with
+`name.downcase.gsub(/^\d+/, '#####').split(/[\-._]/).first`, collapsing a group
+behind a `[prefix...]` link. Dropped, for two reasons. It hard-codes one team's
+branch naming convention into core, and — decisively — **it never worked.** The
+click handler lives in `public/javascripts/repository_navigation.js`, which is
+included only by `app/views/repositories/_navigation.html.erb`. That partial is
+rendered by `show.html.erb` and by neither `revision.html.erb` nor the issue
+page, so on both views the patch put a link in the DOM that did nothing when
+clicked. `revision_branches_excluded` covers the real need (a long list of
+uninteresting branches) with a setting instead of a heuristic.
+
+**Support every SCM.** Only Git can answer this cheaply. Note 11 (Colin
+Mollenhour, 2012-01-31) explains why Subversion cannot: branches are a
+directory convention, not a graph property. Mercurial is the one that could,
+and note 4 says so from the reviewer's side — "Mercurial *named branch* is
+stable" — with note 30 asking for it; `Changeset#branches` is written so that
+adding `branches_containing` to `MercurialAdapter` is the whole change, and
+because hg named branches are stable that implementation could legitimately be
+cached where this one must not be.
+
+**Do it in a plugin.** See "Why this belongs in core": the plugin exists, needs
+three monkey-patches, and has been carried by volunteers since 2015.
+
+# Tests
+
+| Test | What it proves |
+|---|---|
+| `GitAdapterTest#test_branches_containing` | the command's output is parsed into names: 3 branches for `fba357b`, 1 for `2a68215`, and the `* ` current-branch marker is stripped |
+| `GitAdapterTest#test_branches_containing_should_convert_branch_names_to_utf8` | `scm_iconv` is applied, so the fixture's two Latin-1 branch names come back as UTF-8 — the bug of #21141, which the 5.1 code worked around with `force_encoding("UTF-8")` in a view |
+| `GitAdapterTest#test_branches_containing_with_unknown_or_blank_revision_should_return_empty_array` | an unknown sha, `''` and `nil` all give `[]` rather than raising or running `git branch --contains` with no argument (which would answer for HEAD) |
+| `RepositoryGitTest#test_changeset_branches` | `Changeset#branches` against a real repository |
+| `RepositoryGitTest#test_changeset_branches_without_scmid_should_be_empty` | no command is attempted without an scmid |
+| `RepositoryGitTest#test_changeset_branches_should_exclude_names_matching_a_pattern` | `master` excludes only `master`, `master*` also excludes `master-20120212` — the glob form, and that the exclusion is anchored |
+| `RepositoryGitTest#test_changeset_branches_should_exclude_names_matching_a_regular_expression` | `.*-\d+` excludes `master-20120212` with the regex setting on, and excludes nothing with it off — so the switch is what decides, not the pattern |
+| `RepositoryGitTest#test_changeset_branches_should_ignore_an_invalid_regular_expression` | `[, master` drops the invalid pattern, keeps applying `master`, and does not raise on the page |
+| `ChangesetTest#test_branches_should_be_empty_for_a_scm_without_branch_support` | Subversion is unaffected |
+| `RepositoriesGitControllerTest#test_revision_should_show_the_branches_containing_the_revision` | the revision page renders the row and links each branch to the repository at that branch |
+| `RepositoriesGitControllerTest#test_revision_should_not_show_branches_by_default` | **green on trunk too** — the default is unchanged |
+| `IssuesControllerTest#test_show_changesets_tab_should_display_the_branches_of_each_revision` | the associated revisions tab renders the branches, and a branch name with a `/` in it generates a URL (`?rev=feature%2F1234`) instead of raising `UrlGenerationError` |
+| `IssuesControllerTest#test_show_changesets_tab_should_not_display_branches_by_default` | **green on trunk too** — the default is unchanged |
+| `IssuesControllerTest#test_show_changesets_tab_should_not_display_branches_without_view_changesets_permission` | the display inherits `Changeset.visible`, so a user without `:view_changesets` gets no changeset and therefore no branches |
+
+**Evidence (INV-8 — figures, not claims):**
+
+- **full** suite, patch: `tools/test-env.sh /home/user/wt/patch-revision-branches bundle exec ruby bin/rails test:all`
+  → `5934 runs, 31502 assertions, 27 failures, 2 errors, 92 skips`
+- **full** suite, pristine trunk r24882 for comparison (`redmine_test_base`)
+  → `5920 runs, 31455 assertions, 27 failures, 2 errors, 92 skips`
+- the two failure lists are **byte-identical**: 29 names on each side, with no
+  name in one and not the other (`comm -13` and `comm -23` both empty)
+- the 29 failures on trunk are all Subversion-dependent and unrelated:
+  `RepositoriesControllerTest` (14), `Redmine::ApiTest::RepositoriesTest` (8),
+  `SysControllerTest` (5), `UserTest#test_destroy_should_nullify_changesets`,
+  `Redmine::ApiTest::IssuesTest#test_GET_/issues/:id.xml_should_not_disclose_associated_changesets_from_projects_the_user_has_no_access_to`.
+  `svn` is not installed in this image. The patch's failure list is compared by
+  **name**, not by count — two runs of the same tree give different assertion
+  totals because Redmine randomises test order.
+- RuboCop on the 8 changed Ruby files: **0** offences
+  (baseline, same files at `origin/master`: **0**)
+- each new test verified red on the old code, by reverting only the production
+  files and keeping the tests:
+  - `branches_containing` × 3 and `Changeset#branches` × 3 →
+    `NoMethodError: undefined method 'branches_containing' for an instance of Redmine::Scm::Adapters::GitAdapter`
+    and `NoMethodError: undefined method 'branches' for an instance of Changeset`
+  - the six tests that use `with_settings` →
+    `RuntimeError: There's no setting named …`. That is honest red but it is the
+    setting missing, not the behaviour. The two **guard** tests exist for
+    exactly this: `test_revision_should_not_show_branches_by_default` and
+    `test_show_changesets_tab_should_not_display_branches_by_default` pass on
+    trunk *and* on the patch, and they are what pins the unchanged default.
+    Measured: 522 runs of the touched functional files on reverted production
+    code gave 3 errors (all "no setting named") and **0 failures**.
+- patch applies to pristine `origin/master` r24882: **yes** — each of the two
+  files applies on its own, and applying both with `git am` in a throwaway
+  worktree reproduces the branch tree exactly
+- `tools/check-patch-clean.sh`: **PASS** (descends from trunk, only Redmine
+  paths, locales within en/nl/fr/de/es, no AI trace in the message or the
+  authorship, applies to a pristine checkout)
+
+# Live verification (G9)
+
+Exercised by hand in a real Redmine at `http://127.0.0.1:3000`, seeded by
+`tools/dev-seed.rb` plus `docs/features/revision-branches/seed.rb`, which adds
+a Git repository with five branches — `main`, `release/7.0`,
+`12345-add-revision-branches`, `dependabot/bundler/rails-8.1.4`,
+`wip/experiment` — and links its middle commit to issue 1. The
+`dependabot/…` branch is there so that excluding it is visible rather than
+theoretical. Screenshots in `docs/features/revision-branches/shots/`.
+
+Every case below was asserted, not only photographed: the verification reads
+the branch names out of the DOM and compares them to a literal expected list,
+on both instances. All 9 before-cases and all 10 after-cases pass.
+
+| Function | Screenshot | What it shows |
+|---|---|---|
+| The four settings | `before-settings-repositories.png` | Repositories tab on trunk: `Apply text formatting to commit messages` is the last setting in the box |
+| | `settings-repositories.png` | the same tab with the two checkboxes, the exclusion box, its `Enable regular expressions` switch and the hint `Multiple values allowed (comma separated). eg. ^[A-Z0-9]+$` |
+| Branches on the revision page | `before-revision-branches.png` | trunk: ID, Parent, Child |
+| | `revision-branches.png` | a `Branches` row between Parent and Child, five branch names, each a link |
+| Branches in associated revisions | `before-issue-branches.png` | trunk: `Revision b2b9b35d (diff)` |
+| | `issue-branches.png` | `Revision b2b9b35d (diff) Branches: 12345-add-revision-branches, dependabot/bundler/rails-8.1.4, main, release/7.0, wip/experiment` |
+| A branch name is a working link | `revision-branch-link-followed.png` | clicking `release/7.0` lands on `demo @ release/7.0` with the branch selector set to it — the link is followed, not just rendered |
+| Exclusion by name pattern | `before-revision-excluded-glob.png` | trunk: no row at all |
+| | `revision-excluded-glob.png` | `dependabot/*, wip/*` excluded, the other three still listed |
+| Exclusion by regular expression | `revision-excluded-regex.png` | `.*/.*` leaves only the two names without a slash |
+
+Failure paths verified:
+
+| Case | Screenshot | Expected | Observed |
+|---|---|---|---|
+| both settings off (the default) | `revision-default.png`, `issue-default.png` | identical to trunk, no command run | identical to `before-revision-default.png` / `before-issue-default.png` |
+| invalid regular expression `[, main` | `revision-invalid-regex.png` | page renders, `[` ignored, `main` still excluded | exactly that — four branches, `main` gone, no 500 |
+| permission absent | `issue-no-permission.png` | no Associated revisions tab at all, so no branches, whatever the setting says | exactly that (user `norepo`, role `Issue reader` with `view_issues` only). `Changeset.visible` filters on `:view_changesets`, and the branch display inherits that gate rather than adding one of its own |
+| SCM that cannot answer | — | no row | covered by `ChangesetTest#test_branches_should_be_empty_for_a_scm_without_branch_support`; the dev image has no Subversion binary to show it in a browser |
+
+Screenshots read, not just generated: yes. What that caught, and what it
+confirmed:
+
+- The settings hint first rendered as
+  `Multiple values allowed (comma separated). Example: eg. ^[A-Z0-9]+$` —
+  `text_regexp_info` already starts with "eg.", so `label_example` in front of
+  it was redundant. Only visible by looking. Removed, so it now matches
+  `custom_fields/formats/_regexp.html.erb`, which uses `text_regexp_info`
+  alone.
+- Every branch name is a working link, not just an `<a>` in the DOM. The
+  verification clicks `release/7.0` and asserts the page that comes back is the
+  repository browser at that branch. This is the check the 5.1 grouping link
+  would have failed, and it is why the screenshot of the destination is in the
+  table above.
+- The `Branches` row sits between `Parent` and `Child`, which is where a reader
+  looks for it, and the issue-tab line stays subordinate to the revision link.
+
+# Anticipated objections
+
+| Objection | Answer |
+|---|---|
+| A Git subprocess per page view. Redmine caches changesets in the database precisely to keep the SCM out of rendering. | Correct, and it is note 18. Three things bound it: both displays are off by default, so no existing installation pays anything; the revision page already calls three Git commands (note 20) and is already in `robots.txt`; and the alternative — a cached copy — is what notes 4 and 17 reject as unfixably wrong after a delete or a force-push. If the issue tab is the part that worries you, `display_associated_revision_branches` is a separate setting so it can stay off, and a cap on the number of revisions it will do this for is a two-line addition once someone picks the number. |
+| Note 20 says that if the issue page starts calling Git, robots must be excluded from it too. | It does not start calling Git for a robot. The associated revisions tab is `:remote => true` with no `:partial`, so `GET /issues/123` renders an empty container and the content only arrives through `getRemoteTab`'s XHR. A crawler that runs no JavaScript never reaches `issues#issue_tab`. The revision page, which does render server-side, is already covered by the `Disallow: /projects/<project>/repository` line `robots.text.erb` emits. So no change to `robots.txt` is needed — but if a reviewer disagrees, the honest alternative is to say so in the setting's description rather than to deindex issue pages. |
+| Git only, of six adapters. | Only Git can answer it. Subversion branches are a directory convention, not a graph property (note 11). `Changeset#branches` guards with `respond_to?(:branches_containing)`, so the other five are untouched and Mercurial named branches (note 30) need only the adapter method. |
+| Four new settings for one display feature. | Two are the on/off switches, and they must be separate because their costs differ in kind. The other two are one exclusion list plus its glob-or-regex switch, which is the shape core already uses for `mail_handler_excluded_filenames`; `Changeset#excluded_branch_patterns` is deliberately `MailHandler#accept_attachment?` with the names changed, down to the `\A…\z` anchoring and the `*` → `.*` translation. If three is the limit, drop `revision_branches_enable_regex` and treat every pattern as a regular expression — one line. |
+| The name `branches` on `Changeset` will collide. | It does not: `Changeset` has no `branches` today, and `Repository#branches` (a different thing — all branches with their tips) stays as it is. `Changeset#branches` is the name Patch #7829 chose in 2011. |
+| An administrator's bad regular expression will break the revision page. | It does not. `Changeset#excluded_branch_patterns` rescues `RegexpError`, logs it, and drops that pattern while the valid ones keep working. Tested, and photographed (`revision-invalid-regex.png`). Core's `MailHandler#accept_attachment?` does not guard this, which is fine in a background job and would not be on a page. |
+| Branch names come from outside Redmine, so this is an injection surface. | `link_to_revision_branches` uses `safe_join` over `link_to`, so every name is escaped by Rails; nothing calls `html_safe` on SCM output. The adapter passes the identifier to `git_cmd`, which shell-quotes each argument, and a bad identifier makes git exit non-zero and yields `[]`. |
+| Shouldn't this need `:browse_repository`? | No, and requiring it would be stricter than Redmine is about the same data. The branch links target `repositories#show`, which `lib/redmine/preparation.rb` grants under **both** `:view_changesets` and `:browse_repository`, and the branch selector on that page already lists every branch name to a `:view_changesets` user. `Changeset.visible` filters on `:view_changesets`, so both views are gated by that already, and adding a second check to only one of them would make them inconsistent. |
+| Why not one setting that takes `off` / `revision` / `both`? | It would be one key instead of two, but it makes the common case (revision page only, issue tab off) a three-way choice instead of two checkboxes, and it has no precedent in Redmine's settings. Worth changing if a committer prefers it; it is a rename plus one condition. |
+
+**Reported, not fixed** (INV-1 — noticed while working here, left alone):
+
+- `config/locales/fr.yml` has `setting_mail_handler_enable_regex: "Utiliser les
+  expressions regulières"` — *régulières* is missing its accent. The new key
+  spells it correctly, so the two strings differ by one character.
+- `config/locales/nl.yml` has `setting_mail_handler_enable_regex: Enable
+  regular expressions`, still untranslated.
+- `app/views/repositories/_changeset.html.erb` builds the parent and child
+  lists with `.collect{…}.join(", ").html_safe`, where `safe_join` is what the
+  rest of the codebase now uses. Pre-existing, and not this feature's to
+  change.
+
+---
+
+## Submission
+
+- **Issue:** **#5386** — https://www.redmine.org/issues/5386 (Feature, New,
+  category SCM). Not a new issue: this is a 16-year-old request with the
+  reviewer's objections already written down, and Jan is already note #42.
+  Patch #7829 and Patch #38278 are the same subject and are already related.
+- **Patches attached:** `patches/revision-branches/2026-09-03-r24882-feature.patch`
+  (code + `en.yml`) and `-locales.patch` (`nl`, `fr`, `de`, `es`)
+- **Made against:** `origin/master` r24882 (`2563fa6a5`, 2026-08-03)
+- **Status:** klaar om in te dienen — nog niet ingediend
+- **Feedback en wat ermee gebeurde:** —
+
+## GEOxyz
+
+- **Commit op `7.0-stable-GEOxyz`:** `115230bc2`
+- **Suites daar groen:** ja — `5977 runs, 31909 assertions, 0 failures, 0 errors, 39 skips`.
+  Dat is echt 0/0: op `7.0-stable` bestaan de SCM-afhankelijke tests die op
+  trunk falen niet in dezelfde vorm. Dit is de run ná de replay op de twee
+  commits die een parallelle sessie er tijdens deze sessie onder duwde; de run
+  ervóór gaf `5959 runs, 31847 assertions, 0 failures, 0 errors, 39 skips`.
+- **`nl.yml` toegevoegd:** ja, samen met `fr`, `de` en `es` — identiek aan de
+  patch (INV-10)
+- **`tools/check-geoxyz-branch.sh`:** PASS
+- **Wanneer kan deze commit vervallen?** Trunk staat op `7.0.0 devel`, dus een
+  geaccepteerde patch landt in 7.1 of later en nooit in 7.0-stable. De
+  GEOxyz-commit blijft dus nodig tot GEOxyz zelf naar die release gaat.

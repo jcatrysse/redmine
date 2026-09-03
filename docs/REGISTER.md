@@ -10,11 +10,11 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
 | [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | todo | todo | [#43355](https://www.redmine.org/issues/43355) |
-| [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | todo | todo | — |
 | [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | todo | todo | — |
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`9d28be94d`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`f117ea32e`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
+| [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86`) | patch klaar | — |
@@ -28,7 +28,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-18 features: 7 patch klaar, 5 nooit, 3 todo, 2 vervallen, 1 geaccepteerd.
+18 features: 8 patch klaar, 5 nooit, 2 todo, 2 vervallen, 1 geaccepteerd.
 
 ## Nu in behandeling
 
@@ -112,6 +112,29 @@ standaard blijft 3, er wordt voor niemand iets verhoogd, en het voor/na-paar
 `shots/{before-,}select-at-default-maximum.png` is dezelfde afbeelding. Neem
 ook de meettabel uit "What asynchronous loading would and would not fix" mee.
 De Engelse tekst staat in `dossier.md` vanaf "The problem".
+
+### `revision-branches`
+
+Voeg een note toe aan **https://www.redmine.org/issues/5386** (Feature, New,
+category SCM) — **geen nieuw issue**, dit is het hoofdissue voor dit onderwerp
+sinds 2010 en je staat er zelf in als note #42 van 2024-08-07. Hang er twee
+bestanden aan:
+
+- `patches/revision-branches/2026-09-03-r24882-feature.patch` — de code plus
+  `en.yml`
+- `patches/revision-branches/2026-09-03-r24882-locales.patch` — alleen `nl`,
+  `fr`, `de` en `es`
+
+De notetekst staat in `docs/features/revision-branches/dossier.md` vanaf
+"# The problem"; die is in het Engels en kan zo gekopieerd worden. Vermeld dat
+het tegen trunk r24882 is gemaakt. Twee dingen zijn het waard om in de note
+expliciet te noemen, want ze zijn het verschil met de zeven eerdere patches op
+dat issue: er wordt **niets** in de database bewaard (dat is het antwoord op
+note 17), en de weergave staat **standaard uit** (dat is het antwoord op
+note 18).
+
+Daarnaast staat er één keuze voor je open, zie `docs/DECISIONS.md` — die
+blokkeert het indienen niet.
 
 ### `search-token-limit`
 
