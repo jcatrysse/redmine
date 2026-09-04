@@ -291,3 +291,134 @@ eerst binnen wat een andere sessie toevoegde.
   eenheid van werk in deze groep — een taalteam pakt het blok op, niet één
   label. Eén van de vier vertalen is dus niet alleen lelijk op het scherm, het
   is ook niet hoe Redmine's vertalers met deze sleutels omgaan.
+## Beslist (Jan) — reviewronde 1, 2026-09-04
+
+Twintig keuzes, één voor één voorgelegd na de eerste volledige reviewronde
+(129 bevindingen, `docs/review/FINDINGS.md`). De groepsnummers verwijzen naar
+het managementrapport dat bij die ronde hoort.
+
+### Productiecode
+
+- **g01 `ldap-mail-prefs`, doel gecorrigeerd door Jan.** De taak zette op
+  *productie* alle notificatie-instellingen op Jans gewenste standaard voor
+  LDAP-gebruikers na een import. Niet voor een testomgeving en niet om
+  robotaccounts te dempen. Eenmalig, geen cron — er staat er ook geen in de
+  repo, dus de eerdere formulering "op een cron schedule" was onterecht.
+- **g01a De taak blijft, hernoemd, met alle drie de waarden als parameter.**
+  Reden om alle drie te houden terwijl 7.0 er twee als default kent
+  (`default_users_no_self_notified`, `default_users_auto_watch_on`): die staan
+  in `user_preference.rb` binnen `if new_record?` en gelden dus alleen bij het
+  aanmaken van een gebruiker. Bestaande gebruikers worden er niet door geraakt.
+  Voor `mail_notification` bestaat geen default-instelling. Daarnaast worden de
+  twee Redmine-instellingen eenmalig goed gezet.
+- **g01b Selecteren op echte LDAP-accounts (`auth_source_id`), niet op groep.**
+  Sluit het lokale beheerdersaccount automatisch uit, blijft kloppen als
+  groepen herindeeld worden, en haalt de "en in geen andere groep"-eis weg die
+  na de eerste import vrijwel iedereen oversloeg.
+- **g01c Proefstand als standaard, plus een logbestand.** Alleen tonen wat hij
+  zou doen; wijzigen pas met een expliciete vlag; de oude waarden per gebruiker
+  wegschrijven zodat een run terug te draaien is.
+- **g01d De mailwaarde wordt een parameter**, niet een vaste `only_assigned`.
+  Feit dat daaraan ten grondslag ligt: `only_assigned` dempt niet volledig —
+  `notify_about?` laat mail door bij toewijzing aan de gebruiker of een groep
+  van de gebruiker, en geeft voor `News` onvoorwaardelijk `true` terug. Alleen
+  `none` zet alles uit.
+- **g02 `ar-sessions`: een controlestap in de deploy.** Die stelt vast dat de
+  `sessions`-tabel bestaat en beide indexen heeft, en faalt luid als dat niet
+  zo is. Plus de opruimtaak in de cron met een gekozen bewaartermijn.
+  `db:migrate` kan de controle niet zijn: op de database die het uitmaakt staat
+  versie `20240929111106` al in `schema_migrations`, dus de migratie draait
+  daar nooit en de guard erin wordt niet bereikt.
+- **g11 `gitignore-credentials`: de uitsluiting compleet maken** met
+  `config/credentials/`, zodat ook de sleutels per omgeving gedekt zijn. In het
+  statusbestand komt dat het voorzorg is en niet iets dat nu in gebruik is.
+- **g16a `config/credentials.yml.enc` blijft genegeerd, met uitleg erbij.**
+  Tegen mijn advies in (Rails bedoelt dat het versleutelde bestand juist wél
+  gecommit wordt); Jan wil bewust niets van credentials in de repo. De reden
+  komt in het statusbestand, zodat niemand er later over valt.
+
+### Het framework zelf
+
+- **g13 Alle vier de achterlopende regels worden bijgewerkt, vóór ronde 2.**
+  1. de patch-regel wordt gekoppeld aan het moment van indienen in plaats van
+     een permanente eigenschap; hij faalt nu op 9 van 9 branches puur door 88
+     trunk-commits, en meet dus verval en geen kwaliteit
+  2. de commentaarregel neemt Redmine's eigen dichtheid als maat; trunk heeft
+     wél methodecommentaar, bijvoorbeeld boven
+     `MailHandler.extract_options_from_env`
+  3. `tools/check-patch-clean.sh` gaat het **patchbestand** controleren in
+     plaats van de branch; door die keuze bleef de branch/bestand-drift bij
+     `wiki-export-attachments` onzichtbaar
+  4. er komt een vaste plek voor bewust geaccepteerde uitzonderingen
+- **g12 `revision-branches`: de uitzondering vastleggen plus een bovengrens.**
+  Vastleggen wélke regel bewust wordt overtreden (de SCM-aanroep per rij in een
+  view-loop), waarom, en wat het alternatief kost. Plus een maximum aantal
+  revisies waarvoor branches worden opgehaald. Gemeten: 29 revisies is 29
+  git-processen, 466 ms wordt 1007 ms, en niets begrensde N. Een grens bewaart
+  niets, dus de keuze van 2026-09-01 tegen een db-cache blijft ongemoeid.
+- **g05 Patches verversen wordt de laatste stap vóór het indienen**, niet een
+  losse onderhoudstaak. Dan kan het niet meer verlopen. De bewijscijfers worden
+  op dat moment opnieuw gedraaid tegen de nieuwe basis.
+
+### De patches
+
+- **g03 `wiki-export-attachments`: het paginabestand meenemen in de bestaande
+  dubbelencontrole**, plus een test met precies dat geval. Nu verdwijnt de
+  wikitekst uit het archief als een bijlage net zo heet als de pagina, zonder
+  dat `unzip -t` klaagt.
+- **g04 De branch opnieuw opbouwen uit het gekozen ontwerp**, zodat branch,
+  patchbestand, dossier en GEOxyz-commit weer gelijk zijn. De branch droeg nog
+  het ontwerp dat K-02 juist afwees.
+- **g06 `assignee-nobody`: haakjes om het teruggegeven SQL-fragment**, met een
+  test op `UserQuery#sql_for_is_member_of_group_field`. Van de dertig aanroepers
+  van `sql_for_field` is die de enige onveilige; de rest wrapt zelf of geeft
+  nooit `none` mee.
+- **g07 `webhook-tracker-filter`: de omgekeerde koppeling op `Tracker`**, zoals
+  `Project` die al heeft, plus een test dat het verwijderen van een tracker de
+  verwijzingen opruimt.
+- **g08 `search-token-limit`: ook het filter `any_searchable` repareren**, niet
+  alleen de claim bijstellen. **Dit heropent K-04 niet**, en dat is nagekeken:
+  `Redmine::Search::Fetcher` heeft exact twee aanroepers —
+  `search_controller.rb:71` (de globale zoekpagina, houdt zijn vijf woorden) en
+  `issue_query.rb:907` (het filter, wordt onbegrensd). De grens staat na de
+  patch al in `Fetcher` in plaats van in `Tokenizer`, dus er hoeft alleen een
+  optie bij zodat de aanroeper beslist.
+- **g09 Alle acht dossiers nalopen en de claims bijstellen tot wat gemeten is.**
+  Nieuwe vaste eis: elke claim heeft een gemeten getal bij zich of een
+  expliciete afzwakking. Bij acht van de twaalf features zat het zwaarste punt
+  in de begeleidende tekst en niet in de code.
+- **g10 De bewijscijfers opnieuw draaien in dezelfde beweging**, inclusief de
+  volledige testsuite. Dat cijfer is nu het zwakst onderbouwd: elf van de
+  dertien reviewers draaiden alleen de geraakte suites en meldden dat als hiaat.
+- **g14 De zichtbaarheidsvraag bij de wiki-bijlagen is uitgezocht: er is geen
+  lek**, dus één regel in het dossier in plaats van code. Binnen één project
+  kent Redmine geen leesrecht per wikipagina: `WikiPage#visible?` en
+  `attachments_visible?` vallen beide terug op `:view_wiki_pages` op het
+  project, en de exportactie eist `:export_wiki_pages` op datzelfde project.
+  Het `protected`-vlaggetje gaat over bewerken, niet lezen.
+- **g15 De note in Takenori's issue wordt een verbetervoorstel**, niet een
+  defectmelding: het patroon valt bij de projecttabbladen harder uit dan bij de
+  issuelijst, want daar kun je er niet uit klikken. Met het bedankje voor zijn
+  rebase, de bevestiging dat `0002` dekt wat GEOxyz nodig had, en een screenshot
+  met ledenaantal en adresbalk. Reden: onbewerkt Redmine doet dit overal —
+  `/issues?page=99` geeft net zo goed "No data to display".
+- **g16b `mypage-query-blocks` krijgt een bovengrens.** Nu wordt 999999
+  geaccepteerd en lopen de kosten lineair op. Het is tevens een argument vóór
+  bij Jean-Philippe Lang, die in note 9 juist naar de kosten vroeg.
+- **g16c De archiefopbouw verhuist uit `WikiController` naar
+  `lib/redmine/export/`.** Verplaatsen, niet herschrijven.
+- **g16d Validatie op `tracker_ids`** in plaats van een 500 bij een verzonnen id.
+- **g16e De `closed_on`-bewaking krijgt één regel waarom.** Toegestaan: het is
+  een niet-vanzelfsprekend waarom (waarom het sluitveld en niet de status), en
+  dat onderscheid is waar de hele feature op rust.
+- **g16f Een issue dat uit een geselecteerde tracker beweegt: benoemen in het
+  dossier, niet repareren.** Inherent aan een filter; repareren zou events
+  versturen voor trackers die de beheerder juist uitsloot.
+- **g16g De note bij `version-subprojects` begint direct met de regressie.**
+  Tegen mijn advies in (ik adviseerde het compliment eerst, het is Go MAEDA's
+  issue); Jan kiest zakelijk. Het gecorrigeerde getal gaat er wél in: zes naar
+  **vijf** als beheerder, niet zes naar vier — versie 6 verdwijnt door
+  `Version.visible` en niet door sharing.
+- **g18 De 81 kleinere punten worden allemaal afgewerkt.** Tegen mijn advies in
+  (ik adviseerde de 27 feitelijke correcties mee te nemen en de rest te laten
+  liggen met een reden). Jan wil de lijst leeg voor ronde 3.
