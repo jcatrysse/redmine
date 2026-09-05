@@ -15,6 +15,7 @@
 // The exclusion cases are the ones worth looking at: the demo repository has a
 // `dependabot/bundler/rails-8.1.4` branch precisely so that filtering it out
 // is visible rather than theoretical.
+import { execFileSync } from 'node:child_process';
 import pw from '/opt/node22/lib/node_modules/playwright/index.js';
 import { session, report } from '../tools/verify-lib.mjs';
 const { chromium } = pw;
@@ -34,6 +35,17 @@ const failures = [];
 if (!REV || !ISSUE) throw new Error('set REV and ISSUE from the output of seed.rb');
 
 const REVISION_PATH = `/projects/${PROJECT}/repository/${REPO}/revisions/${REV}`;
+const DIFF_PATH = `${REVISION_PATH}/diff`;
+// Writing a setting straight into the table, which is the only way to get a
+// value past Setting.validate_all_from_params now that the form rejects it.
+const WORKTREE = process.env.WORKTREE;
+
+function setSettingDirectly(name, value) {
+  execFileSync('bundle',
+               ['exec', 'ruby', 'bin/rails', 'runner', '-e', 'development',
+                `Setting.find_or_initialize_by(name: '${name}').update_columns(value: ${JSON.stringify(value)})`],
+               {cwd: WORKTREE, stdio: 'pipe'});
+}
 
 function check(name, actual, expected) {
   const ok = JSON.stringify(actual) === JSON.stringify(expected);
@@ -44,8 +56,8 @@ function check(name, actual, expected) {
 // The branch names shown on the revision page, read from the "Branches" row of
 // ul.revision-info. Returns null when the row is absent, which is what the
 // unpatched instance must do.
-async function revisionBranches() {
-  await s.go(REVISION_PATH);
+async function revisionBranches(path = REVISION_PATH) {
+  await s.go(path);
   return s.page.evaluate(() => {
     const li = [...document.querySelectorAll('ul.revision-info li')]
       .find(el => el.querySelector('strong')?.textContent.trim() === 'Branches');
@@ -67,12 +79,15 @@ async function issueBranches() {
 }
 
 // Drives the Repositories settings tab. Only reachable once the patch is in.
-async function saveSettings({ revision, associated, excluded, regex }) {
+async function saveSettings({ revision, associated, excluded, regex, logLimit }) {
   await s.go('/settings?tab=repositories');
   await s.page.setChecked('#settings_display_revision_branches', revision);
   await s.page.setChecked('#settings_display_associated_revision_branches', associated);
   await s.page.fill('#settings_revision_branches_excluded', excluded);
   await s.page.setChecked('#settings_revision_branches_enable_regex', regex);
+  if (logLimit !== undefined) {
+    await s.page.fill('#settings_repository_log_display_limit', String(logLimit));
+  }
   await s.page.click('#tab-content-repositories input[type=submit]');
   await s.page.waitForLoadState('networkidle');
 }
@@ -124,6 +139,29 @@ if (after) {
                "Following the 'release/7.0' link lands on the repository browser at that branch");
 }
 
+// 3c. The same row on the diff page. repositories/_changeset is rendered by
+//     both revision.html.erb and diff.html.erb, so the setting governs two
+//     pages, and its label says both.
+check('diff page with the setting on', await revisionBranches(DIFF_PATH),
+      after ? ['12345-add-revision-branches', 'dependabot/bundler/rails-8.1.4',
+               'main', 'release/7.0', 'wip/experiment'] : null);
+await s.shot(`${prefix}diff-branches`,
+             'The diff page describes the same revision, and shows the same Branches row');
+
+// 3d. The cap. The issue has two associated revisions, so one command per
+//     revision; with repository_log_display_limit at 1 the tab runs none and
+//     shows no branches, while the revision page is unaffected.
+if (after) {
+  await saveSettings({ revision: true, associated: true, excluded: '', regex: false, logLimit: 1 });
+  check('associated revisions above the limit', await issueBranches(), null);
+  await s.shot('issue-above-limit',
+               'Two associated revisions with the limit at 1: the revisions render, the branches do not');
+  check('revision page is not affected by the limit', await revisionBranches(),
+        ['12345-add-revision-branches', 'dependabot/bundler/rails-8.1.4',
+         'main', 'release/7.0', 'wip/experiment']);
+  await saveSettings({ revision: true, associated: true, excluded: '', regex: false, logLimit: 100 });
+}
+
 // 4. Exclusion by pattern, the non-regex form: dependabot/* and wip/*.
 if (after) {
   await saveSettings({ revision: true, associated: true, excluded: 'dependabot/*, wip/*', regex: false });
@@ -142,11 +180,27 @@ check('revision page with a regular expression excluded', await revisionBranches
 await s.shot(`${prefix}revision-excluded-regex`,
              'Every branch name containing a slash excluded by a regular expression');
 
-// 6. An invalid regular expression must not break the page.
+// 6. An invalid regular expression is refused at the form, the way the
+//    mail-handler pair refuses one — and if one reaches the settings table by
+//    another route, the page still renders.
 if (after) {
   await saveSettings({ revision: true, associated: true, excluded: '[, main', regex: true });
+  const rejected = await s.page.evaluate(() => ({
+    error: document.querySelector('#errorExplanation')?.textContent.replace(/\s+/g, ' ').trim() || null,
+    stored: document.querySelector('#settings_revision_branches_excluded')?.value
+  }));
+  check('the settings form refuses an invalid regular expression',
+        {rejected: /not a valid regular expression/.test(rejected.error || ''),
+         echoed: rejected.stored},
+        {rejected: true, echoed: '[, main'});
+  await s.shot('settings-invalid-regex',
+               'The settings form refuses "[" and stores nothing, as it does for the mail handler');
+
+  // Past the form, into the table: the render must still not raise.
+  setSettingDirectly('revision_branches_excluded', '[, main');
+  setSettingDirectly('revision_branches_enable_regex', '1');
 }
-check('revision page with an invalid regular expression', await revisionBranches(),
+check('revision page with an invalid regular expression in the settings table', await revisionBranches(),
       after ? ['12345-add-revision-branches', 'dependabot/bundler/rails-8.1.4',
                'release/7.0', 'wip/experiment'] : null);
 await s.shot(`${prefix}revision-invalid-regex`,

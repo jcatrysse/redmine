@@ -34,8 +34,10 @@
 
 ## Trunk check (G1)
 
-- **Trunk-revisie nagekeken:** `2563fa6a5` = SVN r24882 van 2026-08-03 (de
-  mirror liep niet verder; dat is de laatste commit).
+- **Trunk-revisie nagekeken:** eerst `2563fa6a5` = SVN r24882 (2026-08-03),
+  bij het verversen van 2026-09-05 opnieuw op `bee32a926` = SVN **r25037**
+  (2026-09-04). De bevindingen hieronder zijn op beide gecontroleerd en
+  ongewijzigd.
 - **Lost trunk dit al op?** Nee. `Redmine::Scm::Adapters::GitAdapter` heeft
   `branches` (alle branches met hun tip) en `tags`, maar niets dat vraagt
   *welke branches een gegeven commit bevatten*. `app/models/changeset.rb` heeft
@@ -138,7 +140,11 @@ Three layers, each with one job.
    added later without touching anything else) and drops the names an
    administrator excluded.
 3. The two views render the list when their setting is on, using
-   `RepositoriesHelper#link_to_revision_branches`.
+   `RepositoriesHelper#link_to_revision_branches`. The issue tab asks
+   `RepositoriesHelper#display_changeset_branches?` first, which drops the whole
+   display when the issue carries more associated revisions than
+   `Setting.repository_log_display_limit` (default 100) — one command per
+   revision, so that is the bound on the fork count note 18 predicted.
 
 Nothing is stored, so there is no cached copy to disagree with the repository
 after a branch is deleted or force-pushed (notes 4 and 17). Nothing runs unless
@@ -153,25 +159,37 @@ is worth spelling out because it is not obvious:
   emits `Disallow: /projects/<project>/repository` for every project, and
   `Disallow` is a prefix, so `/projects/<p>/repository/<id>/revisions/<rev>` is
   covered.
-- The **issue page** never renders this at all for a robot. The associated
-  revisions tab is declared in `IssuesHelper#issue_history_tabs` with
-  `:remote => true` and no `:partial`, so `common/_tabs.html.erb` renders an
-  empty container and `getRemoteTab` fetches the content over XHR. A `GET
-  /issues/123` therefore does not call `issues#issue_tab`, does not render
-  `issues/tabs/_changesets`, and does not run the command. A crawler that
-  executes no JavaScript never triggers it — which is why the issue page still
-  does not need to be robot-excluded, note 20's "if" notwithstanding.
+- The **issue page** does not render this server-side, and the endpoint that
+  does render it refuses anything but an XHR. The associated revisions tab is
+  declared in `IssuesHelper#issue_history_tabs` with `:remote => true` and no
+  `:partial`, so `common/_tabs.html.erb` renders an empty container and
+  `getRemoteTab` fetches the content. `GET /issues/123` therefore does not call
+  `issues#issue_tab`, does not render `issues/tabs/_changesets`, and runs no
+  command. And `IssuesController#issue_tab` opens with
+  `return render_error :status => 422 unless request.xhr?`, so a crawler that
+  discovers `/issues/123/tab/changesets` by any other route gets a 422 rather
+  than a page.
+
+  Being precise about what is left: when `?tab=changesets` is the selected tab,
+  `common/_tabs.html.erb` emits an inline `javascript_tag` that calls
+  `getRemoteTab` **on load**, and `/issues/:id` is not in `robots.txt`. A
+  crawler that executes JavaScript and follows the tab link therefore does fire
+  the XHR. That is the residual case, and what bounds it is the cap below: the
+  tab runs no command at all above `repository_log_display_limit` revisions,
+  which is the same bound note 18's example (#61, many associated revisions)
+  runs into.
 
 | File | Change |
 |---|---|
-| `lib/redmine/scm/adapters/git_adapter.rb` | `branches_containing(identifier)`: 18 lines, patterned on the existing `branches` and `tags` |
+| `lib/redmine/scm/adapters/git_adapter.rb` | `branches_containing(identifier)`: 19 lines, patterned on the existing `branches` and `tags` |
 | `app/models/changeset.rb` | `branches`, plus the private `excluded_branch_patterns` |
-| `app/helpers/repositories_helper.rb` | `link_to_revision_branches(changeset)` — `safe_join` of links to the repository at that branch |
-| `app/views/repositories/_changeset.html.erb` | one `<li>` in `ul.revision-info`, between parent and child |
-| `app/views/issues/tabs/_changesets.html.erb` | one `<em>` after the diff link |
-| `app/views/settings/_repositories.html.erb` | the four settings, in the existing settings box |
+| `app/models/setting.rb` | one row in the `validate_all_from_params` table, so a malformed regular expression is rejected at the form exactly as the mail-handler pair's is |
+| `app/helpers/repositories_helper.rb` | `link_to_revision_branches(changeset)` — `safe_join` of links to the repository at that branch — and `display_changeset_branches?(changesets)`, the cap |
+| `app/views/repositories/_changeset.html.erb` | one `<li>` in `ul.revision-info`, between parent and child. This partial is rendered by **both** `repositories/revision.html.erb` and `repositories/diff.html.erb`, so the row appears wherever a single revision is described; the setting's label says both pages |
+| `app/views/issues/tabs/_changesets.html.erb` | one `<em>` after the diff link, and the cap read once before the loop |
+| `app/views/settings/_repositories.html.erb` | the four settings, in the existing settings box, with a glob example and a "Git only" hint |
 | `config/settings.yml` | the four settings, next to the other repository settings |
-| `config/locales/en.yml` | five keys |
+| `config/locales/en.yml` | six keys |
 
 **New setting / migration / gem / route / permission:** four settings, no
 migration, no gem, no route, no permission. Justification per setting (INV-6):
@@ -193,14 +211,18 @@ when the SCM is Git.
 | Key | en | nl | fr | de | es | Patterned on |
 |---|---|---|---|---|---|---|
 | `label_branch_plural` | Branches | Branches | Branches | Zweige | Ramas | `label_branch` in the same file (Branch / Branch / Branche / Zweig / Rama) — grammatical plural of it, and `label_x_plural` is Redmine's plural convention (`label_revision_plural`) |
-| `setting_display_revision_branches` | Display branches on the revision page | Branches weergeven op de revisiepagina | Afficher les branches sur la page de révision | Zweige auf der Revisionsseite anzeigen | Mostrar ramas en la página de revisión | `setting_display_subprojects_issues` for the verb and word order (weergeven / Afficher / anzeigen / Mostrar), `label_revision` for the noun (Revisie / révision / Revision / revisión) |
+| `setting_display_revision_branches` | Display branches on the revision and diff pages | Branches weergeven op de revisie- en diffpagina | Afficher les branches sur les pages de révision et de diff | Zweige auf der Revisions- und der Vergleichsseite anzeigen | Mostrar ramas en las páginas de revisión y de diferencias | `setting_display_subprojects_issues` for the verb and word order (weergeven / Afficher / anzeigen / Mostrar), `label_revision` for the noun (Revisie / révision / Revision / revisión), `label_diff` for the second page (diff / diff / Vergleich / diferencias) |
 | `setting_display_associated_revision_branches` | Display branches in associated revisions | Branches weergeven bij geassociëerde revisies | Afficher les branches dans les révisions associées | Zweige bei zugehörigen Revisionen anzeigen | Mostrar ramas en las revisiones asociadas | `label_associated_revisions` verbatim for the term (Geassociëerde revisies / Révisions associées / Zugehörige Revisionen / Revisiones asociadas), same verb source as above |
 | `setting_revision_branches_excluded` | Exclude branches by name | Branches uitsluiten op basis van naam | Exclure les branches par leur nom | Zweige nach Namen ausschließen | Excluir ramas por nombre | `setting_mail_handler_excluded_filenames` ("Exclude attachments by name") — same sentence with the object swapped |
 | `setting_revision_branches_enable_regex` | Enable regular expressions | Reguliere expressies gebruiken | Utiliser les expressions régulières | Reguläre Ausdrücke verwenden | Habilitar expresiones regulares | `setting_mail_handler_enable_regex` for de/es/fr; for **nl** that key is still untranslated English in core, so the Dutch is derived from `field_regexp` ("Reguliere expressie", nl.yml:275) plus the "… gebruiken" form of `setting_default_issue_start_date_to_creation_date` |
+| `text_revision_branches_git_only` | Branch information is only available for Git repositories. | Branchinformatie is alleen beschikbaar voor Git-repositories. | Les informations de branche ne sont disponibles que pour les dépôts Git. | Zweig-Informationen sind nur für Git-Repositories verfügbar. | La información de ramas solo está disponible para repositorios Git. | `label_repository_plural` in the same file for the noun (Repositories / Dépôts / Repositories / Repositorios) and `label_branch` for the branch term; the sentence form (a full sentence ending in a full stop under `em.info`) is `text_scm_config`'s, its neighbour on the same settings tab |
 
-No new key for the example hint: `text_regexp_info` already exists in all five
-files and is already used for this purpose in
-`app/views/custom_fields/formats/_regexp.html.erb`.
+No new key for the example hint: it now shows two glob examples the way
+`app/views/settings/_mail_handler.html.erb` does for
+`mail_handler_excluded_filenames` — `l(:label_example)` plus a literal — because
+the field is glob syntax until `revision_branches_enable_regex` is ticked, and
+`text_regexp_info` ("eg. `^[A-Z0-9]+$`") is only correct in the mode that is not
+the default.
 
 **Backward compatibility:** both displays default to `0`, so an installation
 that upgrades sees no change and runs no extra command — the
@@ -224,10 +246,11 @@ side.
 (Anthony Mallet, 2014-02-25) proposes `git log --format=%h%d`, which decorates
 commits with the refs pointing *at* them — that is not the same question.
 Answering "which branches contain this commit" for N commits in one pass means
-`git branch --contains` per commit anyway, or walking the graph in Ruby. If a
-committer wants the issue tab bounded rather than opt-in, the honest fix is a
-limit on the number of revisions it will do this for, and that is a decision
-for whoever reviews this, not something to guess at.
+`git branch --contains` per commit anyway, or walking the graph in Ruby. So the
+issue tab is bounded rather than batched: above `repository_log_display_limit`
+revisions it shows no branches at all, which reuses the setting an
+administrator already tunes for "how many revisions a repository view shows"
+instead of adding a fifth.
 
 **Group branch names by a common prefix,** which the GEOxyz 5.1 code did with
 `name.downcase.gsub(/^\d+/, '#####').split(/[\-._]/).first`, collapsing a group
@@ -259,6 +282,7 @@ three monkey-patches, and has been carried by volunteers since 2015.
 | `GitAdapterTest#test_branches_containing` | the command's output is parsed into names: 3 branches for `fba357b`, 1 for `2a68215`, and the `* ` current-branch marker is stripped |
 | `GitAdapterTest#test_branches_containing_should_convert_branch_names_to_utf8` | `scm_iconv` is applied, so the fixture's two Latin-1 branch names come back as UTF-8 — the bug of #21141, which the 5.1 code worked around with `force_encoding("UTF-8")` in a view |
 | `GitAdapterTest#test_branches_containing_with_unknown_or_blank_revision_should_return_empty_array` | an unknown sha, `''` and `nil` all give `[]` rather than raising or running `git branch --contains` with no argument (which would answer for HEAD) |
+| `GitAdapterTest#test_branches_containing_should_skip_names_that_cannot_be_converted` | with `path_encoding` `ISO-2022-JP`, the fixture's two Latin-1 branch names cannot be converted and are dropped; the other five come back. On the unguarded version `scm_iconv`'s `nil` reaches `Array#sort!` and the method raises `ArgumentError: comparison of NilClass with String failed` into the view, which is the only path in it that does not return `[]` |
 | `RepositoryGitTest#test_changeset_branches` | `Changeset#branches` against a real repository |
 | `RepositoryGitTest#test_changeset_branches_without_scmid_should_be_empty` | no command is attempted without an scmid |
 | `RepositoryGitTest#test_changeset_branches_should_exclude_names_matching_a_pattern` | `master` excludes only `master`, `master*` also excludes `master-20120212` — the glob form, and that the exclusion is anchored |
@@ -269,7 +293,10 @@ three monkey-patches, and has been carried by volunteers since 2015.
 | `RepositoriesGitControllerTest#test_revision_should_not_show_branches_by_default` | **green on trunk too** — the default is unchanged |
 | `IssuesControllerTest#test_show_changesets_tab_should_display_the_branches_of_each_revision` | the associated revisions tab renders the branches, and a branch name with a `/` in it generates a URL (`?rev=feature%2F1234`) instead of raising `UrlGenerationError` |
 | `IssuesControllerTest#test_show_changesets_tab_should_not_display_branches_by_default` | **green on trunk too** — the default is unchanged |
-| `IssuesControllerTest#test_show_changesets_tab_should_not_display_branches_without_view_changesets_permission` | the display inherits `Changeset.visible`, so a user without `:view_changesets` gets no changeset and therefore no branches |
+| `IssuesControllerTest#test_show_changesets_tab_should_not_display_branches_without_view_changesets_permission` | the display inherits `Changeset.visible`: the same request shows `Branches: main` with the permission and no branch row anywhere on the page without it. The second assertion looks for the row on the whole response rather than inside the changeset block, so rendering branches outside the visible scope would fail it |
+| `IssuesControllerTest#test_show_changesets_tab_should_not_display_branches_above_the_revision_display_limit` | with `repository_log_display_limit` at 1 and two associated revisions, both changesets still render and neither carries branches — the cap drops the display rather than half of it |
+| `RepositoriesGitControllerTest#test_diff_should_show_the_branches_containing_the_revision` | the row also appears on the diff page, which renders the same `repositories/_changeset` partial — the second of the two places the setting governs |
+| `SettingsControllerTest#test_post_revision_branches_excluded_should_not_save_an_invalid_regular_expression` | posting `Abc[` with the regex switch on comes back 200 with "is not a valid regular expression" and stores nothing, the same as the mail-handler pair |
 
 **Evidence (INV-8 — figures, not claims):**
 
@@ -365,12 +392,12 @@ confirmed:
 
 | Objection | Answer |
 |---|---|
-| A Git subprocess per page view. Redmine caches changesets in the database precisely to keep the SCM out of rendering. | Correct, and it is note 18. Three things bound it: both displays are off by default, so no existing installation pays anything; the revision page already calls three Git commands (note 20) and is already in `robots.txt`; and the alternative — a cached copy — is what notes 4 and 17 reject as unfixably wrong after a delete or a force-push. If the issue tab is the part that worries you, `display_associated_revision_branches` is a separate setting so it can stay off, and a cap on the number of revisions it will do this for is a two-line addition once someone picks the number. |
-| Note 20 says that if the issue page starts calling Git, robots must be excluded from it too. | It does not start calling Git for a robot. The associated revisions tab is `:remote => true` with no `:partial`, so `GET /issues/123` renders an empty container and the content only arrives through `getRemoteTab`'s XHR. A crawler that runs no JavaScript never reaches `issues#issue_tab`. The revision page, which does render server-side, is already covered by the `Disallow: /projects/<project>/repository` line `robots.text.erb` emits. So no change to `robots.txt` is needed — but if a reviewer disagrees, the honest alternative is to say so in the setting's description rather than to deindex issue pages. |
-| Git only, of six adapters. | Only Git can answer it. Subversion branches are a directory convention, not a graph property (note 11). `Changeset#branches` guards with `respond_to?(:branches_containing)`, so the other five are untouched and Mercurial named branches (note 30) need only the adapter method. |
+| A Git subprocess per page view. Redmine caches changesets in the database precisely to keep the SCM out of rendering. | Correct, and it is note 18. Four things bound it. Both displays are off by default, so no existing installation pays anything. The issue tab is capped: above `repository_log_display_limit` associated revisions (default 100) it runs no command and shows no branches, so N is bounded by a number the administrator already sets. The revision page renders one extra command and is already excluded from crawlers by the `Disallow: /projects/<project>/repository` prefix `robots.text.erb` emits — note 20's "repository page calls three git commands" is about the repository *browse* page, which this patch does not touch; the revision page itself makes no SCM call today. And the alternative — a cached copy — is what notes 4 and 17 reject as unfixably wrong after a delete or a force-push. Measured on a 29-commit fixture repository: an issue tab with 29 associated revisions goes from 466 ms and 0 subprocesses to 1007 ms and 29, which is what the cap exists to bound. |
+| Note 20 says that if the issue page starts calling Git, robots must be excluded from it too. | It does not start calling Git on `GET /issues/123`: the associated revisions tab is `:remote => true` with no `:partial`, so that request renders an empty container and runs no command. The endpoint that does render it, `issues#issue_tab`, answers `422` to anything that is not an XHR, so it cannot be crawled by URL either. What remains is a crawler that executes JavaScript and follows the `?tab=changesets` link: the inline `javascript_tag` in `common/_tabs.html.erb` fires `getRemoteTab` on load, and `/issues/:id` is not in `robots.txt`. That case is real, and it is bounded by the same cap as every other caller — no command above `repository_log_display_limit` revisions, and nothing at all while the setting is off. If a reviewer would rather close it outright, one line in `robots.text.erb` (`Disallow: /issues/*/tab/`) covers a route no human navigates to directly and does not deindex issue pages. The revision page, which does render server-side, is already covered by the `Disallow: /projects/<project>/repository` prefix. |
+| Git only, of six adapters. | Only Git can answer it. Subversion branches are a directory convention, not a graph property (note 11). `Changeset#branches` guards with `respond_to?(:branches_containing)`, so the other five are untouched and Mercurial named branches (note 30) need only the adapter method. The settings tab says so in words (`text_revision_branches_git_only`, an `em.info` under the block) rather than hiding the settings on a non-Git installation: with Git in `enabled_scm` but this project's repository on Subversion the settings are still meaningful, so gating on `enabled_scm` would be wrong in the mixed case that is the common one. |
 | Four new settings for one display feature. | Two are the on/off switches, and they must be separate because their costs differ in kind. The other two are one exclusion list plus its glob-or-regex switch, which is the shape core already uses for `mail_handler_excluded_filenames`; `Changeset#excluded_branch_patterns` is deliberately `MailHandler#accept_attachment?` with the names changed, down to the `\A…\z` anchoring and the `*` → `.*` translation. If three is the limit, drop `revision_branches_enable_regex` and treat every pattern as a regular expression — one line. |
 | The name `branches` on `Changeset` will collide. | It does not: `Changeset` has no `branches` today, and `Repository#branches` (a different thing — all branches with their tips) stays as it is. `Changeset#branches` is the name Patch #7829 chose in 2011. |
-| An administrator's bad regular expression will break the revision page. | It does not. `Changeset#excluded_branch_patterns` rescues `RegexpError`, logs it, and drops that pattern while the valid ones keep working. Tested, and photographed (`revision-invalid-regex.png`). Core's `MailHandler#accept_attachment?` does not guard this, which is fine in a background job and would not be on a page. |
+| An administrator's bad regular expression will break the revision page. | It is rejected before it is stored, by the same mechanism as the pair this is modelled on: `revision_branches_excluded` is a row in `Setting.validate_all_from_params`, so the settings form comes back with "is not a valid regular expression" and saves nothing — exactly what `mail_handler_excluded_filenames` does. `Changeset#excluded_branch_patterns` still rescues `RegexpError` and drops that one pattern, as a guard against a value written straight into the `settings` table; both halves are tested, and the render is photographed (`revision-invalid-regex.png`). |
 | Branch names come from outside Redmine, so this is an injection surface. | `link_to_revision_branches` uses `safe_join` over `link_to`, so every name is escaped by Rails; nothing calls `html_safe` on SCM output. The adapter passes the identifier to `git_cmd`, which shell-quotes each argument, and a bad identifier makes git exit non-zero and yields `[]`. |
 | Shouldn't this need `:browse_repository`? | No, and requiring it would be stricter than Redmine is about the same data. The branch links target `repositories#show`, which `lib/redmine/preparation.rb` grants under **both** `:view_changesets` and `:browse_repository`, and the branch selector on that page already lists every branch name to a `:view_changesets` user. `Changeset.visible` filters on `:view_changesets`, so both views are gated by that already, and adding a second check to only one of them would make them inconsistent. |
 | Why not one setting that takes `off` / `revision` / `both`? | It would be one key instead of two, but it makes the common case (revision page only, issue tab off) a three-way choice instead of two checkboxes, and it has no precedent in Redmine's settings. Worth changing if a committer prefers it; it is a rename plus one condition. |

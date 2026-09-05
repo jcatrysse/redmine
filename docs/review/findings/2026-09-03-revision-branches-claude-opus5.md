@@ -68,7 +68,8 @@ with the concession already costed in the dossier.
 
 ### F01 — An invalid regular expression in `revision_branches_excluded` is silently accepted and stored; the core pattern this is modelled on rejects it at the form
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — the pair is now the third row of `Setting.validate_all_from_params`, so the settings form refuses `Abc[` with "is not a valid regular expression" and stores nothing, exactly as the mail-handler pair does. New test `SettingsControllerTest#test_post_revision_branches_excluded_should_not_save_an_invalid_regular_expression`, verified red without the row (302, value stored). The `rescue RegexpError` in `excluded_branch_patterns` stays as a guard against a value written straight into the `settings` table, and its `logger.warn` is gone — it fired once per rendered row. The dossier and the objections table now describe it that way instead of as a correction of core
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -138,13 +139,14 @@ the `settings` table is defensible, but the dossier and `decisions.md` should
 then describe it that way rather than as a correction of core. If it stays, the
 per-changeset `logger.warn` should not fire once per rendered row.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — the pair is now the third row of `Setting.validate_all_from_params`, so the settings form refuses `Abc[` with "is not a valid regular expression" and stores nothing, exactly as the mail-handler pair does. New test `SettingsControllerTest#test_post_revision_branches_excluded_should_not_save_an_invalid_regular_expression`, verified red without the row (302, value stored). The `rescue RegexpError` in `excluded_branch_patterns` stays as a guard against a value written straight into the `settings` table, and its `logger.warn` is gone — it fired once per rendered row. The dossier and the objections table now describe it that way instead of as a correction of core
 
 ---
 
 ### F02 — One `git branch --contains` subprocess per associated revision, with nothing bounding the count
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 per Jan's g12 (and F11 option A) — `RepositoriesHelper#display_changeset_branches?` drops the whole display when the issue carries more associated revisions than `Setting.repository_log_display_limit` (default 100), so N is bounded by a number the administrator already sets and no fifth setting is added (INV-6). All-or-nothing rather than branches for the first N, so there is no half-rendered page to report as a bug. Test `IssuesControllerTest#test_show_changesets_tab_should_not_display_branches_above_the_revision_display_limit`, red without the cap. The exception itself is recorded as E-02 in `docs/exceptions.md`. Memoising `Changeset#branches` and hoisting `excluded_branch_patterns` out of the loop were deliberately **not** done: the view assigns the helper's result to a local, so `branches` is called exactly once per rendered changeset and memoisation saves nothing, and compiling a handful of patterns is orders of magnitude below the fork the cap bounds (INV-1)
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** performance
@@ -212,13 +214,14 @@ and reusing it costs no new setting. Memoising `Changeset#branches` and hoisting
 `excluded_branch_patterns` out of the per-changeset path are separate, smaller
 wins. Whether to do any of this before submitting is F11, a question for Jan.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 per Jan's g12 (and F11 option A) — `RepositoriesHelper#display_changeset_branches?` drops the whole display when the issue carries more associated revisions than `Setting.repository_log_display_limit` (default 100), so N is bounded by a number the administrator already sets and no fifth setting is added (INV-6). All-or-nothing rather than branches for the first N, so there is no half-rendered page to report as a bug. Test `IssuesControllerTest#test_show_changesets_tab_should_not_display_branches_above_the_revision_display_limit`, red without the cap. The exception itself is recorded as E-02 in `docs/exceptions.md`. Memoising `Changeset#branches` and hoisting `excluded_branch_patterns` out of the loop were deliberately **not** done: the view assigns the helper's result to a local, so `branches` is called exactly once per rendered changeset and memoisation saves nothing, and compiling a handful of patterns is orders of magnitude below the fork the cap bounds (INV-1)
 
 ---
 
 ### F03 — The dossier defends the cost with "the revision page already calls three Git commands"; the revision page calls none
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — the sentence is gone. The objections row now says what is true and measured: the revision page makes no SCM call on trunk and gains exactly one when the setting is on, note 20's "three git commands" is about the repository *browse* page which this patch does not touch, and the revision page is already crawler-excluded by the `Disallow: /projects/<project>/repository` prefix. The 466 ms → 1007 ms figure for a 29-revision issue tab is now in the same row
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -269,13 +272,14 @@ by the existing `Disallow` prefix — and note 20's "three commands" observation
 applies to the repository browse page, which this patch does not touch. Nothing
 else in the objections table depends on the wrong version.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — the sentence is gone. The objections row now says what is true and measured: the revision page makes no SCM call on trunk and gains exactly one when the setting is on, note 20's "three git commands" is about the repository *browse* page which this patch does not touch, and the revision page is already crawler-excluded by the `Disallow: /projects/<project>/repository` prefix. The 466 ms → 1007 ms figure for a 29-revision issue tab is now in the same row
 
 ---
 
 ### F04 — The feature also appears, and runs `git`, on the diff page — which the setting name, the dossier and the G9 evidence all omit
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 by stating it, which is the reviewer's own recommendation — `setting_display_revision_branches` now reads "Display branches on the revision and diff pages" in all five locales, the dossier's file table says `repositories/_changeset` is rendered by both `revision.html.erb` and `diff.html.erb`, the G9 table gains a `before-diff-branches.png` / `diff-branches.png` pair, and `RepositoriesGitControllerTest#test_diff_should_show_the_branches_containing_the_revision` covers the second page
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** ui
@@ -321,13 +325,14 @@ or scope the row to `revision.html.erb` only if the diff page is not wanted. The
 first is less code and probably the better product; it is the *silence* that is
 the finding, not the behaviour.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 by stating it, which is the reviewer's own recommendation — `setting_display_revision_branches` now reads "Display branches on the revision and diff pages" in all five locales, the dossier's file table says `repositories/_changeset` is rendered by both `revision.html.erb` and `diff.html.erb`, the G9 table gains a `before-diff-branches.png` / `diff-branches.png` pair, and `RepositoriesGitControllerTest#test_diff_should_show_the_branches_containing_the_revision` covers the second page
 
 ---
 
 ### F05 — The four settings are offered on installations where Git is not an enabled SCM, and nothing in the UI says the feature is Git-only
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 by wording, not by gating — a new `text_revision_branches_git_only` ("Branch information is only available for Git repositories.") renders as an `em.info` under the block, in all five locales. Not gated on `enabled_scm`: Git enabled with this project's repository on Subversion is a legitimate mixed case in which the setting still means something, and hiding it there would be wrong
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** scm-symmetry
@@ -375,13 +380,14 @@ need a story for the mixed case (Git enabled, this project's repository is SVN),
 where the setting is legitimately meaningful. I would not gate on `enabled_scm`
 without deciding that; wording is enough.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 by wording, not by gating — a new `text_revision_branches_git_only` ("Branch information is only available for Git repositories.") renders as an `em.info` under the block, in all five locales. Not gated on `enabled_scm`: Git enabled with this project's repository on Subversion is a legitimate mixed case in which the setting still means something, and hiding it there would be wrong
 
 ---
 
 ### F06 — The hint under the exclusion field shows a regular-expression example, but the field is glob syntax unless the box below it is ticked
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — the hint is now `l(:text_comma_separated)` plus `l(:label_example)` and the literal `dependabot/*, wip-*`, copied from `app/views/settings/_mail_handler.html.erb`, so the example matches the mode the field is actually in by default. `text_regexp_info` is no longer used here, and no new key was needed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** ui
@@ -423,13 +429,14 @@ default mode; if both modes deserve an example, the pattern to copy is
 `label_example` plus a literal, not a locale key that assumes regular
 expressions. No new key is needed either way.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — the hint is now `l(:text_comma_separated)` plus `l(:label_example)` and the literal `dependabot/*, wip-*`, copied from `app/views/settings/_mail_handler.html.erb`, so the example matches the mode the field is actually in by default. `text_regexp_info` is no longer used here, and no new key was needed
 
 ---
 
 ### F07 — `test_show_changesets_tab_should_not_display_branches_without_view_changesets_permission` passes with the entire feature removed
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — the test now drives the same request twice inside one `with_settings` block: with `:view_changesets` it asserts `div#changeset-102 em` reads `Branches: main`, and after `Role.find(1).remove_permission!` it asserts no branch row anywhere on the response, not just inside the changeset block. Both halves fail on the feature-removed mutation, so it is no longer green with the feature gone
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -478,13 +485,14 @@ still shows one, for instance — or keep it as a guard and say in the dossier
 that it is a guard, the way the two `_by_default` tests are labelled. What
 should not stand is the dossier claiming it proves something it does not test.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — the test now drives the same request twice inside one `with_settings` block: with `:view_changesets` it asserts `div#changeset-102 em` reads `Branches: main`, and after `Role.find(1).remove_permission!` it asserts no branch row anywhere on the response, not just inside the changeset block. Both halves fail on the feature-removed mutation, so it is no longer green with the feature gone
 
 ---
 
 ### F08 — The note-20 answer holds for crawlers that do not run JavaScript; it does not hold for the ones that do
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — both the "Proposed change" paragraph and the objections row are rewritten around `IssuesController#issue_tab`'s `422 unless request.xhr?`, which is the real defence, and both now name the residual case explicitly: a JavaScript-executing crawler that follows `?tab=changesets` does fire the XHR, because the inline `javascript_tag` runs on load and `/issues/:id` is not in `robots.txt`. What bounds it is the F02 cap. `Disallow: /issues/*/tab/` is offered as the one-line alternative if a reviewer wants it closed outright, rather than being done unasked
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -544,13 +552,14 @@ gains a cap, is a satisfying answer, and otherwise is the argument for adding
 affects a route no human navigates to directly, and does not deindex issue
 pages, which is the outcome the dossier rightly wants to avoid).
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — both the "Proposed change" paragraph and the objections row are rewritten around `IssuesController#issue_tab`'s `422 unless request.xhr?`, which is the real defence, and both now name the residual case explicitly: a JavaScript-executing crawler that follows `?tab=changesets` does fire the XHR, because the inline `javascript_tag` runs on load and `/issues/:id` is not in `robots.txt`. What bounds it is the F02 cap. `Disallow: /issues/*/tab/` is offered as the one-line alternative if a reviewer wants it closed outright, rather than being done unasked
 
 ---
 
 ### F09 — `names.sort!` can raise where the rest of the method carefully returns `[]`
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — a `scm_iconv` that returns `nil` is dropped instead of pushed, so `names.sort!` cannot raise and the method keeps the contract the rest of it follows. Test `GitAdapterTest#test_branches_containing_should_skip_names_that_cannot_be_converted` builds the adapter with `path_encoding` `ISO-2022-JP`, in which the fixture's two Latin-1 branch names really do fail to convert; on the unguarded version it errors with `ArgumentError: comparison of NilClass with String failed` from `sort!`, so the reachability half is now measured rather than reasoned
 - **Severity:** nit
 - **Confidence:** probable
 - **Category:** correctness
@@ -592,13 +601,14 @@ the method's own contract; whether a name that cannot be decoded should be
 skipped or passed through undecoded is a real choice and the fixing session owns
 it.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — a `scm_iconv` that returns `nil` is dropped instead of pushed, so `names.sort!` cannot raise and the method keeps the contract the rest of it follows. Test `GitAdapterTest#test_branches_containing_should_skip_names_that_cannot_be_converted` builds the adapter with `path_encoding` `ISO-2022-JP`, in which the fixture's two Latin-1 branch names really do fail to convert; on the unguarded version it errors with `ArgumentError: comparison of NilClass with String failed` from `sort!`, so the reachability half is now measured rather than reasoned
 
 ---
 
 ### F10 — The commit message is far longer than anything in trunk's history
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — the commit message is the subject line alone, `Show the Git branches that contain a revision (#5386).`, which is the shape 196 of trunk's last 200 commits have. The explanation lives in the dossier text that goes into the note
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -634,13 +644,14 @@ paragraph and the note-17/18/20 paragraph; the settings detail is all in the
 dossier text that goes into the issue note anyway. Equally defensible to leave
 it alone.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — the commit message is the subject line alone, `Show the Git branches that contain a revision (#5386).`, which is the shape 196 of trunk's last 200 commits have. The explanation lives in the dossier text that goes into the note
 
 ---
 
 ### F11 — Question for Jan: bound the per-revision command before submitting, or let the core team ask?
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** answered 2026-09-05 by Jan's g12: option A, the cap goes in before submission, reusing `repository_log_display_limit` so no fifth setting appears. Implemented and evidenced under F02; the deliberate rule-break it bounds is written up as E-02 in `docs/exceptions.md`
 - **Severity:** question
 - **Confidence:** n/a
 - **Category:** performance
@@ -673,7 +684,7 @@ choice to the reviewer.
 - **Haast?** nee — blokkeert het indienen niet, maar het is wel goedkoper vóór
   de note dan erna.
 
-**Resolution:**
+**Resolution:** answered 2026-09-05 by Jan's g12: option A, the cap goes in before submission, reusing `repository_log_display_limit` so no fifth setting appears. Implemented and evidenced under F02; the deliberate rule-break it bounds is written up as E-02 in `docs/exceptions.md`
 
 ---
 

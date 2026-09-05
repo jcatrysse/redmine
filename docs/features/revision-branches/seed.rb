@@ -81,8 +81,14 @@ changeset = repository.changesets.find_by(comments: 'Adds a changelog')
 issue = project.issues.order(:id).first
 changeset.issues << issue unless changeset.issues.include?(issue)
 
+# A second associated revision, so the cap on the issue tab can be shown in a
+# browser instead of only described: with repository_log_display_limit at 1 an
+# issue with two of them shows no branches at all.
+second = repository.changesets.find_by(comments: 'Initial import')
+second.issues << issue unless second.issues.include?(issue)
+
 puts "repository #{repository.id} identifier=#{repository.identifier} changesets=#{repository.changesets.count}"
 puts "revision   /projects/#{project.identifier}/repository/#{repository.identifier_param}/revisions/#{changeset.revision}"
-puts "issue      /issues/#{issue.id}"
+puts "issue      /issues/#{issue.id} (#{issue.changesets.count} associated revisions)"
 puts "reader     norepo / GEOxyzDev123! (role #{role.name}, no view_changesets)"
 puts "branches   #{repository.scm.branches.map(&:to_s).join(', ')}"
