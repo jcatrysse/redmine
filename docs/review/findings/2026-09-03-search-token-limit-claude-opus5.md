@@ -377,10 +377,19 @@ which I re-read to confirm it: `app/models/principal.rb:81` splits `params[:q]`
 on whitespace and builds one `LIKE` pair per token, ANDed, with no cap, reached
 from the watchers and members autocompletes.
 
-Measured on «PGVER», «NISSUES» issues, `Subject` filter, warm (the first call is
-discarded):
+Measured on PostgreSQL 16.13, 50 000 issues with a mean subject length of 50
+characters, `Subject` filter, median of three runs inside
+`ActiveRecord::Base.uncached` — the query cache is on inside `rails runner`, and
+the first attempt at this measurement was measuring it (the whole table came
+back in 11 ms at 1000 tokens). That is in `docs/traps.md` now:
 
-«PERFTABLE»
+| tokens | `*~` (OR) | `~` (AND) |
+|---|---|---|
+| 1 | 0.054 s | 0.051 s |
+| 5 | 0.184 s | 0.053 s |
+| 50 | 0.554 s | 0.032 s |
+| 200 | 2.233 s | 0.046 s |
+| 1000 | 10.930 s | 0.123 s |
 
 So `~` and `!~` do not grow with the token count and the `OR` operators do. The
 sentence the finding objected to ("the user waits for it themselves") is gone;
@@ -459,7 +468,7 @@ RuboCop figures there, and name that revision in the dossier and in the note.
 figure was re-measured on it in the same breath (g10). The patch file is
 `patches/search-token-limit/2026-09-05-r25037-feature.patch`; the r24882 one is
 gone, so there is one file in `patches/<slug>/` and it is the one that would be
-attached. `tools/check-patch-clean.sh search-token-limit --submit`: «CPC».
+attached. `tools/check-patch-clean.sh search-token-limit --submit`: PASS.
 
 The trunk check was redone on the new tip, not carried over: `lib/redmine/search.rb`
 in r25037 still ends `Tokenizer#tokens` with `.first 5`, and none of the 88
@@ -695,7 +704,12 @@ measurement redone here. `sql_contains` goes through
 carries **zero** bind parameters at any token count; PostgreSQL's and MySQL's
 65,535-placeholder limits are not reachable by this path. Statement length:
 
-«SQLLEN_BLOCK»
+```
+tokens=5     sql_length=170      question_marks=0
+tokens=200   sql_length=7287     question_marks=0
+tokens=1000  sql_length=36888    question_marks=0
+tokens=5000  sql_length=188888   question_marks=0
+```
 
 The SQLite ceiling is named as a documented default (`SQLITE_MAX_SQL_LENGTH`,
 1,000,000 bytes) with the token count it implies, and explicitly as arithmetic

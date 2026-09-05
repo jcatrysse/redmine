@@ -238,7 +238,42 @@ in every locale, to explain a limitation rather than lift it.
 
 **Evidence (INV-8 — figures, not claims):**
 
-«EVIDENCE_BLOCK»
+- **full** suite on the patch, `tools/test-env.sh … bundle exec ruby bin/rails test:all`
+  → **5985 runs, 31725 assertions, 27 failures, 2 errors, 92 skips**
+- **full** suite on a pristine `origin/master` r25037, same command
+  → **5977 runs, 31711 assertions, 27 failures, 2 errors, 92 skips**
+- the delta is exactly the eight new tests: **+8 runs, +14 assertions**, and the
+  27 failures plus 2 errors are **identical in both runs, test for test** — the
+  two lists of 29 names `diff` clean. All 29 are repository or changeset tests
+  that need `svn`, `hg`, `bzr` or `cvs`, none of which is installed on this
+  machine (`RepositoriesControllerTest`, `SysControllerTest`,
+  `Redmine::ApiTest::RepositoriesTest`, `Redmine::ApiTest::IssuesTest`,
+  `UserTest#test_destroy_should_nullify_changesets`). See "Found but not fixed".
+- **full** suite on `7.0-stable-GEOxyz` with the same change, on the exported
+  commit → **6112 runs, 32304 assertions, 0 failures, 0 errors, 39 skips** —
+  completely green
+- RuboCop on the changed files: **0** offences on the 8 changed Ruby files
+  (baseline at `origin/master`, same files: **0**). On `7.0-stable-GEOxyz`:
+  **0** offences on the 7 changed Ruby files (baseline at `origin/7.0-stable`,
+  same files: **0**). `app/views/search/index.html.erb` is not a Ruby file and
+  RuboCop excludes it, which is why the counts are 8 and 7 rather than 9 and 8.
+- each new test verified red on the old code: `git stash push` on the four
+  production files, then the eight new tests in one process → **8 runs,
+  11 assertions, 6 failures, 1 error**. Seven of the eight are red; the
+  remaining one, `test_fetcher_should_use_no_more_than_five_tokens`, passes
+  before *and* after by design — it is the guard that the search engine's cap
+  survived, so a green result on the old code is what it is supposed to give.
+  The error is the helper test, which cannot call a helper that does not exist
+  yet.
+- **nothing in trunk pins the five.** Removing the cap from `Tokenizer` in a
+  pristine r25037 worktree and running `query_test.rb`, `search_test.rb`,
+  `lib/redmine/search_test.rb`, `issue_test.rb`, `search_controller_test.rb`,
+  `auto_completes_controller_test.rb` and `search_helper_test.rb` in one process
+  → **656 runs, 2077 assertions, 0 failures, 0 errors, 2 skips**. So the guard
+  test this patch adds is the first thing in the suite that holds the engine to
+  five tokens.
+- patch applies to pristine `origin/master` r25037: yes
+- `tools/check-patch-clean.sh search-token-limit --submit`: **PASS**
 
 # Live verification (G9)
 
@@ -268,7 +303,8 @@ the evidence. `MODE=regression` runs against the first version of this patch
 | Subject `$` six words, only sixth matches | `filter-ends-with.png` | 1 issue |
 | Any searchable text `*~` six words, only sixth matches | `before-filter-any-searchable.png` | 0 issues — the filter that goes through the search engine |
 | Any searchable text `*~` six words, only sixth matches | `filter-any-searchable.png` | 1 issue |
-| *Apply issues filter* after a titles-only search of six words | `apply-issues-filter.png` | the search page counts 1 result and the button opens a list with 1 issue |
+| *Apply issues filter* after a titles-only search of six words | `before-apply-issues-filter.png` | unpatched: 1 result counted, 1 issue behind the button — the state the fix restores |
+| *Apply issues filter* after a titles-only search of six words | `apply-issues-filter.png` | patched: 1 result counted, 1 issue behind the button, and the filter value on the destination page is the five words the search used |
 
 Failure paths verified:
 
@@ -276,7 +312,8 @@ Failure paths verified:
 |---|---|---|---|
 | Global search, six words, "all words", sixth is nonsense | `before-search-still-capped.png` | 1 result: the cap drops the sixth token | 1 result |
 | The same search after the change | `search-still-capped.png` | still 1 result, still the same five highlighted tokens | 1 result, five tokens highlighted |
-| The *Apply issues filter* button on the **first** version of this patch | `regression-apply-issues-filter.png` | the defect F02 describes: a page reporting one result above a button that opens an empty list | "Results (1)" and 0 issues behind the button |
+| The search page on the **first** version of this patch | `regression-search-still-capped.png` | 1 result — the top half of the defect | 1 result |
+| The *Apply issues filter* button on that same version | `regression-apply-issues-filter.png` | the defect F02 describes: a page reporting one result above a button that opens an empty list | filter value "pump alignment survey report northern zzz", "No data to display" |
 | Filter present but with no match at all (`~ zzz`) | covered by `filter-contains.png` | empty list, not an error | empty list |
 
 The script also fails if the filter is not actually on the page, so an empty
@@ -287,7 +324,7 @@ with the right operator label ("contains", "contains any of", "starts with",
 "ends with"), the full six-word value still in the text box (so the form did
 not truncate it either), the pager, and the subject column.
 
-Two things the images show that the numbers do not:
+Three things the images show that the numbers do not:
 
 - `before-filter-contains.png` puts the defect on one screen. The filter reads
   "Subject contains: pump alignment survey report northern zzz" and the list
@@ -298,15 +335,21 @@ Two things the images show that the numbers do not:
   in both of them exactly five words are highlighted — Pump, alignment, survey,
   report, northern — while "wind" and "farm" are not. That is the cap, visible,
   unchanged before and after.
+- the F02 pair is the same page twice. `regression-apply-issues-filter.png`
+  shows the *Subject contains* box holding all six words —
+  "pump alignment survey report northern zzz" — above "No data to display".
+  `apply-issues-filter.png` shows the same box holding five —
+  "pump alignment survey report northern" — above issue #7. Nothing else on the
+  two screens differs, which is what makes the cause unambiguous.
 
 # Anticipated objections
 
 | Objection | Answer |
 |---|---|
 | "The five-token limit is there for performance." | It is, for the search engine, and it stays there as the default. This patch moves it from `Tokenizer` to `Fetcher`, which is where it was written and where the cost is tokens × searchable classes × projects. A text filter is one `LIKE` per token on one column of one table. |
-| "Unbounded tokens in a filter can be slow." | Only for the `OR` operators, and here are the figures. Measured on PostgreSQL «PGVER», «NISSUES» issues, `Subject` filter, warm: «PERFTABLE_INLINE». `~` and `!~` combine with `AND`, so PostgreSQL abandons a row at the first condition that fails and the cost does not grow with the token count. `*~`, `^` and `$` combine with `OR`, so a non-matching row is tested against every condition and the cost is tokens × rows. That asymmetry is the honest answer, not "the user waits for it themselves" — the requester waits, but the database CPU is shared. Unbounded token counts from user input are not new here: `Principal.like` (`app/models/principal.rb`) already builds one `LIKE` pair per token of `params[:q]`, with no cap, and it is reached from the watchers and members autocompletes. |
+| "Unbounded tokens in a filter can be slow." | Only for the `OR` operators, and here are the figures. Measured on PostgreSQL 16.13, 50 000 issues, `Subject` filter, warm: 1 token 0.054 s / 0.051 s, 5 tokens 0.184 s / 0.053 s, 50 tokens 0.554 s / 0.032 s, 200 tokens 2.233 s / 0.046 s, 1000 tokens **10.930 s** / 0.123 s (`*~` / `~`, median of three uncached runs). `EXPLAIN ANALYZE` at 1000 tokens splits that into 76 ms planning and 10.5 s execution for `*~`, against 79 ms planning and 27 ms execution for `~`. `~` and `!~` combine with `AND`, so PostgreSQL abandons a row at the first condition that fails and the cost does not grow with the token count. `*~`, `^` and `$` combine with `OR`, so a non-matching row is tested against every condition and the cost is tokens × rows. That asymmetry is the honest answer, not "the user waits for it themselves" — the requester waits, but the database CPU is shared. Unbounded token counts from user input are not new here: `Principal.like` (`app/models/principal.rb`) already builds one `LIKE` pair per token of `params[:q]`, with no cap, and it is reached from the watchers and members autocompletes. |
 | "Can a request amplify that?" | A filter value travels in the query string, so roughly a thousand tokens fit in an 8 KB request line, and that is the 1000-token row above. The same is true today of `Principal.like`. If core wants a bound on filter input, it belongs on the filter value in `Query#validate_query_filters`, where it would apply to every operator and every filter, rather than on the tokenizer where it silently changes the answer instead of refusing the question. |
-| "What about statement size and bind parameters?" | `sql_contains` builds the condition through `sanitize_sql_for_conditions`, which inlines the values, so the statement that reaches the driver carries **zero** bind parameters — PostgreSQL's and MySQL's 65,535-placeholder limits are not in play at any token count. Statement length grows about «BYTESPERTOKEN» bytes per token: «SQLLEN». Against PostgreSQL's 1 GB and MySQL's default 64 MB `max_allowed_packet` that is nowhere near a ceiling; SQLite's default `SQLITE_MAX_SQL_LENGTH` of 1,000,000 bytes would be reached at roughly «SQLITETOKENS» tokens, which does not fit in a request line and could only be stored in a saved query. |
+| "What about statement size and bind parameters?" | `sql_contains` builds the condition through `sanitize_sql_for_conditions`, which inlines the values, so the statement that reaches the driver carries **zero** bind parameters — PostgreSQL's and MySQL's 65,535-placeholder limits are not in play at any token count. Statement length grows about 37 bytes per token: 5 tokens 170 characters, 200 tokens 7 287, 1000 tokens 36 888, 5000 tokens 188 888. Against PostgreSQL's 1 GB and MySQL's default 64 MB `max_allowed_packet` that is nowhere near a ceiling; SQLite's default `SQLITE_MAX_SQL_LENGTH` of 1,000,000 bytes would be reached at roughly 26 000 tokens, which does not fit in a request line and could only be stored in a saved query. |
 | "This changes behaviour in a stable release." | It changes behaviour in trunk. Text filters with more than five words return a different set than in 7.0.0, and that is the point of the fix. No test in trunk asserts the old behaviour, and the global search is pinned unchanged by a new test. |
 | "Then make it configurable, so administrators can choose." | An administrator cannot sensibly choose how many of a user's keywords to ignore. A setting also has to sit on one settings tab while affecting both the filters and the global search — the earlier patch on #43701 put it on Issues, which is wrong for the search engine half. See "Alternatives considered". |
 | "Was the limit not deliberate for filters?" | No. Before r21238 the tokenizing and the `slice! 5..-1` were inline in `Fetcher#initialize`; that commit moved the block verbatim into `Tokenizer` so filters and the autocomplete could reuse the tokenizing. Nothing in #35148 discusses a term limit for filters. |
@@ -335,18 +378,23 @@ Two things the images show that the numbers do not:
 ## GEOxyz
 
 - **Commits op `7.0-stable-GEOxyz`:** `1c85728aa` (het oorspronkelijke ontwerp)
-  + «GEOXYZ_COMMIT» (de herziening van ronde 2: de optie op `Fetcher`, het
+  + `f260958c6` (de herziening van ronde 2: de optie op `Fetcher`, het
   filter `any_searchable`, en de knop)
-- **Suites daar groen:** «GEOXYZ_SUITE»
+- **Suites daar groen:** 6112 runs, 32304 assertions, 0 failures, 0 errors, 39 skips — helemaal groen
 - **`nl.yml` toegevoegd:** n.v.t. — geen nieuwe strings
-- **`tools/check-geoxyz-branch.sh`:** «GEOXYZ_CHECK»
+- **`tools/check-geoxyz-branch.sh`:** PASS
 - **Wanneer kan deze commit vervallen?** Een geaccepteerde trunk-patch komt in
   7.1 of later, nooit in 7.0-stable. Dus: pas als GEOxyz naar de release gaat
   die deze fix bevat, ten vroegste 7.1.0.
 
 ## Found but not fixed
 
-- **«FAILNOTE»**
+- **29 repository- en changeset-tests falen op deze machine, met en zonder
+  patch.** `svn`, `hg`, `bzr` en `cvs` staan niet in het image. Exact dezelfde
+  27 failures en 2 errors in beide volledige trunk-runs, test voor test
+  hetzelfde; niets ervan raakt `lib/redmine/search.rb`. Op de GEOxyz-branch
+  (7.0-stable) falen diezelfde bestanden niet — dat verschil is een
+  trunk-wijziging (`Setting.enabled_scm`), niet iets van ons.**
 - **De `max_tokens:` keyword-parameter in de 5.1-patch en in de port
   (`cd60c0b63`) wordt door geen enkele caller doorgegeven.** Dode API. Niet
   gerepareerd maar vervallen: dit ontwerp heeft de parameter niet nodig.
