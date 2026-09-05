@@ -502,3 +502,31 @@ Framework- en productierelevante keuzes. De rest staat in
   oude kan alleen met een force push op een branch waar parallelle sessies op
   pushen, en `docs/traps.md` noemt dat al niet de moeite waard — maar het hoort
   hier te staan in plaats van stil te blijven.
+## Autonoom besloten — wiki-export-attachments, ronde 2 (2026-09-05)
+
+Framework-relevante keuzes van deze sessie; de feature-eigen Class A-keuzes
+staan in `docs/features/wiki-export-attachments/decisions.md`.
+
+- **Eerste rij in `docs/exceptions.md` (E-01):** INV-1 wordt bewust overtreden
+  door twee bestaande methodes van #43978 mee te verhuizen naar
+  `lib/redmine/export/zip/` en de `(n)`-lus uit `Attachment.archive_attachments`
+  te lichten. De verhuizing is Jans keuze g16c; de extractie is Class A
+  (review F04 noemde de kopie als het slechtere alternatief). Het dossier
+  beantwoordt het bezwaar met hetzelfde antwoord, zoals `exceptions.md` eist.
+- **Alle twaalf bevindingen van de review hebben een `Resolution:`-regel** in
+  beide vormen: als `- **Resolution:**`-opsommingsregel in de kop (die
+  `tools/findings.sh` leest) én als alinea onder de bevinding. Tien `fixed`,
+  twee `wont-fix` (F09 per Jans g14, F11 per de reviewer zelf: het gat zit in
+  `Attachment#sanitize_filename`, niet in de patch).
+- **`tools/check-geoxyz-branch.sh` staat op FAIL door één lint-regel van
+  upstream,** `Rails/StrongParametersExpect` op `wiki_controller.rb:369`. Die
+  FAIL bestond al op `origin/7.0-stable-GEOxyz` vóór deze sessie (nagelopen
+  zonder eigen commit), en de regel staat letterlijk zo in `origin/7.0-stable`.
+  Niet gefixt: het is een regel van upstream, niet van de patch (INV-1). De
+  baseline staat in het statusbestand (1 vóór, 1 na). Het script meet geen
+  baseline; dat is een framework-wijziging en dus aan Jan.
+- **Het oude ontwerp is van `patch/wiki-export-attachments` verdwenen** met een
+  force push (`2cb6231c7` → `f434bff64`), en de oude patchbestanden
+  `2026-09-01-r24882-*` zijn verwijderd in plaats van bewaard: ze hebben nooit
+  aan een issue gehangen, en de drift-controle van `check-patch-clean.sh`
+  vergelijkt élk bestand onder `patches/<slug>/` met de branch.
