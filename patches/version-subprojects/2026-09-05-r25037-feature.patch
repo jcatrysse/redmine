@@ -1,66 +1,52 @@
-From f4dd91175af1de9a298bd631d4b4cd351592455c Mon Sep 17 00:00:00 2001
+From a6d7b73929883813737bc54a01668aec84f27f36 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Thu, 3 Sep 2026 05:29:18 +0000
-Subject: [PATCH] Target version filter offers the versions of the subprojects
- in the query (#43534).
+Date: Sat, 5 Sep 2026 16:16:33 +0000
+Subject: [PATCH] Offer the versions of the subprojects covered by the query in
+ the target version filter (#43534).
 
-A project issue list shows the issues of its subprojects by default, and
-those issues can carry a target version belonging to a subproject and
-shared with nobody. The list displays that version in its column, but the
-target version filter does not offer it, because the value list is
-project.shared_versions -- the versions the project can assign, not the
-versions the query can return.
-
-fixed_version_values now unions project.shared_versions with the visible
-versions of the projects the query covers, so nothing that used to be
-filterable stops being filterable: a version shared into the project from
-outside the queried tree, such as a system-wide shared version, is kept.
-
-The value list of a remote filter is fetched from QueriesController#filter
-when the filter is added to a page that is already loaded. That action
-built a query carrying only the project, so it could not know which
-subprojects the query was scoped to; it now builds the query from the
-request, after the permission check, and addFilter sends the filter form
-along with the field name.
 ---
- app/assets/javascripts/application-legacy.js |  5 +-
+ app/assets/javascripts/application-legacy.js |  9 ++-
  app/controllers/queries_controller.rb        |  2 +
  app/models/query.rb                          |  4 +-
- test/functional/queries_controller_test.rb   | 21 ++++++++
- test/unit/query_test.rb                      | 53 ++++++++++++++++++++
- 5 files changed, 83 insertions(+), 2 deletions(-)
+ test/functional/queries_controller_test.rb   | 37 ++++++++++
+ test/unit/query_test.rb                      | 74 ++++++++++++++++++++
+ 5 files changed, 124 insertions(+), 2 deletions(-)
 
 diff --git a/app/assets/javascripts/application-legacy.js b/app/assets/javascripts/application-legacy.js
-index d8317b3f1..0ae6529e8 100644
+index 6249f0adf..30caea7e6 100644
 --- a/app/assets/javascripts/application-legacy.js
 +++ b/app/assets/javascripts/application-legacy.js
-@@ -175,7 +175,10 @@ function addFilter(field, operator, values) {
+@@ -175,7 +175,14 @@ function addFilter(field, operator, values) {
    if (!filterOptions) return;
  
    if (filterOptions['remote'] && filterOptions['values'] == null) {
 -    $.getJSON(filtersUrl, {'name': field}).done(function(data) {
-+    var params = $('#filters-table').closest('form').serializeArray();
-+    params.push({name: 'name', value: field});
++    // Send the filter parameters only: the form may be a POST form whose
++    // other fields, authenticity_token included, do not belong in a URL.
++    var params = $.grep($('#filters-table').closest('form').serializeArray(), function(param) {
++      return /^(f\[\]|op\[|v\[)/.test(param.name);
++    });
++    params.push({'name': 'name', 'value': field});
 +
 +    $.getJSON(filtersUrl, params).done(function(data) {
        filterOptions['values'] = data;
        addFilter(field, operator, values) ;
      });
 diff --git a/app/controllers/queries_controller.rb b/app/controllers/queries_controller.rb
-index 24f37eda2..5c1adaa3e 100644
+index 24f37eda2..15d860bc9 100644
 --- a/app/controllers/queries_controller.rb
 +++ b/app/controllers/queries_controller.rb
 @@ -100,6 +100,8 @@ class QueriesController < ApplicationController
        raise Unauthorized
      end
  
-+    q.build_from_params(params)
++    q.build_from_params(params.slice(:f, :op, :v))
 +
      filter = q.available_filters[params[:name].to_s]
      values = filter ? filter.values : []
  
 diff --git a/app/models/query.rb b/app/models/query.rb
-index 7558f7409..a840f1ed2 100644
+index 824dc027d..e7ab38c24 100644
 --- a/app/models/query.rb
 +++ b/app/models/query.rb
 @@ -660,7 +660,9 @@ class Query < ApplicationRecord
@@ -75,10 +61,10 @@ index 7558f7409..a840f1ed2 100644
        versions = Version.visible.to_a
      end
 diff --git a/test/functional/queries_controller_test.rb b/test/functional/queries_controller_test.rb
-index 297bfa232..66a889881 100644
+index 297bfa232..5e0571320 100644
 --- a/test/functional/queries_controller_test.rb
 +++ b/test/functional/queries_controller_test.rb
-@@ -823,6 +823,27 @@ class QueriesControllerTest < Redmine::ControllerTest
+@@ -823,6 +823,43 @@ class QueriesControllerTest < Redmine::ControllerTest
      assert_include ["eCookbook - 2.0", "3", "open"], json
    end
  
@@ -91,7 +77,6 @@ index 297bfa232..66a889881 100644
 +      :params => {
 +        :project_id => 1,
 +        :name => 'fixed_version_id',
-+        :set_filter => '1',
 +        :f => ['subproject_id'],
 +        :op => {'subproject_id' => '='},
 +        :v => {'subproject_id' => [version.project_id.to_s]}
@@ -103,14 +88,31 @@ index 297bfa232..66a889881 100644
 +    assert_include ["eCookbook Subproject 1 - Unshared subproject version", version.id.to_s, "open"], json
 +  end
 +
++  def test_filter_should_ignore_request_params_that_are_not_filters
++    @request.session[:user_id] = 2
++    get(
++      :filter,
++      :params => {
++        :project_id => 1,
++        :name => 'fixed_version_id',
++        :c => 'subject',
++        :t => 'estimated_hours'
++      }
++    )
++    assert_response :success
++    assert_equal 'application/json', response.media_type
++    json = ActiveSupport::JSON.decode(response.body)
++    assert_include ["eCookbook - 2.0", "3", "open"], json
++  end
++
    def test_version_filter_time_entries_with_project_id_should_return_filter_values
      @request.session[:user_id] = 2
      get(
 diff --git a/test/unit/query_test.rb b/test/unit/query_test.rb
-index ebf7fc991..ca7edd6ac 100644
+index ebf7fc991..ac77866a1 100644
 --- a/test/unit/query_test.rb
 +++ b/test/unit/query_test.rb
-@@ -161,6 +161,59 @@ class QueryTest < ActiveSupport::TestCase
+@@ -161,6 +161,80 @@ class QueryTest < ActiveSupport::TestCase
      assert_include subproject_version.id.to_s, filter[:values].map(&:second)
    end
  
@@ -162,6 +164,27 @@ index ebf7fc991..ca7edd6ac 100644
 +      query = IssueQuery.new(:project => Project.find(1), :name => '_')
 +      query.add_filter('subproject_id', '*', [''])
 +      filter = query.available_filters["fixed_version_id"]
++      assert_not_nil filter
++      assert_include version.id.to_s, filter[:values].map(&:second)
++    end
++  end
++
++  def test_fixed_version_filter_should_return_the_issues_of_an_offered_subproject_version
++    with_settings :display_subprojects_issues => '1' do
++      version = Version.create!(:project => Project.find(3), :name => 'Unshared subproject version')
++      issue = Issue.generate!(:project_id => 3, :fixed_version => version)
++      query = IssueQuery.new(:project => Project.find(1), :name => '_')
++      assert_include version.id.to_s, query.available_filters["fixed_version_id"][:values].map(&:second)
++      query.add_filter('fixed_version_id', '=', [version.id.to_s])
++      assert_query_result [issue], query
++    end
++  end
++
++  def test_time_entry_query_fixed_version_filter_should_include_subproject_versions
++    with_settings :display_subprojects_issues => '1' do
++      version = Version.create!(:project => Project.find(3), :name => 'Unshared subproject version')
++      query = TimeEntryQuery.new(:project => Project.find(1), :name => '_')
++      filter = query.available_filters["issue.fixed_version_id"]
 +      assert_not_nil filter
 +      assert_include version.id.to_s, filter[:values].map(&:second)
 +    end

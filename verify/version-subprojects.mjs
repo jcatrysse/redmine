@@ -182,6 +182,34 @@ await s.shot(
   `Filtering on the subproject version returns its issue — ${after ? 'and the widget shows the version that was asked for' : 'but the widget cannot show a value it does not have and falls back to the first entry'}`
 );
 
+// 5. The query editor. Its filters partial renders inside a POST form, which
+//    is where serialising the whole form put the session's CSRF token into a
+//    GET query string. The filter still has to work here, and the request has
+//    to carry the filter rows and nothing else.
+const requests = [];
+s.page.on('request', r => {
+  if (r.url().includes('/queries/filter')) requests.push(r.url());
+});
+await s.go(`${PROJECT}/queries/new?type=IssueQuery`);
+await s.page.selectOption('#add_filter_select', 'fixed_version_id');
+await s.page.waitForTimeout(1000);
+await s.page.waitForLoadState('networkidle');
+options = await targetVersionOptions();
+check('query-editor', options, {
+  expect: after ? [OWN, SUB, SUB2, SYSTEM] : [OWN, SYSTEM],
+  reject: after ? [] : [SUB, SUB2],
+});
+const url = requests[requests.length - 1] || '';
+const leaked = ['authenticity_token', 'query%5B', 'query[', 'default_columns'].filter(k => url.includes(k));
+if (after && leaked.length) {
+  failures.push(`query-editor: the request carries ${leaked.join(', ')} — ${url}`);
+}
+console.log(`\n/queries/filter request (${url.length} chars):\n  ${url}`);
+await s.shot(
+  `${prefix}query-editor-filter`,
+  `The same filter on queries/new, where the form is a POST form — ${after ? 'the subproject versions are offered and the request carries only the filter rows' : 'no subproject version is offered'}`
+);
+
 report(s.shots);
 await s.browser.close();
 

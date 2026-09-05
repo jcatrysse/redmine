@@ -138,7 +138,8 @@ behave differently between adapters.
 
 ### F01 — The "six to four" figure the note is built on is only true for a user who cannot see the private projects; an admin sees six to five
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** corrected 2026-09-05, per Jan's g16g — the figure is now six to **five**, measured as administrator, and only version 7 is named as the sharing-driven loss; the visibility-driven second disappearance moved to F02's discussion
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -192,13 +193,14 @@ wanted, the count with the user stated ("as an administrator: six values become 
 second, visibility-driven disappearance is a different phenomenon and belongs in F02's discussion,
 not in the regression count.
 
-**Resolution:**
+**Resolution:** corrected 2026-09-05, per Jan's g16g — the figure is now six to **five**, measured as administrator, and only version 7 is named as the sharing-driven loss; the visibility-driven second disappearance moved to F02's discussion
 
 ---
 
 ### F02 — The dossier answers "does this leak version names you cannot see?" with "No", and that is wrong for the filter as a whole — it is also v2's best counter-argument
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** corrected 2026-09-05 — the objections row now says the disclosure pre-exists and that this patch keeps it unchanged, with the anonymous byte-identical response as evidence, and takes the position that tightening it belongs in its own issue
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -256,13 +258,14 @@ both halves and be argued on its own". Whichever Jan picks, the note should rais
 MAEDA does. It is also the natural place to note that the union can only ever *add* values, which
 is what makes it the safe half of the choice.
 
-**Resolution:**
+**Resolution:** corrected 2026-09-05 — the objections row now says the disclosure pre-exists and that this patch keeps it unchanged, with the anonymous byte-identical response as evidence, and takes the position that tightening it belongs in its own issue
 
 ---
 
 ### F03 — A version shared `descendants` from a project between the query's project and a selected subproject is still not offered, so the "matches what the query returns" framing overclaims
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** documented 2026-09-05 — the code stays as it is and the dossier now states what the value list actually is, naming the `descendants` residual case with the fixture reproduction; logged as an open choice for Jan in `docs/DECISIONS.md`
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -315,13 +318,14 @@ the visible versions belonging to the projects the query covers"), naming this r
 reviewer finds it in the note rather than in the code. Do not leave the wider claim standing with
 the narrower implementation.
 
-**Resolution:**
+**Resolution:** documented 2026-09-05 — the code stays as it is and the dossier now states what the value list actually is, naming the `descendants` residual case with the fixture reproduction; logged as an open choice for Jan in `docs/DECISIONS.md`
 
 ---
 
 ### F04 — "The union costs one extra query" is four; measured six SQL statements against trunk's two
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** corrected 2026-09-05 — measured 5 statements against trunk's 2 with the settings cache warm, 6 against 2 on the first call in a process; both numbers are in the dossier with the four added statements named
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** performance
@@ -360,13 +364,14 @@ State the measured number, and say which of the four are amortised in a real ins
 (`Setting` is served from the in-process cache after the first read). One line, and it turns a
 number a reviewer can disprove into a number that shows the work was done.
 
-**Resolution:**
+**Resolution:** corrected 2026-09-05 — measured 5 statements against trunk's 2 with the settings cache warm, 6 against 2 on the first call in a process; both numbers are in the dossier with the four added statements named
 
 ---
 
 ### F05 — On `queries/new` and `queries/edit` the new JavaScript sends the session's CSRF token in a GET query string, where Redmine logs it unfiltered
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — the JavaScript serialises only `f[]`, `op[…]` and `v[…]`, so the request carries the filter rows and nothing else; measured on a live instance the `queries/new` request drops from 665 characters with the token to 134 without, and `verify/version-subprojects.mjs` now fails if `authenticity_token`, `query[…]` or `default_columns` appears in that URL
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** security
@@ -424,13 +429,14 @@ handle on, and `set_filter`/`sort`/`group_by` are the only things outside it tha
 `build_from_params` consumes. Whatever the shape, `authenticity_token` should not be in a GET URL,
 and the note should be able to say the request carries filter parameters and nothing else.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — the JavaScript serialises only `f[]`, `op[…]` and `v[…]`, so the request carries the filter rows and nothing else; measured on a live instance the `queries/new` request drops from 665 characters with the token to 134 without, and `verify/version-subprojects.mjs` now fails if `authenticity_token`, `query[…]` or `default_columns` appears in that URL
 
 ---
 
 ### F06 — Handing the whole `params` hash to `build_from_params` makes the endpoint's own `name` argument double as a `ProjectQuery` filter value
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — the action passes `params.slice(:f, :op, :v)`, so its own `name` argument can no longer become a `ProjectQuery` filter value; `QueriesControllerTest#test_filter_should_ignore_request_params_that_are_not_filters` pins that non-filter params do not reach the query
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -480,13 +486,14 @@ pass the filter parameters rather than the whole request, or take the field name
 that cannot collide with a filter field. Either way, a functional test asserting that
 `?type=ProjectQuery&name=<field>` returns that field's values with no filter applied would pin it.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — the action passes `params.slice(:f, :op, :v)`, so its own `name` argument can no longer become a `ProjectQuery` filter value; `QueriesControllerTest#test_filter_should_ignore_request_params_that_are_not_filters` pins that non-filter params do not reach the query
 
 ---
 
 ### F07 — Three of the six new tests are Go MAEDA's, near-verbatim, and neither the dossier nor the note says so
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — the dossier's test table marks the three tests as **(v2)**, notes which one was tightened and why, and the note instructions tell Jan to say so
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -527,13 +534,14 @@ which is what makes it prove widening rather than narrowing.
 One sentence in the note naming the three tests that came from v2, and a line in the dossier's test
 table marking them. Nothing about the code needs to change.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — the dossier's test table marks the three tests as **(v2)**, notes which one was tightened and why, and the note instructions tell Jan to say so
 
 ---
 
 ### F08 — Every new test asserts membership in the value list; none asserts the newly offered value actually returns the issue, and `TimeEntryQuery` is claimed but untested
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — `..._should_return_the_issues_of_an_offered_subproject_version` closes the loop with `assert_query_result`, and `test_time_entry_query_fixed_version_filter_should_include_subproject_versions` backs the `TimeEntryQuery` claim; both proven red on trunk
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -572,13 +580,14 @@ One test that closes the loop from filter value to query result, and one that na
 `issue.fixed_version_id` on a `TimeEntryQuery` so the dossier's sentence is backed. Both belong in
 the files already touched, so the patch does not grow a new file.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — `..._should_return_the_issues_of_an_offered_subproject_version` closes the loop with `assert_query_result`, and `test_time_entry_query_fixed_version_filter_should_include_subproject_versions` backs the `TimeEntryQuery` claim; both proven red on trunk
 
 ---
 
 ### F09 — `GET /queries/filter?c=foo` now raises `NoMethodError` on an endpoint anonymous users can reach
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — `params.slice(:f, :op, :v)` keeps `c` and `t` out of the query entirely, so the scalar case returns JSON; the same functional test pins it, and it errors on the previous design with `NoMethodError: private method 'select' called for an instance of String`
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** backward-compat
@@ -613,13 +622,14 @@ Nothing, unless the fixing session is already touching the action for F06 — in
 the endpoint's JSON contract on malformed input is a one-line rescue. Name it in the dossier
 either way.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — `params.slice(:f, :op, :v)` keeps `c` and `t` out of the query entirely, so the scalar case returns JSON; the same functional test pins it, and it errors on the previous design with `NoMethodError: private method 'select' called for an instance of String`
 
 ---
 
 ### F10 — The branch is a month behind trunk, so the dossier's "RuboCop 0, baseline 0" no longer reproduces
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05, per g05 — the branch was rebuilt on `origin/master` r25037 and every figure re-measured there: RuboCop 1.90.0 gives 0 offences on the four changed files against a baseline of 0. The trap that produced the reviewer's 2/3 is now written down: without a `Gemfile.lock` RuboCop cannot resolve the Rails version and silently disables the `Rails/*` cops
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -654,13 +664,14 @@ region on the branch; `git apply --check` of the committed patch file against a 
 Record the trunk revision and RuboCop version next to the counts, or re-measure against current
 trunk before Jan posts. Rebasing the branch is not needed — the patch applies.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05, per g05 — the branch was rebuilt on `origin/master` r25037 and every figure re-measured there: RuboCop 1.90.0 gives 0 offences on the four changed files against a baseline of 0. The trap that produced the reviewer's 2/3 is now written down: without a `Gemfile.lock` RuboCop cannot resolve the Rails version and silently disables the `Rails/*` cops
 
 ---
 
 ### F11 — The commit message carries a three-paragraph body; trunk commits are single-line
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — the commit message is one imperative line ending in `(#43534).`, in the register of trunk's own subjects
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -693,13 +704,14 @@ description of a mechanism rather than of a change.
 One imperative line naming the change and the issue, in the register of the twelve trunk subjects
 above; the reasoning belongs in the note, where Jan already has it in better English.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — the commit message is one imperative line ending in `(#43534).`, in the register of trunk's own subjects
 
 ---
 
 ### F12 — Question for Jan: should the note lead with the regression, or with the credit?
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** decided by Jan 2026-09-05 as g16g — the note leads with the regression, stated plainly, and then names what was kept from Go MAEDA's work; against my advice, and recorded as his call
 - **Severity:** question
 - **Confidence:** n/a
 - **Category:** dossier
@@ -735,4 +747,4 @@ from F02 raised explicitly rather than left for him to find. Framed that way the
 follow-up to his work rather than a correction of it, and the diff a committer has to reason about
 is one line.
 
-**Resolution:**
+**Resolution:** decided by Jan 2026-09-05 as g16g — the note leads with the regression, stated plainly, and then names what was kept from Go MAEDA's work; against my advice, and recorded as his call

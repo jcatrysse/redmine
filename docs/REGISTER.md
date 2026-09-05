@@ -14,7 +14,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63 + 47eec6f1d + 1b4a29a0b`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa + f260958c6`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
-| [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
+| [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0 + e2f060570`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
 | [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`827e9e7d5`) | patch klaar | — |
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041 + 0fbad7c17 + 72a3a8e22`) | patch klaar | — |
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`7006c4f00`) | patch klaar | — |
@@ -29,6 +29,10 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `version-subprojects` — cse_012eaf6XFeCpEWm3vWd4KGXx sinds 2026-09-05
 
 ## Openstaand voor Jan
 
@@ -257,14 +261,25 @@ woorden (jouw keuze K-04, optie A). Vermeld de oude bijlage als achterhaald.
 
 ### `version-subprojects`
 
-Hang `patches/version-subprojects/2026-09-03-r24882-feature.patch` als note aan
-je eigen issue [#43534](https://www.redmine.org/issues/43534), en schrijf erbij
-dat `43534-v2.patch` van **Go MAEDA** een regressie bevat: het vervangt
-`project.shared_versions` in plaats van er een vereniging van te maken,
-waardoor versies die van buiten de projectboom gedeeld zijn stil uit het filter
-verdwijnen — met Redmine's eigen fixtures gaat project 1 van zes naar vier
-waarden. Noem de test die het vastlegt
+Hang `patches/version-subprojects/2026-09-05-r25037-feature.patch` als note aan
+je eigen issue [#43534](https://www.redmine.org/issues/43534). Volgens jouw
+keuze **g16g** begint die note direct met de regressie: `43534-v2.patch` van
+**Go MAEDA** vervangt `project.shared_versions` in plaats van er een vereniging
+van te maken, waardoor versies die van buiten de projectboom gedeeld zijn stil
+uit het filter verdwijnen. Het getal dat erbij hoort is **zes naar vijf** met
+Redmine's eigen fixtures, gemeten als beheerder — versie 7 ("OnlineStore -
+Systemwide visible version") verdwijnt. Noem de test die het vastlegt
 (`test_fixed_version_filter_should_include_versions_shared_from_outside_the_project_tree`).
+
+Neem er twee dingen bij op, allebei omdat Go MAEDA ze anders zelf vindt:
+
+- drie van de negen tests zijn van hem en zijn onder hun eigen naam behouden
+  (één ervan aangescherpt zodat hij met `display_subprojects_issues` uit draait);
+- het filter heeft altijd al versienamen getoond van projecten die je niet mag
+  zien, want `Project#shared_versions` kent geen rechtencontrole. Deze patch
+  verandert dat niet; zijn vervanging verandert het als bijwerking. Dat is zijn
+  sterkste tegenargument, dus het hoort in de note en niet in zijn antwoord.
+
 De Engelse tekst staat in `dossier.md` vanaf "The problem"; de voor/na-paren in
 `shots/`.
 
