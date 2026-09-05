@@ -55,9 +55,12 @@ module Redmine
         @scope = scope
         @projects = projects
         @cache = options.delete(:cache)
+        # one LIKE per token, per searchable class, per project: the cost this
+        # limit is here for. A caller with a cheaper query passes nil.
+        token_limit = options.delete(:token_limit) {5}
         @options = options
-        # no more than 5 tokens to search for
-        @tokens = Tokenizer.new(@question).tokens.first(5)
+        @tokens = Tokenizer.new(@question).tokens
+        @tokens = @tokens.first(token_limit) if token_limit
       end
 
       # Returns the total result count

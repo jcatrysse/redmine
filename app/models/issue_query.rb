@@ -890,7 +890,8 @@ class IssueQuery < Query
 
     fetcher = Redmine::Search::Fetcher.new(
       question, User.current, ['issue'], projects,
-      all_words: is_all_words, open_issues: is_open_issues, attachments: '0'
+      all_words: is_all_words, open_issues: is_open_issues, attachments: '0',
+      token_limit: nil
     )
     ids = fetcher.result_ids.map(&:last)
     if ids.present?

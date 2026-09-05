@@ -3617,14 +3617,21 @@ class QueryTest < ActiveSupport::TestCase
   end
 
   def test_sql_contains_should_not_limit_the_number_of_tokens
-    query = IssueQuery.new(
+    five_tokens = IssueQuery.new(
+      :project => nil, :name => '_',
+      :filters => {
+        'subject' => {:operator => '~', :values => ['closed issue on locked version']}
+      }
+    )
+    six_tokens = IssueQuery.new(
       :project => nil, :name => '_',
       :filters => {
         'subject' => {:operator => '~', :values => ['closed issue on locked version nomatch']}
       }
     )
 
-    assert_equal [], query.issues
+    assert_equal [12], five_tokens.issues.map(&:id)
+    assert_equal [], six_tokens.issues.map(&:id)
   end
 
   def test_sql_contains_should_not_limit_the_number_of_tokens_for_contains_any_of
@@ -3632,6 +3639,17 @@ class QueryTest < ActiveSupport::TestCase
       :project => nil, :name => '_',
       :filters => {
         'subject' => {:operator => '*~', :values => ['nomatch1 nomatch2 nomatch3 nomatch4 nomatch5 recipes']}
+      }
+    )
+
+    assert_equal [1], query.issues.map(&:id)
+  end
+
+  def test_filter_any_searchable_should_not_limit_the_number_of_tokens
+    query = IssueQuery.new(
+      :project => nil, :name => '_',
+      :filters => {
+        'any_searchable' => {:operator => '*~', :values => ['nomatch1 nomatch2 nomatch3 nomatch4 nomatch5 recipes']}
       }
     )
 
