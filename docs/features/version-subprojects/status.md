@@ -118,11 +118,11 @@ De Engelse tekst staat in `dossier.md` vanaf "The problem"; de voor/na-paren in
   een reden die je niet in een suite ziet: `queries/new` is een POST-formulier.
 - Een expliciet subprojectfilter overstemt de instelling
   `display_subprojects_issues` — nagemeten voor `=`, `!` en `*`.
-- **De restcase met `descendants`-sharing is bewust niet gedicht** (F03). Zie de
-  open keuze in `docs/DECISIONS.md`; hij staat benoemd in het dossier.
+- **De restcase met `descendants`-sharing is bewust niet gedicht** (F03). Jan
+  koos dat op 2026-09-05 (K-12, optie A); hij staat benoemd in het dossier onder
+  "Proposed change" en in de objectietabel. Niet heropenen.
 
 ## Volgende stap voor een sessie
 
-Af — niets te doen, behalve Jans handeling hierboven. Eén open keuze voor hem
-staat in `docs/DECISIONS.md` onder "Open — keuze voor Jan (toegevoegd
-2026-09-05, version-subprojects)".
+Af — niets te doen, behalve Jans handeling hierboven. Er staat geen keuze meer
+open: K-12 is op 2026-09-05 beslist (optie A, benoemen).
