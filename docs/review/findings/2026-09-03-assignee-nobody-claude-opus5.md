@@ -105,6 +105,7 @@ method, which is what its neighbours in `query.rb` already have.
 - **Where:** `app/models/query.rb:1290` (the `=` branch) and `app/models/query.rb:1302`
   (the `!` branch); the victim is `app/models/user_query.rb:160`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — the folded clause is returned parenthesised, so the fragment is self-contained for all 31 callers; two `UserQueryTest` tests and a before/after screenshot pair pin it (Jan g06)
 
 **What is wrong**
 
@@ -256,6 +257,7 @@ URL lists all three users before the fix
   `test_operator_has_never_been_nobody`; the code is
   `app/models/query.rb:1493` (`sql_ev`)
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — the three history tests now assert a complete id list on the fixtures, with one issue matching through each half of the disjunction; the mutation that used to stay green now fails two tests
 
 **What is wrong**
 
@@ -335,6 +337,7 @@ journal half instead raises in three of the tests.
 - **Category:** test-quality
 - **Where:** `app/models/query.rb:1248-1251`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — one test per gate (a list custom field with `none` as a real value, and a plain `:list` filter asserting no `IS NULL`), plus a test on a second gated filter
 
 **What is wrong**
 
@@ -416,6 +419,7 @@ same run was `0 failures` before the mutation.
 - **Where:** `docs/features/assignee-nobody/dossier.md`, "One existing test
   adapted"; the test is `test/unit/query_test.rb:3554`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — the dossier now says what index 0 really was, and the test stops counting positions: it rejects the pseudo-values instead
 
 **What is wrong**
 
@@ -489,6 +493,7 @@ quirk was left alone as a pre-existing trunk matter (INV-1).
 - **Category:** backward-compat
 - **Where:** `app/models/query.rb:1248-1251`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — `test_filter_fixed_version_nobody_or_version` proves the shared path on a second field, and the dossier names all seven gated filters and says only the assignee list is wired into the UI; K-05 stands
 
 **What is wrong**
 
@@ -566,6 +571,7 @@ value lists.
   `test_filter_assigned_to_nobody_alone_should_match_the_none_operator`,
   `test_filter_assigned_to_not_nobody_alone_should_match_the_any_operator`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — both equivalence tests assert the shared result is non-empty before asserting equality
 
 **What is wrong**
 
@@ -607,6 +613,7 @@ respectively, unchanged.
 - **Where:** `docs/features/assignee-nobody/shots/`, and the "Failure paths
   verified" table in the dossier
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — the text was corrected, not the images: the five identical shots are named as Redmine's generic 500 page, and the widget claim is limited to the two shots that render one
 
 **What is wrong**
 
@@ -667,6 +674,7 @@ for F01 (`regression-group-filter-nobody.png`, `group-filter-nobody.png`).
 - **Where:** `docs/features/assignee-nobody/dossier.md`, "Proposed change" and
   "New setting / migration / gem / route / permission"
 - **Invariant touched:** INV-5 (satisfied — no new key, no invented translation)
+- **Resolution:** fixed 2026-09-05 — 50, with the counting command in the dossier; the substantive claim (every locale file has `label_nobody`) re-counted and unchanged
 
 **What is wrong**
 
@@ -704,6 +712,7 @@ work — is unchanged and was re-counted: 50 files, 50 hits.
 - **Category:** correctness
 - **Where:** see F01
 - **Invariant touched:** INV-10 (GEOxyz and upstream do behave identically — both
+- **Resolution:** answered 2026-09-05 — Jan decided it with g06: fix first, submit after. Done on both branches, so nothing is left open here
   carry F01)
 
 **What is wrong**
