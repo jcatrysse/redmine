@@ -50,8 +50,11 @@ for attempt in 1 2 3 4 5; do
     exit 1
   }
 
+  # One blank line before every block: a `###` heading or a list that starts
+  # right under the previous block's last line renders as part of it.
   [ -f "$FILE" ] || : > "$FILE"
   [ -s "$FILE" ] && [ -n "$(tail -c1 "$FILE")" ] && printf '\n' >> "$FILE"
+  [ -s "$FILE" ] && printf '\n' >> "$FILE"
   printf '%s\n' "$BLOCK" >> "$FILE"
 
   git add "$FILE"

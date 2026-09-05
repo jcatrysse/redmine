@@ -65,7 +65,7 @@ fi
 # rubocop reads the working tree, so linting from the repo root would silently
 # skip files that exist only on this branch and report a false "clean".
 tmp=$(mktemp -d)
-cleanup() { git worktree remove --force "$tmp/m" >/dev/null 2>&1; rm -rf "$tmp"; }
+cleanup() { git worktree remove --force "$tmp/m" >/dev/null 2>&1; git worktree remove --force "$tmp/u" >/dev/null 2>&1; rm -rf "$tmp"; }
 trap cleanup EXIT
 
 wt=""
@@ -103,6 +103,12 @@ if [ "$own" -gt 0 ]; then
 fi
 
 # --- 4. lint on what the branch changes -----------------------------------
+# Measured against a baseline: the same files at $UPSTREAM, linted with
+# upstream's own config. An offence upstream already has on its own line is
+# upstream's (INV-1 says leave it); only an offence this branch adds fails.
+# Without the baseline this check failed on wiki_controller.rb:369
+# (Rails/StrongParametersExpect, an upstream line) for every branch that
+# touched the file (2026-09-05).
 if [ "$own" -eq 0 ]; then
   pass "lint: nothing changed to lint"
 elif [ ! -x "$RUBOCOP" ]; then
@@ -114,15 +120,46 @@ else
   if [ -z "$files" ]; then
     pass "lint: no Ruby files changed"
   else
-    # Run inside the worktree, and count from JSON: the human-readable summary
-    # is ambiguous to parse.
-    n=$(cd "$wt" && "$RUBOCOP" --force-exclusion --format json $files 2>/dev/null |
-        grep -o '"cop_name"' | wc -l | tr -d ' ')
-    n=${n:-0}
-    if [ "$n" -eq 0 ]; then
-      pass "lint: 0 offences on $(printf '%s\n' "$files" | wc -l | tr -d ' ') changed Ruby file(s)"
+    nfiles=$(printf '%s\n' "$files" | wc -l | tr -d ' ')
+    base_files=""
+    for f in $files; do
+      git cat-file -e "$UPSTREAM:$f" 2>/dev/null && base_files="$base_files $f"
+    done
+    branch_json=$(cd "$wt" && "$RUBOCOP" --force-exclusion --format json $files 2>/dev/null)
+    base_json='{"files":[]}'
+    if [ -n "$base_files" ] && git worktree add --detach -q "$tmp/u" "$UPSTREAM" 2>/dev/null; then
+      base_json=$(cd "$tmp/u" && "$RUBOCOP" --force-exclusion --format json $base_files 2>/dev/null)
+      git worktree remove --force "$tmp/u" >/dev/null 2>&1
+    fi
+    # Per file and cop, count offences on both sides; what the branch has more
+    # of than upstream is what the branch added.
+    verdict=$(python3 - "$branch_json" "$base_json" <<'PY'
+import json, sys
+def tally(raw):
+    t = {}
+    try:
+        for f in json.loads(raw or '{}').get('files', []):
+            for o in f.get('offenses', []):
+                k = (f['path'], o['cop_name'])
+                t[k] = t.get(k, 0) + 1
+    except json.JSONDecodeError:
+        pass
+    return t
+b, u = tally(sys.argv[1]), tally(sys.argv[2])
+added = {k: n - u.get(k, 0) for k, n in b.items() if n > u.get(k, 0)}
+print(sum(b.values()), sum(u.values()), sum(added.values()))
+for (path, cop), n in sorted(added.items()):
+    print("%s  %s x%d" % (path, cop, n))
+PY
+)
+    read -r n base_n added_n <<< "$(printf '%s\n' "$verdict" | head -1)"
+    if [ "${added_n:-0}" -eq 0 ] && [ "${n:-0}" -eq 0 ]; then
+      pass "lint: 0 offences on $nfiles changed Ruby file(s)"
+    elif [ "${added_n:-0}" -eq 0 ]; then
+      pass "lint: $n offence(s) on $nfiles changed Ruby file(s), all already on $UPSTREAM's own lines (baseline $base_n) — upstream's, not this branch's"
     else
-      fail "lint: $n offence(s) on the changed Ruby files — Redmine's CI runs rubocop"
+      fail "lint: $added_n offence(s) added by this branch ($n on the files, baseline $base_n on $UPSTREAM) — Redmine's CI runs rubocop:"
+      printf '%s\n' "$verdict" | tail -n +2 | sed 's/^/          /'
     fi
   fi
 fi

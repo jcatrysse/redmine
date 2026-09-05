@@ -148,8 +148,8 @@ task description seems to ask for it.
   the divergence, its reason, and that it is a permanent private patch.
 
 **Breaking one of these on purpose has one address: `docs/exceptions.md`.** One
-row per feature, naming the single rule, the alternative and what it costs, and
-who decided. An exception that is not written there is a defect, and a reviewer
+block per exception, appended with `tools/append-note.sh`, naming the single
+rule, the alternative and what it costs, and who decided. An exception that is not written there is a defect, and a reviewer
 cannot tell the two apart. INV-7 and INV-8 have no exceptions at all.
 
 ## Forbidden constructs
@@ -222,11 +222,11 @@ both sides (INV-10).
 | **G1 Trunk check** | does current trunk already solve this? Done **first**, recorded in the dossier. One GEOxyz feature already landed upstream on its own; do not rebuild what exists. |
 | **G2 Correctness** | behaviour demonstrated, edge cases named, failure modes safe |
 | **G3 Tests** | the **full** suite green — not only the touched suites — output seen, counts in the dossier; each new test red on the old code, and you say how you know. Redmine requires that all existing tests pass. Budget for it: the whole suite takes tens of minutes, so start it early and do other work while it runs. |
-| **G4 Lint** | `rubocop` clean on the changed files, and the baseline for those files was clean too |
+| **G4 Lint** | `rubocop` on the changed files adds no offence beyond the baseline for those files at the merge base; both counts in the dossier. An offence that upstream's own line already had is upstream's, not yours (INV-1) — name it, do not fix it |
 | **G5 Minimality** | you re-read the diff adversarially and every line is defensible; no scope creep |
 | **G6 Patch hygiene** | `tools/check-patch-clean.sh <slug>` passes: the patch file touches no framework path, no locale outside the five, no AI trace, and does not disagree with its branch. Applying to current trunk is checked with `--submit`, as the last step before submitting (g05) |
 | **G7 Dossier** | complete, including anticipated objections with answers |
-| **G8 GEOxyz branch** | `tools/check-geoxyz-branch.sh` passes: merges cleanly with upstream `7.0-stable`, lint clean, own commits match the register. Suites green there too — a green trunk patch can still fail on 7.0-stable. |
+| **G8 GEOxyz branch** | `tools/check-geoxyz-branch.sh` passes: merges cleanly with upstream `7.0-stable`, lint adds nothing beyond upstream's own offences on the same files, own commits match the register. Suites green there too — a green trunk patch can still fail on 7.0-stable. |
 | **G9 Live verification** | the feature exercised by hand in a **real running Redmine**, in a real browser, with a screenshot per function committed as evidence. A green suite is not proof the feature works: the 2026 port shipped a link that was in the DOM, passed `assert_select`, and did nothing when clicked because its JavaScript was never loaded on that page. |
 
 A red suite, a lint offence or an invariant hit is a blocker: fix it and re-run

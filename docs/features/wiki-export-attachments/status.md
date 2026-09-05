@@ -48,7 +48,11 @@ Een bijlage die heet als de pagina zelf of als een kindpagina krijgt een
   (7 failures, 3 errors); op de eerste versie van de patch precies de twee
   botsingstests (1 failure, 1 error); beide unit tests rood op trunk
   (`NoMethodError`, `NameError`)
-- `tools/check-patch-clean.sh`: PASS (5 checks, waaronder branch = patchbestand) · `tools/check-geoxyz-branch.sh`: FAIL op lint alleen — 1 offence, `Rails/StrongParametersExpect` op `wiki_controller.rb:369`, een regel van upstream die al vóór deze sessie op `origin/7.0-stable-GEOxyz` faalde (baseline 1, na 1; niet in de diff); merge met upstream, AI-traces en locales: ok
+- `tools/check-patch-clean.sh`: PASS (5 checks, waaronder branch = patchbestand) ·
+  `tools/check-geoxyz-branch.sh`: PASS — het lintblok meet sinds 2026-09-05 een
+  baseline op `origin/7.0-stable`; de ene melding op `wiki_controller.rb:369`
+  (`Rails/StrongParametersExpect`) staat op een regel van upstream en telt
+  daardoor niet meer als fout van de branch (1 op de bestanden, baseline 1)
 - Screenshots: 12 in `shots/`, gelezen: ja. Archieven naast het dossier: 4,
   waaronder het voor/na-paar `before-fix-zip-with-attachments.zip` /
   `zip-with-attachments.zip` voor de naambotsing

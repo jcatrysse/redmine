@@ -362,7 +362,10 @@ the tests before they were fixed.
   **5977 runs, 31710 assertions, 27 failures, 2 errors, 92 skips in 855 s**. The 29 failing test names are identical on both runs (`diff` of the sorted lists is empty): all of them are the `Repository::Subversion` validation failures of an image without `svn`, `hg`, `bzr` or `cvs` (see "Found but not fixed"). The 14 extra runs on the patch are the 12 new functional tests and the 2 new unit tests.
 - **full** suite on `7.0-stable-GEOxyz` with the same change, on the pushed tip `7006c4f00`:
   **6088 runs, 32244 assertions, 0 failures, 0 errors, 39 skips** in 889 s. Completely green.
-- `tools/check-geoxyz-branch.sh`: merge with upstream, AI traces and locales **ok**; lint **1 offence**, `Rails/StrongParametersExpect` at `wiki_controller.rb:369`, which is an upstream line present in `origin/7.0-stable`, already reported on `origin/7.0-stable-GEOxyz` before this session, and not in the diff (baseline 1, after 1).
+- `tools/check-geoxyz-branch.sh`: **PASS**. Its lint check reports 1 offence on
+  the 58 Ruby files the branch changes, `Rails/StrongParametersExpect` at
+  `wiki_controller.rb:369`, and the same 1 on those files at `origin/7.0-stable`:
+  an upstream line, not this branch's, and not in the diff.
 
 # Live verification (G9)
 
@@ -519,7 +522,8 @@ Reported, not touched — INV-1.
 - **Suites daar groen:** 6088 runs, 32244 assertions, 0 failures, 0 errors, 39 skips in 889 s — volledig groen, gemeten op de gepushte tip.
 - **`nl.yml` toegevoegd:** ja, en `fr`, `de`, `es` — identiek aan de patch
   (INV-10).
-- **`tools/check-geoxyz-branch.sh`:** FAIL op lint alleen — 1 offence, `Rails/StrongParametersExpect` op `wiki_controller.rb:369`, een regel van upstream die al vóór deze sessie op `origin/7.0-stable-GEOxyz` faalde (baseline 1, na 1; niet in de diff); merge met upstream, AI-traces en locales: ok
+- **`tools/check-geoxyz-branch.sh`:** PASS (1 lint-melding op een regel van
+  upstream, baseline 1 — telt niet)
 - **Wanneer kan deze commit vervallen?** Een geaccepteerde trunk-patch komt in
   7.1 of later, nooit in 7.0-stable. Dus: pas als GEOxyz naar de release gaat
   die deze wijziging bevat (7.1 op zijn vroegst).

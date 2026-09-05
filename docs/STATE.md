@@ -108,7 +108,7 @@ bestanden** aanraken, niet omdat ze het onthouden. `tools/check-ownership.sh
 | `tools/register.sh [--write]` | `docs/REGISTER.md` opnieuw opbouwen uit de statusbestanden |
 | `tools/check-ownership.sh <slug>` | weigert een push die bestanden van iemand anders aanraakt |
 | `tools/check-patch-clean.sh <slug>` | G6 — controleert het **patchbestand** en vergelijkt het met de branch; `--submit` maakt "applyt niet meer op trunk" fataal |
-| `tools/check-geoxyz-branch.sh` | G8 |
+| `tools/check-geoxyz-branch.sh` | G8 — lint gemeten tegen de baseline op `origin/7.0-stable`, alleen wat de branch toevoegt telt |
 | `tools/dev-server.sh`, `tools/dev-seed.rb`, `tools/verify-lib.mjs` | G9 |
 | `tools/test-env.sh <worktree> <cmd>` | `test:all` bruikbaar maken (zonder dit ~260 systeemtestfouten) |
 
