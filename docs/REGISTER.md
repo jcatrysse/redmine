@@ -16,7 +16,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
 | [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`827e9e7d5`) | patch klaar | — |
-| [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041 + 0fbad7c17`) | patch klaar | — |
+| [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041 + 0fbad7c17 + 72a3a8e22`) | patch klaar | — |
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`7006c4f00`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
 | [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`8bf6dce3e`) | nooit | — |
@@ -29,6 +29,10 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `webhook-tracker-filter` — cse_01PMHt4Nh5Y8yZv3aSKf2zsk sinds 2026-09-05
 
 ## Openstaand voor Jan
 
@@ -344,9 +348,8 @@ vóórdat iemand ernaar vraagt:
   ditzelfde model, dus het is duidelijk dat het onderwerp leeft. r25011 zit in
   de basis van deze patch.
 
-Er staat één keuze voor je open: **K-11** in `docs/DECISIONS.md`, over wat er
-moet gebeuren als de laatste tracker van een hook verwijderd wordt. Er is geen
-haast — we bouwden verder met de gedocumenteerde variant.
+Er staat verder niets meer voor jou open: **K-11** is beslist — optie C, de
+hook wordt gedeactiveerd als zijn laatste tracker verdwijnt.
 
 ### `wiki-export-attachments`
 
