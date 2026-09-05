@@ -612,3 +612,33 @@ hij is het eerste waar een committer over gaat praten.
 - **Algemene regel die hieruit volgt:** een bovengrens op een instelling die de
   beheerder juist zelf hoort af te wegen, kiezen we ruim. Hij bestaat om een
   onmogelijke waarde te weren, niet om beleid te maken.
+
+## Uitgevoerd — g06 en g18 voor `assignee-nobody` (2026-09-05)
+
+Alle negen bevindingen van de review van 2026-09-03 zijn afgehandeld en hebben
+een `Resolution:`-regel in
+`docs/review/findings/2026-09-03-assignee-nobody-claude-opus5.md`.
+
+- **g06 uitgevoerd.** Het gevouwen NULL-fragment komt nu tussen haakjes terug,
+  zodat `Query#sql_for_field` een zelfstandige clausule teruggeeft voor al zijn
+  31 aanroepers. De aanleiding was `UserQuery#sql_for_is_member_of_group_field`,
+  dat het fragment achter een `AND` binnen een `EXISTS` plakt: de `OR`
+  ontsnapte daar en het gebruikersfilter gaf alle gebruikers in plaats van de
+  leden van de gekozen groep. Twee nieuwe tests in `test/unit/user_query_test.rb`
+  pinnen dat vast, en het voor/na-paar in de browser
+  (`shots/regression-group-filter-nobody.png` tegen `shots/group-filter-nobody.png`)
+  laat drie gebruikers tegen één zien.
+- **g18 uitgevoerd** voor deze slug: de acht kleinere punten zijn allemaal
+  gedaan, niet alleen de feitelijke correcties. Twee poorttests, een test op een
+  tweede `list_optional`-filter, volledige id-lijsten voor de drie
+  historie-operatoren, een niet-leeg-assertie in de twee equivalentietests, de
+  positionele slice eruit, "63 localebestanden" naar 50, en de screenshottekst
+  die vijf identieke 500-pagina's beschreef alsof er een filterformulier op
+  stond.
+- **g05 en g10 uitgevoerd** voor deze slug: de patchbranch is opnieuw op trunk
+  r25037 gezet en de bewijscijfers zijn in dezelfde beweging opnieuw gedraaid,
+  inclusief de volledige suite mét systeemtests op drie kanten (patch, schone
+  trunk, `7.0-stable-GEOxyz`).
+- **F09 vervalt als vraag voor Jan.** Die vroeg of de patch ingediend mocht
+  worden met de fout erin; g06 beantwoordde hem al met "eerst repareren", en dat
+  is nu gebeurd, op beide branches.
