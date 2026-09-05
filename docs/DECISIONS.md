@@ -680,3 +680,37 @@ verkeerde instelling.
   niet in deze patch.
 - **Haast?** nee — we bouwden verder met A, en het staat als afgewogen positie in
   de bezwarentabel van het dossier.
+
+## Beslist (Jan) — K-11, 2026-09-05
+
+- **K-11 `webhook-tracker-filter`: een hook waarvan de laatste tracker
+  verwijderd wordt, wordt gedeactiveerd** (optie C), tegen mijn advies in — ik
+  had A aanbevolen, laten zoals het is en het opschrijven.
+
+  Achteraf is C het betere argument, ook upstream, en dat maakt mijn aanbeveling
+  zwak in plaats van C riskant: een hook waarvan het laatste **project**
+  verdwijnt vuurt vanzelf al niet meer, want `hooks_for` joint op
+  `projects_webhooks`. De trackerkant was daarmee de enige associatie waar
+  verwijderen een hook juist **verbreedde** in plaats van hem stil te zetten.
+  Deactiveren maakt de twee gelijk, en dat is precies het soort symmetrie waar
+  een Redmine-committer op let.
+
+  Uitgevoerd als `before_destroy :check_integrity, :deactivate_webhooks` op
+  `Tracker`. Die methode zet alleen hooks uit waarvan deze tracker de énige
+  selectie was; een hook met nog een andere tracker houdt zijn filter en blijft
+  actief, en een hook die nooit een tracker aanvinkte wordt niet aangeraakt.
+  `update_column` en niet `update!`: de validaties van `Webhook` raken de
+  URL-blocklist en herfilteren de projecten van de hook, en die horen niet
+  middenin een trackerverwijdering — een validatiefout daar zou de verwijdering
+  afbreken.
+
+  Drie tests, één per geval; de middelste staat rood zonder de callback. Het
+  voor/na-paar `shots/{before-,}tracker-destroyed.png` laat de kolom Actief van
+  `Yes` naar `No` gaan.
+
+  **Wat we ermee accepteren, expliciet:** er stopt stil een integratie. De
+  beheerder die de tracker verwijdert krijgt geen melding, en alleen de
+  webhooklijst laat zien dat de hook uit staat. Het alternatief (de verwijdering
+  blokkeren zolang er een hook naar de tracker wijst) is afgewezen omdat een
+  beheerder die trackers opruimt dan gestuit wordt door een hook van iemand
+  anders die hij niet eens mag zien. K-11 is hiermee gesloten.
