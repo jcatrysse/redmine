@@ -469,3 +469,36 @@ Framework-relevante keuzes van deze sessie. De feature-eigen keuzes staan in
   codeblok dat spookbevindingen oplevert, en `docs/review/FINDINGS.md` dat niet
   in de OWNED-lijst van `check-ownership.sh` staat). Niet zelf gerepareerd:
   `tools/**` hoort bij een sessie die Jan daar expliciet om vraagt.
+
+## Autonoom besloten — ar-sessions, ronde 2 (2026-09-05)
+
+Framework- en productierelevante keuzes. De rest staat in
+`docs/features/ar-sessions/decisions.md`.
+
+- **De bewaartermijn voor sessierijen is 7 dagen**, niet de 30 van de gem. Er
+  komt een rij bij per paginaweergave en niet per login — de review mat 100
+  rijen uit 100 anonieme GETs op `/login` in vijf seconden — dus 30 dagen laat
+  de tabel groeien tot iets wat niemand wil opruimen. Zeven dagen begrenst hem
+  op ongeveer een week paginaweergaves; een gebruiker die binnen die week
+  terugkomt merkt niets, want elke request zet `updated_at` opnieuw.
+- **De store weigert vanaf nu een sessie-id in leesbare vorm**
+  (`:secure_session_only => true`). Dat is de enige regel die voorkomt dat een
+  rij die een oudere gemversie schreef — wat een database die van 5.1 komt kan
+  bevatten — een werkend inlogkoekje is voor iedereen die de tabel of een
+  back-up kan lezen. Prijs: die gebruikers loggen één keer opnieuw in, wat
+  samenvalt met de logout die de deploy toch al aankondigde.
+- **De serializer blijft Marshal.** `:json`/`:hybrid` zou `session[:issue_query]`
+  breken (symboolsleutels overleven een JSON-rondgang niet), en dat is het
+  onthouden filter op de issuelijst. De Marshal-aanval vereist
+  databaseschrijfrechten; die ruil gaat niet door.
+- **Twee commits per feature op `7.0-stable-GEOxyz` blijft het patroon**, ook
+  hier: `95bbb9750` en `8bf6dce3e`. Zie de eerdere notitie bij
+  `ldap-mail-prefs`.
+- **Correctie op mijn eigen werk van vandaag:** de commits `113f32117` en
+  `030aaf471` op `7.0-stable-GEOxyz` hebben `Claude <noreply@anthropic.com>` als
+  auteur. Dat is een INV-4-overtreding in de commit-metadata, en
+  `tools/check-geoxyz-branch.sh` ziet hem niet omdat die alleen berichten
+  grept. Vanaf `8bf6dce3e` staat de identiteit goed. Rechtzetten van de twee
+  oude kan alleen met een force push op een branch waar parallelle sessies op
+  pushen, en `docs/traps.md` noemt dat al niet de moeite waard — maar het hoort
+  hier te staan in plaats van stil te blijven.
