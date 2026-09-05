@@ -73,3 +73,31 @@ Die schrijft de sessie die die slug claimt.
   regel, en de botsingsfix op één van de twee plekken.
 - **Beslist:** Jan, g16c (de verhuizing); Class A voor de lus, review F04
 - **Datum:** 2026-09-05
+
+### E-02 — revision-branches
+- **Regel:** de rij "an SCM call per row inside a view loop" uit de
+  verbodstabel in `CLAUDE.md` (N subprocessen per paginaweergave)
+- **Wat er bewust gebeurt:** `app/views/issues/tabs/_changesets.html.erb`
+  roept `Changeset#branches` aan per gerenderde revisie, en die vorkt één
+  `git branch --no-color --contains`. Eén Git-proces per rij dus. Dat is niet
+  te vermijden zonder het antwoord te bewaren, en bewaren is precies wat de
+  notes 4 en 17 van #5386 verwerpen: een Git-branch is een pointer, dus een
+  verwijderde of force-gepushte branch laat een opgeslagen kopie voorgoed
+  verkeerd staan zonder gebeurtenis die dat corrigeert. Sinds 2026-09-05 is de
+  lus wél begrensd: `RepositoriesHelper#display_changeset_branches?` laat de
+  hele weergave vallen boven `Setting.repository_log_display_limit` revisies
+  (standaard 100), en de weergave staat standaard uit.
+- **Alternatief en wat het kost:** (a) een databasecache — verworpen door de
+  reviewer van het issue zelf, en de reden dat zeven eerdere patches strandden;
+  (b) één commando voor de hele pagina — bestaat niet, `git log --format=%h%d`
+  beantwoordt een andere vraag (welke refs *op* een commit wijzen), dus het is
+  alsnog `--contains` per commit of de graaf in Ruby lopen; (c) de issuetab
+  helemaal niet ondersteunen — dat is juist de helft die note 18 als voorbeeld
+  noemt (#61) en waar de vraag "zit deze fix al op de releasebranch?" gesteld
+  wordt. Gemeten op een fixture-repository van 29 commits: de tab gaat van
+  0 subprocessen en 466 ms naar 29 subprocessen en 1007 ms; met de bovengrens
+  van 100 is dat het slechtste geval dat nog gerenderd wordt.
+- **Beslist:** Jan, g12 (de uitzondering vastleggen plus de bovengrens);
+  Class A voor het hergebruiken van `repository_log_display_limit` in plaats
+  van een vijfde instelling (INV-6), met de meting hierboven
+- **Datum:** 2026-09-05
