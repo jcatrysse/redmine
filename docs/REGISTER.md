@@ -13,7 +13,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`f117ea32e + 21c232ce1`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63 + 47eec6f1d + 1b4a29a0b`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
-| [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
+| [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa + f260958c6`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
 | [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`827e9e7d5`) | patch klaar | — |
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041 + 0fbad7c17 + 72a3a8e22`) | patch klaar | — |
@@ -29,6 +29,10 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `search-token-limit` — cse_01BPBKauYxfETDKAo2FCLAjF sinds 2026-09-05
 
 ## Openstaand voor Jan
 
@@ -249,11 +253,11 @@ blokkeert het indienen niet.
 
 ### `search-token-limit`
 
-Hang `patches/search-token-limit/2026-09-02-r24882-feature.patch` als note aan
+Hang `patches/search-token-limit/2026-09-05-r25037-feature.patch` als note aan
 [#43701](https://www.redmine.org/issues/43701), met de uitleg dat de
-instelling eruit is: dit is een bugfix van vier regels geworden in plaats van
-een functieverzoek, en het globale zoekvak houdt bewust zijn grens van vijf
-woorden (jouw keuze K-04, optie A).
+instelling eruit is: dit is een bugfix geworden in plaats van een
+functieverzoek, en het globale zoekvak houdt bewust zijn grens van vijf
+woorden (jouw keuze K-04, optie A). Vermeld de oude bijlage als achterhaald.
 
 ### `version-subprojects`
 
