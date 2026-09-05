@@ -19,6 +19,7 @@
 #
 # Shared, and only ever appended through tools/append-note.sh:
 #     docs/traps.md  docs/DECISIONS.md  docs/redmine-requirements.md
+#     docs/exceptions.md
 #
 # Nobody else's: CLAUDE.md, docs/STATE.md, docs/runbook.md, tools/**,
 # .claude/**, and every other slug's directory. Those belong to a session Jan
@@ -54,7 +55,7 @@ if [ -z "$changed" ]; then
 fi
 
 OWNED="^(docs/features/$SLUG/|patches/$SLUG/|verify/$SLUG\.mjs$|docs/claims/$SLUG--|docs/review/findings/[^/]*$SLUG[^/]*$|docs/REGISTER\.md$)"
-SHARED='^(docs/traps\.md|docs/DECISIONS\.md|docs/redmine-requirements\.md)$'
+SHARED='^(docs/traps\.md|docs/DECISIONS\.md|docs/redmine-requirements\.md|docs/exceptions\.md)$'
 
 owned=$(printf '%s\n' "$changed" | grep -E "$OWNED" || true)
 shared=$(printf '%s\n' "$changed" | grep -E "$SHARED" || true)

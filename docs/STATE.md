@@ -29,9 +29,14 @@ reviewronde 1, 2026-09-04"**, met een groepsnummer (g01..g18) per keuze.
 
 Volgorde van ronde 2, zoals die uit die keuzes volgt:
 
-1. **g13 eerst** — de vier achterlopende framework-regels bijwerken. Anders
-   bouw je fixes tegen regels waarvan al is vastgesteld dat ze niet kloppen,
-   en levert ronde 3 dezelfde ruis op.
+1. ~~**g13 eerst** — de vier achterlopende framework-regels bijwerken.~~
+   **Af, 2026-09-05.** INV-2 is aan het moment van indienen gekoppeld, INV-3
+   staat nu op Redmine's gemeten commentaardichtheid,
+   `tools/check-patch-clean.sh` controleert het patchbestand en vergelijkt het
+   met de branch, en `docs/exceptions.md` is de vaste plek voor een bewust
+   overtreden regel. Effect meteen zichtbaar: de oude regel gaf 9 van de 9
+   branches rood, de nieuwe geeft 7 schoon, 2 verouderd en 1 echte fout
+   (`wiki-export-attachments`, de drift tussen branch en patchbestand).
 2. de twee productieblockers: `ldap-mail-prefs` (g01) en `ar-sessions` (g02).
    Die raken wat GEOxyz nu draait, de patches niet.
 3. de dossierteksten en de bewijscijfers, in één golf (g09 en g10) — los
@@ -66,7 +71,8 @@ Dan:
    bouwen.
 4. `cat docs/features/<slug>/status.md` — het geheugen van die feature: wat er
    al bekend is, en welke afwegingen je **niet** opnieuw hoort te maken.
-5. `cat docs/traps.md` — wat er hier al een keer misging.
+5. `cat docs/traps.md` — wat er hier al een keer misging, en
+   `cat docs/exceptions.md` — welke regels bewust overtreden zijn en waarom.
 6. Bouwen: de skill `upstream-patch`. Reviewen: de skill `patch-review`.
 
 ## Waar alles staat, en wie eraan schrijft
@@ -89,6 +95,7 @@ bestanden** aanraken, niet omdat ze het onthouden. `tools/check-ownership.sh
 | `docs/traps.md` | gedeelde valkuilenlijst | iedereen, **alleen** via `tools/append-note.sh` |
 | `docs/DECISIONS.md` | Jans beslissingen en open keuzes (K-nn) | iedereen, **alleen** via `tools/append-note.sh` |
 | `docs/redmine-requirements.md` | wat Redmine echt eist, met bron | iedereen, **alleen** via `tools/append-note.sh` |
+| `docs/exceptions.md` | bewust overtreden regels, met de prijs erbij | iedereen, **alleen** via `tools/append-note.sh` |
 | `CLAUDE.md`, `docs/STATE.md`, `docs/runbook.md`, `tools/**`, `.claude/**` | het framework zelf | alleen een sessie die Jan daar expliciet om vroeg |
 
 ## De gereedschappen
@@ -100,7 +107,7 @@ bestanden** aanraken, niet omdat ze het onthouden. `tools/check-ownership.sh
 | `tools/append-note.sh <bestand>` | een blok toevoegen aan een gedeeld bestand zonder ooit te conflicteren (blok op stdin) |
 | `tools/register.sh [--write]` | `docs/REGISTER.md` opnieuw opbouwen uit de statusbestanden |
 | `tools/check-ownership.sh <slug>` | weigert een push die bestanden van iemand anders aanraakt |
-| `tools/check-patch-clean.sh patch/<slug>` | G6 |
+| `tools/check-patch-clean.sh <slug>` | G6 — controleert het **patchbestand** en vergelijkt het met de branch; `--submit` maakt "applyt niet meer op trunk" fataal |
 | `tools/check-geoxyz-branch.sh` | G8 |
 | `tools/dev-server.sh`, `tools/dev-seed.rb`, `tools/verify-lib.mjs` | G9 |
 | `tools/test-env.sh <worktree> <cmd>` | `test:all` bruikbaar maken (zonder dit ~260 systeemtestfouten) |

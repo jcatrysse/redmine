@@ -24,10 +24,11 @@ FILE="${1:?usage: $0 <file>   (block on stdin)}"
 MSG="${2:-}"
 
 case "$FILE" in
-  docs/traps.md|docs/DECISIONS.md|docs/redmine-requirements.md) ;;
+  docs/traps.md|docs/DECISIONS.md|docs/redmine-requirements.md|docs/exceptions.md) ;;
   *)
     echo "FAIL  $FILE is not a shared append-only file." >&2
-    echo "      Shared: docs/traps.md, docs/DECISIONS.md, docs/redmine-requirements.md." >&2
+    echo "      Shared: docs/traps.md, docs/DECISIONS.md, docs/redmine-requirements.md," >&2
+    echo "              docs/exceptions.md." >&2
     echo "      Anything under docs/features/<slug>/ is yours — edit it directly." >&2
     exit 2
     ;;

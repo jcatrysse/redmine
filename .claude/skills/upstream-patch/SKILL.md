@@ -161,14 +161,11 @@ how you catch a link that renders but does nothing.
 
 ## 6. Export and verify the patch — G6
 
-    tools/check-patch-clean.sh patch/<slug>
+Export first, then check the exported files: the file is what a committer
+downloads, and a branch that has drifted away from its own `.patch` files is
+exactly the defect this order catches.
 
-The script checks descent from trunk, that no framework or GEOxyz-local path is
-touched, that locales stay inside en/nl/fr/de/es, that no AI trace is in the
-commit messages, and that the patch applies to a pristine trunk checkout. All
-must pass.
-
-Then export the two files (5b), each from the same branch:
+Export the two files (5b), each from the same branch:
 
     git format-patch origin/master --stdout -- . ':!config/locales/nl.yml' \
       ':!config/locales/fr.yml' ':!config/locales/de.yml' ':!config/locales/es.yml' \
@@ -178,8 +175,20 @@ Then export the two files (5b), each from the same branch:
       config/locales/fr.yml config/locales/de.yml config/locales/es.yml \
       > patches/<slug>/<date>-r<rev>-locales.patch
 
-Verify each applies to a pristine trunk checkout on its own, and that the two
-together reproduce the branch. Commit both next to the dossier.
+Commit both next to the dossier, then:
+
+    tools/check-patch-clean.sh <slug>
+
+It reads `patches/<slug>/*.patch` and checks that no framework or GEOxyz-local
+path is touched, that locales stay inside en/nl/fr/de/es, that no AI trace is
+in the `From:` line or the commit message, that the patch applies to a pristine
+trunk checkout, and that the files together reproduce `patch/<slug>` exactly.
+
+"Does not apply to trunk any more" is a **warning** here, not a failure — trunk
+moves, and that is decay rather than a defect (INV-2). Everything else must
+pass. Just before Jan submits, refresh against current trunk, re-run the
+evidence numbers, and re-run this with `--submit`, which turns that warning into
+a failure.
 
 ## 7. Apply the same design to GEOxyz
 
