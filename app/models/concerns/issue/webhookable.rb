@@ -21,6 +21,7 @@ module Issue::Webhookable
   extend ActiveSupport::Concern
 
   included do
+    # closed_on is written by update_closed_on alone, and only when the issue is closing, so a save that changed it is a closing.
     after_save_commit ->{ Webhook.trigger(event_name('closed'), self) if saved_change_to_closed_on? }
   end
 
@@ -34,6 +35,11 @@ module Issue::Webhookable
       end
     end
     h
+  end
+
+  # 'closed' is an Issue-only action, so the generic timestamp mapping does not know it.
+  def webhook_payload_timestamp(action)
+    action == 'closed' ? updated_on.iso8601 : super
   end
 
   private

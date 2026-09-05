@@ -289,6 +289,7 @@ class WebhookTest < ActiveSupport::TestCase
     with_settings webhooks_enabled: '1' do
       hook = create_hook events: ['issue.closed']
       issue = Issue.generate! project: @project, status: IssueStatus.where(is_closed: false).order(:id).first
+      jobs_before = enqueued_jobs.size
 
       assert_enqueued_jobs 1, only: WebhookJob do
         issue.init_journal @dlopper, 'Done'
@@ -296,13 +297,20 @@ class WebhookTest < ActiveSupport::TestCase
         issue.save!
       end
 
-      hook_id, json = enqueued_jobs.detect{|job| job[:job] == WebhookJob}[:args]
+      hook_id, json = enqueued_jobs.drop(jobs_before).detect{|job| job[:job] == WebhookJob}[:args]
       payload = ActiveSupport::JSON.decode(json)
       assert_equal hook.id, hook_id
       assert_equal 'issue.closed', payload['type']
       assert_equal issue.id, payload.dig('data', 'issue', 'id')
       assert_equal 'Done', payload.dig('data', 'journal', 'notes')
     end
+  end
+
+  test "should not trigger issue closed webhook when an issue is created with an open status" do
+    Webhook.expects(:trigger).with('issue.created', instance_of(Issue)).once
+    Webhook.expects(:trigger).with('issue.closed', instance_of(Issue)).never
+
+    Issue.generate! project: @project, status: IssueStatus.where(is_closed: false).order(:id).first
   end
 
   test "should trigger issue closed webhook when an issue is created with a closed status" do
@@ -352,6 +360,15 @@ class WebhookTest < ActiveSupport::TestCase
     Webhook.expects(:trigger).with('issue.closed', issue).never
     issue.init_journal @dlopper
     issue.subject = 'New subject'
+    issue.save!
+  end
+
+  test "should not trigger issue closed webhook when a note is added to a closed issue" do
+    issue = generate_closed_issue
+
+    Webhook.expects(:trigger).with('issue.updated', issue).once
+    Webhook.expects(:trigger).with('issue.closed', issue).never
+    issue.init_journal @dlopper, 'Just a note'
     issue.save!
   end
 
