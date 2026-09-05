@@ -680,7 +680,7 @@ nl:
   setting_default_projects_public: Nieuwe projecten zijn standaard openbaar
   setting_diff_max_lines_displayed: Max aantal weergegeven diff regels
   setting_display_subprojects_issues: Standaardissues van subproject weergeven
-  setting_display_revision_branches: Branches weergeven op de revisiepagina
+  setting_display_revision_branches: Branches weergeven op de revisie- en diffpagina
   setting_display_associated_revision_branches: Branches weergeven bij geassociëerde revisies
   setting_revision_branches_excluded: Branches uitsluiten op basis van naam
   setting_revision_branches_enable_regex: Reguliere expressies gebruiken
@@ -925,6 +925,7 @@ nl:
   setting_issue_group_assignment: Groepstoewijzingen toelaten
   label_diff: diff
   text_git_repository_note: "Lokaal versieoverzicht is leeg (Voorbeeld: /gitrepo, c:\\gitrepo)"
+  text_revision_branches_git_only: Branchinformatie is alleen beschikbaar voor Git-repositories.
   description_query_sort_criteria_direction: Sortering
   description_project_scope: Zoekbereik
   description_user_mail_notification: Instellingen voor e-mailnotificaties

@@ -340,6 +340,21 @@ class SettingsControllerTest < Redmine::ControllerTest
     assert_select 'textarea[name=?]', 'settings[mail_handler_body_delimiters]', :text => 'Abc['
   end
 
+  def test_post_revision_branches_excluded_should_not_save_an_invalid_regular_expression
+    post :edit, :params => {
+      :settings => {
+        :revision_branches_enable_regex => '1',
+        :revision_branches_excluded => 'Abc[',
+      }
+    }
+
+    assert_response :success
+    assert_equal '0', Setting.revision_branches_enable_regex
+    assert_equal '', Setting.revision_branches_excluded
+
+    assert_select_error /is not a valid regular expression/
+  end
+
   def test_post_mail_handler_delimiters_should_save_valid_regex_delimiters
     post :edit, :params => {
       :settings => {
