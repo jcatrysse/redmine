@@ -9,6 +9,7 @@
 /config/additional_environment.rb
 /config/configuration.yml
 /config/credentials.yml.enc
+/config/credentials/
 /config/database.yml
 /config/email.yml
 /config/master.key
