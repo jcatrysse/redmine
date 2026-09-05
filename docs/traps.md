@@ -686,3 +686,42 @@ Gemeten met een wegwerp-worktree op `origin/master` per bestand:
   waarvan de tweede helft aantoont dat de feature ingrijpt (rij verwijderen →
   inlogformulier). Twee van die shots zijn hier byte-identiek waar dat de
   bedoeling is, en dat is zelf ook bewijs.
+## Uit wiki-export-attachments, ronde 2 (2026-09-05)
+
+- **De bijlagenlijst op een wikipagina is een ingeklapte fieldset.** Een
+  paginabrede screenshot toont "Files (3)" en geen enkele bestandsnaam; het
+  bewijs dat de botsende bijlagen bestonden stond dus niet op de eerste foto.
+  Klik `fieldset.collapsible.collapsed legend` vóór `shot()`.
+- **Een `unzip -l` laat een dubbele entry en een bestand/map-botsing niet
+  zien.** Rubyzip schrijft de tweede entry met dezelfde naam gewoon weg en de
+  centrale directory noemt er één; `unzip -t` zegt "No errors detected". Pak
+  het archief uit in een lege map en `find` wat er op schijf staat — dat is wat
+  F02 en F03 van deze feature zichtbaar maakte, in de test én in de browser.
+- **`verify/<slug>.mjs` draait vanuit `/home/user/redmine`,** niet vanuit de
+  worktree die de dev-server bedient: het importeert `../tools/verify-lib.mjs`
+  relatief. Vanuit de worktree: `Cannot find module`.
+- **Een AR-associatie die je vóór het inserten al las, toont je insert niet.**
+  Een seed-script dat `page.attachments.any?` doet en daarna `Attachment.create!`
+  op diezelfde pagina, en dan `page.attachments` afdrukt, ziet de nieuwe rijen
+  niet; het leek alsof er niets was opgeslagen. `page.attachments.reload` of
+  een verse query.
+- **De eerste `dev-seed.rb`-run kan stil stoppen vóór de wiki.** De nested-set
+  fout die de runbook noemt trad hier op bij `dev-server.sh`, en de wiki had
+  daarna nul pagina's (`wiki.find_page('Wiki')` gaf `nil`). Kijk naar de
+  `seeded: … wiki_pages=3`-regel; ontbreekt die, draai de seed nog een keer.
+- **Een `git diff` tussen twee patchbranches op dezelfde trunkcommit is de
+  zuivere ronde-2-delta.** Trunk + oude patchbestanden als wegwerpcommit, dan
+  `git diff <die commit> <nieuwe patchcommit>` en `git apply -3` op de
+  GEOxyz-worktree: 7 bestanden, alles schoon toegepast, en het filter uit de
+  trap hierboven ("`grep -E '^[+-]'`") bewijst dat de GEOxyz-delta letterlijk
+  gelijk is aan de trunk-delta.
+- **`tools/check-geoxyz-branch.sh` faalt op lint, ook zonder eigen commit.**
+  Op `origin/7.0-stable-GEOxyz` (tip `8bf6dce3e`, vóór deze sessie) meldt hij
+  `Rails/StrongParametersExpect` op `wiki_controller.rb:369`; diezelfde regel
+  staat in `origin/7.0-stable` zelf (`git show origin/7.0-stable:app/controllers/wiki_controller.rb | rubocop --stdin …`
+  geeft dezelfde melding). Het is dus een regel van upstream, en elke sessie
+  die dat bestand aanraakt ziet die FAIL terwijl hij niet in de diff zit. Meet
+  de baseline (`git stash`, lint, `git stash pop`) en zet beide getallen in het
+  statusbestand; de regel zelf niet fixen (INV-1). Waarom dezelfde check op
+  2026-09-02 PASS gaf is niet uitgezocht. Framework-punt voor Jan: het script
+  meet geen baseline.
