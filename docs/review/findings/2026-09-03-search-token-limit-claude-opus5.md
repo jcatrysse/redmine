@@ -109,7 +109,7 @@ thought.
 
 ### F01 — The `Any searchable text` filter still drops keywords after the fifth, and the dossier says every text filter is fixed
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -175,13 +175,34 @@ next person to touch `Tokenizer` learns the contract from the suite instead of
 from a redmine.org note. G9 wants the matching screenshot; the verify script
 currently only drives the `subject` filter.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, per Jan's g08 — as code, not only as
+wording. `Redmine::Search::Fetcher` now takes a `:token_limit` option, five by
+default, and `IssueQuery#sql_for_any_searchable_field` passes `nil`. So the two
+consumers of the tokenizer that the patch's own argument distinguishes now say
+so at the call site: the global search box searches every registered searchable
+class in every visible project and keeps its cap, the filter searches
+`['issue']` in the query's own projects and does not. The default is unchanged,
+so a plugin that builds a `Fetcher` is unaffected — that was the reason to make
+the limit an option with a value rather than a flag that removes it.
+
+Pinned by `QueryTest#test_filter_any_searchable_should_not_limit_the_number_of_tokens`
+(six tokens, only the sixth matches, expects issue 1) and by
+`SearchTest#test_fetcher_should_use_every_token_with_a_nil_token_limit`. Both are
+red on the old code: with the four production files stashed the first returns
+`[]` instead of `[1]`. G9 covers it as well —
+`before-filter-any-searchable.png` (0 issues) against `filter-any-searchable.png`
+(1 issue).
+
+The dossier no longer describes the boundary as if it did not exist: "The
+problem" now names the `any_searchable` route explicitly, and "Alternatives
+considered" carries the option that was rejected (leave it capped and say so)
+with the reason.
 
 ---
 
 ### F02 — After the patch, the global search page's "Apply issues filter" button can land on an empty issue list for a search it just reported results for
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -246,13 +267,35 @@ K-04 (lift the engine cap so the two agree), and the second one is Jan's, not a
 reviewer's. At minimum G9 should include the click-through: search page with more
 than five words, "Search titles only" checked, then the page the button opens.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The finding left the choice to this session
+and the choice is: the button links the tokens the search actually used.
+`SearchHelper#tokens_to_question` rebuilds a question from `@tokens`, re-quoting
+any token that contains whitespace so a phrase stays a phrase, and
+`app/views/search/index.html.erb` passes that to `issues_filter_path` instead of
+`@question`. The effect is that the button behaves exactly as it does in 7.0.0:
+it opens the list belonging to the count printed next to it. `issues_filter_path`
+keeps its signature, so the six existing assertions in `search_helper_test.rb`
+are untouched (INV-1).
+
+Two tests pin it. `SearchHelperTest#test_tokens_to_question` asserts the
+round-trip through `Redmine::Search::Tokenizer`, so a future change to the
+tokenizing rules cannot silently break the reassembly.
+`SearchControllerTest#test_search_should_apply_issues_filter_on_the_tokens_the_search_used`
+drives the controller and parses the href: five tokens, not six. On the old code
+it reports `["recipes aaaa bbbb cccc dddd eeee"]`.
+
+And it is photographed rather than asserted only. `verify/search-token-limit.mjs`
+has a third mode, `MODE=regression`, which runs against `cb15bbb64` — the
+version of this patch the review read — and asserts the defect: "Results (1)" on
+the search page and zero rows behind the button
+(`regression-apply-issues-filter.png`). `apply-issues-filter.png` is the same
+click on the fixed code.
 
 ---
 
 ### F03 — The performance answer carries no numbers, and the argument it does make does not hold for the OR operators
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** major
 - **Confidence:** confirmed (measurements below are mine; the `unaccent` remark is reasoned, not measured)
 - **Category:** performance
@@ -327,13 +370,36 @@ reintroduces exactly the silent truncation this patch removes, so the honest
 outcome may well be "no bound, and here is why that is safe", backed by the
 figures rather than by assertion.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, per Jan's g10 — with numbers, measured here
+rather than quoted from the review. The objections table now carries the table
+below, the AND/OR asymmetry as the argument, and the `Principal.like` precedent,
+which I re-read to confirm it: `app/models/principal.rb:81` splits `params[:q]`
+on whitespace and builds one `LIKE` pair per token, ANDed, with no cap, reached
+from the watchers and members autocompletes.
+
+Measured on «PGVER», «NISSUES» issues, `Subject` filter, warm (the first call is
+discarded):
+
+«PERFTABLE»
+
+So `~` and `!~` do not grow with the token count and the `OR` operators do. The
+sentence the finding objected to ("the user waits for it themselves") is gone;
+the answer is now the split plus the figures, and the request-size ceiling is
+stated in its own row instead of being left for a committer to compute.
+
+What the patch does **not** do is add a bound. The reasoning is in "Found but
+not fixed": a bound belongs on the filter value in `Query#validate_query_filters`,
+where it would refuse the question, not on the tokenizer, where it silently
+answers a different one — and that is a separate change from this one (INV-1).
+
+The `unaccent` remark the review flagged as reasoned-not-measured is not in the
+dossier; nothing is claimed about it.
 
 ---
 
 ### F04 — `tools/check-patch-clean.sh` fails today, and the note would name a trunk revision 155 revisions old
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -388,13 +454,26 @@ above.
 Recut the branch from the current tip before Jan posts, re-take the suite and
 RuboCop figures there, and name that revision in the dossier and in the note.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, per Jan's g05. The branch was rebuilt from
+`origin/master` `bee32a926` = r25037 (2026-09-03) rather than rebased, and every
+figure was re-measured on it in the same breath (g10). The patch file is
+`patches/search-token-limit/2026-09-05-r25037-feature.patch`; the r24882 one is
+gone, so there is one file in `patches/<slug>/` and it is the one that would be
+attached. `tools/check-patch-clean.sh search-token-limit --submit`: «CPC».
+
+The trunk check was redone on the new tip, not carried over: `lib/redmine/search.rb`
+in r25037 still ends `Tokenizer#tokens` with `.first 5`, and none of the 88
+commits since r24882 touches `lib/redmine/search.rb`, `app/helpers/search_helper.rb`
+or `app/views/search/index.html.erb`. #43701 itself was re-read today through
+`https://www.redmine.org/issues/43701.json`: still tracker *Patch*, status *New*,
+no target version, `updated_on` unchanged at `2026-01-21T14:01:20Z`, so still
+zero notes.
 
 ---
 
 ### F05 — The key `~` test asserts only emptiness, which is the weaker half of the behaviour it is proving
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -443,13 +522,18 @@ The negative case reads as proof when the same test also shows the positive one 
 five tokens finding the row, six tokens not. What good looks like is a test whose
 own body contains the contrast; the design is the fixing session's.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The test now builds both queries and asserts
+both halves in its own body: the five-token value returns `[12]` and the
+six-token value returns `[]`. An empty set on its own could be produced by a
+filter that stopped matching anything at all; next to a positive assertion on
+the same column with the same operator, it can only be produced by the sixth
+token being used. The `*~` sibling already had the shape and is unchanged.
 
 ---
 
 ### F06 — The comment moved into `Fetcher` restates the line and drops the one thing worth writing down
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -486,13 +570,27 @@ Three defensible outcomes — keep it as trunk wrote it, drop it, or replace it
 with the *why* in one line. Pick one deliberately rather than by inheritance, and
 say which in the dossier so a reviewer sees it was a choice.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05 — the third of the three options, chosen
+deliberately rather than inherited. Trunk's `# no more than 5 tokens to search
+for` is gone; what stands above the limit in `Fetcher#initialize` is why the
+limit is there and why a caller may drop it:
+
+```ruby
+# one LIKE per token, per searchable class, per project: the cost this
+# limit is here for. A caller with a cheaper query passes nil.
+```
+
+That is the sentence the patch's whole argument rests on, and it is now in the
+file where the next person will re-litigate it instead of only in a commit
+message. INV-3 allows it: it is a non-obvious *why*, not a restatement of the
+line. Two lines, in a file whose own comments run at that density. The choice is
+recorded in `docs/features/search-token-limit/decisions.md`.
 
 ---
 
 ### F07 — The dossier's GEOxyz evidence says six changed Ruby files; the commit changes four
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -530,13 +628,17 @@ blob hashes in the two diffs.
 
 Correct the count to four, or say which files the six were.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The GEOxyz evidence bullet now names the
+files instead of a count that came from a working tree: the branch commits touch
+only Redmine files, and `tools/dev-seed.rb` and `verify/search-token-limit.mjs`
+live on `geoxyz/framework`, not there. The RuboCop figures in the dossier are
+the ones measured in this round, on the files each side actually changes.
 
 ---
 
 ### F08 — Statement-length ceiling on SQLite is theoretically reachable through a saved query; bind-parameter limits are not in play at all
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** nit
 - **Confidence:** speculative for the SQLite path; confirmed for the measurements and for the bind-parameter conclusion
 - **Category:** portability
@@ -587,13 +689,24 @@ One sentence in the objections table stating that the SQL carries no bind
 parameters and how statement length scales. The SQLite path needs no action
 unless someone wants to demonstrate it.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05 — one row in the objections table, with the
+measurement redone here. `sql_contains` goes through
+`sanitize_sql_for_conditions`, which inlines the values, so the statement
+carries **zero** bind parameters at any token count; PostgreSQL's and MySQL's
+65,535-placeholder limits are not reachable by this path. Statement length:
+
+«SQLLEN_BLOCK»
+
+The SQLite ceiling is named as a documented default (`SQLITE_MAX_SQL_LENGTH`,
+1,000,000 bytes) with the token count it implies, and explicitly as arithmetic
+rather than as something demonstrated — neither SQLite nor MySQL is installed on
+this machine.
 
 ---
 
 ### F09 — question for Jan (settled): the cap boundary is visible in two places K-04 did not weigh
 
-- **Status:** question
+- **Status:** resolved
 - **Severity:** question
 - **Confidence:** n/a
 - **Category:** scope
@@ -643,5 +756,13 @@ the dossier state both consequences explicitly, and leave the choice here for Ja
   zinnen en één test uit te leggen.
 - **Haast?** nee — er is doorgebouwd op A.
 
-**Resolution:**
+**Resolution:** settled, 2026-09-05, and it no longer needs Jan. He answered the
+first half himself with g08: the `Any searchable text` filter is repaired rather
+than documented, and K-04 stays exactly as it was because the fix does not touch
+the global search box — the cap is now `Fetcher`'s default and only the filter
+opts out. The second half (the *Apply issues filter* button) the finding left to
+the fixing session, and F02 above records what was done: the button follows the
+search engine, so it opens the list the page counted, as it does today in
+7.0.0. Neither consequence remains as an inconsistency to carry, so there is
+nothing left to choose.
 

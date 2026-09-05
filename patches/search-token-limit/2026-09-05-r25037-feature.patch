@@ -1,0 +1,236 @@
+From 587d9a11b62da2fdb5f9182649805ea78a71068d Mon Sep 17 00:00:00 2001
+From: Jan Catrysse <jan.catrysse@geoxyz.eu>
+Date: Sat, 5 Sep 2026 15:09:11 +0000
+Subject: [PATCH] Text filters no longer ignore keywords after the fifth
+ (#43701).
+
+The five-token limit in Redmine::Search::Tokenizer was written for the search
+engine, where one LIKE per token runs against every searchable class in every
+selected project. Since r21238 the tokenizer is also what text filters and the
+issue autocomplete use to split a filter value into terms, so the limit reached
+code it was never meant for: the ~, !~, *~, ^ and $ operators silently drop
+whatever the user typed after the fifth word and return a result set that does
+not match the filter.
+
+Move the limit to Redmine::Search::Fetcher, as a default the caller can lift.
+The global search keeps the first five tokens; the any_searchable filter, which
+builds a fetcher over the issues of the query's own projects, takes all of them.
+The "Apply issues filter" button on the search results page now links the tokens
+the search actually used, so it keeps opening the list the page just counted.
+---
+ app/helpers/search_helper.rb              |  6 ++++
+ app/models/issue_query.rb                 |  3 +-
+ app/views/search/index.html.erb           |  2 +-
+ lib/redmine/search.rb                     |  7 ++--
+ test/functional/search_controller_test.rb | 10 ++++++
+ test/helpers/search_helper_test.rb        | 10 ++++++
+ test/unit/lib/redmine/search_test.rb      |  5 +++
+ test/unit/query_test.rb                   | 40 +++++++++++++++++++++++
+ test/unit/search_test.rb                  | 13 ++++++++
+ 9 files changed, 92 insertions(+), 4 deletions(-)
+
+diff --git a/app/helpers/search_helper.rb b/app/helpers/search_helper.rb
+index 7246d397d..ff03e202c 100644
+--- a/app/helpers/search_helper.rb
++++ b/app/helpers/search_helper.rb
+@@ -70,6 +70,12 @@ module SearchHelper
+         '</ul>'.html_safe) unless links.empty?
+   end
+ 
++  # Returns a question that tokenizes back to the given tokens, so that a filter
++  # built from it searches what the search engine actually searched
++  def tokens_to_question(tokens)
++    tokens.map {|token| token.match?(/\p{Zs}/) ? "\"#{token}\"" : token}.join(' ')
++  end
++
+   def issues_filter_path(question, options)
+     projects_scope = options[:projects_scope]
+     titles_only = options[:titles_only]
+diff --git a/app/models/issue_query.rb b/app/models/issue_query.rb
+index f44e5e93d..3e39075e6 100644
+--- a/app/models/issue_query.rb
++++ b/app/models/issue_query.rb
+@@ -906,7 +906,8 @@ class IssueQuery < Query
+ 
+     fetcher = Redmine::Search::Fetcher.new(
+       question, User.current, ['issue'], projects,
+-      all_words: is_all_words, open_issues: is_open_issues, attachments: '0'
++      all_words: is_all_words, open_issues: is_open_issues, attachments: '0',
++      token_limit: nil
+     )
+     ids = fetcher.result_ids.map(&:last)
+     if ids.present?
+diff --git a/app/views/search/index.html.erb b/app/views/search/index.html.erb
+index db83be00f..9c95e0d28 100644
+--- a/app/views/search/index.html.erb
++++ b/app/views/search/index.html.erb
+@@ -48,7 +48,7 @@
+     <h3><%= l(:label_result_plural) %> (<%= @result_count %>)</h3>
+     <% if @result_count_by_type['issues'].to_i > 0 && @search_attachments == '0' %>
+       <p class="buttons">
+-        <%= link_to sprite_icon('list', l(:button_apply_issues_filter)), issues_filter_path(@question, projects_scope: params[:scope], all_words: @all_words, titles_only: @titles_only, open_issues: @open_issues), :class => 'icon icon-list' %>
++        <%= link_to sprite_icon('list', l(:button_apply_issues_filter)), issues_filter_path(tokens_to_question(@tokens), projects_scope: params[:scope], all_words: @all_words, titles_only: @titles_only, open_issues: @open_issues), :class => 'icon icon-list' %>
+       </p>
+     <% end %>
+     <dl id="search-results">
+diff --git a/lib/redmine/search.rb b/lib/redmine/search.rb
+index 3605d866f..6c64f3fcc 100644
+--- a/lib/redmine/search.rb
++++ b/lib/redmine/search.rb
+@@ -55,8 +55,12 @@ module Redmine
+         @scope = scope
+         @projects = projects
+         @cache = options.delete(:cache)
++        # one LIKE per token, per searchable class, per project: the cost this
++        # limit is here for. A caller with a cheaper query passes nil.
++        token_limit = options.delete(:token_limit) {5}
+         @options = options
+         @tokens = Tokenizer.new(@question).tokens
++        @tokens = @tokens.first(token_limit) if token_limit
+       end
+ 
+       # Returns the total result count
+@@ -141,8 +145,7 @@ module Redmine
+         end
+         # tokens must be at least 2 characters long
+         # but for Chinese characters (Chinese HANZI/Japanese KANJI), tokens can be one character
+-        # no more than 5 tokens to search for
+-        tokens.uniq.select{|w| w.length > 1 || w =~ /\p{Han}/}.first 5
++        tokens.uniq.select{|w| w.length > 1 || w =~ /\p{Han}/}
+       end
+     end
+ 
+diff --git a/test/functional/search_controller_test.rb b/test/functional/search_controller_test.rb
+index 5e32e5656..88eddbd57 100644
+--- a/test/functional/search_controller_test.rb
++++ b/test/functional/search_controller_test.rb
+@@ -452,6 +452,16 @@ class SearchControllerTest < Redmine::ControllerTest
+     assert_select '#search-results dt.project', 0
+   end
+ 
++  def test_search_should_apply_issues_filter_on_the_tokens_the_search_used
++    get :index, :params => {:q => 'recipes aaaa bbbb cccc dddd eeee', :all_words => ''}
++    assert_response :success
++
++    assert_select 'p.buttons a[href]' do |links|
++      query = CGI.parse(URI.parse(links.first['href']).query)
++      assert_equal ['recipes aaaa bbbb cccc dddd'], query['v[any_searchable][]']
++    end
++  end
++
+   def test_search_should_not_show_apply_issues_filter_button_if_no_issues_found
+     get :index, :params => {:q => 'commits'}
+     assert_response :success
+diff --git a/test/helpers/search_helper_test.rb b/test/helpers/search_helper_test.rb
+index 886d39bc8..1ffdf92f3 100644
+--- a/test/helpers/search_helper_test.rb
++++ b/test/helpers/search_helper_test.rb
+@@ -55,6 +55,16 @@ class SearchHelperTest < Redmine::HelperTest
+     )
+   end
+ 
++  def test_tokens_to_question
++    assert_equal 'one two three', tokens_to_question(%w[one two three])
++    assert_equal 'one "two three" four', tokens_to_question(['one', 'two three', 'four'])
++    # the question tokenizes back to the tokens it was built from
++    assert_equal(
++      ['one', 'two three', 'four'],
++      Redmine::Search::Tokenizer.new(tokens_to_question(['one', 'two three', 'four'])).tokens
++    )
++  end
++
+   def test_issues_filter_path
+     # rubocop:disable Layout/LineLength
+     assert_equal(
+diff --git a/test/unit/lib/redmine/search_test.rb b/test/unit/lib/redmine/search_test.rb
+index e2d77cca0..78ccab9fa 100644
+--- a/test/unit/lib/redmine/search_test.rb
++++ b/test/unit/lib/redmine/search_test.rb
+@@ -35,4 +35,9 @@ class Redmine::Search::Tokenize < ActiveSupport::TestCase
+     value = '"phrase one" "phrase two"'
+     assert_equal ["phrase one", "phrase two"], Redmine::Search::Tokenizer.new(value).tokens
+   end
++
++  def test_tokenize_should_not_limit_the_number_of_tokens
++    value = "one two three four five six seven"
++    assert_equal %w[one two three four five six seven], Redmine::Search::Tokenizer.new(value).tokens
++  end
+ end
+diff --git a/test/unit/query_test.rb b/test/unit/query_test.rb
+index ebf7fc991..dbb030d64 100644
+--- a/test/unit/query_test.rb
++++ b/test/unit/query_test.rb
+@@ -3435,6 +3435,46 @@ class QueryTest < ActiveSupport::TestCase
+     end
+   end
+ 
++  def test_sql_contains_should_not_limit_the_number_of_tokens
++    five_tokens = IssueQuery.new(
++      :project => nil, :name => '_',
++      :filters => {
++        'subject' => {:operator => '~', :values => ['closed issue on locked version']}
++      }
++    )
++    six_tokens = IssueQuery.new(
++      :project => nil, :name => '_',
++      :filters => {
++        'subject' => {:operator => '~', :values => ['closed issue on locked version nomatch']}
++      }
++    )
++
++    assert_equal [12], five_tokens.issues.map(&:id)
++    assert_equal [], six_tokens.issues.map(&:id)
++  end
++
++  def test_sql_contains_should_not_limit_the_number_of_tokens_for_contains_any_of
++    query = IssueQuery.new(
++      :project => nil, :name => '_',
++      :filters => {
++        'subject' => {:operator => '*~', :values => ['nomatch1 nomatch2 nomatch3 nomatch4 nomatch5 recipes']}
++      }
++    )
++
++    assert_equal [1], query.issues.map(&:id)
++  end
++
++  def test_filter_any_searchable_should_not_limit_the_number_of_tokens
++    query = IssueQuery.new(
++      :project => nil, :name => '_',
++      :filters => {
++        'any_searchable' => {:operator => '*~', :values => ['nomatch1 nomatch2 nomatch3 nomatch4 nomatch5 recipes']}
++      }
++    )
++
++    assert_equal [1], query.issues.map(&:id)
++  end
++
+   def test_display_type_should_accept_known_types
+     query = ProjectQuery.new(:name => '_')
+     query.display_type = 'list'
+diff --git a/test/unit/search_test.rb b/test/unit/search_test.rb
+index 796cc6a6c..cfaa49e04 100644
+--- a/test/unit/search_test.rb
++++ b/test/unit/search_test.rb
+@@ -211,6 +211,19 @@ class SearchTest < ActiveSupport::TestCase
+     assert_equal ['ca', '漢'], f.tokens
+   end
+ 
++  def test_fetcher_should_use_no_more_than_five_tokens
++    f = Redmine::Search::Fetcher.new('one two three four five six seven',
++                                     User.anonymous, %w(issues), Project.all)
++    assert_equal %w[one two three four five], f.tokens
++  end
++
++  def test_fetcher_should_use_every_token_with_a_nil_token_limit
++    f = Redmine::Search::Fetcher.new('one two three four five six seven',
++                                     User.anonymous, %w(issues), Project.all,
++                                     :token_limit => nil)
++    assert_equal %w[one two three four five six seven], f.tokens
++  end
++
+   private
+ 
+   def remove_permission(role, permission)
+-- 
+2.43.0
+
