@@ -110,6 +110,7 @@ thought.
 ### F01 — The `Any searchable text` filter still drops keywords after the fifth, and the dossier says every text filter is fixed
 
 - **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — per Jan's g08 the `Any searchable text` filter is repaired, not only described: `Fetcher` takes a `:token_limit` (5 by default) and `sql_for_any_searchable_field` passes `nil`; one `QueryTest` case and a before/after screenshot pair pin it
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -203,6 +204,7 @@ with the reason.
 ### F02 — After the patch, the global search page's "Apply issues filter" button can land on an empty issue list for a search it just reported results for
 
 - **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — the *Apply issues filter* button now links the tokens the search used (`SearchHelper#tokens_to_question`), so it behaves as in 7.0.0; a controller test parses the href and `regression-apply-issues-filter.png` photographs the defect on the old design
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -296,6 +298,7 @@ click on the fixed code.
 ### F03 — The performance answer carries no numbers, and the argument it does make does not hold for the OR operators
 
 - **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — the objections table carries measured figures (50 000 issues, `*~` 0.184 s at 5 tokens against 10.930 s at 1000, `~` flat), the AND/OR split as the argument, and the `Principal.like` precedent; no bound is added and the reason is in "Found but not fixed"
 - **Severity:** major
 - **Confidence:** confirmed (measurements below are mine; the `unaccent` remark is reasoned, not measured)
 - **Category:** performance
@@ -409,6 +412,7 @@ dossier; nothing is claimed about it.
 ### F04 — `tools/check-patch-clean.sh` fails today, and the note would name a trunk revision 155 revisions old
 
 - **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — branch rebuilt on r25037 and every figure re-measured there (g05, g10); `check-patch-clean.sh --submit` PASS, and #43701 was re-read today (still zero notes)
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -483,6 +487,7 @@ zero notes.
 ### F05 — The key `~` test asserts only emptiness, which is the weaker half of the behaviour it is proving
 
 - **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — the test now asserts both halves in one body: five tokens return `[12]`, six return `[]`
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -543,6 +548,7 @@ token being used. The `*~` sibling already had the shape and is unchanged.
 ### F06 — The comment moved into `Fetcher` restates the line and drops the one thing worth writing down
 
 - **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — trunk's restating comment is gone; two lines above the limit say why it belongs in `Fetcher` and when a caller may drop it
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -600,6 +606,7 @@ recorded in `docs/features/search-token-limit/decisions.md`.
 ### F07 — The dossier's GEOxyz evidence says six changed Ruby files; the commit changes four
 
 - **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — the GEOxyz evidence names the files instead of a count taken from a working tree, and the RuboCop figures are the ones measured this round
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -648,6 +655,7 @@ the ones measured in this round, on the files each side actually changes.
 ### F08 — Statement-length ceiling on SQLite is theoretically reachable through a saved query; bind-parameter limits are not in play at all
 
 - **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — one objections row: zero bind parameters at any token count, statement length measured (170 / 7 287 / 36 888 / 188 888 characters), SQLite's ceiling named as arithmetic rather than as something demonstrated
 - **Severity:** nit
 - **Confidence:** speculative for the SQLite path; confirmed for the measurements and for the bind-parameter conclusion
 - **Category:** portability
@@ -721,6 +729,7 @@ this machine.
 ### F09 — question for Jan (settled): the cap boundary is visible in two places K-04 did not weigh
 
 - **Status:** resolved
+- **Resolution:** settled 2026-09-05 — g08 answered the filter half and F02 the button half, so there is nothing left for Jan to choose and K-04 is untouched
 - **Severity:** question
 - **Confidence:** n/a
 - **Category:** scope
