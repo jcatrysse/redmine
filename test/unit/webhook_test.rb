@@ -234,6 +234,93 @@ class WebhookTest < ActiveSupport::TestCase
     assert_equal attachment.filename, journal.details.last.old_value
   end
 
+  test "should enqueue a job for a hook subscribed to issue closed when an issue is closed" do
+    with_settings webhooks_enabled: '1' do
+      hook = create_hook events: ['issue.closed']
+      issue = Issue.generate! project: @project, status: IssueStatus.where(is_closed: false).order(:id).first
+      jobs_before = enqueued_jobs.size
+
+      assert_enqueued_jobs 1, only: WebhookJob do
+        issue.init_journal @dlopper, 'Done'
+        issue.status = IssueStatus.where(is_closed: true).order(:id).first
+        issue.save!
+      end
+
+      hook_id, json = enqueued_jobs.drop(jobs_before).detect{|job| job[:job] == WebhookJob}[:args]
+      payload = ActiveSupport::JSON.decode(json)
+      assert_equal hook.id, hook_id
+      assert_equal 'issue.closed', payload['type']
+      assert_equal issue.id, payload.dig('data', 'issue', 'id')
+      assert_equal 'Done', payload.dig('data', 'journal', 'notes')
+    end
+  end
+
+  test "should not trigger issue closed webhook when an issue is created with an open status" do
+    Webhook.expects(:trigger).with('issue.created', instance_of(Issue)).once
+    Webhook.expects(:trigger).with('issue.closed', instance_of(Issue)).never
+
+    Issue.generate! project: @project, status: IssueStatus.where(is_closed: false).order(:id).first
+  end
+
+  test "should trigger issue closed webhook when an issue is created with a closed status" do
+    Webhook.expects(:trigger).with('issue.created', instance_of(Issue)).once
+    Webhook.expects(:trigger).with('issue.closed', instance_of(Issue)).once
+
+    Issue.generate! project: @project, status: IssueStatus.where(is_closed: true).order(:id).first
+  end
+
+  test "should not trigger issue closed webhook when a closed issue moves to another closed status" do
+    issue = generate_closed_issue
+
+    Webhook.expects(:trigger).with('issue.updated', issue).once
+    Webhook.expects(:trigger).with('issue.closed', issue).never
+    issue.init_journal @dlopper
+    issue.status = IssueStatus.where(is_closed: true).order(:id).last
+    issue.save!
+  end
+
+  test "should not trigger issue closed webhook when a closed issue is reopened" do
+    issue = generate_closed_issue
+
+    Webhook.expects(:trigger).with('issue.updated', issue).once
+    Webhook.expects(:trigger).with('issue.closed', issue).never
+    issue.init_journal @dlopper
+    issue.status = IssueStatus.where(is_closed: false).order(:id).first
+    issue.save!
+  end
+
+  test "should trigger issue closed webhook again when a reopened issue is closed" do
+    issue = generate_closed_issue
+    issue.init_journal @dlopper
+    issue.status = IssueStatus.where(is_closed: false).order(:id).first
+    issue.save!
+
+    Webhook.expects(:trigger).with('issue.updated', issue).once
+    Webhook.expects(:trigger).with('issue.closed', issue).once
+    issue.init_journal @dlopper
+    issue.status = IssueStatus.where(is_closed: true).order(:id).first
+    issue.save!
+  end
+
+  test "should not trigger issue closed webhook when a closed issue is updated" do
+    issue = generate_closed_issue
+
+    Webhook.expects(:trigger).with('issue.updated', issue).once
+    Webhook.expects(:trigger).with('issue.closed', issue).never
+    issue.init_journal @dlopper
+    issue.subject = 'New subject'
+    issue.save!
+  end
+
+  test "should not trigger issue closed webhook when a note is added to a closed issue" do
+    issue = generate_closed_issue
+
+    Webhook.expects(:trigger).with('issue.updated', issue).once
+    Webhook.expects(:trigger).with('issue.closed', issue).never
+    issue.init_journal @dlopper, 'Just a note'
+    issue.save!
+  end
+
   test "should compute correct signature" do
     # we're implementing the same signature mechanism as GitHub, so might as well re-use their
     # example. https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries
@@ -344,6 +431,14 @@ class WebhookTest < ActiveSupport::TestCase
 
   def create_hook(url: 'https://example.com/some/hook', user: User.find_by_login('dlopper'), projects: [Project.find('ecookbook')], events: ['issue.created'], active: true)
     Webhook.create!(url: url, user: user, projects: projects, events: events, active: active)
+  end
+
+  def generate_closed_issue
+    issue = Issue.generate! project: @project, status: IssueStatus.where(is_closed: false).order(:id).first
+    issue.init_journal @dlopper
+    issue.status = IssueStatus.where(is_closed: true).order(:id).first
+    issue.save!
+    issue
   end
 
   # Starts a real HTTP server on 127.0.0.1 on an ephemeral port, recording the
