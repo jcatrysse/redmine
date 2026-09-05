@@ -375,6 +375,13 @@ class AttachmentTest < ActiveSupport::TestCase
     assert_equal ['testfile.txt', 'testfile(1).txt'], file_names
   end
 
+  def test_archived_filename_should_rename_a_file_whose_name_is_already_taken
+    attachment = Attachment.new(:filename => 'testfile.txt')
+    archived_file_names = ['testfile.txt', 'testfile(1).txt']
+    assert_equal 'testfile(2).txt', attachment.archived_filename(archived_file_names)
+    assert_equal ['testfile.txt', 'testfile(1).txt', 'testfile(2).txt'], archived_file_names
+  end
+
   def test_move_from_root_to_target_directory_should_move_root_files
     a = Attachment.find(20)
     assert a.disk_directory.blank?

@@ -45,6 +45,7 @@ class WikiController < ApplicationController
   include AttachmentsHelper
   helper :watchers
   include Redmine::Export::PDF
+  include Redmine::Export::ZIP::WikiZipHelper
   include ActionView::Helpers::NumberHelper
 
   # List of pages, sorted alphabetically and by parent (hierarchy)
@@ -429,88 +430,5 @@ class WikiController < ApplicationController
   def wiki_attachments_too_big?(attachments_by_page)
     total_size = attachments_by_page.values.sum {|attachments| attachments.sum(&:filesize)}
     total_size > Setting.bulk_download_max_size.to_i.kilobytes
-  end
-
-  def wiki_pages_to_zip(pages, attachments_by_page)
-    Zip.unicode_names = true
-    buffer = Zip::OutputStream.write_buffer do |zos|
-      wiki_page_directories(pages.group_by(&:parent_id)).each do |page, directory|
-        zos.put_next_entry(
-          zip_entry(File.join(directory, "#{File.basename(directory)}.txt"), page.updated_on)
-        )
-        zos << page.content.text.to_s
-
-        archived_file_names = []
-        attachments_by_page.fetch(page.id, []).each do |attachment|
-          filename = archived_attachment_filename(attachment, archived_file_names)
-          zos.put_next_entry(zip_entry(File.join(directory, filename), attachment.created_on))
-          zos << File.binread(attachment.diskfile)
-        end
-      end
-    end
-    buffer.string
-  ensure
-    buffer&.close
-  end
-
-  # Pairs every page with the directory that mirrors its place in the wiki
-  # hierarchy, so that an attachment sits next to the page source referring to it.
-  def wiki_page_directories(pages_by_parent_id, parent_id = nil, parent_directory = '')
-    directories = []
-    archived_file_names = []
-    pages_by_parent_id.fetch(parent_id, []).sort_by(&:title).each do |page|
-      name = File.basename(archived_wiki_page_filename(page, archived_file_names), '.txt')
-      directory = parent_directory.blank? ? name : File.join(parent_directory, name)
-      directories << [page, directory]
-      directories.concat(wiki_page_directories(pages_by_parent_id, page.id, directory))
-    end
-    directories
-  end
-
-  def zip_entry(name, time)
-    entry = Zip::Entry.new('', name)
-    if time.present?
-      local_time = User.current.convert_time_to_user_timezone(time)
-      # DOS timestamp stores user's displayed local time
-      entry.time = Zip::DOSTime.new(
-        local_time.year, local_time.month, local_time.day,
-        local_time.hour, local_time.min, local_time.sec
-      )
-      # UT extra field stores time in UTC
-      entry.extra[:universaltime].mtime = local_time.utc
-    end
-    entry
-  end
-
-  def archived_wiki_page_filename(page, archived_file_names)
-    extension = '.txt'
-    # Keep this character set aligned with Attachment#sanitize_filename.
-    # Unlike attachments, do not drop path-like components from wiki titles.
-    sanitized_title = page.title.tr('\\', '_').gsub(/[\/?%*:|"'<>\n\r\x00]+/, '_')
-    filename = "#{sanitized_title}#{extension}"
-    dup_count = 0
-
-    while archived_file_names.include?(filename)
-      dup_count += 1
-      filename = "#{sanitized_title}(#{dup_count})#{extension}"
-    end
-
-    archived_file_names << filename
-    filename
-  end
-
-  def archived_attachment_filename(attachment, archived_file_names)
-    filename = attachment.filename
-    dup_count = 0
-
-    while archived_file_names.include?(filename)
-      dup_count += 1
-      extension = File.extname(attachment.filename)
-      basename = File.basename(attachment.filename, extension)
-      filename = "#{basename}(#{dup_count})#{extension}"
-    end
-
-    archived_file_names << filename
-    filename
   end
 end

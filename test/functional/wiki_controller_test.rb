@@ -1162,12 +1162,19 @@ class WikiControllerTest < Redmine::ControllerTest
       pages = Project.find(1).wiki.pages.includes(:content).to_a.index_by(&:title)
       zip_entries = zip_entries_from_response
 
-      assert_equal pages.size, zip_entries.size
+      assert_equal [
+        'Another_page/Another_page.txt',
+        'Another_page/Child_1/Child_1.txt',
+        'Another_page/Child_1/Child_1_1/Child_1_1.txt',
+        'Another_page/Child_2/Child_2.txt',
+        'CookBook_documentation/CookBook_documentation.txt',
+        'CookBook_documentation/Page_with_an_inline_image/Page_with_an_inline_image.txt',
+        'Page_with_sections/Page_with_sections.txt',
+        'Этика_менеджмента/Этика_менеджмента.txt'
+      ], zip_entries.keys.sort
 
       zip_entries.each do |name, entry|
-        title = File.basename(name, '.txt')
-        page = pages.fetch(title)
-        assert_equal File.join(wiki_page_titles_to_root(page).reverse + [title, "#{title}.txt"]), name
+        page = pages.fetch(File.basename(name, '.txt'))
         local_time = user.convert_time_to_user_timezone(page.updated_on)
 
         assert_equal page.content.text, entry[:content]
@@ -1213,7 +1220,7 @@ class WikiControllerTest < Redmine::ControllerTest
 
   def test_export_to_zip_with_attachments
     set_tmp_attachments_directory
-    page = Project.find(1).wiki.find_page('CookBook_documentation')
+    page = Project.find(1).wiki.find_page('Child_1_1')
     attachment = Attachment.create!(
       :container => page,
       :file => uploaded_test_file('testfile.txt', 'text/plain'),
@@ -1226,7 +1233,7 @@ class WikiControllerTest < Redmine::ControllerTest
     assert_response :success
 
     zip_entries = zip_entries_from_response
-    entry = zip_entries["#{page.title}/#{attachment.filename}"]
+    entry = zip_entries['Another_page/Child_1/Child_1_1/testfile.txt']
     assert_not_nil entry
     assert_equal File.binread(attachment.diskfile), entry[:content]
     local_time = User.find(2).convert_time_to_user_timezone(attachment.created_on)
@@ -1234,7 +1241,7 @@ class WikiControllerTest < Redmine::ControllerTest
 
     # The page source sits in the same directory, so a reference such as
     # !testfile.txt! resolves once the archive is unpacked.
-    assert_equal page.content.text, zip_entries["#{page.title}/#{page.title}.txt"][:content]
+    assert_equal page.content.text, zip_entries['Another_page/Child_1/Child_1_1/Child_1_1.txt'][:content]
   end
 
   def test_export_to_zip_should_not_include_attachments_by_default
@@ -1288,6 +1295,48 @@ class WikiControllerTest < Redmine::ControllerTest
     entry_names = zip_entries_from_response.keys
     assert_includes entry_names, "#{page.title}/testfile.txt"
     assert_includes entry_names, "#{page.title}/testfile(1).txt"
+  end
+
+  def test_export_to_zip_with_attachments_should_rename_an_attachment_named_after_the_page
+    set_tmp_attachments_directory
+    page = Project.find(1).wiki.find_page('CookBook_documentation')
+    attachment = Attachment.create!(
+      :container => page,
+      :file => uploaded_test_file('testfile.txt', 'text/plain'),
+      :filename => 'CookBook_documentation.txt',
+      :author_id => 2
+    )
+
+    @request.session[:user_id] = 2
+    get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '1'}
+
+    assert_response :success
+
+    zip_entries = zip_entries_from_response
+    assert_equal page.content.text, zip_entries['CookBook_documentation/CookBook_documentation.txt'][:content]
+    assert_equal File.binread(attachment.diskfile), zip_entries['CookBook_documentation/CookBook_documentation(1).txt'][:content]
+  end
+
+  def test_export_to_zip_with_attachments_should_rename_an_attachment_named_after_a_child_page
+    set_tmp_attachments_directory
+    page = Project.find(1).wiki.find_page('CookBook_documentation')
+    attachment = Attachment.create!(
+      :container => page,
+      :file => uploaded_test_file('testfile.txt', 'text/plain'),
+      :filename => 'Page_with_an_inline_image',
+      :author_id => 2
+    )
+
+    @request.session[:user_id] = 2
+    get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '1'}
+
+    assert_response :success
+
+    zip_entries = zip_entries_from_response
+    assert_not_includes zip_entries.keys, 'CookBook_documentation/Page_with_an_inline_image'
+    assert_equal File.binread(attachment.diskfile), zip_entries['CookBook_documentation/Page_with_an_inline_image(1)'][:content]
+    assert_equal WikiPage.find_by(:title => 'Page_with_an_inline_image').content.text,
+                 zip_entries['CookBook_documentation/Page_with_an_inline_image/Page_with_an_inline_image.txt'][:content]
   end
 
   def test_export_to_zip_with_attachments_should_be_denied_when_total_size_exceeds_maximum
@@ -1543,16 +1592,6 @@ class WikiControllerTest < Redmine::ControllerTest
   end
 
   private
-
-  def wiki_page_titles_to_root(page)
-    titles = []
-    current = page.parent
-    while current
-      titles << current.title
-      current = current.parent
-    end
-    titles
-  end
 
   def zip_entries_from_response
     entries = {}

@@ -425,23 +425,29 @@ class Attachment < ApplicationRecord
     archived_file_names = []
     buffer = Zip::OutputStream.write_buffer do |zos|
       attachments.each do |attachment|
-        filename = attachment.filename
-        # rename the file if a file with the same name already exists
-        dup_count = 0
-        while archived_file_names.include?(filename)
-          dup_count += 1
-          extname = File.extname(attachment.filename)
-          basename = File.basename(attachment.filename, extname)
-          filename = "#{basename}(#{dup_count})#{extname}"
-        end
-        zos.put_next_entry(filename)
+        zos.put_next_entry(attachment.archived_filename(archived_file_names))
         zos << File.binread(attachment.diskfile)
-        archived_file_names << filename
       end
     end
     buffer.string
   ensure
     buffer&.close
+  end
+
+  # Returns the name of the attachment inside an archive, renamed with a (n)
+  # suffix if a file with the same name already exists in archived_file_names,
+  # and adds it to that list
+  def archived_filename(archived_file_names)
+    name = filename
+    dup_count = 0
+    while archived_file_names.include?(name)
+      dup_count += 1
+      extname = File.extname(filename)
+      basename = File.basename(filename, extname)
+      name = "#{basename}(#{dup_count})#{extname}"
+    end
+    archived_file_names << name
+    name
   end
 
   # Moves an existing attachment to its target directory
