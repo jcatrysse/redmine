@@ -38,7 +38,7 @@ de grens is een tikfoutbeveiliging, geen aanbeveling.
 - Schone trunk r25037: **5977 runs, 31708 assertions, 27 failures, 2 errors,
   92 skips** — dezelfde 29 faalnamen, `diff` leeg, alle 29 SCM-tests waarvoor
   `svn`/`hg`/`bzr`/`cvs` in deze container ontbreken
-- Volledige suite op `7.0-stable-GEOxyz`: **6097 runs, 32266 assertions,
+- Volledige suite op `7.0-stable-GEOxyz`: **6097 runs, 32265 assertions,
   0 failures, 0 errors, 39 skips** — helemaal groen
 - `tools/check-geoxyz-branch.sh`: **PASS**
 - Geraakte suites in één proces: **135 runs, 1346 assertions, 0 failures,

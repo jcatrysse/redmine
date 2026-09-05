@@ -324,6 +324,8 @@ the one who has to defend the server.
     `test_page_should_disable_issuequery_option_at_the_default_maximum` (changing
     the default in `config/settings.yml` from 3 to 5 makes it fail) and
     `test_page_should_render_issuequery_blocks_over_a_lowered_maximum`.
+- alle bovenstaande cijfers zijn **na** de verhoging van de bovengrens naar 20
+  opnieuw gedraaid, niet overgenomen uit de ronde ervoor.
 - `tools/check-patch-clean.sh mypage-query-blocks --submit`: **PASS** — both
   files apply to a pristine `origin/master` r25037 checkout, touch only Redmine
   paths, keep to the five locales, carry no AI trace, and agree with the branch.
@@ -467,7 +469,7 @@ anybody who does not set it.
   Jans keuze K-10). Drie commits in plaats van één, omdat elk van de vorige al
   gepusht was: een branch die GEOxyz uitcheckt wordt niet herschreven.
 - **Suites daar groen:** volledige suite (`test:all`), database
-  `redmine_test_geoxyz` → **6097 runs, 32266 assertions, 0 failures, 0 errors,
+  `redmine_test_geoxyz` → **6097 runs, 32265 assertions, 0 failures, 0 errors,
   39 skips**. Helemaal groen: de 29 SCM-fouten van trunk bestaan op
   `7.0-stable` niet.
 - **Diff identiek aan de patch:** ja, mechanisch nagemeten (INV-10). Per
