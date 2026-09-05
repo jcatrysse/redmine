@@ -608,3 +608,41 @@ Gemeten met een wegwerp-worktree op `origin/master` per bestand:
   hebben een commentaarregel er direct boven — 29%, inclusief
   `MailHandler.extract_options_from_env`. Wat wél zeldzaam is, is commentaar
   *binnen* een methode: 683 regels op ~55.600.
+
+## Ronde 2 — fixen (2026-09-05)
+
+- **`tools/findings.sh` ziet een `Resolution:` alleen als lijstitem, maar
+  `docs/review/findings/TEMPLATE.md` schrijft hem zonder streepje.** De tool
+  zoekt `^- \*\*Resolution:\*\*`; de template zet onderaan elke bevinding
+  `**Resolution:** <leeg>`. Een sessie die netjes de template volgt, schrijft
+  dus een resolutie die `--open` niet ziet, en de bevinding blijft eeuwig als
+  onopgelost tellen. Gemerkt bij de elf bevindingen van `ldap-mail-prefs`:
+  proza onderaan gezet, teller bleef op 129 staan. Werkende vorm tot iemand de
+  tool of de template rechttrekt: zet **ook** een regel
+  `- **Resolution:** <één zin>` in het metadatablokje bovenaan de bevinding,
+  naast `- **Status:**`.
+- **`tools/findings.sh` splitst op `^### ` zonder codeblokken over te slaan.**
+  Twee regels binnen een ```-blok in de ldap-review (`### RUN 2 (idempotency)`
+  en `### empty group`, annotaties bij geciteerde uitvoer) telden mee als
+  bevindingen: 129 in plaats van 127, twee spookregels met een lege
+  omschrijving. Gebruik binnen een codeblok geen `###` aan het begin van een
+  regel.
+- **`tools/check-ownership.sh` kent `docs/review/FINDINGS.md` niet als
+  gegenereerd bestand.** `docs/REGISTER.md` staat wel in de OWNED-lijst,
+  `FINDINGS.md` niet, terwijl allebei door een tool worden geschreven en bij
+  een conflict opnieuw gegenereerd horen te worden. Een fixsessie die
+  `tools/findings.sh --write` draait, krijgt dus een FAIL op een bestand dat
+  niemand met de hand hoort te bewerken.
+- **Merge upstream in `7.0-stable-GEOxyz` vóór je aan een feature begint, echt.**
+  CLAUDE.md zegt het al; op 2026-09-05 stond de branch 32 commits achter en
+  kwam dat pas bovenwater toen `tools/check-geoxyz-branch.sh` na afloop draaide.
+  Het conflict dat je dan krijgt is voorspelbaar: `config/locales/fr.yml`,
+  omdat upstream intussen de sleutels vertaalt die hier nog Engels stonden.
+  Oplossing: **upstream wint op gedeelde sleutels** (zij hebben de vertaling),
+  **GEOxyz houdt zijn eigen nieuwe sleutels**. Controleer daarna met
+  `ruby -ryaml -e 'YAML.unsafe_load_file("config/locales/fr.yml")'`.
+- **De volledige suite draait op de code zoals die bij het opstarten was.**
+  Rails laadt de klassen één keer. Twee runs zijn hier weggegooid doordat er
+  na de start nog code veranderde; het cijfer dat je opschrijft moet van een
+  run zijn die ná de laatste wijziging begon. En draai geen los testbestand
+  tegen `redmine_test` terwijl `test:all` loopt — het is dezelfde database.
