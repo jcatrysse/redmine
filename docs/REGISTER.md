@@ -23,12 +23,16 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | live (`fe737441b`) | nooit | — |
 | [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key en credentials.yml.enc negeren | `8ec9951d3` | live (`e2c0447b6`) | nooit | — |
-| [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: mailvoorkeuren dempen voor LDAP-only users | `9e2c38e2d` | live (`add935736`) | nooit | — |
+| [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: notificatievoorkeuren van LDAP-accounts zetten na een import | `9e2c38e2d` | live (`113f32117`) | nooit | — |
 | [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | live (`351fe9e54 + 55ae9d1dd + 885f04097`) | nooit | [#43355](https://www.redmine.org/issues/43355) |
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `ldap-mail-prefs` — cse_01Uj81prd9E9fJdD9bx7J61X sinds 2026-09-05
 
 ## Openstaand voor Jan
 
@@ -127,6 +131,24 @@ is alles wat Redmine zelf doet.
 En er staat één keuze voor je open: **K-06** in `docs/DECISIONS.md`, over de
 `client_credentials`-grant (app-only, Microsofts aanbeveling voor een
 servicemailbox). Er is geen haast: we bouwden verder zonder.
+
+### `ldap-mail-prefs`
+
+Twee dingen, allebei eenmalig, en de tweede is niet dringend.
+
+1. **De taak draaien op productie na de volgende LDAP-import.** Eerst zonder
+   `apply=1`, de uitvoer lezen, en pas daarna met `apply=1`. Welke waarden je
+   meegeeft is jouw keuze; `mail_notification=none no_self_notified=1
+   auto_watch_on=` is de volledige demping. Bewaar het journaalbestand dat de
+   run noemt — dat is het enige waarmee de run terug te draaien is.
+2. **De twee Redmine-instellingen eenmalig goed zetten** in Beheer →
+   Instellingen → Gebruikers: "geen melding van eigen wijzigingen" en de
+   standaard auto-watch-vinkjes (`default_users_no_self_notified`,
+   `default_users_auto_watch_on`). Die gelden alleen bij het **aanmaken** van
+   een gebruiker (`user_preference.rb`, binnen `if new_record?`), dus ze
+   vervangen de taak niet — ze zorgen dat je hem na de volgende import niet
+   opnieuw voor dezelfde reden hoeft te draaien. Voor `mail_notification`
+   bestaat zo'n instelling niet; dat blijft werk voor de taak.
 
 ### `members-pagination`
 

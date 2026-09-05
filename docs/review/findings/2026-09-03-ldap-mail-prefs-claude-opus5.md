@@ -79,12 +79,13 @@ is correct here, because **none** of the 17 other `.rake` files has one either
 
 ### F01 — A destructive bulk overwrite with no dry-run and no record of the previous values
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** blocker
 - **Confidence:** confirmed
 - **Category:** correctness
 - **Where:** `lib/tasks/disable_mail_ldap_users.rake:28-32`
 - **Invariant touched:** none directly; it is the G2 "failure modes safe" half of the gate
+- **Resolution:** fixed 2026-09-05 — dry run by default (`apply=1` to write), a journal of the previous values, and an undo task that writes them back (Jan g01c)
 
 **What is wrong**
 
@@ -174,18 +175,29 @@ What good would look like, in rough order of value per line of code:
   session has to take my word or re-run it, which is the situation INV-8 exists
   to prevent.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, per Jan's g01c. The task no longer writes
+unless `apply=1` is given: without it it reports every line it would change and
+stops. Every run, dry or applied, writes a journal file
+(`log/ldap-notification-defaults-<timestamp>.json` by default, `journal=` to
+choose) holding the previous value of every field of every account it would
+touch, and `redmine:users:undo_ldap_notification_defaults journal=<path> apply=1`
+writes those values back. Pinned by
+`test_run_without_apply_should_change_nothing`,
+`test_run_should_journal_the_previous_values` and
+`test_undo_should_restore_the_previous_values`; the dry-run guard was removed as
+a mutation and the suite went red.
 
 ---
 
 ### F02 — It does not select LDAP-only users: it selects "in this one group and no other", which also catches admins, locked, unactivated and local-password accounts
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** blocker
 - **Confidence:** confirmed
 - **Category:** correctness
 - **Where:** `lib/tasks/disable_mail_ldap_users.rake:21-27`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — selection is `auth_source_id IS NOT NULL`; group membership is no longer consulted (Jan g01b)
 
 **What is wrong**
 
@@ -287,18 +299,30 @@ one-group criterion as the *primary* filter, the others can be cheap guards that
 only ever narrow the set — that keeps the existing cron behaviour for the
 placeholder accounts and takes the four categories above out of the blast radius.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, per Jan's g01b. Selection is now
+`User.where.not(:auth_source_id => nil)` and group membership is not consulted at
+all. A local account has no authentication source, so the built-in administrator
+and every local-password account are excluded structurally rather than by
+accident, and a group reorganisation cannot change who is selected. Locked and
+not-yet-activated LDAP accounts *are* still included, and that is now correct:
+Jan's g01 restates the purpose as "give the accounts an LDAP import created the
+notification settings we want", which does not depend on the account's status.
+Pinned by `test_scope_should_only_return_accounts_with_an_auth_source`,
+`test_scope_should_not_return_groups` and
+`test_run_with_apply_should_leave_local_accounts_alone`; replacing the scope with
+`User.all` as a mutation gave 10 failures.
 
 ---
 
 ### F03 — No transaction: a mid-run failure leaves a partial write, and the error does not say which user it died on
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** correctness
 - **Where:** `lib/tasks/disable_mail_ldap_users.rake:24-36`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — one transaction around an applied run, and every failure re-raised with the login and id
 
 **What is wrong**
 
@@ -392,18 +416,28 @@ by omission:
   respect to each other, so no account ends up with a muted `pref` and an
   unchanged `mail_notification` or the reverse.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. An applied run is wrapped in one
+`ActiveRecord::Base.transaction`, so a failure halfway leaves nothing written,
+and every per-account failure is re-raised with the login and the id appended to
+its message (`Redmine::LdapNotificationDefaults.naming`). Both are pinned by
+tests that induce a real mid-loop failure — unreadable stored preferences on the
+second account — rather than a stub:
+`test_run_should_roll_back_every_account_when_a_later_one_fails` and
+`test_run_should_name_the_account_it_failed_on`. Removing the transaction turns
+the first red ("Expected: all, Actual: none" on the account written before the
+failure), removing the re-raise turns the second red.
 
 ---
 
 ### F04 — All the logic lives inline in a `.rake` file, so it is neither linted nor testable, and Redmine does not do it that way
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** conventions
 - **Where:** `lib/tasks/disable_mail_ldap_users.rake:18-38`
 - **Invariant touched:** none (it is what makes G3 and G4 unreachable for this change)
+- **Resolution:** fixed 2026-09-05 — logic moved to `lib/redmine/ldap_notification_defaults.rb`; the rake file is two one-call tasks, so the code is linted and testable
 
 **What is wrong**
 
@@ -476,18 +510,25 @@ no `require_relative` — which is what `status.md` claims and what I confirmed 
 reading. This finding is about where the code lives, not about it leaking onto
 `Object`.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. All the logic moved to
+`lib/redmine/ldap_notification_defaults.rb`; `lib/tasks/ldap_notification_defaults.rake`
+is two tasks of one call each plus their `desc`. That is Redmine's own shape
+(`User.prune`, `Token.destroy_expired`) and it settles the two consequences the
+finding named: `lib/redmine/**` is not in `.rubocop.yml`'s `Exclude`, so the code
+is linted (0 offences), and it is loadable from the suite, so F05 could be
+answered.
 
 ---
 
 ### F05 — No test at all for the UPDATE/SKIP predicate that decides whose mail gets muted
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** test-quality
 - **Where:** `lib/tasks/disable_mail_ldap_users.rake` (no corresponding file under `test/`)
 - **Invariant touched:** INV-8 (green means proven green), G3
+- **Resolution:** fixed 2026-09-05 — `test/unit/lib/redmine/ldap_notification_defaults_test.rb`, 25 tests / 47 assertions, six mutations checked
 
 **What is wrong**
 
@@ -536,18 +577,27 @@ Each new assertion should be red against the current predicate — for the four
 F02 categories that is automatic, since I have shown the current code returns
 them as in-scope.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05.
+`test/unit/lib/redmine/ldap_notification_defaults_test.rb`, 25 tests / 47
+assertions, covering the selection, the three parsers and their rejections, the
+dry run, the applied run, the already-set skip, the journal, the undo and the
+rollback. Six mutations were injected one at a time to check the tests
+discriminate — scope widened to `User.all` (10 failures), `already_set?` forced
+false (1), the dry-run guard dropped (1), the undo's apply guard dropped (1), the
+transaction dropped (1), the failing-account name dropped (1). None of them is
+green.
 
 ---
 
 ### F06 — The output prints `UPDATE:` for users it did not change, so the log is not a record of what the run did
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
 - **Where:** `lib/tasks/disable_mail_ldap_users.rake:34`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — an account that already holds the values is skipped and never written; a changed one prints its old values next to the new
 
 **What is wrong**
 
@@ -575,7 +625,7 @@ changed.
 Second consecutive run of the real task, same records, no changes in between:
 
 ```
-### RUN 2 (idempotency)
+-- RUN 2 (idempotency)
 UPDATE: ldaponly
 SKIP:   ldapboth is also in projectleads
 UPDATE: localpw
@@ -593,18 +643,26 @@ needs: distinguish a user that was changed from one that was already in the
 target state, and on a changed user print the old values alongside the new. The
 same line then serves as the dry-run output, which is one fewer thing to build.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. `already_set?` compares the stored
+value of every field the run writes against the wanted value, and an account that
+already holds them all is reported as `SKIP:   <login> already set` and never
+written. A changed account prints its old values next to the new ones
+(`UPDATE: jsmith mail_notification=all -> mail_notification=none`), and the same
+line with the `WOULD UPDATE:` prefix is the dry-run output, as the finding
+suggested. Pinned by `test_run_should_skip_an_account_that_already_holds_the_values`,
+which also asserts `updated_on` did not move.
 
 ---
 
 ### F07 — An empty or unpopulated group is a silent exit-0 no-op with no output at all
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
 - **Where:** `lib/tasks/disable_mail_ldap_users.rake:22-24`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — a header and a closing summary are always printed, and "no account has an authentication source" aborts with exit 1
 
 **What is wrong**
 
@@ -630,7 +688,7 @@ the same argument applies one step further in.
 Emptied the group's membership and ran the real task:
 
 ```
-### empty group
+-- empty group
 EXIT=0
 ```
 
@@ -648,18 +706,26 @@ how many were changed, how many skipped and why. That makes a zero-member run
 say so out loud. Whether zero members should be an `abort` as well is Jan's
 call — it is a legitimate state on day one — but it must not be silent.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, though not where the finding pointed:
+there is no group any more (F02), so "group exists but is empty" is gone as a
+state. What replaces it: the run always prints a header ("N accounts with an
+authentication source. Setting ...") and always prints a closing summary ("N of M
+accounts changed, K already set. Journal: ..."), so a run that did nothing says
+so; and the empty case — no account anywhere has an authentication source — is an
+`abort`, exit 1, on the same argument that made the missing group exit 1 in the
+first place. Pinned by `test_run_should_raise_when_no_account_has_an_auth_source`.
 
 ---
 
 ### F08 — The `desc` says "Mute the mail notifications", but `only_assigned` still sends mail
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** conventions
 - **Where:** `lib/tasks/disable_mail_ldap_users.rake:19`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — task renamed `redmine:users:set_ldap_notification_defaults`; the `desc` describes the parameters instead of promising an effect
 
 **What is wrong**
 
@@ -695,18 +761,23 @@ only, turn off self-notification, clear auto-watch — in one sentence, and have
 name the actual selection criterion once F02 is settled. See F11 for the separate
 question of whether `only_assigned` is the value Jan wants.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The task is renamed
+`redmine:users:set_ldap_notification_defaults` and its `desc` no longer promises
+an effect: the mail value is a parameter now (Jan's g01d), so the description says
+which preferences it sets and which values each takes, and leaves the effect to
+the operator's choice. The word "mute" is gone.
 
 ---
 
 ### F09 — `find_by(:lastname => ...)` is case-sensitive; Redmine has a `Group.named` scope for exactly this lookup
 
-- **Status:** open
+- **Status:** obsolete
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
 - **Where:** `lib/tasks/disable_mail_ldap_users.rake:21`
 - **Invariant touched:** none
+- **Resolution:** obsolete 2026-09-05 — there is no group lookup left after F02
 
 **What is wrong**
 
@@ -743,18 +814,22 @@ returned `"LDAP_Sync_Users"` — the scope finds what `find_by` missed.
 Use the existing scope, and if the group really is absent say so in a way that
 distinguishes "no group by that name, in any case" from anything else.
 
-**Resolution:**
+**Resolution:** obsolete, 2026-09-05. The group lookup it is about no
+longer exists: selection is on `auth_source_id` (F02, Jan's g01b), so there is no
+`find_by(:lastname => ...)` and no case-sensitivity question. Nothing was changed
+for this finding.
 
 ---
 
 ### F10 — Two different idioms for writing the same object's preferences, three lines apart
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
 - **Where:** `lib/tasks/disable_mail_ldap_users.rake:30-31`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — both preferences go through the model writers in `LdapNotificationDefaults.assign`
 
 **What is wrong**
 
@@ -788,18 +863,22 @@ F01 shows the stored key and value.
 Pick one, and prefer the model writers — they are the documented surface and they
 survive a column being added later.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. Both preferences go through the model
+writers now — `user.pref.no_self_notified =` and `user.pref.auto_watch_on =`, in
+`Redmine::LdapNotificationDefaults.assign` — and the reads use the matching
+getters. The `others` hash is never touched directly.
 
 ---
 
 ### F11 — For an account nobody uses, is `only_assigned` the value you want, or `none`?
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** question
 - **Confidence:** confirmed (the behaviour; the intent is yours)
 - **Category:** scope
 - **Where:** `lib/tasks/disable_mail_ldap_users.rake:29`
 - **Invariant touched:** none
+- **Resolution:** answered 2026-09-05 — Jan g01d: the value is a parameter, so neither is hardcoded; recorded in `decisions.md`
 
 **What is wrong**
 
@@ -835,7 +914,13 @@ why, and the `desc` from F08 matching it. My own recommendation, for what it is
 worth: fix F02 first, then `'none'`, because the reason to keep `only_assigned`
 is a safety net against F02 and a fixed F02 does not need one.
 
-**Resolution:**
+**Resolution:** answered, 2026-09-05, and the answer is Jan's g01d: the
+value is neither `only_assigned` nor `none` in the code, it is a parameter. The
+fact that decided it is the one the finding raised — `only_assigned` does not
+actually mute, because `Issue#notified_users` still mails the assignee and their
+groups and `notify_about?` returns `true` unconditionally for `News`, so only
+`none` closes every path. Recorded in `docs/features/ldap-mail-prefs/decisions.md`,
+and the `desc` now lists all seven values instead of implying one.
 
 ---
 
