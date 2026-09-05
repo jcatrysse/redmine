@@ -646,3 +646,43 @@ Gemeten met een wegwerp-worktree op `origin/master` per bestand:
   na de start nog code veranderde; het cijfer dat je opschrijft moet van een
   run zijn die ná de laatste wijziging begon. En draai geen los testbestand
   tegen `redmine_test` terwijl `test:all` loopt — het is dezelfde database.
+
+## Uit ar-sessions, ronde 2 (2026-09-05)
+
+- **INV-4 zit ook in de commit-*metadata*, en `tools/check-geoxyz-branch.sh`
+  ziet dat niet.** Die grept alleen commit*berichten*. De twee commits die deze
+  sessieserie er vandaag eerder op zette (`113f32117`, `030aaf471`) hebben
+  daardoor `Claude <noreply@anthropic.com>` als **auteur** — erger dan de
+  oudere commits, waar alleen de committer dat was, want de auteur is wat
+  `git format-patch` in het patchbestand zet. Zet dus in elke worktree
+  `git config user.name "Jan Catrysse"` en
+  `git config user.email "jan.catrysse@geoxyz.eu"` **vóór de eerste commit**, en
+  push de GEOxyz-branch met
+  `GIT_COMMITTER_NAME=... GIT_COMMITTER_EMAIL=... tools/session-push.sh 7.0-stable-GEOxyz`.
+  Controleer met `git log --format='%an <%ae> / %cn <%ce>'`, niet met de
+  branchcheck.
+- **`db:migrate` drukt niets af voor een migratie die het overslaat, en geeft
+  exit 0.** Een migratie kan daarom nooit de deploycontrole zijn voor een
+  database waar zijn versie al in `schema_migrations` staat: de guard erin
+  wordt niet bereikt en de operator krijgt geen enkel signaal. Gereproduceerd:
+  tabel `sessions` gedropt, versieregel aanwezig, `db:migrate` → nul uitvoer,
+  exit 0, en daarna elke pagina een 500.
+- **Een optie die je aan `config.session_store` meegeeft is na het opstarten
+  niet meer te lezen.** `Rails.application.config.session_options` is
+  **hetzelfde hash-object** dat aan de store-constructor gaat, en
+  `activerecord-session_store` doet `options.delete(:secure_session_only)`.
+  Na `initialize!` is de sleutel dus weg en meldt elke controle erop "uit".
+  Ook `Rails.application.middleware.find {...}.args` toont hem niet meer.
+  Leg zulk gedrag vast met een integratietest, niet met een configuratielezing.
+- **`test/functional/**` is blind voor de sessionstore.**
+  `ActionController::TestCase` bouwt zijn eigen `TestSession` en draait de
+  session-middleware niet. Alleen `test/integration/**` en `test/system/**`
+  raken de echte stack. Een groene volledige suite bewijst dus niets over
+  welke store geconfigureerd staat — daar is een integratietest voor nodig.
+- **Een screenshot die niet kan falen is geen G9-bewijs.** Bij `ar-sessions`
+  stond er één shot van een normale "Mijn pagina": die ziet er met de
+  cookiestore precies zo uit. Wat het wél doet: het faalpad fotograferen (de
+  500 met de tabel weg) naast dezelfde URL met de tabel erin, en een paar
+  waarvan de tweede helft aantoont dat de feature ingrijpt (rij verwijderen →
+  inlogformulier). Twee van die shots zijn hier byte-identiek waar dat de
+  bedoeling is, en dat is zelf ook bewijs.
