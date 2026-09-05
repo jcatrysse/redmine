@@ -348,22 +348,26 @@ Exercised by hand in a real Redmine at `http://127.0.0.1:3000`, seeded by
 `tools/dev-seed.rb` plus `docs/features/revision-branches/seed.rb`, which adds
 a Git repository with five branches — `main`, `release/7.0`,
 `12345-add-revision-branches`, `dependabot/bundler/rails-8.1.4`,
-`wip/experiment` — and links its middle commit to issue 1. The
+`wip/experiment` — and links **two** of its commits to issue 1. The
 `dependabot/…` branch is there so that excluding it is visible rather than
-theoretical. Screenshots in `docs/features/revision-branches/shots/`.
+theoretical, and the second associated revision is there so the cap is visible
+rather than described. Screenshots in
+`docs/features/revision-branches/shots/`.
 
 Every case below was asserted, not only photographed: the verification reads
 the branch names out of the DOM and compares them to a literal expected list,
-on both instances. All 9 before-cases and all 10 after-cases pass.
+on both instances. All 10 before-cases and all 14 after-cases pass.
 
 | Function | Screenshot | What it shows |
 |---|---|---|
 | The four settings | `before-settings-repositories.png` | Repositories tab on trunk: `Apply text formatting to commit messages` is the last setting in the box |
-| | `settings-repositories.png` | the same tab with the two checkboxes, the exclusion box, its `Enable regular expressions` switch and the hint `Multiple values allowed (comma separated). eg. ^[A-Z0-9]+$` |
+| | `settings-repositories.png` | the same tab, at the defaults: both checkboxes off, the exclusion box empty, its `Enable regular expressions` switch, the hint `Multiple values allowed (comma separated). Example: dependabot/*, wip-*` and the line `Branch information is only available for Git repositories.` |
 | Branches on the revision page | `before-revision-branches.png` | trunk: ID, Parent, Child |
 | | `revision-branches.png` | a `Branches` row between Parent and Child, five branch names, each a link |
-| Branches in associated revisions | `before-issue-branches.png` | trunk: `Revision b2b9b35d (diff)` |
-| | `issue-branches.png` | `Revision b2b9b35d (diff) Branches: 12345-add-revision-branches, dependabot/bundler/rails-8.1.4, main, release/7.0, wip/experiment` |
+| The same row on the diff page | `before-diff-branches.png` | trunk: ID, Parent, Child, then the diff |
+| | `diff-branches.png` | the `Branches` row above the diff — `repositories/_changeset` is shared by both views, which is why the setting's label names both pages |
+| Branches in associated revisions | `before-issue-branches.png` | trunk: `Revision a80b7eca (diff)` and `Revision 7b8c278c (diff)` |
+| | `issue-branches.png` | both rows now read `… (diff) Branches: 12345-add-revision-branches, dependabot/bundler/rails-8.1.4, main, release/7.0, wip/experiment` |
 | A branch name is a working link | `revision-branch-link-followed.png` | clicking `release/7.0` lands on `demo @ release/7.0` with the branch selector set to it — the link is followed, not just rendered |
 | Exclusion by name pattern | `before-revision-excluded-glob.png` | trunk: no row at all |
 | | `revision-excluded-glob.png` | `dependabot/*, wip/*` excluded, the other three still listed |
@@ -374,19 +378,23 @@ Failure paths verified:
 | Case | Screenshot | Expected | Observed |
 |---|---|---|---|
 | both settings off (the default) | `revision-default.png`, `issue-default.png` | identical to trunk, no command run | identical to `before-revision-default.png` / `before-issue-default.png` |
-| invalid regular expression `[, main` | `revision-invalid-regex.png` | page renders, `[` ignored, `main` still excluded | exactly that — four branches, `main` gone, no 500 |
+| more revisions than the cap | `issue-above-limit.png` | with `repository_log_display_limit` at 1 and two associated revisions, both revisions still render and neither carries branches; the revision page is unaffected | exactly that — and the revision page in the same state still lists all five |
+| invalid regular expression at the form | `settings-invalid-regex.png` | rejected, nothing stored | `Exclude branches by name is not a valid regular expression (premature end of char-class: /[/)`, the value echoed back in the field, the settings unchanged — the same behaviour as the mail-handler field |
+| invalid regular expression already in the settings table | `revision-invalid-regex.png` | page renders, `[` ignored, `main` still excluded | exactly that — four branches, `main` gone, no 500. Written with `Setting[:revision_branches_excluded] =`, which runs no form validation, because that is the only way such a value can now exist |
 | permission absent | `issue-no-permission.png` | no Associated revisions tab at all, so no branches, whatever the setting says | exactly that (user `norepo`, role `Issue reader` with `view_issues` only). `Changeset.visible` filters on `:view_changesets`, and the branch display inherits that gate rather than adding one of its own |
 | SCM that cannot answer | — | no row | covered by `ChangesetTest#test_branches_should_be_empty_for_a_scm_without_branch_support`; the dev image has no Subversion binary to show it in a browser |
 
 Screenshots read, not just generated: yes. What that caught, and what it
 confirmed:
 
-- The settings hint first rendered as
+- **Round 1 (2026-09-03).** The settings hint rendered as
   `Multiple values allowed (comma separated). Example: eg. ^[A-Z0-9]+$` —
   `text_regexp_info` already starts with "eg.", so `label_example` in front of
-  it was redundant. Only visible by looking. Removed, so it now matches
-  `custom_fields/formats/_regexp.html.erb`, which uses `text_regexp_info`
-  alone.
+  it was redundant. Only visible by looking.
+- **Round 2 (2026-09-05).** The remaining half of that, which the first reading
+  missed: `^[A-Z0-9]+$` is a regular expression, and the field takes globs
+  until the switch below it is ticked. The hint now shows glob examples, the
+  way `_mail_handler.html.erb` does for the field this one is modelled on.
 - Every branch name is a working link, not just an `<a>` in the DOM. The
   verification clicks `release/7.0` and asserts the page that comes back is the
   repository browser at that branch. This is the check the 5.1 grouping link

@@ -41,9 +41,12 @@ const DIFF_PATH = `${REVISION_PATH}/diff`;
 const WORKTREE = process.env.WORKTREE;
 
 function setSettingDirectly(name, value) {
+  // Setting.[]= writes the row and touches updated_on, which is what the
+  // running server's settings cache keys on. It runs no form validation, so
+  // this is the path Setting.validate_all_from_params cannot cover.
   execFileSync('bundle',
                ['exec', 'ruby', 'bin/rails', 'runner', '-e', 'development',
-                `Setting.find_or_initialize_by(name: '${name}').update_columns(value: ${JSON.stringify(value)})`],
+                `Setting[:${name}] = ${JSON.stringify(value)}`],
                {cwd: WORKTREE, stdio: 'pipe'});
 }
 
@@ -92,7 +95,10 @@ async function saveSettings({ revision, associated, excluded, regex, logLimit })
   await s.page.waitForLoadState('networkidle');
 }
 
-// 1. The settings themselves.
+// 1. The settings themselves, at their defaults — the same view the before-run
+//    records, minus the block. Reset first: the dev instance keeps whatever a
+//    previous run left in the settings table.
+if (after) await saveSettings({ revision: false, associated: false, excluded: '', regex: false, logLimit: 100 });
 await s.go('/settings?tab=repositories');
 await s.shot(`${prefix}settings-repositories`,
              'Administration > Settings > Repositories, where the four settings live',

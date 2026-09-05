@@ -12,7 +12,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`9d28be94d + d8e0db501`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`f117ea32e + 21c232ce1`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63 + 47eec6f1d + 1b4a29a0b`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
-| [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
+| [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2 + 8c1fa23fb`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa + f260958c6`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0 + e2f060570`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
 | [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`827e9e7d5`) | patch klaar | — |
@@ -29,6 +29,10 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `revision-branches` — cse_01CbbdcKLufx6e9EHQtVD4qP sinds 2026-09-05
 
 ## Openstaand voor Jan
 
@@ -231,18 +235,19 @@ category SCM) — **geen nieuw issue**, dit is het hoofdissue voor dit onderwerp
 sinds 2010 en je staat er zelf in als note #42 van 2024-08-07. Hang er twee
 bestanden aan:
 
-- `patches/revision-branches/2026-09-03-r24882-feature.patch` — de code plus
+- `patches/revision-branches/2026-09-05-r25037-feature.patch` — de code plus
   `en.yml`
-- `patches/revision-branches/2026-09-03-r24882-locales.patch` — alleen `nl`,
+- `patches/revision-branches/2026-09-05-r25037-locales.patch` — alleen `nl`,
   `fr`, `de` en `es`
 
 De notetekst staat in `docs/features/revision-branches/dossier.md` vanaf
 "# The problem"; die is in het Engels en kan zo gekopieerd worden. Vermeld dat
-het tegen trunk r24882 is gemaakt. Twee dingen zijn het waard om in de note
+het tegen trunk r25037 is gemaakt. Drie dingen zijn het waard om in de note
 expliciet te noemen, want ze zijn het verschil met de zeven eerdere patches op
 dat issue: er wordt **niets** in de database bewaard (dat is het antwoord op
-note 17), en de weergave staat **standaard uit** (dat is het antwoord op
-note 18).
+note 17), de weergave staat **standaard uit**, en het aantal Git-processen op
+de issuetab is **begrensd** door `repository_log_display_limit` (dat samen is
+het antwoord op note 18).
 
 Daarnaast staat er één keuze voor je open, zie `docs/DECISIONS.md` — die
 blokkeert het indienen niet.
