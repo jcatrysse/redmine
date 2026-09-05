@@ -593,3 +593,22 @@ hij is het eerste waar een committer over gaat praten.
   queries per blok extra) maken tien lijsten op één pagina zwaar maar niet
   onredelijk.
 - **Haast?** Nee. We bouwden verder met A, en een ander getal is één regel.
+
+## Beslist (Jan) — K-10, 2026-09-05
+
+- **K-10 `mypage-query-blocks`: de bovengrens wordt 20** (optie C), tegen mijn
+  aanbeveling in (ik adviseerde 10, het getal uit de issuebeschrijving zelf).
+  Jans redenering is de betere: een bovengrens is een **tikfoutbeveiliging** en
+  geen aanbeveling. Op 10 zetten zou de grens een uitspraak maken over wat
+  verstandig is, en dat is precies wat we bij deze feature juist aan de
+  beheerder laten. Op 20 ligt hij ruim boven elk getal dat op #27313 ter sprake
+  komt — de 3 van vandaag, de 5 van note-8, de 10 van de beschrijving — dus
+  niemand die erover nagedacht heeft loopt er tegenaan, terwijl `999999` er niet
+  meer in kan.
+- Gevolg in de code: één constante, `Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS = 20`,
+  met een commentaarregel die zegt dát het een tikfoutbeveiliging is. Op
+  `7.0-stable-GEOxyz` is dat commit `1b4a29a0b`, apart van `47eec6f1d` omdat die
+  al gepusht was.
+- **Algemene regel die hieruit volgt:** een bovengrens op een instelling die de
+  beheerder juist zelf hoort af te wegen, kiezen we ruim. Hij bestaat om een
+  onmogelijke waarde te weren, niet om beleid te maken.
