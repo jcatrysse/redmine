@@ -940,3 +940,29 @@ De regel eruit: **als je een test verandert die een review "vangt het bij
 toeval" noemde, draai de mutatie opnieuw en tel welke tests omvallen — niet
 hoeveel.** En: twee bevindingen die naar dezelfde test wijzen, lees je samen
 voordat je er één van fixt.
+
+
+## Het patchbestand veroudert stil zodra je na de export nog één regel wijzigt (2026-09-05)
+
+Uit `webhook-issue-closed`, ronde 2. Volgorde die misging: patch geëxporteerd
+met `git format-patch`, `tools/check-patch-clean.sh` gedraaid (PASS), daarna
+nog één test toegevoegd naar aanleiding van een mutatiemeting, branch opnieuw
+gecommit — en het `.patch`-bestand bleef staan zoals het was.
+
+Niets waarschuwt daarvoor: de branch is groen, de suites zijn groen, de
+`git push` slaagt. Het bestand dat aan het redmine.org-issue zou hangen mist
+dan een test die het dossier wél opsomt.
+
+Wat het ving: `tools/check-patch-clean.sh --submit`, die sinds g13 (2026-09-05)
+het **patchbestand** met de **branch** vergelijkt in plaats van alleen de
+branch te controleren. Uitvoer:
+`patch/<slug> and the patch file(s) have DRIFTED apart — they differ in: test/unit/webhook_test.rb`.
+
+De regel eruit: **`git format-patch` is de láátste handeling vóór de commit op
+`geoxyz/framework`, niet een stap ergens in het midden.** En draai
+`check-patch-clean.sh --submit` ná die export nog een keer, niet ervoor.
+
+Bijvangst uit dezelfde minuut: `tools/append-note.sh` weigert op een vuile
+werkboom (het rebaset eerst). Commit je wijziging dus vóór je een gedeeld
+bestand aanvult — anders lijkt de append te lukken terwijl er niets is
+toegevoegd.
