@@ -159,8 +159,8 @@ an administrator turns it on, and the two pages are separate settings, so the
 cost note 18 describes is opt-in per page (note 18's own example, an issue with
 many associated revisions, is exactly what the second setting governs).
 
-Note 20's condition is met without any change to `robots.txt`, and the reason
-is worth spelling out because it is not obvious:
+Note 20's condition is met without any change to `robots.txt`. The reason is
+worth spelling out, including the one case it does not fully cover:
 
 - The **revision page** is already excluded. `app/views/welcome/robots.text.erb`
   emits `Disallow: /projects/<project>/repository` for every project, and
@@ -181,10 +181,13 @@ is worth spelling out because it is not obvious:
   `common/_tabs.html.erb` emits an inline `javascript_tag` that calls
   `getRemoteTab` **on load**, and `/issues/:id` is not in `robots.txt`. A
   crawler that executes JavaScript and follows the tab link therefore does fire
-  the XHR. That is the residual case, and what bounds it is the cap below: the
-  tab runs no command at all above `repository_log_display_limit` revisions,
-  which is the same bound note 18's example (#61, many associated revisions)
-  runs into.
+  the XHR. That is the residual case, and what bounds it is the cap described
+  above: the tab runs no command at all above `repository_log_display_limit`
+  revisions, which is the same bound note 18's own example (#61, many
+  associated revisions) runs into. If that is not enough for a reviewer,
+  `Disallow: /issues/*/tab/` in `robots.text.erb` closes it in one line and
+  affects a route no human navigates to directly — it is not in this patch
+  because deindexing anything is the reviewer's call, not the author's.
 
 | File | Change |
 |---|---|
@@ -481,11 +484,12 @@ confirmed:
 
 - **Commits op `7.0-stable-GEOxyz`:** `115230bc2` (de feature) en `8c1fa23fb`
   (ronde 2: de formuliervalidatie, de bovengrens, de hints en de labels)
-- **Suites daar groen:** ja — `5977 runs, 31909 assertions, 0 failures, 0 errors, 39 skips`.
-  Dat is echt 0/0: op `7.0-stable` bestaan de SCM-afhankelijke tests die op
-  trunk falen niet in dezelfde vorm. Dit is de run ná de replay op de twee
-  commits die een parallelle sessie er tijdens deze sessie onder duwde; de run
-  ervóór gaf `5959 runs, 31847 assertions, 0 failures, 0 errors, 39 skips`.
+- **Suites daar groen:** ja — volledige suite met systeemtests op 2026-09-05:
+  `6119 runs, 32341 assertions, 0 failures, 0 errors, 39 skips`. Dat is echt
+  0/0: op `7.0-stable` bestaan de SCM-afhankelijke tests die op trunk falen
+  niet in dezelfde vorm. De aangeraakte suites in één proces:
+  `675 runs, 4331 assertions, 0 failures, 0 errors, 1 skip`. RuboCop op
+  dezelfde tien bestanden: 0, baseline op `origin/7.0-stable` ook 0.
 - **`nl.yml` toegevoegd:** ja, samen met `fr`, `de` en `es` — identiek aan de
   patch (INV-10)
 - **`tools/check-geoxyz-branch.sh`:** PASS

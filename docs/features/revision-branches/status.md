@@ -58,7 +58,7 @@ Alles opnieuw gedraaid op 2026-09-05 tegen trunk **r25037** (`bee32a926`).
 - Volledige suite met patch: `5995 runs, 31785 assertions, 27 failures, 2 errors, 92 skips`
 - Volledige suite op schone trunk r25037: `5977 runs, 31715 assertions, 27 failures, 2 errors, 92 skips` — de 29 faalnamen zijn **identiek** aan die van de patch-run (alle 29 SCM-afhankelijk, `svn`/`hg`/`bzr`/`cvs` staan niet in dit image). Het verschil van 18 runs is precies wat de patch aan tests toevoegt.
 - Aangeraakte suites in één proces: `672 runs, 4275 assertions, 0 failures, 0 errors, 16 skips`
-- Volledige suite op `7.0-stable-GEOxyz`: TODO_GEOXYZ_SUITE
+- Volledige suite op `7.0-stable-GEOxyz`: `6119 runs, 32341 assertions, 0 failures, 0 errors, 39 skips` — echt 0/0, want de SCM-afhankelijke tests die op trunk falen bestaan daar niet in dezelfde vorm
 - Aangeraakte suites op `7.0-stable-GEOxyz`: `675 runs, 4331 assertions, 0 failures, 0 errors, 1 skip`
 - RuboCop op de 10 gewijzigde Ruby-bestanden: 0 (baseline 0 op r25037), en op
   de GEOxyz-branch ook 0 (baseline 0 op `origin/7.0-stable`) — met dezelfde
