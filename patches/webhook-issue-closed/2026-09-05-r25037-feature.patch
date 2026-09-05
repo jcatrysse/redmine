@@ -1,6 +1,6 @@
-From 32a1b691dd75a03eb3401641f12ed5841caf9531 Mon Sep 17 00:00:00 2001
+From e6471d37c49b57a375fe7525e67dc0d2f7c2dafb Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Thu, 3 Sep 2026 14:24:02 +0000
+Date: Sat, 5 Sep 2026 19:55:51 +0000
 Subject: [PATCH] Add a separate issue.closed webhook event.
 
 A hook that only needs to know when an issue is closed has to subscribe to
@@ -13,23 +13,23 @@ closing and not again while the issue stays closed, moves to another closed
 status, or is reopened. The payload carries the closing journal, like
 issue.updated does.
 ---
- app/models/concerns/issue/webhookable.rb |  6 +-
+ app/models/concerns/issue/webhookable.rb | 12 +++-
  app/models/issue.rb                      |  2 +-
  config/locales/en.yml                    |  1 +
- lib/redmine/acts/webhookable.rb          |  2 +-
  test/unit/webhook_payload_test.rb        | 23 +++++++
- test/unit/webhook_test.rb                | 78 ++++++++++++++++++++++++
- 6 files changed, 109 insertions(+), 3 deletions(-)
+ test/unit/webhook_test.rb                | 88 ++++++++++++++++++++++++
+ 5 files changed, 124 insertions(+), 2 deletions(-)
 
 diff --git a/app/models/concerns/issue/webhookable.rb b/app/models/concerns/issue/webhookable.rb
-index 7c59329e5..c1bfed064 100644
+index 7c59329e5..2412f2dfd 100644
 --- a/app/models/concerns/issue/webhookable.rb
 +++ b/app/models/concerns/issue/webhookable.rb
-@@ -20,9 +20,13 @@
+@@ -20,9 +20,14 @@
  module Issue::Webhookable
    extend ActiveSupport::Concern
  
 +  included do
++    # closed_on is written by update_closed_on alone, and only when the issue is closing, so a save that changed it is a closing.
 +    after_save_commit ->{ Webhook.trigger(event_name('closed'), self) if saved_change_to_closed_on? }
 +  end
 +
@@ -40,6 +40,18 @@ index 7c59329e5..c1bfed064 100644
        journal = journals.visible(user).find_by_id(current_journal.id)
        if journal.present?
          h[:data][:journal] = journal_payload(journal, user)
+@@ -32,6 +37,11 @@ module Issue::Webhookable
+     h
+   end
+ 
++  # 'closed' is an Issue-only action, so the generic timestamp mapping does not know it.
++  def webhook_payload_timestamp(action)
++    action == 'closed' ? updated_on.iso8601 : super
++  end
++
+   private
+ 
+   def journal_payload(journal, user)
 diff --git a/app/models/issue.rb b/app/models/issue.rb
 index fa2d7707d..77b20af53 100644
 --- a/app/models/issue.rb
@@ -54,7 +66,7 @@ index fa2d7707d..77b20af53 100644
  
    DONE_RATIO_OPTIONS = %w(issue_field issue_status)
 diff --git a/config/locales/en.yml b/config/locales/en.yml
-index 6ebe23d46..15c049efd 100644
+index bdbad19a0..21c478574 100644
 --- a/config/locales/en.yml
 +++ b/config/locales/en.yml
 @@ -1196,6 +1196,7 @@ en:
@@ -65,19 +77,6 @@ index 6ebe23d46..15c049efd 100644
    webhook_event_deleted: "%{object_name} deleted"
    webhook_url_info: Redmine will send a POST request to this URL whenever one of the selected events occurs in one of the selected projects.
    webhook_secret_info_html: If provided, Redmine will use this to create a hash signature that is sent with each delivery as the value of the X-Redmine-Signature-256 header.
-diff --git a/lib/redmine/acts/webhookable.rb b/lib/redmine/acts/webhookable.rb
-index 8162ffd18..860bc20c0 100644
---- a/lib/redmine/acts/webhookable.rb
-+++ b/lib/redmine/acts/webhookable.rb
-@@ -72,7 +72,7 @@ module Redmine
-           ts = case action
-                when 'created'
-                  created_on
--               when 'updated'
-+               when 'updated', 'closed'
-                  updated_on
-                else
-                  Time.now
 diff --git a/test/unit/webhook_payload_test.rb b/test/unit/webhook_payload_test.rb
 index 027071ffa..f89671cb1 100644
 --- a/test/unit/webhook_payload_test.rb
@@ -113,10 +112,10 @@ index 027071ffa..f89671cb1 100644
      @issue.destroy
      p = WebhookPayload.new('issue.deleted', @issue, @dlopper)
 diff --git a/test/unit/webhook_test.rb b/test/unit/webhook_test.rb
-index e528a2a1c..1a009d130 100644
+index e528a2a1c..e2be09a05 100644
 --- a/test/unit/webhook_test.rb
 +++ b/test/unit/webhook_test.rb
-@@ -234,6 +234,76 @@ class WebhookTest < ActiveSupport::TestCase
+@@ -234,6 +234,86 @@ class WebhookTest < ActiveSupport::TestCase
      assert_equal attachment.filename, journal.details.last.old_value
    end
  
@@ -124,6 +123,7 @@ index e528a2a1c..1a009d130 100644
 +    with_settings webhooks_enabled: '1' do
 +      hook = create_hook events: ['issue.closed']
 +      issue = Issue.generate! project: @project, status: IssueStatus.where(is_closed: false).order(:id).first
++      jobs_before = enqueued_jobs.size
 +
 +      assert_enqueued_jobs 1, only: WebhookJob do
 +        issue.init_journal @dlopper, 'Done'
@@ -131,7 +131,7 @@ index e528a2a1c..1a009d130 100644
 +        issue.save!
 +      end
 +
-+      hook_id, json = enqueued_jobs.detect{|job| job[:job] == WebhookJob}[:args]
++      hook_id, json = enqueued_jobs.drop(jobs_before).detect{|job| job[:job] == WebhookJob}[:args]
 +      payload = ActiveSupport::JSON.decode(json)
 +      assert_equal hook.id, hook_id
 +      assert_equal 'issue.closed', payload['type']
@@ -190,10 +190,19 @@ index e528a2a1c..1a009d130 100644
 +    issue.save!
 +  end
 +
++  test "should not trigger issue closed webhook when a note is added to a closed issue" do
++    issue = generate_closed_issue
++
++    Webhook.expects(:trigger).with('issue.updated', issue).once
++    Webhook.expects(:trigger).with('issue.closed', issue).never
++    issue.init_journal @dlopper, 'Just a note'
++    issue.save!
++  end
++
    test "should compute correct signature" do
      # we're implementing the same signature mechanism as GitHub, so might as well re-use their
      # example. https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries
-@@ -346,6 +416,14 @@ class WebhookTest < ActiveSupport::TestCase
+@@ -346,6 +426,14 @@ class WebhookTest < ActiveSupport::TestCase
      Webhook.create!(url: url, user: user, projects: projects, events: events, active: active)
    end
  

@@ -3,9 +3,9 @@ slug: webhook-issue-closed
 feature: Apart issue.closed-event op de webhook
 commit_51: 25220b45d (deel)
 geoxyz: live
-geoxyz_commit: 827e9e7d5
+geoxyz_commit: 3cd3c1527
 upstream: patch klaar
-patch: patches/webhook-issue-closed/2026-09-03-r24882-feature.patch
+patch: patches/webhook-issue-closed/2026-09-05-r25037-feature.patch
 issue:
 ---
 
@@ -15,17 +15,31 @@ issue:
 
 Af, op één ding na: Jan moet het issue op redmine.org aanmaken. De patch is
 gemaakt, bewezen en geëxporteerd (**één** bestand, geen aparte locales-patch —
-zie hieronder), en dezelfde wijziging staat als commit `827e9e7d5` op
-`7.0-stable-GEOxyz`. De volledige suite is aan drie kanten gedraaid (patch,
-schone trunk, GEOxyz), RuboCop is nul, en de functie is in een echte browser
+zie hieronder). De volledige suite is aan drie kanten gedraaid (patch, schone
+trunk, GEOxyz), RuboCop is nul, en de functie is in een echte browser
 nagelopen met een echte HTTP-ontvanger die de uitgaande POSTs opving — voor en
 na, met dezelfde zeven wijzigingen aan hetzelfde issue.
 
-Buiten de tests is de patch acht toegevoegde en drie verwijderde regels, over
-vier bestanden. Dat komt doordat trunk sinds
-`acts_as_webhookable` (2026-02-22) al een generieke webhooklaag heeft: de
-5.1-commit bouwde vier eigen `after_*_commit`-callbacks in `Issue`, en daarvan
-is niets meer nodig.
+**Ronde 2 is af (2026-09-05).** Alle tien bevindingen uit
+`docs/review/findings/2026-09-03-webhook-issue-closed-claude-opus5.md` hebben
+een `Resolution:`-regel. Drie ervan wijzigden code, zeven de begeleidende
+tekst. De patch is opnieuw op **r25037** (`bee32a926`) gezet, 88 commits verder
+dan de eerste versie, zonder conflict — en op `7.0-stable-GEOxyz` staat het
+ontwerp nu in een tweede commit, `3cd3c1527`, naast de oorspronkelijke
+`827e9e7d5`. (Twee commits omdat de branch die GEOxyz draait nooit herschreven
+wordt; het registerveld wijst naar de laatste.)
+
+De belangrijkste codewijziging van ronde 2 is F05: `lib/redmine/acts/webhookable.rb`
+staat weer exact op trunk. `closed` is een event dat alleen `Issue` kan
+afvuren, dus de generieke laag leert de naam niet meer kennen —
+`Issue::Webhookable` overschrijft `webhook_payload_timestamp`. **De patch raakt
+daarmee geen enkel bestand onder `lib/redmine/`.**
+
+Buiten de tests is de patch dertien toegevoegde en twee verwijderde regels over
+drie bestanden, waarvan twee toevoegingen commentaar zijn. Dat het zo klein is,
+komt doordat trunk sinds `acts_as_webhookable` (2026-02-22) al een generieke
+webhooklaag heeft: de 5.1-commit bouwde vier eigen `after_*_commit`-callbacks
+in `Issue`, en daarvan is niets meer nodig.
 
 ## Wat het doet
 
@@ -99,7 +113,7 @@ heropenen, wél opnieuw als het issue daarna weer dichtgaat.
 Maak een **nieuw** issue op redmine.org aan als follow-up van
 [#29664](https://www.redmine.org/issues/29664) — dus niet als note aan #29664
 zelf, dat issue is gesloten met target version 7.0.0. Hang er
-`patches/webhook-issue-closed/2026-09-03-r24882-feature.patch` aan. Dat is
+`patches/webhook-issue-closed/2026-09-05-r25037-feature.patch` aan. Dat is
 **één** bestand: er is geen aparte locales-patch, en de reden daarvoor staat
 hieronder en in het dossier onder "Locales — why `en.yml` only". De Engelse
 issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem".
@@ -111,7 +125,7 @@ select trackers. 2. An option to only trigger on issue close. 3.
 Documentation. 4. A full list of webhooks for admin users. 5. More languages.
 6. Amended testing."* En **note 37 van Holger Just** vroeg precies om dit: die
 monolithische patch opsplitsen in losse stukken, tegen de huidige trunk, met
-per stuk de reden erbij. Dit is punt 2, los, tegen r24882. `webhook-tracker-filter`
+per stuk de reden erbij. Dit is punt 2, los, tegen r25037. `webhook-tracker-filter`
 was punt 1; dien ze los in, niet samen.
 
 Drie dingen die het waard zijn om erbij te zetten omdat ze de patch verdedigen
@@ -122,14 +136,19 @@ vóórdat iemand ernaar vraagt:
   nooit terug voor dit event. Er is een end-to-end test die een hook met
   **alleen** `issue.closed` sluit en precies één job verwacht, en een
   screenshot van echte leveringen die het in een draaiende Redmine laat zien.
-- **De tabel met de acht overgangen** uit het dossier ("Which transitions fire,
-  and which do not"). Twee rijen daarvan zijn wat een ontvanger die dit uit
+- **De tabel met de overgangen** uit het dossier ("Which transitions fire, and
+  which do not"). Twee rijen daarvan zijn wat een ontvanger die dit uit
   `issue.updated` reconstrueert als eerste fout doet: `Closed` → `Rejected` is
   geen tweede sluiting, en een gewone edit van een gesloten issue is er ook
-  geen. Elke rij heeft een test.
+  geen. **Zeven** van de acht rijen hebben een eigen test; de achtste
+  ("verwijderd") niet, en waarom staat erbij — een `after_save_commit` kan door
+  een destroy niet bereikt worden. Er staan sinds ronde 2 twee rijen bij die
+  geërfd gedrag beschrijven: een kopie met "status behouden", en de cascade via
+  `close_duplicates` die één statuswijziging in N+1 events omzet.
 - **Er zit geen instelling, migratie, gem, route of permissie in.** Buiten de
-  tests acht toegevoegde en drie verwijderde regels, waarvan één toevoeging een
-  locale-string is.
+  tests dertien toegevoegde en twee verwijderde regels over drie bestanden,
+  waarvan één toevoeging een locale-string is en twee commentaar. En: **geen
+  enkel bestand onder `lib/redmine/`**.
 
 Er staat één keuze voor je open: **K-09** in `docs/DECISIONS.md`, over de
 vertalingen. Er is geen haast — het blokkeert het indienen niet, we bouwden
@@ -160,22 +179,30 @@ verder met `en.yml` alleen.
   geen callbacks — dus vuurt noch `issue.closed` noch het bestaande
   `issue.updated`. Nagekeken in `app/models/issue_status.rb`; het staat als
   verwacht bezwaar in het dossier.
-- **De callback staat met opzet niet in de `case` van
-  `acts_as_webhookable`.** Die `case` mapt actienamen op Rails-lifecycle-
-  callbacks en "closed" is er geen. De `case` heeft geen `else`, en trunks
-  eigen test `should generate payload for custom event` leunt daarop. Zie
-  `decisions.md`.
+- **`lib/redmine/acts/webhookable.rb` blijft ongemoeid, en dat is sinds ronde 2
+  een harde eigenschap van de patch.** De callback staat met opzet niet in de
+  `case` die actienamen op Rails-lifecycle-callbacks mapt — "closed" is er geen,
+  de `case` heeft geen `else`, en trunks eigen test `should generate payload for
+  custom event` leunt daarop. Sinds ronde 2 geldt hetzelfde voor de
+  tijdstempelmapping: die staat als override in `Issue::Webhookable` in plaats
+  van als `when 'updated', 'closed'` in de generieke `case` (F05). Niet
+  terugdraaien om twee regels te besparen — het is precies het argument dat het
+  dossier voert. Zie `decisions.md`, "Ronde 2".
 - **Alleen `en.yml`, en dat is een beredeneerde keuze, geen vergeten stap.**
   De drie zustersleutels (`webhook_event_created`, `_updated`, `_deleted`)
-  staan in alle 49 niet-Engelse taalbestanden, en in **43** daarvan is de waarde
-  nog de letterlijke Engelse string. Ze staan daar door `rake locales:update`,
-  dat elke ontbrekende `en`-sleutel toevoegt **met de Engelse waarde**. Zes
-  talen hebben die groep inmiddels wél vertaald (`bg`, `cs`, `gl`, `hu`, `ja`,
-  `zh-TW`) — en `nl`, `fr`, `de` en `es` zitten daar niet bij. En
-  `config.i18n.fallbacks` staat aan, dus een taal zonder de sleutel rendert
-  exact dezelfde Engelse string.
+  staan in alle 49 niet-Engelse taalbestanden. **Geteld op r25037** (het cijfer
+  verliep één keer, dus het draagt nu zijn revisie mee): in **42** daarvan is de
+  waarde nog de letterlijke Engelse string. Ze staan daar door
+  `rake locales:update`, dat elke ontbrekende `en`-sleutel toevoegt **met de
+  Engelse waarde**. **Zeven** talen hebben die groep inmiddels wél vertaald
+  (`bg`, `cs`, `fr`, `gl`, `hu`, `ja`, `zh-TW`). `fr` is er tussen r24882 en
+  r25037 bij gekomen; `nl`, `de` en `es` niet. En `config.i18n.fallbacks` staat
+  aan, dus een taal zonder de sleutel rendert exact dezelfde Engelse string.
   Eén van de vier labels vertalen zou het vinkjesblok half Engels maken, want
-  `_form.html.erb` vult `object_name` met een Engelse klassenaam. Volledige
+  `_form.html.erb` vult `object_name` met een Engelse klassenaam.
+  **Voor Jan bij K-09:** een Franse beheerder ziet sinds r25037 drie vertaalde
+  labels plus een Engels "Issue closed" — precies de half-Engelse uitkomst
+  waartegen dit argument pleit, nu bereikt langs de andere kant. Volledige
   onderbouwing in `dossier.md`.
 - **De drie codebestanden die deze patch raakt zijn byte-identiek tussen
   `origin/master` en `7.0-stable-GEOxyz`** (`issue.rb`,
@@ -184,6 +211,12 @@ verder met `en.yml` alleen.
   de cherry-pick landde schoon. De twee diffs zijn regel voor regel vergeleken
   (na het wegfilteren van `index`- en hunk-regels): **identiek**. Geen
   INV-10-afwijking.
+- **De end-to-end test leest niet de eerste `WebhookJob` in de wachtrij.**
+  Sinds ronde 2 (F07) onthoudt hij `enqueued_jobs.size` vóór het blok. Dat
+  terugdraaien laat de test bij een regressie omvallen op een payload van de
+  *create* in plaats van op de aflevering van de sluiting. Rij 1 van de
+  overgangstabel ("aangemaakt met een open status") hing aan precies dat
+  toeval en heeft er daarom een eigen bewaker bij gekregen.
 - **Wijzig `create_hook` in de testbestanden niet.** Dezelfde valkuil als bij
   `webhook-tracker-filter`: de helper uitbreiden laat 17 bestaande tests op
   trunk erroren en verstopt het rood-bewijs. De nieuwe tests gebruiken hun

@@ -57,3 +57,57 @@ Class B (keuzes voor Jan) staat in `docs/DECISIONS.md`.
   op schone trunk laat erroren en daarmee het rood-bewijs verstopt. De nieuwe
   tests gebruiken een eigen helper (`generate_closed_issue`) en laten
   `create_hook` staan.
+
+## Ronde 2 (2026-09-05)
+
+- **De tijdstempelmapping van `closed` verhuist naar `Issue::Webhookable`
+  (F05).** De eerste versie zette `when 'updated', 'closed'` in
+  `webhook_payload_timestamp` in `lib/redmine/acts/webhookable.rb` — één woord,
+  en het werkte. Het sprak wel het eigen argument van het dossier tegen: dat
+  argument zegt dat `closed` issuespecifiek is en dat het predicaat alleen op
+  `Issue` bestaat, en zette de naam vervolgens tóch in de generieke laag. Nu
+  overschrijft de concern `webhook_payload_timestamp`. Dat kost twee regels
+  meer en levert op dat de patch **geen enkel bestand onder `lib/redmine/`**
+  meer raakt — voor een los ingediend deelstuk is dat het betere verhaal.
+  Nagelopen dat het niets verandert: de generieke tak was alleen bereikbaar bij
+  een sluiting zonder journaal, en de payloadtest die precies dat geval vastzet
+  (`should use the issue timestamp when there is no journal`) blijft groen.
+
+- **De `closed_on`-bewaking krijgt één regel waarom (F10 / Jans g16e).** Het is
+  een niet-vanzelfsprekend *waarom* — waarom het sluitveld en niet de status —
+  en daar is INV-3 niet tegen. De hele correctheidsredenering van de patch
+  hangt aan die vijf woorden, en de volgende persoon die `update_closed_on`
+  aanraakt leest dit dossier niet.
+
+- **De end-to-end test leest de job die zijn eigen blok in de wachtrij zette
+  (F07).** Hij nam eerst de eerste `WebhookJob` in de procesbrede wachtrij. Dat
+  was vandaag dezelfde job, maar bij een regressie precies niet: toen de
+  bewaking bij wijze van proef werd weggehaald, viel de test om op de
+  payload van de *create* in plaats van op de aflevering van de sluiting. Nu
+  wordt de lengte van de wachtrij vóór het blok onthouden.
+
+- **Een notitie op een gesloten issue krijgt een eigen assertie (F03).** Dat
+  geval staat bij *The problem* met name genoemd als een van de dingen die
+  ontvangers fout doen, en het was het enige zo genoemde geval zonder test.
+  Rij "deleted" krijgt er géén: de trigger is een `after_save_commit`, dus een
+  destroy kan hem niet bereiken — een test daarop zou een eigenschap van Rails
+  vastleggen en niet van deze patch.
+
+- **F02 wordt beschreven, niet gerepareerd.** Wordt hetzelfde issue twee keer
+  gesaved binnen één omsluitende transactie, dan ziet `after_save_commit`
+  alleen de dirty state van de tweede save en valt `issue.closed` stil weg
+  (gemeten: `["issue.updated"]`, met `closed_on` wél gezet). Geen enkel pad in
+  core doet dat; het dichtstbijzijnde risico is een plugin die het issue
+  opnieuw opslaat vanuit `controller_issues_edit_after_save`, dat binnen de
+  transactie van `save_issue_with_child_records` draait. Het repareren vraagt
+  een tweede callback plus per-instance state die na commit én na rollback
+  gereset moet worden — meer machinerie dan het gemeten risico rechtvaardigt
+  (INV-1). Het staat nu bij "Backward compatibility", zodat het benoemd en
+  vindbaar is in plaats van stil.
+
+- **`acts_as_webhookable` krijgt de volledige lijst, niet een optelling
+  (F08).** `Issue` is daarmee het enige model dat niet meebeweegt als de
+  default ooit een generieke actie krijgt. Dat als optelling schrijven vraagt
+  om de default uit `Redmine::Acts::Webhookable` naar buiten te halen — een
+  wijziging in juist die generieke laag die deze patch verder met rust laat.
+  De afweging staat als één zin in het dossier.

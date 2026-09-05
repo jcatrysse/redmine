@@ -79,7 +79,8 @@ transition table each, and that table is the specification.
 
 ### F01 — The dossier's "No query is added on any path" is false: a closing save runs `hooks_for` twice when webhooks are enabled
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 (Jans g09) — de zin "No query is added on any path" is weg. De kostenrij in "Anticipated objections" noemt nu twee gemeten getallen in plaats van één claim: met webhooks **uit** wordt de `webhooks`-tabel op geen enkel savepad aangeraakt, sluitend of niet; met webhooks **aan** draait de save die het issue daadwerkelijk sluit `hooks_for` **twee** keer waar trunk hem één keer draait, en een niet-sluitende save één keer, wat trunks eigen getal is. Er staat een tweede rij bij die precies die vraag stelt, zodat een reviewer het antwoord niet uit de eerste rij hoeft te destilleren. Opnieuw gemeten op r25037 met een `sql.active_record`-teller rond één `Issue#save`, met nul hooks in de tabel: `ENABLED closing 2 / non-closing 1`, `DISABLED 0 / 0`. Zelfde uitkomst als de review, andere totalen (dat komt door een ander testscenario) — de `webhooks`-kolom is wat telt en die is identiek
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -134,13 +135,14 @@ about), and one additional `hooks_for` query on the save that actually closes
 an issue when webhooks are on. Both numbers are defensible; only the
 unqualified "no query on any path" is not.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 (Jans g09) — de zin "No query is added on any path" is weg. De kostenrij in "Anticipated objections" noemt nu twee gemeten getallen in plaats van één claim: met webhooks **uit** wordt de `webhooks`-tabel op geen enkel savepad aangeraakt, sluitend of niet; met webhooks **aan** draait de save die het issue daadwerkelijk sluit `hooks_for` **twee** keer waar trunk hem één keer draait, en een niet-sluitende save één keer, wat trunks eigen getal is. Er staat een tweede rij bij die precies die vraag stelt, zodat een reviewer het antwoord niet uit de eerste rij hoeft te destilleren. Opnieuw gemeten op r25037 met een `sql.active_record`-teller rond één `Issue#save`, met nul hooks in de tabel: `ENABLED closing 2 / non-closing 1`, `DISABLED 0 / 0`. Zelfde uitkomst als de review, andere totalen (dat komt door een ander testscenario) — de `webhooks`-kolom is wat telt en die is identiek
 
 ---
 
 ### F02 — `issue.closed` is silently lost when the same issue is saved twice inside one transaction
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** beschreven, niet gerepareerd, 2026-09-05 — bewust, en de reden staat in `decisions.md` onder "Ronde 2". Het gedrag is opnieuw gemeten op de nieuwe code en klopt precies zoals gemeld: één save binnen `Issue.transaction` levert `["issue.closed", "issue.updated"]`, twee saves van hetzelfde issue binnen één transactie leveren `["issue.updated"]` met `closed_on` wél gezet. Repareren vraagt een tweede callback plus per-instance state die na commit én na rollback gereset moet worden; geen enkel pad in core doet dit, dus dat is meer machinerie dan het gemeten risico rechtvaardigt (INV-1). Het staat nu als eigen punt onder "Backward compatibility" in het dossier, mét de plugin-route via `controller_issues_edit_after_save` erbij, zodat het benoemd is in plaats van stil — precies wat de bevinding als minimum vroeg
 - **Severity:** minor
 - **Confidence:** confirmed (mechanism), speculative (that any real installation hits it)
 - **Category:** correctness
@@ -209,13 +211,14 @@ than on this. Deciding between those is the fixing session's call; what should
 not happen is the current situation where the behaviour is neither tested nor
 mentioned.
 
-**Resolution:**
+**Resolution:** beschreven, niet gerepareerd, 2026-09-05 — bewust, en de reden staat in `decisions.md` onder "Ronde 2". Het gedrag is opnieuw gemeten op de nieuwe code en klopt precies zoals gemeld: één save binnen `Issue.transaction` levert `["issue.closed", "issue.updated"]`, twee saves van hetzelfde issue binnen één transactie leveren `["issue.updated"]` met `closed_on` wél gezet. Repareren vraagt een tweede callback plus per-instance state die na commit én na rollback gereset moet worden; geen enkel pad in core doet dit, dus dat is meer machinerie dan het gemeten risico rechtvaardigt (INV-1). Het staat nu als eigen punt onder "Backward compatibility" in het dossier, mét de plugin-route via `controller_issues_edit_after_save` erbij, zodat het benoemd is in plaats van stil — precies wat de bevinding als minimum vroeg
 
 ---
 
 ### F03 — "Every row of the transition table has a test" is not true for two and a half of the eight rows
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** beide kanten bewogen, 2026-09-05 — twee tests erbij en de claim vervangen door een expliciete opsomming. De eerste is de notitie op een gesloten issue (`should not trigger issue closed webhook when a note is added to a closed issue`), het enige bij *The problem* met name genoemde geval zonder assertie. De tweede kwam er alsnog bij toen de F07-fix het effect ervan zichtbaar maakte: rij 1 ("created with an open status") was gedekt door precies het toeval dat F07 wegneemt, dus na die fix stond die rij helemaal zonder dekking. Nu heeft hij zijn eigen bewaker (`should not trigger issue closed webhook when an issue is created with an open status`), en met de bewaking weggemuteerd vallen **5** van de acht overgangstests om in plaats van 4. Het dossier zegt nu: acht van de tien nieuwe tests zijn overgangstests, ze dekken **zeven** van de acht rijen, rij 7 twee keer (veldwijziging én notitie), en de enige rij zonder eigen test is "deleted" — met de reden erbij, want een `after_save_commit` kan door een destroy niet bereikt worden. Ook `status.md` zegt niet langer "elke rij heeft een test"
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -289,13 +292,14 @@ tests alone and make the claim match reality. The claim and the tests
 disagreeing is the whole finding; which side moves is the fixing session's
 choice.
 
-**Resolution:**
+**Resolution:** beide kanten bewogen, 2026-09-05 — twee tests erbij en de claim vervangen door een expliciete opsomming. De eerste is de notitie op een gesloten issue (`should not trigger issue closed webhook when a note is added to a closed issue`), het enige bij *The problem* met name genoemde geval zonder assertie. De tweede kwam er alsnog bij toen de F07-fix het effect ervan zichtbaar maakte: rij 1 ("created with an open status") was gedekt door precies het toeval dat F07 wegneemt, dus na die fix stond die rij helemaal zonder dekking. Nu heeft hij zijn eigen bewaker (`should not trigger issue closed webhook when an issue is created with an open status`), en met de bewaking weggemuteerd vallen **5** van de acht overgangstests om in plaats van 4. Het dossier zegt nu: acht van de tien nieuwe tests zijn overgangstests, ze dekken **zeven** van de acht rijen, rij 7 twee keer (veldwijziging én notitie), en de enige rij zonder eigen test is "deleted" — met de reden erbij, want een `after_save_commit` kan door een destroy niet bereikt worden. Ook `status.md` zegt niet langer "elke rij heeft een test"
 
 ---
 
 ### F04 — The locale argument has gone stale: `fr.yml` in current trunk has the sibling keys translated
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 (Jans g05 + g10) — de patch staat nu op r25037 en de localecijfers zijn op diezelfde revisie opnieuw geteld, met de revisie erbij vermeld zodat ze niet nog een keer stil kunnen verlopen: **49** niet-Engelse bestanden dragen de groep, **42** nog letterlijk Engels, **zeven** vertaald (`bg cs fr gl hu ja zh-TW`). `fr` is er tussen r24882 en r25037 bij gekomen; `nl`, `de` en `es` niet. De consequentie staat er expliciet bij en niet verstopt: een Franse beheerder ziet sinds r25037 drie vertaalde labels plus een Engels "Issue closed" — precies de half-Engelse uitkomst waartegen optie 3 argumenteerde, bereikt door optie 1 te nemen. Dat is een feit voor Jan bij **K-09**; de keuze zelf is niet heropend
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** i18n
@@ -353,13 +357,14 @@ they cannot silently go stale again. Whether the new fact changes K-09 is
 Jan's call, not the fixing session's — but the fixing session should hand him
 the corrected fact rather than the r24882 one.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 (Jans g05 + g10) — de patch staat nu op r25037 en de localecijfers zijn op diezelfde revisie opnieuw geteld, met de revisie erbij vermeld zodat ze niet nog een keer stil kunnen verlopen: **49** niet-Engelse bestanden dragen de groep, **42** nog letterlijk Engels, **zeven** vertaald (`bg cs fr gl hu ja zh-TW`). `fr` is er tussen r24882 en r25037 bij gekomen; `nl`, `de` en `es` niet. De consequentie staat er expliciet bij en niet verstopt: een Franse beheerder ziet sinds r25037 drie vertaalde labels plus een Engels "Issue closed" — precies de half-Engelse uitkomst waartegen optie 3 argumenteerde, bereikt door optie 1 te nemen. Dat is een feit voor Jan bij **K-09**; de keuze zelf is niet heropend
 
 ---
 
 ### F05 — `closed` is kept out of the generic callback `case` on layering grounds, then put into the generic timestamp `case` anyway
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — de code is verplaatst, niet het argument. `lib/redmine/acts/webhookable.rb` staat weer exact op trunk en `Issue::Webhookable` overschrijft `webhook_payload_timestamp` voor `closed`. De patch raakt daarmee **geen enkel bestand onder `lib/redmine/`** meer, wat voor een los ingediend deelstuk het betere verhaal is. Kosten: twee regels productiecode meer (13 toegevoegd / 2 verwijderd over drie bestanden, was 8/3 over vier). Nagelopen dat er niets aan gedrag verandert: de generieke tak was alleen bereikbaar bij een sluiting zonder journaal, en de payloadtest die juist dat geval vastzet blijft groen. "Alternatives considered" behandelt nu allebei de plekken waar `closed` had kunnen landen, met per plek de reden
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -411,13 +416,14 @@ belongs with the rest of the issue-specific webhook behaviour in
 one that keeps the dossier's paragraph true, and should weigh it against INV-1
 since moving it costs a line or two more than the current one-word change.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — de code is verplaatst, niet het argument. `lib/redmine/acts/webhookable.rb` staat weer exact op trunk en `Issue::Webhookable` overschrijft `webhook_payload_timestamp` voor `closed`. De patch raakt daarmee **geen enkel bestand onder `lib/redmine/`** meer, wat voor een los ingediend deelstuk het betere verhaal is. Kosten: twee regels productiecode meer (13 toegevoegd / 2 verwijderd over drie bestanden, was 8/3 over vier). Nagelopen dat er niets aan gedrag verandert: de generieke tak was alleen bereikbaar bij een sluiting zonder journaal, en de payloadtest die juist dat geval vastzet blijft groen. "Alternatives considered" behandelt nu allebei de plekken waar `closed` had kunnen landen, met per plek de reden
 
 ---
 
 ### F06 — The transition table omits two cases that do fire `issue.closed`: a copy taken with `keep_status`, and every duplicate closed by cascade
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — twee rijen erbij in de overgangstabel, in dezelfde vorm als de bestaande, plus een alinea eronder. Beide zijn opnieuw gemeten op de nieuwe code: `copy_from(keep_status: true)` van een gesloten issue geeft `["issue.closed", "issue.created"]`, en het sluiten van een issue met één duplicaat geeft twee keer `issue.closed` en twee keer `issue.updated`. De alinea zegt er ook bij dat het geërfd gedrag is (`update_attribute` draait callbacks, `issue.updated` doet op dezelfde paden hetzelfde) en dus niets wat deze patch beslist — de cascade is het punt dat een ontvanger vooraf wil weten. Geen codewijziging, zoals de bevinding voorstelde
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -471,13 +477,14 @@ through `update_all`, exactly as the objections table says.
 
 Two more rows, phrased as the existing ones are. No code change.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — twee rijen erbij in de overgangstabel, in dezelfde vorm als de bestaande, plus een alinea eronder. Beide zijn opnieuw gemeten op de nieuwe code: `copy_from(keep_status: true)` van een gesloten issue geeft `["issue.closed", "issue.created"]`, en het sluiten van een issue met één duplicaat geeft twee keer `issue.closed` en twee keer `issue.updated`. De alinea zegt er ook bij dat het geërfd gedrag is (`update_attribute` draait callbacks, `issue.updated` doet op dezelfde paden hetzelfde) en dus niets wat deze patch beslist — de cascade is het punt dat een ontvanger vooraf wil weten. Geen codewijziging, zoals de bevinding voorstelde
 
 ---
 
 ### F07 — The end-to-end test reads the first `WebhookJob` in the queue, not the job its own assertion block enqueued
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — de test onthoudt `enqueued_jobs.size` vóór het `assert_enqueued_jobs`-blok en leest daarna `enqueued_jobs.drop(jobs_before)`. Daarmee wijst een fout in deze test naar de aflevering van de sluiting en niet meer naar een payload van de create, wat precies het verkeerde-reden-falen was dat de review met een mutatie aantoonde. Eén regel erbij en één regel gewijzigd; de rest van de test is ongemoeid gelaten (INV-1). **Met de prijs erbij, want die is echt:** de mutatie opnieuw gedraaid ná de fix laat deze test gewoon slagen — het toevallige vangnet is weg. Dat was precies de dekking die F03 voor rij 1 van de overgangstabel telde, dus die rij heeft er een eigen bewaker bij gekregen (zie F03). Netto vangen nu **5** tests de weggemuteerde bewaking in plaats van 4, en geen ervan bij toeval
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -524,13 +531,14 @@ assertion block can capture it, or the queue can be read relative to its length
 before the block. What good looks like is that a failure in this test points at
 the closing delivery and not at a create-time payload.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — de test onthoudt `enqueued_jobs.size` vóór het `assert_enqueued_jobs`-blok en leest daarna `enqueued_jobs.drop(jobs_before)`. Daarmee wijst een fout in deze test naar de aflevering van de sluiting en niet meer naar een payload van de create, wat precies het verkeerde-reden-falen was dat de review met een mutatie aantoonde. Eén regel erbij en één regel gewijzigd; de rest van de test is ongemoeid gelaten (INV-1). **Met de prijs erbij, want die is echt:** de mutatie opnieuw gedraaid ná de fix laat deze test gewoon slagen — het toevallige vangnet is weg. Dat was precies de dekking die F03 voor rij 1 van de overgangstabel telde, dus die rij heeft er een eigen bewaker bij gekregen (zie F03). Netto vangen nu **5** tests de weggemuteerde bewaking in plaats van 4, en geen ervan bij toeval
 
 ---
 
 ### F08 — Passing the full event list means `Issue` stops inheriting future additions to `acts_as_webhookable`'s default
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** benoemd in het dossier, code ongewijzigd, 2026-09-05 — de expliciete lijst blijft. De optelling schrijven vraagt om de default `%w(created updated deleted)` uit `Redmine::Acts::Webhookable` naar buiten te halen, en dat is een wijziging in juist de generieke laag die deze patch na F05 helemaal met rust laat. De afweging staat nu als eigen alinea onder de bestandstabel: `Issue` is het enige model dat niet meebeweegt als die default ooit een generieke actie krijgt, en het faalgedrag daarvan is stilte
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -570,13 +578,14 @@ an addition to the default rather than a replacement of it. Both are one line;
 the fixing session should weigh which reads better to a committer against
 INV-1.
 
-**Resolution:**
+**Resolution:** benoemd in het dossier, code ongewijzigd, 2026-09-05 — de expliciete lijst blijft. De optelling schrijven vraagt om de default `%w(created updated deleted)` uit `Redmine::Acts::Webhookable` naar buiten te halen, en dat is een wijziging in juist de generieke laag die deze patch na F05 helemaal met rust laat. De afweging staat nu als eigen alinea onder de bestandstabel: `Issue` is het enige model dat niet meebeweegt als die default ooit een generieke actie krijgt, en het faalgedrag daarvan is stilte
 
 ---
 
 ### F09 — On an issue created directly in a closed status, `issue.closed` is enqueued before `issue.created`
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** benoemd in het dossier, code ongewijzigd, 2026-09-05 — omkeren kan niet zonder iets kapot te maken: de concern móet ná `acts_as_webhookable` geïncludeerd worden, anders staat `Redmine::Acts::Webhookable::InstanceMethods` bóven `Issue::Webhookable` in de ancestor-keten en wordt de `webhook_payload`-override nooit aangeroepen. De compatibiliteitsnotitie zegt het daarom expliciet voor het paar waar de volgorde betekenis heeft: bij een issue dat direct in een gesloten status wordt aangemaakt komt `issue.closed` vóór `issue.created` in de wachtrij (opnieuw gemeten), dus een ontvanger die zijn eigen record op `issue.created` aanmaakt moet een sluiting kunnen verdragen voor een issue dat hij nog niet kent. Voor het paar `issue.updated`/`issue.closed` is elke volgorde onschadelijk en dat stond er al
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -624,13 +633,14 @@ receiver must tolerate a closing for an issue it has not seen. If instead the
 intent is that `issue.created` should always precede it, that is a callback
 registration question and belongs to the fixing session, not to me.
 
-**Resolution:**
+**Resolution:** benoemd in het dossier, code ongewijzigd, 2026-09-05 — omkeren kan niet zonder iets kapot te maken: de concern móet ná `acts_as_webhookable` geïncludeerd worden, anders staat `Redmine::Acts::Webhookable::InstanceMethods` bóven `Issue::Webhookable` in de ancestor-keten en wordt de `webhook_payload`-override nooit aangeroepen. De compatibiliteitsnotitie zegt het daarom expliciet voor het paar waar de volgorde betekenis heeft: bij een issue dat direct in een gesloten status wordt aangemaakt komt `issue.closed` vóór `issue.created` in de wachtrij (opnieuw gemeten), dus een ontvanger die zijn eigen record op `issue.created` aanmaakt moet een sluiting kunnen verdragen voor een issue dat hij nog niet kent. Voor het paar `issue.updated`/`issue.closed` is elke volgorde onschadelijk en dat stond er al
 
 ---
 
 ### F10 — Should the `closed_on` guard carry a one-line "why"?
 
-- **Status:** open
+- **Status:** resolved
+- **Resolution:** fixed 2026-09-05 — Jan heeft dit beslist als **g16e**: de bewaking krijgt één regel waarom. Die regel staat nu boven de callback in `app/models/concerns/issue/webhookable.rb` en zegt waarom het sluitveld het signaal is en niet de status. INV-3 verbiedt commentaar dat herhaalt wat een regel doet, niet commentaar dat een niet-vanzelfsprekend waarom vastlegt; trunk zelf doet hetzelfde twee methodes verderop in `issue.rb`. De vraag is daarmee gesloten
 - **Severity:** question
 - **Confidence:** n/a
 - **Category:** conventions
@@ -671,7 +681,7 @@ worth asking rather than answering.
 Jan's call: one comment naming *why* `closed_on` is a sufficient signal, or
 nothing and the reasoning stays in the dossier and the issue text only.
 
-**Resolution:**
+**Resolution:** fixed 2026-09-05 — Jan heeft dit beslist als **g16e**: de bewaking krijgt één regel waarom. Die regel staat nu boven de callback in `app/models/concerns/issue/webhookable.rb` en zegt waarom het sluitveld het signaal is en niet de status. INV-3 verbiedt commentaar dat herhaalt wat een regel doet, niet commentaar dat een niet-vanzelfsprekend waarom vastlegt; trunk zelf doet hetzelfde twee methodes verderop in `issue.rb`. De vraag is daarmee gesloten
 
 ---
 
