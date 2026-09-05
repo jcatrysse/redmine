@@ -3,7 +3,7 @@ slug: webhook-tracker-filter
 feature: Webhook beperken tot gekozen trackers
 commit_51: 25220b45d (deel)
 geoxyz: live
-geoxyz_commit: f2242bd86 + 646008041 + 0fbad7c17
+geoxyz_commit: f2242bd86 + 646008041 + 0fbad7c17 + 72a3a8e22
 upstream: patch klaar
 patch: patches/webhook-tracker-filter/2026-09-05-r25037-feature.patch
 issue:
@@ -19,12 +19,18 @@ uitgevoerd op 2026-09-05: alle elf reviewbevindingen hebben een
 bewijscijfers zijn allemaal opnieuw gedraaid tegen die basis, en de
 G9-verificatie is in zijn geheel opnieuw gereden.
 
-Er zijn drie codewijzigingen bij gekomen ten opzichte van ronde 1, alle drie
+Er zijn vier codewijzigingen bij gekomen ten opzichte van ronde 1, alle vier
 uit Jans keuzes:
 
 - **g07** — `Tracker` krijgt `has_and_belongs_to_many :webhooks`, de spiegel van
   wat `Project` al heeft. Een verwijderde tracker laat geen rijen meer achter in
   `trackers_webhooks`.
+- **K-11 optie C** — en een verwijderde tracker **deactiveert** de hooks waarvan
+  hij de enige selectie was. Zonder dat zou zo'n hook een lege selectie
+  overhouden, en leeg betekent alle trackers: het verwijderen van een tracker
+  zou een hook dus stil verbreden in plaats van stilzetten. Nu gedraagt de
+  trackerkant zich als de projectkant, waar een hook zonder projecten vanzelf
+  niet meer vuurt.
 - **g16d** — `Webhook#tracker_ids=` laat ids van niet-bestaande trackers vallen,
   zodat een met de hand geschreven POST geen 500 meer geeft.
 - **F09** — de conditie in `hooks_for` staat over twee regels in plaats van één
@@ -39,8 +45,8 @@ vuurt de hook voor alle trackers, precies zoals nu.
 De belangrijkste uitkomst van de trunk-check blijft staan: **webhooks zitten
 inmiddels in Redmine core** (#29664, 25 commits, sinds 2025-10-07). De
 5.1-commit bouwde die hele functie zelf; daarvan blijft dus alleen het
-trackerfilter over. Deze patch is 8 bestanden en 116 toegevoegde regels
-inclusief tests.
+trackerfilter over. Het feature-patchbestand is 8 bestanden, 144 toegevoegde en
+4 verwijderde regels, tests inbegrepen; de vier vertalingen staan apart.
 
 ## Bewijs
 
@@ -48,28 +54,26 @@ Alles hieronder is op 2026-09-05 gedraaid tegen trunk r25037 (`bee32a926`), met
 `tools/test-env.sh … bundle exec ruby bin/rails test:all`, dus inclusief de
 systeemtests.
 
-- Volledige suite **met de patch**: **5987 runs, 31749 assertions, 27 failures,
-  2 errors, 92 skips**
+- Volledige suite **met de patch**: **5989 runs, 31754 assertions, 27 failures, 2 errors, 92 skips**
 - Volledige suite op **schone trunk** r25037: **5977 runs, 31708 assertions, 27 failures, 2 errors, 92 skips**
 - Faalnamen identiek aan beide kanten: **29 namen, byte-identieke lijst** — het zijn
   repository-, changeset- en `SysController`-tests die een SCM-binary nodig
   hebben die dit image niet heeft (alleen `git` staat erin); geen ervan wordt
   door deze patch geraakt.
-- Volledige suite op **`7.0-stable-GEOxyz`** met de wijziging erop
-  (`0fbad7c17`): **6106 runs, 32290 assertions, 0 failures, 0 errors,
-  39 skips**. 7.0-stable draagt de trunk-tests met die SCM-eis niet, dus daar is
+- Volledige suite op **`7.0-stable-GEOxyz`** met de wijziging erop: **6108 runs, 32294 assertions, 0 failures, 0 errors, 39 skips**. 7.0-stable draagt de trunk-tests met die SCM-eis niet, dus daar is
   het echt schoon.
 - Webhook- en trackersuites plus Redmine's eigen locale-consistentietest
   (`webhook_test`, `webhook_payload_test`, `webhooks_controller_test`,
-  `tracker_test`, `i18n_test` in één proces): **115 runs, 1102 assertions,
-  0 failures** op de patch, **124 runs, 1134 assertions, 0 failures** op
-  GEOxyz.
+  `tracker_test`, `i18n_test` in één proces): **117 runs, 1106 assertions,
+  0 failures** op de patch, **126 runs, 1138 assertions, 0 failures** op GEOxyz.
 - RuboCop op de zes gewijzigde/toegevoegde Ruby-bestanden: **0**. Baseline op
   dezelfde bestanden op de merge-base: **0**. Ook 0 in de GEOxyz-worktree.
 - **Rood op oude code**, per nieuwe test gemeten door de fix weg te halen en
   opnieuw te draaien:
   - `test_should_drop_the_reference_to_a_tracker_that_is_destroyed` → zonder
     `has_and_belongs_to_many :webhooks` op `Tracker`: `Expected 1 to be nil`
+  - `test_should_deactivate_a_hook_whose_only_tracker_is_destroyed` → zonder
+    `before_destroy :deactivate_webhooks`: `Expected true to be nil or false`
   - `test_should_ignore_a_tracker_id_that_does_not_exist` → zonder de
     `tracker_ids=`-writer: `ActiveRecord::RecordNotFound: Couldn't find Tracker
     with 'id'=999999`
@@ -104,9 +108,10 @@ systeemtests.
   (gecontroleerd in een wegwerp-worktree).
 - `tools/check-patch-clean.sh webhook-tracker-filter --submit`: **PASS** ·
   `tools/check-geoxyz-branch.sh`: **PASS**
-- Screenshots: **17**, gelezen: **ja**. De hele G9-run is op 2026-09-05 opnieuw
-  gedaan tegen r25037, before én after, plus een nieuw voor/na-paar voor de
-  verzonnen tracker-id.
+- Screenshots: **19**, gelezen: **ja**. De hele G9-run is op 2026-09-05 opnieuw
+  gedaan tegen r25037, before én after, plus twee nieuwe voor/na-paren: de
+  verzonnen tracker-id, en de verwijderde tracker (kolom Actief van `Yes` naar
+  `No`).
 
 ## Wat Jan nog moet doen
 
@@ -143,9 +148,8 @@ vóórdat iemand ernaar vraagt:
   ditzelfde model, dus het is duidelijk dat het onderwerp leeft. r25011 zit in
   de basis van deze patch.
 
-Er staat één keuze voor je open: **K-11** in `docs/DECISIONS.md`, over wat er
-moet gebeuren als de laatste tracker van een hook verwijderd wordt. Er is geen
-haast — we bouwden verder met de gedocumenteerde variant.
+Er staat verder niets meer voor jou open: **K-11** is beslist — optie C, de
+hook wordt gedeactiveerd als zijn laatste tracker verdwijnt.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
 
@@ -157,6 +161,11 @@ haast — we bouwden verder met de gedocumenteerde variant.
   minstens één tracker zodra er een issue-event aanstond. Dat maakt elke
   bestaande hook ongeldig bij een upgrade en is upstream niet verdedigbaar. Zie
   `decisions.md`.
+- **Een verwijderde tracker deactiveert de hooks waarvan hij de enige selectie
+  was** (K-11 optie C, 2026-09-05). Niet opnieuw afwegen. Een hook met nog een
+  andere tracker blijft gewoon actief, en een hook die nooit een tracker
+  aanvinkte wordt niet aangeraakt. `update_column` en niet `update!`: de
+  validaties van `Webhook` horen niet middenin een trackerverwijdering.
 - **Het formulier biedt alle trackers** (`Tracker.sorted`), niet alleen die van
   de gekozen projecten, en ook niet `Tracker.visible(user)`. Zes bestaande
   Redmine-views doen het zo, `ProjectsController` geeft `Tracker.sorted.to_a`

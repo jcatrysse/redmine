@@ -92,12 +92,20 @@ opnieuw te wegen. Class B-keuzes staan in `docs/DECISIONS.md`.
   projecten die de gebruiker niet mag zetten ook stil vallen; dit volgt dat.
 - **Beslist (autonoom, ronde 2, g07/F02):** `Tracker` krijgt
   `has_and_belongs_to_many :webhooks`, de spiegel van wat `Project` al heeft.
-  Een verwijderde tracker neemt zijn jointabelrijen mee. Wat het **niet**
-  verandert: een hook waarvan de laatste tracker verdwijnt houdt een lege
-  selectie over, en leeg betekent alle trackers. Dat is dezelfde regel als
-  overal elders in deze feature en het staat expliciet in het dossier; het
-  alternatief (de verwijdering blokkeren) hoort in `Tracker#check_integrity`
-  en is een andere wijziging. Zie de open keuze voor Jan in `docs/DECISIONS.md`.
+  Een verwijderde tracker neemt zijn jointabelrijen mee.
+- **Beslist door Jan (2026-09-05, K-11 optie C):** een hook waarvan de
+  **laatste** tracker verwijderd wordt, wordt **gedeactiveerd**. Ik had A
+  aanbevolen (laten zoals het is, en het opschrijven); Jan koos C. Reden dat C
+  ook upstream goed te verdedigen is, en dat maakt de aanbeveling achteraf zwak:
+  een hook waarvan het laatste *project* verdwijnt vuurt vanzelf niet meer, want
+  `hooks_for` joint op `projects_webhooks`. Deactiveren maakt de trackerkant
+  daaraan gelijk in plaats van hem als enige te verbreden. Uitgevoerd als
+  `before_destroy :deactivate_webhooks` op `Tracker`, met `update_column` zodat
+  de validaties van `Webhook` (URL-blocklist, projectfilter) niet middenin een
+  trackerverwijdering kunnen afgaan. De prijs die we accepteren: er stopt stil
+  een integratie, en alleen de kolom Actief op `/webhooks` zegt het. Dat staat
+  zo in het dossier en is te zien in het voor/na-paar
+  `shots/{before-,}tracker-destroyed.png`.
 - **Beslist (autonoom, ronde 2, F07):** het Trackers-blok blijft onvoorwaardelijk
   op het formulier staan, ook op een hook die geen enkel issue-event heeft. Het
   verbergen vraagt JavaScript (dat deze patch overal vermijdt) en serverzijdig

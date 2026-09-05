@@ -148,14 +148,16 @@ projects. Behaviour:
 - Events for objects that have no tracker (`News`, `WikiPage`, `TimeEntry`,
   `Version`) are never filtered, whatever is selected.
 - A tracker that is destroyed disappears from every hook that selected it, the
-  same way a destroyed project does. A hook that is left with no tracker at all
-  is then back to firing for every tracker — see the objections table.
+  same way a destroyed project does. A hook that is left with **no** tracker at
+  all — that is, one the destroyed tracker was the only selection on — is
+  deactivated, because an empty selection means every tracker and the hook would
+  otherwise start firing for the whole project instead of stopping.
 
 | File | Change |
 |---|---|
 | `db/migrate/20260903081500_create_trackers_webhooks.rb` | new join table `trackers_webhooks`, the same shape as the `projects_webhooks` table created by `CreateWebhooks` |
 | `app/models/webhook.rb` | `has_and_belongs_to_many :trackers`; `preload(:trackers)` in `hooks_for`; new `matches_tracker?(object)` used by `hooks_for`; a `tracker_ids=` writer that ignores ids of trackers that do not exist |
-| `app/models/tracker.rb` | `has_and_belongs_to_many :webhooks`, the mirror of the declaration `Project` already carries, so destroying a tracker takes its join rows with it |
+| `app/models/tracker.rb` | `has_and_belongs_to_many :webhooks`, the mirror of the declaration `Project` already carries, so destroying a tracker takes its join rows with it; a `before_destroy` that deactivates the hooks the tracker was the only selection on |
 | `app/controllers/webhooks_controller.rb` | permit `tracker_ids: []` |
 | `app/views/webhooks/_form.html.erb` | a `Trackers` fieldset next to the existing `Projects` one, a check box per tracker, and a hint saying what leaving them all unchecked means |
 | `config/locales/en.yml` | one new key, `webhook_trackers_info` |
@@ -281,7 +283,9 @@ review without them.
 | `WebhookTest#test_should_find_hook_for_object_without_a_tracker_when_trackers_are_selected` | a `news.created` hook with trackers selected is not silently suppressed — the `acts_as_webhookable` generality |
 | `WebhooksControllerTest#test_should_create_webhook_with_trackers` | `tracker_ids` reaches the model through strong parameters and is persisted |
 | `WebhooksControllerTest#test_new_should_offer_a_check_box_per_tracker` | the form renders three check boxes under `fieldset#webhook_tracker_ids`, labelled `Bug` and `Feature request` |
-| `WebhookTest#test_should_drop_the_reference_to_a_tracker_that_is_destroyed` | destroying a tracker leaves no row behind in `trackers_webhooks`, and the hook keeps filtering on the trackers it still has |
+| `WebhookTest#test_should_drop_the_reference_to_a_tracker_that_is_destroyed` | destroying a tracker leaves no row behind in `trackers_webhooks`, and a hook that still has another tracker keeps filtering on it and stays active |
+| `WebhookTest#test_should_deactivate_a_hook_whose_only_tracker_is_destroyed` | the hook is switched off rather than widened — the behaviour of the `before_destroy` |
+| `WebhookTest#test_should_not_deactivate_a_hook_with_no_tracker_selected_when_a_tracker_is_destroyed` | a hook that never had a tracker selected is not touched by someone else's tracker being deleted |
 | `WebhooksControllerTest#test_edit_should_check_the_boxes_of_the_selected_trackers` | the stored selection comes back checked, and the blank sentinel that makes a selection clearable is on the page. Deleting the sentinel from the form reddens this test |
 | `WebhooksControllerTest#test_should_clear_the_trackers_of_a_webhook` | posting the sentinel and nothing else empties the selection instead of leaving the previous one in place |
 | `WebhooksControllerTest#test_should_ignore_a_tracker_id_that_does_not_exist` | a hand-crafted `tracker_ids` value is dropped rather than answered with an internal error |
@@ -295,12 +299,11 @@ would have made the diff larger for no gain.
 against `origin/master` r25037, the revision the patch is made against.
 
 - **full** suite with the patch, `tools/test-env.sh … bundle exec ruby bin/rails test:all`
-  (so including `test/system`): **5987 runs, 31749 assertions, 27 failures,
-  2 errors, 92 skips**
+  (so including `test/system`): **5989 runs, 31754 assertions, 27 failures, 2 errors, 92 skips**
 - **full** suite on a pristine `origin/master` r25037 worktree, same command:
   **5977 runs, 31708 assertions, 27 failures, 2 errors, 92 skips**
 - **full** suite on `7.0-stable-GEOxyz` with the same change applied:
-  **6106 runs, 32290 assertions, 0 failures, 0 errors, 39 skips** — 7.0-stable
+  **6108 runs, 32294 assertions, 0 failures, 0 errors, 39 skips** — 7.0-stable
   does not carry the trunk tests that need the missing SCM binaries, so there it
   is genuinely clean
 - **failure names identical on both** — 29 named failures/errors, byte-identical lists. All of them are
@@ -309,7 +312,7 @@ against `origin/master` r25037, the revision the patch is made against.
   this patch.
 - the webhook and tracker suites together with Redmine's own locale-consistency
   suite (`webhook_test`, `webhook_payload_test`, `webhooks_controller_test`,
-  `tracker_test`, `i18n_test` in one process): **115 runs, 1102 assertions,
+  `tracker_test`, `i18n_test` in one process): **117 runs, 1106 assertions,
   0 failures, 0 errors**
 - RuboCop on the six changed/added Ruby files: **0 offences**. Baseline on the
   same five existing files at the merge base: **0 offences**.
@@ -319,10 +322,11 @@ against `origin/master` r25037, the revision the patch is made against.
   | Test | Without the change |
   |---|---|
   | `test_should_drop_the_reference_to_a_tracker_that_is_destroyed` | drop `has_and_belongs_to_many :webhooks` from `Tracker` → `Expected 1 to be nil` (the orphan join row) |
+  | `test_should_deactivate_a_hook_whose_only_tracker_is_destroyed` | drop `before_destroy :deactivate_webhooks` → `Expected true to be nil or false` (the hook stays active and unrestricted) |
   | `test_should_ignore_a_tracker_id_that_does_not_exist` | drop `Webhook#tracker_ids=` → `ActiveRecord::RecordNotFound: Couldn't find Tracker with 'id'=999999` |
   | `test_edit_should_check_the_boxes_of_the_selected_trackers` | drop the blank `hidden_field_tag` from the form → `Expected at least 1 element matching "input[type=hidden]…", found 0` |
   | the four tracker-matching tests | run on a pristine trunk worktree → `ActiveModel::UnknownAttributeError: unknown attribute 'trackers'` / `NoMethodError: undefined method 'trackers'` |
-  | `test_should_find_hook_for_issue_of_any_tracker_when_no_tracker_is_selected`, `test_should_clear_the_trackers_of_a_webhook` | **green on both sides.** They pin existing behaviour — the compatibility guarantee and the sentinel round trip — which is the point of them |
+  | `test_should_find_hook_for_issue_of_any_tracker_when_no_tracker_is_selected`, `test_should_clear_the_trackers_of_a_webhook`, `test_should_not_deactivate_a_hook_with_no_tracker_selected_when_a_tracker_is_destroyed` | **green on both sides.** They pin existing behaviour — the compatibility guarantee, the sentinel round trip, and that an unrelated hook is not touched — which is the point of them |
 
 - N+1, measured on the patched tree by counting `sql.active_record`
   notifications around a warmed `hooks_for` with `SCHEMA` and `TRANSACTION`
@@ -370,6 +374,8 @@ container's own address rather than loopback, because
 | the hint in French | `webhook-form-fr.png`, `hint-fr.png` | the form in French |
 | the hint in German | `webhook-form-de.png`, `hint-de.png` | the form in German, the new hint directly under Redmine's own German `webhook_url_info` and using the same words |
 | the hint in Spanish | `webhook-form-es.png`, `hint-es.png` | the form in Spanish. The legend reads `Tipos de peticiones` and the hint says `los tipos` — the one image that shows why the translations had to be derived rather than composed |
+| a deleted tracker, before | `before-tracker-destroyed.png` | with the `before_destroy` removed: the hook whose only tracker was just deleted still reads `Active: Yes`, and its selection is now empty, so it fires for every tracker in the project |
+| a deleted tracker, after | `tracker-destroyed.png` | the same deletion with the callback in place: `Active: No`. The hook stops firing instead of widening |
 | a forged tracker id, before | `before-forged-tracker-id.png` | a POST with `tracker_ids[]=999999`, with the `tracker_ids=` writer removed: `ActiveRecord::RecordNotFound in WebhooksController#update`, an internal error page |
 | a forged tracker id, after | `forged-tracker-id.png` | the same POST with the writer in place: the unknown id is dropped, the hook is saved with no tracker selected, and the webhook list comes back normally |
 
@@ -382,15 +388,19 @@ Failure paths verified:
 | clearing a selection persists | `webhook-form-edit-none.png` | unchecking every tracker saves as empty, not as "unchanged" | zero check boxes checked after save |
 | object with no tracker | covered by the unit test | a `news.created` hook with trackers selected still fires | `hooks_for('news.created', News.find(1))` returns the hook |
 | a tracker id that does not exist | `before-forged-tracker-id.png`, `forged-tracker-id.png` | no internal error, and nothing stored | before: `ActiveRecord::RecordNotFound`; after: redirect to the webhook list, selection empty |
-| a destroyed tracker | covered by the unit test | the join rows go, the surviving restriction stays | `SELECT 1 FROM trackers_webhooks WHERE tracker_id = <destroyed>` returns nothing, and the hook still fires for its other tracker and not for a third one. Not a screenshot: the row is invisible in the interface, and the visible outcome is deliberately unchanged |
+| a destroyed tracker, hook has others | covered by the unit test | the join rows go, the surviving restriction stays, the hook stays active | `SELECT 1 FROM trackers_webhooks WHERE tracker_id = <destroyed>` returns nothing; the hook still fires for its other tracker and not for a third one |
+| a destroyed tracker, hook has no others | `before-tracker-destroyed.png`, `tracker-destroyed.png` | the hook is deactivated, not widened | before: `Active: Yes` and `hooks_for` returns it for every tracker; after: `Active: No` and `hooks_for` returns nothing |
+| a destroyed tracker, hook never had one | covered by the unit test | untouched | the hook stays active and keeps firing |
 
 Both modes were produced by the same version of the script, re-run in full on
 2026-09-05 against r25037 — so every image here shows the code that is in the
 patch files, not an earlier revision. The German step was added after the very
-first before-run, so that run was repeated then. `before-forged-tracker-id.png`
-is the one image taken from a deliberately mutated tree: the same `MODE=after`
-run with `FORGED_EXPECT=error` and the `tracker_ids=` writer deleted, which is
-exactly what the first version of this patch was.
+first before-run, so that run was repeated then. `before-forged-tracker-id.png` and
+`before-tracker-destroyed.png` are the two images taken from a deliberately
+mutated tree: the same `MODE=after` run with `EXPECT_UNFIXED=1` and this round's
+two model changes deleted — `Webhook#tracker_ids=` and
+`Tracker#deactivate_webhooks` — which is exactly what the first version of this
+patch was.
 
 Screenshots read, not just generated: yes. `webhook-form.png` was checked for
 the fieldset being styled as a `box` like the Projects one next to it, for the
@@ -430,7 +440,7 @@ un-localised class name. The result is a German page whose fieldset legend reads
 | "The webhook list does not show the tracker filter." | Deliberate, and argued above: #44337 proposes reworking that listing, and an empty cell there would read as the opposite of what it means. Two lines if it is wanted here. |
 | "Translations should come from the language teams, not from a feature patch." | Agreed, and that is why they are a second patch file you can take or leave: the feature patch touches only `en.yml`. The four are offered because they are derived rather than composed — every term is traced to an existing key in the same file in the table above, so each one can be checked in seconds. On `nl`, `fr` and `es` they will sit next to two hints that are still English until those teams get to the webhook block. |
 | "`setable_projects` looks different in trunk now." | #44386 (r25011) rewrote `setable_projects` and the `before_validation` lambda. That revision is in the base this patch is made against (r25037), and the patch touches neither. |
-| "What happens to a hook when its tracker is deleted?" | `Tracker` gets the mirror `has_and_belongs_to_many :webhooks` that `Project` already has, so the join rows go with the tracker instead of being left behind. A hook that had other trackers selected keeps filtering on those. A hook whose *only* tracker is deleted is left with an empty selection, and an empty selection means every tracker — the same rule as everywhere else in this feature. No issue can carry the deleted tracker any more, so nothing new matches on that tracker; what widens is the rest of the project's issues. If blocking the deletion while a hook still points at the tracker is preferred, that is `Tracker#check_integrity`'s job and a separate change. There is a test for the join rows and for the surviving restriction. |
+| "What happens to a hook when its tracker is deleted?" | `Tracker` gets the mirror `has_and_belongs_to_many :webhooks` that `Project` already has, so the join rows go with the tracker instead of being left behind, and a `before_destroy` deactivates the hooks that tracker was the *only* selection on. Without that second half those hooks would be left with an empty selection, and an empty selection means every tracker — so deleting a tracker would silently widen a hook to the whole project, which is the exact opposite of what the feature is for. Deactivating makes it behave like the case that already exists: a hook whose last **project** is deleted stops firing too, because `hooks_for` joins `projects_webhooks`. A hook that still has other trackers keeps filtering on those and stays active. Three tests pin the three cases, and the before/after screenshot pair shows the Active column going from Yes to No. The cost is stated rather than hidden: the hook stops delivering and only the webhook list says so. Blocking the deletion instead would put a webhook check into `Tracker#check_integrity`, where an administrator tidying up trackers could be stopped by someone else's hook that they cannot even see. |
 | "The Trackers box is shown on a hook that subscribes to no issue event." | It is, and there it does nothing: `matches_tracker?` returns `true` for every object without a `tracker_id`. Hiding it needs JavaScript, which this patch avoids everywhere else, and deciding it server-side from the stored events would be stale between saves — a user who ticks an issue event and saves would have to save twice. The hint under the fieldset says the box applies to issue events, which is where the user is looking. If a committer would rather have the fieldset conditional, that is a view-only change. |
 | "Why `Tracker.sorted` and not `Tracker.visible(user)`?" | The projects fieldset next to it is scoped, so the asymmetry is fair to ask about. `ProjectsController` already hands `Tracker.sorted.to_a` to the project settings screen, which any project manager reaches without being an admin, and five other tracker check-box lists in core do the same. Storing a tracker the user cannot see is harmless here: the filter only ever narrows, so a tracker that is out of reach simply never matches. |
 | "An issue that changes tracker stops producing events for the hook." | True, and inherent to a per-object filter: a hook limited to Bug hears about an issue while it is a Bug and hears nothing once it becomes a Feature, so a receiver's copy can go stale. The project filter that already exists behaves the same way when an issue is moved between projects. Fixing it would mean sending events to a hook for a tracker its owner deliberately excluded, which is the opposite of what the feature is for. Named rather than fixed. |
@@ -456,8 +466,8 @@ un-localised class name. The result is a German page whose fieldset legend reads
 ## GEOxyz
 
 - **Commit op `7.0-stable-GEOxyz`:** zie `status.md` — sinds ronde 2 zijn dat er
-  drie: `f2242bd86` (de feature), `646008041` (de drie vertalingen) en
-  `0fbad7c17` (de ronde-2-fixes).
+  vier: `f2242bd86` (de feature), `646008041` (de drie vertalingen),
+  `0fbad7c17` (de ronde-2-fixes) en `72a3a8e22` (K-11, de deactivering).
 - **Suites daar groen:** zie `status.md`
 - **Locales toegevoegd:** `en`, `nl`, `fr`, `de` en `es` — letterlijk dezelfde strings
   als de patch (per locale gecontroleerd, regel voor regel identiek)

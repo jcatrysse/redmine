@@ -89,7 +89,7 @@ evidence figure was re-run against the new base in the same pass (g10).
 - **Category:** correctness
 - **Where:** `app/models/webhook.rb:93` (the new `has_and_belongs_to_many :trackers`); the missing counterpart in `app/models/tracker.rb`
 - **Invariant touched:** none (but it breaks the symmetry the dossier's whole design argument rests on)
-- **Resolution:** fixed 2026-09-05 (Jan g07) — `Tracker` gets the mirror `has_and_belongs_to_many :webhooks`, with a test that the join rows go and the surviving restriction stays; that a hook left with no tracker is back to "every tracker" is now written into the dossier, and is K-11 for Jan
+- **Resolution:** fixed 2026-09-05 (Jan g07, then K-11 option C) — `Tracker` gets the mirror `has_and_belongs_to_many :webhooks` **and** a `before_destroy` that deactivates the hooks it was the only selection on, so the finding's headline behaviour is closed rather than documented; three tests and a before/after screenshot pair
 
 **What is wrong**
 
@@ -143,17 +143,39 @@ pins it: it selects two trackers on a hook, destroys one, and asserts both that
 other one. Without the new line the test fails with `Expected 1 to be nil`,
 which is the orphan row this finding describes.
 
-What that does **not** change, stated plainly because the finding's headline is
-wider than the fix: a hook whose *only* tracker is destroyed is left with an
-empty selection, and an empty selection still means every tracker. The
-association removes the litter, not that rule. It is written into the dossier
-twice now — in the behaviour list under "Proposed change" and as its own row in
-the objections table — with the reasoning: no issue can carry the destroyed
-tracker any more, so what widens is the rest of the project's issues, and
-blocking the deletion while a hook still points at the tracker belongs in
-`Tracker#check_integrity` as a separate change. Whether to go that far is
-**K-11** in `docs/DECISIONS.md`; we shipped the documented behaviour because it
-is the one a committer will read as consistent.
+The association alone would only have removed the litter. This finding's
+headline — that deleting a tracker silently turns a restricted hook into an
+unrestricted one — needs the second half, and Jan chose it on 2026-09-05 as
+**K-11 option C**: `Tracker` also gets
+
+```ruby
+before_destroy :check_integrity, :deactivate_webhooks
+```
+
+which switches off the hooks the tracker was the *only* selection on. That makes
+the tracker side behave like the project side already does, which is the
+argument that carries it upstream: a hook whose last project is deleted stops
+firing, because `hooks_for` joins `projects_webhooks`. Before this, the tracker
+was the one association where deletion **widened** a hook instead of silencing
+it.
+
+`update_column` rather than `update!`, deliberately: `Webhook`'s validations
+reach the URL blocklist and its `before_validation` re-filters the hook's
+projects against `setable_projects`, and neither belongs in the middle of a
+tracker deletion — a validation failure there would abort the destroy.
+
+Three tests, one per case: the hook with another tracker left (stays active,
+still filtered), the hook with none left (deactivated, `hooks_for` returns
+nothing), and the hook that never had a tracker (untouched). The second is red
+without the callback (`Expected true to be nil or false`). `shots/before-tracker-destroyed.png`
+and `shots/tracker-destroyed.png` are the same deletion driven in a browser,
+with the Active column reading `Yes` and then `No`.
+
+The cost is in the dossier rather than hidden: an integration stops silently and
+only the webhook list says so. Blocking the deletion instead — a webhook check
+in `Tracker#check_integrity` — was rejected because an administrator tidying up
+trackers would be stopped by a hook belonging to someone else that they cannot
+see.
 
 ---
 

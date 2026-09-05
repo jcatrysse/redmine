@@ -3,12 +3,14 @@
 //   SHOT_DIR=docs/features/webhook-tracker-filter/shots \
 //   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node verify/webhook-tracker-filter.mjs
 //
-// FORGED_EXPECT=error runs the last step against a tree with the tracker_ids=
-//              writer removed, which is what the first version of this patch
-//              was: a forged tracker id then reaches Rails' own writer and the
-//              request ends in ActiveRecord::RecordNotFound. It shoots that as
-//              before-forged-tracker-id. Every other shot of the run is
-//              unaffected, so the run is repeated without the flag afterwards.
+// EXPECT_UNFIXED=1 runs the last two steps against a tree with this round's
+//              two model changes removed — the `tracker_ids=` writer and the
+//              `deactivate_webhooks` callback — which is what the first version
+//              of this patch was. A forged tracker id then reaches Rails' own
+//              writer and ends in ActiveRecord::RecordNotFound, and a hook whose
+//              only tracker is deleted stays active and starts firing for every
+//              tracker. Those two are shot as before-*. Every other shot of the
+//              run is unaffected, so the run is repeated without the flag.
 //
 // MODE=before  runs against the unpatched instance: there is no tracker
 //              fieldset on the form at all, and every issue of every tracker is
@@ -81,6 +83,7 @@ await new Promise((resolve, reject) => {
 });
 console.log(`receiver listening on ${HOOK_URL}`);
 
+const unfixed = process.env.EXPECT_UNFIXED === '1';
 const s = await session(process.env.SHOT_DIR);
 
 // The hook is saved and the issues are created through the UI, and both are
@@ -109,6 +112,23 @@ async function valueForLabel(selector, text) {
     }
     return null;
   }, text);
+}
+
+// Deletes a tracker by name from the administration list, if it is there.
+// Returns whether it found one to delete.
+async function deleteTracker(name) {
+  await s.go('/trackers');
+  const link = s.page.locator(`tr:has(td.name a:text-is("${name}")) td.buttons a.icon-del`);
+  if (!(await link.count())) return false;
+  s.page.once('dialog', d => d.accept());
+  await link.first().click();
+  await s.page.waitForLoadState('networkidle');
+  if (await s.page.locator('#sudo_password').count()) {
+    await s.page.fill('#sudo_password', PASSWORD);
+    await s.page.locator('form:has(#sudo_password) input[type=submit]').first().click();
+    await s.page.waitForLoadState('networkidle');
+  }
+  return true;
 }
 
 async function waitForDeliveries(count, seconds = 25) {
@@ -328,7 +348,6 @@ if (after) {
 //    Webhook drops the unknown id instead. Last, because in the error case the
 //    request does not complete and the hook keeps whatever it had.
 if (after) {
-  const expectError = process.env.FORGED_EXPECT === 'error';
   await s.go(editHref);
   await s.page.evaluate(() => {
     const box = document.querySelector('input[name="webhook[tracker_ids][]"][type=checkbox]');
@@ -338,13 +357,13 @@ if (after) {
   await submitForm('#webhook_url');
   const body = await s.page.textContent('body');
   const errored = /RecordNotFound/.test(body);
-  if (expectError && !errored) {
+  if (unfixed && !errored) {
     failures.push('forged tracker id: expected the unpatched writer to raise RecordNotFound');
   }
-  if (!expectError && errored) {
+  if (!unfixed && errored) {
     failures.push('forged tracker id: the request ended in RecordNotFound');
   }
-  if (!expectError) {
+  if (!unfixed) {
     if (!/\/webhooks$/.test(s.page.url())) {
       failures.push(`forged tracker id: stayed on ${s.page.url()}`);
     }
@@ -354,10 +373,64 @@ if (after) {
     await s.go('/webhooks');
   }
   await s.shot(
-    expectError ? 'before-forged-tracker-id' : 'forged-tracker-id',
-    expectError
+    unfixed ? 'before-forged-tracker-id' : 'forged-tracker-id',
+    unfixed
       ? 'A hand-written POST with tracker_ids[]=999999 before the fix — Rails\' own writer raises ActiveRecord::RecordNotFound and the user gets an internal error instead of a rejected value'
       : 'The same POST with the fix — the unknown id is dropped, the hook is saved with no tracker selected, and the webhook list comes back normally'
+  );
+}
+
+// 9. The tracker a hook is limited to is deleted. An empty tracker selection
+//    means every tracker, so a hook left with nothing selected would start
+//    firing for the whole project — the opposite of what its owner asked for.
+//    Tracker#deactivate_webhooks switches those hooks off instead, so the hook
+//    stops firing, the way it already does when its last project is deleted.
+if (after) {
+  const TEMP_TRACKER = 'Webhook verify temp';
+
+  // A run that died between creating the tracker and deleting it would make
+  // the next one fail on the name being taken, so start from a clean slate.
+  await deleteTracker(TEMP_TRACKER);
+
+  await s.go('/trackers/new');
+  await s.page.fill('#tracker_name', TEMP_TRACKER);
+  const status = s.page.locator('#tracker_default_status_id');
+  if (!(await status.inputValue())) {
+    const first = await status.locator('option[value!=""]').first().getAttribute('value');
+    await status.selectOption(first);
+  }
+  await submitForm('#tracker_name');
+
+  await s.go(editHref);
+  for (const v of await s.page.locator('input[name="webhook[tracker_ids][]"]:checked').evaluateAll(els => els.map(e => e.value))) {
+    await s.page.uncheck(`input[name="webhook[tracker_ids][]"][value="${v}"]`);
+  }
+  const tempValue = await valueForLabel('input[name="webhook[tracker_ids][]"]', TEMP_TRACKER);
+  if (!tempValue) failures.push(`tracker deletion: check box "${TEMP_TRACKER}" not found on the hook`);
+  await s.page.check(`input[name="webhook[tracker_ids][]"][value="${tempValue}"]`);
+  await submitForm('#webhook_url');
+
+  if (!(await deleteTracker(TEMP_TRACKER))) {
+    failures.push(`tracker deletion: no delete link for "${TEMP_TRACKER}"`);
+  }
+  await s.go('/trackers');
+  if (await s.page.locator(`td.name a:text-is("${TEMP_TRACKER}")`).count()) {
+    failures.push(`tracker deletion: "${TEMP_TRACKER}" is still there`);
+  }
+
+  await s.go('/webhooks');
+  const activeCell = (await s.page.locator('table.list tbody tr td').first().textContent()).trim();
+  if (unfixed && activeCell !== 'Yes') {
+    failures.push(`tracker deletion: expected the unfixed hook to stay active, Active reads "${activeCell}"`);
+  }
+  if (!unfixed && activeCell !== 'No') {
+    failures.push(`tracker deletion: expected the hook to be deactivated, Active reads "${activeCell}"`);
+  }
+  await s.shot(
+    unfixed ? 'before-tracker-destroyed' : 'tracker-destroyed',
+    unfixed
+      ? `The webhook after its only tracker ("${TEMP_TRACKER}") was deleted, before the fix — still Active, and with an empty selection it now fires for every tracker in its projects`
+      : `The same deletion with the fix — the hook is switched off instead of widened, so it stops firing exactly as it would if its last project had been deleted`
   );
 }
 

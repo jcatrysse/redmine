@@ -1,4 +1,4 @@
-From bb69481e0a72d86b0f6bc474e974cd44b8fce171 Mon Sep 17 00:00:00 2001
+From aac8754e05f4d87148fbd9a34fbeed5c76fda01f Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Sat, 5 Sep 2026 13:37:18 +0000
 Subject: [PATCH] Limit an outgoing webhook to the trackers selected on it.
@@ -14,14 +14,14 @@ existing hooks are unaffected. Events for objects that have no tracker are never
 filtered.
 ---
  app/controllers/webhooks_controller.rb        |  2 +-
- app/models/tracker.rb                         |  1 +
- app/models/webhook.rb                         | 22 +++++++++-
+ app/models/tracker.rb                         | 13 ++++-
+ app/models/webhook.rb                         | 22 +++++++-
  app/views/webhooks/_form.html.erb             |  9 ++++
  config/locales/en.yml                         |  1 +
- ...20260903081500_create_trackers_webhooks.rb |  8 ++++
- test/functional/webhooks_controller_test.rb   | 42 +++++++++++++++++++
- test/unit/webhook_test.rb                     | 34 +++++++++++++++
- 8 files changed, 116 insertions(+), 3 deletions(-)
+ ...20260903081500_create_trackers_webhooks.rb |  8 +++
+ test/functional/webhooks_controller_test.rb   | 42 +++++++++++++++
+ test/unit/webhook_test.rb                     | 51 +++++++++++++++++++
+ 8 files changed, 144 insertions(+), 4 deletions(-)
  create mode 100644 db/migrate/20260903081500_create_trackers_webhooks.rb
 
 diff --git a/app/controllers/webhooks_controller.rb b/app/controllers/webhooks_controller.rb
@@ -38,10 +38,16 @@ index 27b8d2ddd..d0fb64e4e 100644
  
    def find_webhook
 diff --git a/app/models/tracker.rb b/app/models/tracker.rb
-index e33ec333c..69141def6 100644
+index e33ec333c..d5d7d4ece 100644
 --- a/app/models/tracker.rb
 +++ b/app/models/tracker.rb
-@@ -33,6 +33,7 @@ class Tracker < ApplicationRecord
+@@ -28,11 +28,12 @@ class Tracker < ApplicationRecord
+        start_date due_date estimated_hours done_ratio description priority_id).freeze
+   CORE_FIELDS_ALL = (CORE_FIELDS_UNDISABLABLE + CORE_FIELDS).freeze
+ 
+-  before_destroy :check_integrity
++  before_destroy :check_integrity, :deactivate_webhooks
+   belongs_to :default_status, :class_name => 'IssueStatus'
    has_many :issues
    has_many :workflow_rules, :dependent => :delete_all
    has_and_belongs_to_many :projects
@@ -49,6 +55,21 @@ index e33ec333c..69141def6 100644
    has_and_belongs_to_many :custom_fields, :class_name => 'IssueCustomField',
                            :join_table => "#{table_name_prefix}custom_fields_trackers#{table_name_suffix}",
                            :association_foreign_key => 'custom_field_id'
+@@ -170,4 +171,14 @@ class Tracker < ApplicationRecord
+   def check_integrity
+     raise "Cannot delete tracker" if Issue.where(:tracker_id => self.id).any?
+   end
++
++  # Deactivates the webhooks this tracker is the only selected one on. An empty
++  # tracker selection means every tracker, so those hooks would start firing for
++  # the whole project instead of stopping, the way a hook does when its last
++  # project is deleted.
++  def deactivate_webhooks
++    webhooks.preload(:trackers).each do |hook|
++      hook.update_column(:active, false) if hook.tracker_ids == [id]
++    end
++  end
+ end
 diff --git a/app/models/webhook.rb b/app/models/webhook.rb
 index f403f24e4..0bc4a1c81 100644
 --- a/app/models/webhook.rb
@@ -206,10 +227,10 @@ index 046be69ea..ed9362050 100644
      get :edit, params: { id: @other_hook.id }
      assert_response :not_found
 diff --git a/test/unit/webhook_test.rb b/test/unit/webhook_test.rb
-index e528a2a1c..b6982fa13 100644
+index e528a2a1c..b0b1b2b9a 100644
 --- a/test/unit/webhook_test.rb
 +++ b/test/unit/webhook_test.rb
-@@ -170,6 +170,40 @@ class WebhookTest < ActiveSupport::TestCase
+@@ -170,6 +170,57 @@ class WebhookTest < ActiveSupport::TestCase
      assert_equal [hook], Webhook.hooks_for('issue.deleted', @issue)
    end
  
@@ -243,8 +264,25 @@ index e528a2a1c..b6982fa13 100644
 +    hook.update! trackers: [Tracker.find(1), tracker]
 +    tracker.destroy
 +    assert_nil ActiveRecord::Base.connection.select_value("SELECT 1 FROM trackers_webhooks WHERE tracker_id = #{tracker.id}")
++    assert hook.reload.active?
 +    assert_equal [hook], Webhook.hooks_for('issue.created', Issue.find(1))
 +    assert_equal [], Webhook.hooks_for('issue.created', Issue.find(2))
++  end
++
++  test "should deactivate a hook whose only tracker is destroyed" do
++    hook = create_hook
++    tracker = Tracker.generate!
++    hook.update! trackers: [tracker]
++    tracker.destroy
++    assert_not hook.reload.active?
++    assert_equal [], Webhook.hooks_for('issue.created', Issue.find(1))
++  end
++
++  test "should not deactivate a hook with no tracker selected when a tracker is destroyed" do
++    hook = create_hook
++    Tracker.generate!.destroy
++    assert hook.reload.active?
++    assert_equal [hook], Webhook.hooks_for('issue.created', Issue.find(1))
 +  end
 +
    test "schedule should enqueue jobs for hooks" do

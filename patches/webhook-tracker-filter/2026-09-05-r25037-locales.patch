@@ -1,4 +1,4 @@
-From bb69481e0a72d86b0f6bc474e974cd44b8fce171 Mon Sep 17 00:00:00 2001
+From aac8754e05f4d87148fbd9a34fbeed5c76fda01f Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Sat, 5 Sep 2026 13:37:18 +0000
 Subject: [PATCH] Limit an outgoing webhook to the trackers selected on it.
