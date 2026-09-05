@@ -8,6 +8,40 @@
 >
 > Verander dit bestand alleen als Jan om een framework-wijziging vraagt.
 
+## Huidige fase — ronde 2, fixen (sinds 2026-09-04)
+
+**Lees dit voordat je `docs/REGISTER.md` opent.** Het werk gaat nu niet over
+nieuwe features. Alle achttien staan in het register en negen patches zijn
+klaar; dat is de *uitkomst van ronde 1* en geen todo-lijst meer. Er staat dus
+geen `todo`-regel in het register, en dat betekent niet dat er niets te doen is.
+
+Jan sprak op 2026-09-04 een cyclus van drie rondes af:
+
+| Ronde | Wat | Waar het staat |
+|---|---|---|
+| 1, **af** | veertien onderdelen gereviewd, 129 bevindingen | `docs/review/findings/`, gebundeld in `docs/review/FINDINGS.md` |
+| 2, **nu** | elke bevinding krijgt een `Resolution:`-regel | `tools/findings.sh --open` is de werklijst |
+| 3, nog te doen | blinde herreview: een verse reviewer leest de gefixte patch koud, zonder ronde 1 eerst te lezen, en pas daarna vergelijken we | — |
+
+Jans twintig keuzes staan in `docs/DECISIONS.md` onder **"Beslist (Jan) —
+reviewronde 1, 2026-09-04"**, met een groepsnummer (g01..g18) per keuze.
+**Re-litigeer die niet**; ze zijn stuk voor stuk aan hem voorgelegd.
+
+Volgorde van ronde 2, zoals die uit die keuzes volgt:
+
+1. **g13 eerst** — de vier achterlopende framework-regels bijwerken. Anders
+   bouw je fixes tegen regels waarvan al is vastgesteld dat ze niet kloppen,
+   en levert ronde 3 dezelfde ruis op.
+2. de twee productieblockers: `ldap-mail-prefs` (g01) en `ar-sessions` (g02).
+   Die raken wat GEOxyz nu draait, de patches niet.
+3. de dossierteksten en de bewijscijfers, in één golf (g09 en g10) — los
+   tekstwerk zonder conflictrisico, dus goed parallel te doen.
+4. de codefixes per slug, met `tools/claim.sh`.
+
+Geen enkele bevinding blijft op `open` zonder `Resolution:`-regel. "Geen tijd
+gehad" is een geldige reden, stilte niet. `tools/findings.sh --open` laat zien
+wat er nog zonder staat.
+
 ## Begin hier, elke sessie
 
 ```sh
@@ -21,9 +55,12 @@ feature die al af was.
 
 Dan:
 
-1. `cat docs/REGISTER.md` — alle achttien features, hun status, en wat er voor
-   Jan openstaat.
-2. Feature van Jan gekregen? Neem die. Anders de bovenste `todo`-regel.
+1. `tools/findings.sh --open` — de openstaande bevindingen van ronde 2. Staat
+   daar werk, dan is dát de fase; zie "Huidige fase" hierboven. Lees er
+   `docs/DECISIONS.md` bij vanaf "Beslist (Jan) — reviewronde 1".
+2. Pas als die lijst leeg is: `cat docs/REGISTER.md` — alle achttien features,
+   hun status, en wat er voor Jan openstaat. Feature van Jan gekregen? Neem
+   die. Anders de bovenste `todo`-regel.
 3. **`tools/claim.sh <slug>`** — dit is verplicht, ook als je denkt dat je
    alleen werkt. Het is het enige dat voorkomt dat twee sessies dezelfde feature
    bouwen.
