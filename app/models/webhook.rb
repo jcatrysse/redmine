@@ -133,7 +133,8 @@ class Webhook < ApplicationRecord
       .preload(:trackers)
       .where(users: { status: User::STATUS_ACTIVE }, projects_webhooks: { project_id: object.project_id })
       .to_a.select do |hook|
-      hook.events.include?(event) && hook.matches_tracker?(object) && object.visible?(hook.user) && hook.user.allowed_to?(:use_webhooks, object.project)
+      hook.events.include?(event) && hook.matches_tracker?(object) &&
+        object.visible?(hook.user) && hook.user.allowed_to?(:use_webhooks, object.project)
     end
   end
 
@@ -142,6 +143,13 @@ class Webhook < ApplicationRecord
   # never filtered out.
   def matches_tracker?(object)
     tracker_ids.blank? || !object.respond_to?(:tracker_id) || tracker_ids.include?(object.tracker_id)
+  end
+
+  # Assigns the trackers of the hook from a list of ids, ignoring the ids of
+  # trackers that do not exist. The ids come from check boxes, so an unknown id
+  # is a forged request rather than something to answer with an error page.
+  def tracker_ids=(ids)
+    self.trackers = Tracker.where(id: ids)
   end
 
   def setable_projects

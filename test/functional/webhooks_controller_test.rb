@@ -100,6 +100,30 @@ class WebhooksControllerTest < Redmine::ControllerTest
     assert_equal 'https://example.com/updated/hook', @hook.reload.url
   end
 
+  test "should clear the trackers of a webhook" do
+    @hook.update! trackers: [Tracker.find(2)]
+    patch :update, params: { id: @hook.id, webhook: { tracker_ids: [''] } }
+    assert_redirected_to webhooks_path
+    assert_equal [], @hook.reload.trackers
+  end
+
+  test "should ignore a tracker id that does not exist" do
+    patch :update, params: { id: @hook.id, webhook: { tracker_ids: ['', '999999'] } }
+    assert_redirected_to webhooks_path
+    assert_equal [], @hook.reload.trackers
+  end
+
+  test "edit should check the boxes of the selected trackers" do
+    @hook.update! trackers: [Tracker.find(2)]
+    get :edit, params: { id: @hook.id }
+    assert_response :success
+    assert_select 'fieldset#webhook_tracker_ids' do
+      assert_select 'input[type=checkbox][value=?][checked=checked]', '2'
+      assert_select 'input[type=checkbox][value=?][checked=checked]', '1', count: 0
+      assert_select 'input[type=hidden][name=?][value=?]', 'webhook[tracker_ids][]', ''
+    end
+  end
+
   test 'edit should not find hook of other user' do
     get :edit, params: { id: @other_hook.id }
     assert_response :not_found

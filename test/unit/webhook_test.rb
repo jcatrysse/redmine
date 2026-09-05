@@ -194,6 +194,16 @@ class WebhookTest < ActiveSupport::TestCase
     assert_equal [hook], Webhook.hooks_for('news.created', News.find(1))
   end
 
+  test "should drop the reference to a tracker that is destroyed" do
+    hook = create_hook
+    tracker = Tracker.generate!
+    hook.update! trackers: [Tracker.find(1), tracker]
+    tracker.destroy
+    assert_nil ActiveRecord::Base.connection.select_value("SELECT 1 FROM trackers_webhooks WHERE tracker_id = #{tracker.id}")
+    assert_equal [hook], Webhook.hooks_for('issue.created', Issue.find(1))
+    assert_equal [], Webhook.hooks_for('issue.created', Issue.find(2))
+  end
+
   test "schedule should enqueue jobs for hooks" do
     with_settings webhooks_enabled: '1' do
       hook = create_hook
