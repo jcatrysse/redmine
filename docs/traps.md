@@ -751,3 +751,47 @@ Gemeten met een wegwerp-worktree op `origin/master` per bestand:
 - **`tools/session-push.sh` en `tools/append-note.sh` weigeren op een vuile
   boom**, ook als het vuil een gegenereerd bestand is. Draai
   `tools/register.sh --write` dus vóór je commit, niet erna.
+
+## De sessiecheckout van `geoxyz/framework` kan een *andere* historie zijn, niet alleen een oudere (2026-09-05)
+
+`docs/STATE.md` waarschuwt dat je checkout een oude commit kan zijn. Deze sessie
+trof iets scherpers: lokaal stond `geoxyz/framework` op 50 commits, de remote ook
+op 50, en `git merge --ff-only origin/geoxyz/framework` weigerde met
+`fatal: refusing to merge unrelated histories`. Het waren twee losse
+orphan-lijnen met dezelfde naam; de lokale eindigde op 2026-09-03, de remote op
+2026-09-05. Een `git pull` zou hier een merge van twee onafhankelijke bomen
+gemaakt hebben en het werk van twee sessies door elkaar geklutst.
+
+Wat werkt: kijk naar `git rev-list --max-parents=0` aan beide kanten. Verschillen
+de roots, dan is de remote de waarheid en gooi je de lokale weg met
+`git reset --hard origin/geoxyz/framework`. Nooit mergen, nooit pullen.
+
+## Een verlopen patch weer op trunk krijgen: `git apply -3`, niet `git am` (2026-09-05)
+
+Bij het verversen van `webhook-tracker-filter` (g05) faalde `git am` op beide
+patchbestanden — precies zoals de review voorspelde. `git apply -3 <bestand>`
+doet wél wat je wilt: het valt terug op een driewegmerge per bestand, past alles
+toe wat schoon kan, en laat alleen het echte conflict als `UU` in de index staan
+(hier `fr.yml`, omdat #44323 het Franse webhookblok intussen vertaald had). Je
+lost dan één conflict op in plaats van de hele patch opnieuw te bouwen.
+
+## Een spiegelassociatie ruimt de rijen op, niet het gedrag (2026-09-05)
+
+Bevinding F02 op `webhook-tracker-filter` had als kop dat het verwijderen van een
+tracker elke hook die erop stond stil weer op "alle trackers" zet. De fix die
+voor de hand ligt en die ook gekozen is — `has_and_belongs_to_many :webhooks` op
+`Tracker`, de spiegel van wat `Project` heeft — verwijdert de jointabelrijen,
+maar verandert die uitkomst **niet**: de hook houdt een lege selectie over en leeg
+betekent nog steeds alle trackers. Wie de bevinding afvinkt op "koppeling
+toegevoegd" heeft de helft gerepareerd die niemand ziet en de helft laten staan
+die de bevinding beschreef. Controleer bij een associatiefix altijd apart wat er
+met het *gedrag* gebeurt, en schrijf het verschil op.
+
+## Absolute querycijfers zeggen niets, het verschil wel (2026-09-05)
+
+De N+1-tabel in dit dossier stond eerst op 5 en 8 queries, de reviewer mat 2 en
+6, deze sessie meet 4 en 8. Alle drie kloppen: het hangt er alleen van af wat je
+uit de `sql.active_record`-stroom wegfiltert. Wat wél reproduceerbaar is, is het
+verschil tussen twee runs van hetzelfde script op dezelfde boom, waarbij je voor
+de tweede run alleen de `preload`-regel weghaalt. Zet daarom in een dossier
+altijd beide kolommen uit één meting, en noem hoe je gefilterd hebt.
