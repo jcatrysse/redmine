@@ -714,3 +714,37 @@ verkeerde instelling.
   blokkeren zolang er een hook naar de tracker wijst) is afgewezen omdat een
   beheerder die trackers opruimt dan gestuit wordt door een hook van iemand
   anders die hij niet eens mag zien. K-11 is hiermee gesloten.
+
+## Uitgevoerd — g08, g05, g10 en g18 voor `search-token-limit` (2026-09-05)
+
+Alle negen bevindingen van de review van 2026-09-03 zijn afgehandeld en hebben
+een `Resolution:`-regel in
+`docs/review/findings/2026-09-03-search-token-limit-claude-opus5.md`.
+
+- **g08 uitgevoerd.** Het filter "Any searchable text" is gerepareerd in plaats
+  van alleen in de tekst rechtgezet. `Redmine::Search::Fetcher` heeft er een
+  optie `:token_limit` bij, standaard 5; `IssueQuery#sql_for_any_searchable_field`
+  geeft `nil` mee. Het zoekvak rechtsboven verandert niet, en een plugin die
+  zelf een `Fetcher` bouwt ook niet — K-04 blijft dus staan zoals hij is.
+- **Bevinding F02 vroeg om een keuze en die is genomen.** De knop "Apply issues
+  filter" onder de zoekresultaten gaf de hele vraag door aan een filter dat na
+  deze patch niet meer afkapt, terwijl de pagina erboven met vijf woorden
+  gezocht had: "Results (1)" met daaronder een knop naar "No data to display".
+  De knop geeft nu de woorden door die de zoekmachine gebruikt heeft, waardoor
+  hij zich precies gedraagt als vandaag in trunk. Er is een
+  regressie-screenshot bij, genomen op de vorige versie van de patch, zodat het
+  verschil te zien is in plaats van alleen te lezen.
+- **g05 en g10 uitgevoerd** voor deze slug: de patchbranch is opnieuw op trunk
+  r25037 gebouwd en alle bewijscijfers zijn in dezelfde beweging opnieuw
+  gedraaid, inclusief de volledige suite mét systeemtests op drie kanten (patch,
+  schone trunk, `7.0-stable-GEOxyz`).
+- **g18 uitgevoerd** voor deze slug: ook de zes kleinere punten zijn gedaan. De
+  `~`-test bewijst nu beide helften in één body, het verhuisde commentaar is
+  vervangen door het waarom, de prestatiecijfers en de AND/OR-asymmetrie staan
+  met getallen in het dossier, het bind-parametervraagstuk is beantwoord
+  (`sanitize_sql_for_conditions` zet de waarden in de tekst, dus nul
+  placeholders), en het bestandsaantal in het GEOxyz-bewijs klopt weer.
+- **F09 vervalt als vraag voor Jan.** Die vroeg of de grens van vijf woorden ook
+  voor het filter "Any searchable text" en voor de knop moest blijven gelden;
+  g08 beantwoordde de eerste helft met "repareren" en deze sessie de tweede met
+  "de knop volgt de zoekmachine".
