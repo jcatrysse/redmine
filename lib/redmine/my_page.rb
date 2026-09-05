@@ -23,9 +23,10 @@ module Redmine
 
     CORE_GROUPS = ['top', 'left', 'right']
 
-    # Upper bound of the my_page_max_issuequery_blocks setting: every block on
-    # My page runs its own query when the page is rendered
-    MAX_ISSUEQUERY_BLOCKS = 10
+    # Upper bound of the my_page_max_issuequery_blocks setting. It is a guard
+    # against a typo rather than a recommendation: every block on My page runs
+    # its own query when the page is rendered
+    MAX_ISSUEQUERY_BLOCKS = 20
 
     CORE_BLOCKS = {
       'issuesassignedtome' => {:label => :label_assigned_to_me_issues},
