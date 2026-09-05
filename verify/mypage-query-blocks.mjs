@@ -10,9 +10,15 @@
 //
 // The point of the before/after pair is the *second* shot: at the default of 3
 // the two instances are identical, which is the answer to note-9 on #27313.
+import { readFileSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { session, report } from '../tools/verify-lib.mjs';
 
 const FIELD = '#settings_my_page_max_issuequery_blocks';
+
+// The blocks are only worth looking at when they display something, so the run
+// creates one public query and points every block at it.
+const QUERY_NAME = 'Verification query';
 
 const mode = process.env.MODE || 'before';
 const prefix = mode === 'before' ? 'before-' : '';
@@ -39,9 +45,52 @@ async function issuesOption() {
 // either way, so the picture is the only place this shows.
 async function shotSelect(name, caption) {
   const file = `${process.env.SHOT_DIR}/${name}.png`;
+  // Park the pointer first: left where a click put it, the browser draws its
+  // native tooltip over the listbox and the two runs no longer produce the
+  // same image.
+  await s.page.mouse.move(0, 0);
+  await s.page.waitForTimeout(300);
   await s.page.locator('#block-select').screenshot({path: file});
   s.shots.push({name, caption, file, url: s.page.url()});
   return file;
+}
+
+function digest(file) {
+  return createHash('sha256').update(readFileSync(file)).digest('hex');
+}
+
+// Creates the public query the blocks display. Idempotent: the dev database is
+// shared between the two runs, so the second one finds it already there.
+async function ensureSavedQuery() {
+  await s.go('/queries?type=IssueQuery');
+  if (await s.page.locator(`a:text-is("${QUERY_NAME}")`).count()) return;
+
+  await s.go('/queries/new?type=IssueQuery');
+  await s.page.fill('#query_name', QUERY_NAME);
+  await s.page.check('#query_visibility_2');
+  await s.page.check('#query_is_for_all');
+  await s.page.click('input[type=submit]');
+  await s.page.waitForLoadState('networkidle');
+  await s.go('/queries?type=IssueQuery');
+  if (!(await s.page.locator(`a:text-is("${QUERY_NAME}")`).count())) {
+    failures.push(`saved query: ${QUERY_NAME} was not created`);
+  }
+}
+
+// A freshly added block shows a "Custom query" form, not an issue list. Point
+// every unconfigured block at the saved query, one page load at a time because
+// each save re-renders the page.
+async function configureBlocks() {
+  for (let i = 0; i < 20; i++) {
+    await s.go('/my/page');
+    const select = s.page.locator('.mypage-box select[name^="settings["]').first();
+    if (!(await select.count())) return;
+    await select.selectOption({label: QUERY_NAME});
+    await select.locator('xpath=ancestor::form').locator('input[type=submit]').click();
+    await s.page.waitForLoadState('networkidle');
+    await s.page.waitForTimeout(300);
+  }
+  failures.push('configureBlocks: blocks left unconfigured after 20 rounds');
 }
 
 async function blockCount() {
@@ -79,6 +128,8 @@ async function setMaximum(value) {
   return true;
 }
 
+await ensureSavedQuery();
+
 // 1. The setting itself. Absent before, present with its default of 3 after.
 await s.go('/settings?tab=general');
 const present = await s.page.locator(FIELD).count() > 0;
@@ -102,6 +153,7 @@ await clearBlocks();
 await addBlock();
 await addBlock();
 await addBlock();
+await configureBlocks();
 let option = await issuesOption();
 if (!option) failures.push('dropdown-at-default-maximum: no Issues entry in the select');
 if (option && !option.disabled) {
@@ -113,10 +165,21 @@ await s.shot(
   `${prefix}dropdown-at-default-maximum`,
   'Three issue query blocks at the default limit, and the add-block list beside them'
 );
-await shotSelect(
+const defaultSelect = await shotSelect(
   `${prefix}select-at-default-maximum`,
   '"Issues" greyed out at the default of 3 — the same on both instances, which is what makes the patch safe to take'
 );
+
+// The note's central claim is that nothing changes at the default, so the run
+// proves it rather than leaving it to a human to assert.
+if (after) {
+  const beforeShot = `${process.env.SHOT_DIR}/before-select-at-default-maximum.png`;
+  if (!existsSync(beforeShot)) {
+    failures.push('select-at-default-maximum: no before shot to compare with — run MODE=before first');
+  } else if (digest(beforeShot) !== digest(defaultSelect)) {
+    failures.push('select-at-default-maximum: the before/after pair is not the same image');
+  }
+}
 
 // 3. Raising the limit re-enables the entry. Impossible before: the shot shows
 //    the same greyed-out entry, because there is nothing to raise.
@@ -141,6 +204,8 @@ await shotSelect(
 // 4. And the fourth block actually appears.
 if (after) {
   await addBlock();
+  await configureBlocks();
+  await s.go('/my/page');
   count = await blockCount();
   if (count !== 4) failures.push(`fourth-block: ${count} blocks, expected 4`);
 } else {
@@ -169,6 +234,39 @@ if (after) {
   await shotSelect(
     'select-lowered-maximum',
     'The same lowered limit in the add-block list — "Issues" greyed out again'
+  );
+  await setMaximum(3);
+}
+
+// 6. Failure path: the setting has a range now, so a value outside it is
+//    refused at the form instead of being stored and then quietly ignored.
+if (after) {
+  await s.go('/settings?tab=general');
+  await s.page.fill(FIELD, '11');
+  await s.page.click('input[type=submit]');
+  await s.page.waitForLoadState('networkidle');
+  if (!(await s.page.locator('#errorExplanation').count())) {
+    failures.push('rejected-out-of-range: 11 was accepted without an error');
+  }
+  await s.page.mouse.move(0, 0);
+  await s.shot(
+    'rejected-out-of-range',
+    'Above the upper bound the form refuses the value and says so, instead of storing it'
+  );
+  await s.go('/settings?tab=general');
+  const kept = await s.page.locator(FIELD).inputValue();
+  if (kept !== '3') failures.push(`rejected-out-of-range: stored value is ${kept}, expected 3`);
+
+  // 7. And the low end of that range: 0 means no new query blocks at all,
+  //    which is what note-5 on #27313 asked for.
+  await setMaximum(0);
+  option = await issuesOption();
+  if (!option.disabled) failures.push('zero-maximum: Issues is still enabled at limit 0');
+  count = await blockCount();
+  if (count !== 4) failures.push(`zero-maximum: ${count} blocks left, expected the 4 to survive`);
+  await shotSelect(
+    'select-zero-maximum',
+    'Limit 0 — no new custom query block can be added, and the four already on the page still render'
   );
   await setMaximum(3);
 }

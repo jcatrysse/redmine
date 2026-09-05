@@ -63,12 +63,13 @@ the six tests turns out not to discriminate anything (F05).
 
 ### F01 — The locales patch does not apply to current `origin/master`
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** blocker
 - **Confidence:** confirmed
 - **Category:** conventions (patch hygiene)
 - **Where:** `patches/mypage-query-blocks/2026-09-03-r24882-locales.patch`, hunk `config/locales/fr.yml:1542`
 - **Invariant touched:** INV-2 (and G6)
+- **Resolution:** fixed 2026-09-05 — branch rebased onto `bee32a926` (r25037) and both patch files regenerated; `--submit` passes
 
 **What is wrong**
 
@@ -114,18 +115,26 @@ should not cost time: the three French pattern keys the dossier cites
 unchanged by #44323, and the `en.yml` insertion point next to
 `setting_activity_days_default` still exists. Only the diff context has moved.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The branch was rebased onto a freshly
+fetched `origin/master` (`bee32a926` = r25037, 88 commits on from the old branch
+point) and both patch files regenerated. The only conflict was the one this
+finding names: `890812e49` translated the tail of `fr.yml`, so the French half
+was resolved by keeping trunk's translations and re-appending the new key. The
+three French pattern keys and the `en.yml` insertion point were re-checked and
+are where the dossier says they are. `tools/check-patch-clean.sh
+mypage-query-blocks --submit` now passes.
 
 ---
 
 ### F02 — `before-select-at-default-maximum.png` and `select-at-default-maximum.png` are not the same image, and the "after" one has a stray "Delete" tooltip in it
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** dossier
 - **Where:** `docs/features/mypage-query-blocks/shots/{before-,}select-at-default-maximum.png`; the claim is in `dossier.md` ("Anticipated objections", row 1: "are the same picture") and in `status.md` ("Wat Jan nog moet doen": "het voor/na-paar … is dezelfde afbeelding")
 - **Invariant touched:** none (G9)
+- **Resolution:** fixed 2026-09-05 — the pointer is parked before every select crop, and the run asserts the before/after pair by SHA-256
 
 **What is wrong**
 
@@ -168,18 +177,25 @@ something a human asserts — or keep two images and reword the claim to what is
 actually true. The first is much stronger for the note, and it costs one line in
 `verify/mypage-query-blocks.mjs`.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, and by the first of the two routes the
+finding suggests. `shotSelect` in `verify/mypage-query-blocks.mjs` now parks the
+pointer with `page.mouse.move(0, 0)` before every crop, so no native tooltip can
+land in the image, and the `after` run compares
+`before-select-at-default-maximum.png` with its own shot by SHA-256 and fails if
+they differ. The claim in the dossier and in `status.md` is now something the
+script proves rather than something a human asserts.
 
 ---
 
 ### F03 — The clamp to a minimum of 1 is justified with a reason that is not true, and it removes the setting value that answers note-5 best
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** correctness
 - **Where:** `lib/redmine/my_page.rb:71-73`; the justification is in `dossier.md` ("Proposed change", the input table's `0` row, and the "Anticipated objections" table) and in the commit message of `ec6466159`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — the clamp is gone, `0` means no new blocks, and out-of-range is refused in the form (Jan g16b)
 
 **What is wrong**
 
@@ -256,18 +272,28 @@ must not survive either way is the current combination: silently accept, silentl
 redisplay, silently ignore — and a commit message that explains it with something
 untrue.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, by the first of the two ends the finding
+offers, combined with Jan's g16b. The clamp is gone: `MyPage.max_occurs` returns
+`Setting[...].to_i` unchanged, so `0` means "no new custom query blocks", which
+is what note-5 asks for. What used to be silently swallowed is now refused where
+the administrator can see it: `Setting.validate_all_from_params` rejects
+anything outside `0..Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS`, in the same place
+and with the same messages `default_issue_due_date_offset` uses. The commit
+message no longer explains a clamp that is not there. Pinned by three new tests
+in `settings_controller_test.rb` and by
+`test_add_issuequery_block_with_the_maximum_set_to_zero_should_error`.
 
 ---
 
 ### F04 — The asynchronous-loading measurement table is not reproducible as presented, and one sentence double-counts the baseline
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
 - **Where:** `dossier.md`, section "What asynchronous loading would and would not fix"
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — table re-measured on Redmine's own fixtures, with the conditions and the marginal cost stated
 
 **What is wrong**
 
@@ -327,18 +353,27 @@ reader who measures a different absolute number can still check the shape. The
 query-cache observation is worth one sentence: it is the honest form of "the
 worst case needs six different queries".
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The table was re-measured on Redmine's own
+test fixtures — the dataset a reviewer has — with the conditions stated next to
+it: the revision, the fixture set, one distinct public `IssueQuery` per block,
+`sql.active_record` counted with `SCHEMA` and cached statements excluded, and a
+warm request before each measured one. It now gives the marginal cost per block
+as well as the totals, so a reader whose absolute numbers differ can still check
+the shape. The "~41 queries a single block costs" sentence is gone. The
+query-cache observation is in the dossier too, because it is the honest form of
+"the worst case needs six different queries".
 
 ---
 
 ### F05 — `test_page_should_render_issuequery_blocks_over_a_lowered_maximum` does not discriminate the change, but the dossier lists it as proof
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
 - **Where:** `test/functional/my_controller_test.rb:256-273`; the claim is in `dossier.md`'s "Tests" table and in the "Anticipated objections" row about lowered limits
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — labelled as a guard in the dossier, and the discriminating case added as a second test
 
 **What is wrong**
 
@@ -392,18 +427,25 @@ a discriminating version is wanted as well, the case that separates old from new
 is a lowered limit with *fewer* blocks than 3 in use (limit 2 with two blocks:
 old code enables the option, new code disables it).
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, both ways the finding suggests. The test is
+kept and is now labelled in the dossier's test table as a deliberate guard,
+green on both sides, with what it would catch; and the discriminating case the
+finding describes was added as
+`test_page_should_disable_issuequery_option_at_a_lowered_maximum` — limit 2 with
+two blocks in use, which the old code leaves enabled. Verified red on the old
+code by reverting only `lib/redmine/my_page.rb`.
 
 ---
 
 ### F06 — `MyPage.max_occurs` is new public API with no unit test, an unguarded `nil` dereference, and a silently changed return type on `MyPage.blocks`
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** backward-compat
 - **Where:** `lib/redmine/my_page.rb:68-74`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — the lookup is guarded and `test/unit/lib/redmine/my_page_test.rb` covers the five cases
 
 **What is wrong**
 
@@ -456,18 +498,26 @@ add the unit test; if it is not, that is a defensible answer too, and then say s
 rather than leaving a bare public `def self.`. Either way the integer branch
 deserves the one assertion that proves the compatibility claim.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. `max_occurs` is public API and now behaves
+like one: the lookup is `blocks.fetch(block, {})[:max_occurs] || 1`, so a block
+id such as `issuequery__1` returns 1 instead of raising `NoMethodError`. The new
+`test/unit/lib/redmine/my_page_test.rb` covers the five cases — default,
+integer, setting-named, zero, unknown name — including the integer branch that
+carries the plugin-compatibility claim. The changed return type of
+`MyPage.blocks['issuequery'][:max_occurs]` stays disclosed in the dossier; it is
+the price of the feature and there is no way to have both.
 
 ---
 
 ### F07 — The `config/settings.yml` comment restates the setting's own label
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** minimality
 - **Where:** `config/settings.yml:92`
 - **Invariant touched:** INV-3
+- **Resolution:** fixed 2026-09-05 — the comment is dropped
 
 **What is wrong**
 
@@ -493,18 +543,21 @@ header; the immediate neighbours are uncommented.
 
 Drop it, or keep it and stop counting it — this is a judgement call, not a defect.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05 — the comment is dropped. It said what the
+key name says, its four neighbours in that file carry none, and INV-1 is easier
+to defend at zero unnecessary lines.
 
 ---
 
 ### F08 — One locale citation in the dossier is off by one line
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** i18n
 - **Where:** `dossier.md`, translations table, `en` row
 - **Invariant touched:** INV-5
+- **Resolution:** fixed 2026-09-05 — the `en` row now cites `en.yml:500`; all fifteen citations re-read against r25037
 
 **What is wrong**
 
@@ -534,18 +587,22 @@ that do not get the key fall back to English rather than showing
 
 Change 501 to 500 when the patch is regenerated for F01 anyway.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The `en` row now cites `en.yml:500`. All
+fifteen citations were re-read against `bee32a926` while the patch was being
+refreshed; the other fourteen still land, and the four translated files are
+unaffected because their keys are appended at the end.
 
 ---
 
 ### F09 — Every screenshot shows an *unconfigured* query block, so the feature's actual payload was never seen in a browser
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
 - **Where:** `docs/features/mypage-query-blocks/shots/*.png`; `tools/dev-seed.rb`
 - **Invariant touched:** none (G9)
+- **Resolution:** fixed 2026-09-05 — the verification run creates a public query and points every block at it, so the shots show real issue lists
 
 **What is wrong**
 
@@ -580,18 +637,25 @@ script) and select it in at least the fourth block, so one "after" shot shows a
 real list. That is also the shot worth attaching to the issue. Whether
 `tools/dev-seed.rb` grows a query belongs to a framework session, not this one.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, within this feature's own files as the
+finding suggests. `verify/mypage-query-blocks.mjs` now creates one public
+`IssueQuery` through the UI and points every block at it, in both modes, so the
+shots show rendered issue lists instead of empty selection forms. The
+before/after pair stays comparable because both runs use the same dev database
+and the query is created idempotently. `tools/dev-seed.rb` is unchanged — it is
+a framework file, and a query in the seed is a framework session's call.
 
 ---
 
 ### F10 — No upper bound: 999999 is accepted, and the cost is linear in the number of blocks
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** question
 - **Confidence:** confirmed
 - **Category:** settings-surface
 - **Where:** `config/settings.yml:93-95`; `lib/redmine/my_page.rb:71-73`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — bounded to `0..Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS` (10) per Jan g16b; which number stays an open choice for Jan
 
 **What is wrong — and this is a settled decision, so it is a question for Jan, not a finding against the patch**
 
@@ -631,7 +695,13 @@ sentence citing the `timelog` precedent and offering the one-line cap is stronge
 than the current "we did not cap it because core does not cap other things",
 because core does cap this one.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05 — Jan reopened the settled decision himself
+(g16b, 2026-09-04) and chose to bound the setting. It is now
+`0..Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS` (10), refused in the form rather
+than clamped, and the dossier leads with the `render_timelog_block` precedent
+this finding supplied. The remaining judgement — whether 10 is the right ceiling
+— is written up as an open choice for Jan in the dossier and in
+`docs/DECISIONS.md`; it is one constant either way.
 
 ---
 

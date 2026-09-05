@@ -21,12 +21,21 @@
   [#27313](https://www.redmine.org/issues/27313) (bestaand issue, dus **geen**
   nieuw issue aanmaken), en in die note het antwoord op note-9 van JPL zetten.
   De Engelse tekst staat hieronder kant-en-klaar vanaf "The problem".
+- **Wat er in ronde 2 veranderd is (2026-09-05):** de instelling heeft nu een
+  bereik — 0 tot en met 10 — en alles daarbuiten wordt in het formulier
+  geweigerd in plaats van stilletjes anders uitgelegd. Daarmee is `0` een
+  bruikbare waarde geworden ("geen nieuwe eigen zoekopdrachten meer"), wat
+  precies is wat note-5 op dat issue vroeg, en is de bovengrens uit de
+  issuebeschrijving ("certainly with some maximum") ingevuld. Welk getal die
+  bovengrens moet zijn is een keuze die onderaan dit dossier voor jou
+  openstaat.
 
 ## Trunk check (G1)
 
-- **Trunk-revisie nagekeken:** `2563fa6a5` = svn r24882 van 2026-08-03. De
-  mirror liep één maand achter op de sessiedatum (2026-09-03); dat is de trap
-  uit `docs/STATE.md` en de reden dat de revisie in het issue genoemd wordt.
+- **Trunk-revisie nagekeken:** `bee32a926` = svn **r25037** van 2026-09-05,
+  opnieuw opgehaald bij het verversen van de patch. De eerste versie van dit
+  dossier stond op `2563fa6a5` (r24882, 2026-08-03); die 88 commits verschil
+  waren precies waarom het locale-patchbestand niet meer toepasbaar was.
 - **Lost trunk dit al op?** Nee. `lib/redmine/my_page.rb` heeft nog steeds
   `'issuequery' => {:label => :label_issue_plural, :max_occurs => 3}`, en
   `Redmine::MyPage.block_options` is de enige plek die `:max_occurs` leest.
@@ -63,7 +72,7 @@
 - **Verandert iets in trunk het ontwerp?** Ja, en dit is het belangrijkste
   resultaat van de trunk-check. `app/views/my/page.html.erb` rendert nog steeds
   elk blok synchroon via `MyHelper#render_blocks`; het bezwaar van JPL uit 2018
-  geldt dus onverkort in r24882. Een patch die de standaard verhoogt (de patch
+  geldt dus onverkort in r25037. Een patch die de standaard verhoogt (de patch
   van Go MAEDA) loopt daar recht tegenaan. Een patch die de **standaard laat
   staan** en alleen de beheerder de knop geeft, niet — en die vorm is precies
   wat de issuebeschrijving en note-5 vragen. Daarom is dit een instelling met
@@ -114,13 +123,27 @@ Redmine keeps every other number of this kind.
 # Proposed change
 
 `:max_occurs` may now name a setting instead of holding an integer. When it is a
-symbol, the limit is read from that setting and clamped to a minimum of 1, so a
-blank or zero value cannot silently disable a block that a user already has on
-their page. When it is an integer, nothing changes, so any block that declares a
-plain `:max_occurs` keeps working.
+symbol, the limit is read from that setting; when it is an integer, nothing
+changes, so any block that declares a plain `:max_occurs` keeps working.
 
 The literal 3 moves from the constant to `config/settings.yml`, which leaves one
 place where the default lives.
+
+The setting is accepted between `0` and `Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS`
+(10). Anything outside that range is refused in the settings form, next to the
+field, the way `default_issue_due_date_offset` already refuses a negative in
+`Setting.validate_all_from_params`. Both ends of the range earn their keep:
+
+- `0` means no new custom query block may be added at all. That is what note-5
+  on #27313 asks for, and it is the direction the hardcoded 3 makes impossible
+  today. It removes nothing: a user who already has blocks keeps them.
+- the upper bound answers the issue description's own "certainly with some
+  maximum". Every block is a real marginal cost (see the measurements below),
+  and Redmine clamps the other My page block setting at both ends already —
+  `MyHelper#render_timelog_block` does `days = 7 if days < 1 || days > 365`.
+
+Nothing is silently reinterpreted: a value the form accepts is the value that
+runs.
 
 | File | Change |
 |---|---|
@@ -129,7 +152,14 @@ place where the default lives.
 | `app/views/settings/_general.html.erb` | the field, after `activity_days_default` |
 | `config/locales/en.yml` | `setting_my_page_max_issuequery_blocks` |
 | `config/locales/{nl,fr,de,es}.yml` | the same key, translated (second patch file) |
-| `test/functional/my_controller_test.rb` | six tests |
+| `app/models/setting.rb` | `validate_all_from_params` refuses a value outside `0..Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS` |
+| `test/functional/my_controller_test.rb` | seven tests |
+| `test/functional/settings_controller_test.rb` | three tests for the range |
+| `test/unit/lib/redmine/my_page_test.rb` | new file, five tests for `MyPage.max_occurs` |
+
+**New constant:** one, `Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS`, the upper end
+of the range. It sits next to the block declarations it bounds, so the setting's
+validation and the block table do not drift apart.
 
 **New setting:** one, `my_page_max_issuequery_blocks` (`format: int`,
 `default: 3`). It is the whole point of the change, and INV-6's null hypothesis
@@ -146,7 +176,7 @@ display limits: `per_page_options`, `search_results_per_page`,
 
 | Locale | Value | Patterned on |
 |---|---|---|
-| en | Maximum number of custom queries displayed on My page | `setting_gantt_items_limit` (en.yml:501, "Maximum number of items displayed on the gantt chart") + `label_query_plural` (812, "Custom queries") + `label_my_page` (695, "My page") |
+| en | Maximum number of custom queries displayed on My page | `setting_gantt_items_limit` (en.yml:500, "Maximum number of items displayed on the gantt chart") + `label_query_plural` (812, "Custom queries") + `label_my_page` (695, "My page") |
 | nl | Max. aantal eigen zoekopdrachten op Mijn pagina | `setting_gantt_items_limit` (nl.yml:880, "Max. aantal objecten op Gantt-grafiek") + `label_query_plural` (506, "Eigen zoekopdrachten") + `label_my_page` (465, "Mijn pagina") |
 | fr | Nombre maximum de rapports personnalisés affichés sur Ma page | `setting_gantt_items_limit` (fr.yml:452, "Nombre maximum d'éléments affichés sur le gantt") + `label_query_plural` (722, "Rapports personnalisés") + `label_my_page` (618, "Ma page") |
 | de | Maximale Anzahl anzuzeigender eigener Abfragen auf "Meine Seite" | `setting_diff_max_lines_displayed` (de.yml:1011, "Maximale Anzahl anzuzeigender Diff-Zeilen") + `label_my_queries` (651, "Meine eigenen Abfragen") + `label_my_page` (649, "Meine Seite") |
@@ -192,13 +222,15 @@ page-load time whether it wanted it or not, and note-5 on the same issue
 describes a server that was already suffering at five. It also only moves the
 argument: 5 is as arbitrary as 3, and the next request will be for 10.
 
-**Cap the setting at some maximum**, as the issue description suggests
-("certainly with some maximum"). A cap in core is another arbitrary number, and
-it would be a strange thing for core to insist on: Redmine does not cap
-`issues_export_limit`, `gantt_items_limit`, `attachment_max_size` or
-`activity_days_default` either. The administrator setting the number is the
-person who knows the server. If a committer wants a cap, it is a one-line change
-to `MyPage.max_occurs` and this patch is happy to carry it.
+**Leave the setting unbounded**, as `issues_export_limit`,
+`gantt_items_limit` and `activity_days_default` are. That was the first shape of
+this patch, and it does not survive contact with the field: `999999` was
+accepted and returned as the limit, and `0` and `-2` were stored, redisplayed in
+the form and then silently treated as 1. The neighbouring settings are not a
+good precedent either, because Redmine does bound this kind of number where a
+My page block is involved — `MyHelper#render_timelog_block` clamps its `days`
+setting to `1..365`. A range that is refused at the form is both what #27313's
+description asks for and the honest version of what the code does.
 
 **Make My page load its blocks asynchronously first**, which is what note-9
 asks for. That is a much larger change to `MyHelper#render_blocks`,
@@ -223,12 +255,17 @@ the one who has to defend the server.
 
 | Test | What it proves |
 |---|---|
-| `test_page_should_disable_issuequery_option_at_the_default_maximum` | with three blocks and no setting touched, "Issues" is disabled — the default is still 3 |
+| `test_page_should_disable_issuequery_option_at_the_default_maximum` | with three blocks and no setting touched, "Issues" is disabled — the default is still 3. **A guard, deliberately green on both sides:** it is the test that fails if anyone changes the default, which is this patch's central promise. Changing `config/settings.yml` from 3 to 5 makes it fail. |
 | `test_page_should_enable_issuequery_option_below_the_configured_maximum` | at 5, the option is enabled with the next id `issuequery__3` |
-| `test_page_should_render_issuequery_blocks_over_a_lowered_maximum` | at 2 with three blocks already in place, all three still render and only the option goes disabled |
+| `test_page_should_disable_issuequery_option_at_a_lowered_maximum` | at 2 with two blocks in use, "Issues" is disabled — the old code enables it, so this is the test that pins the *lowering* direction |
+| `test_page_should_render_issuequery_blocks_over_a_lowered_maximum` | at 2 with three blocks already in place, all three still render. **Also a guard:** rendering never consults the limit, on the old code or the new one, so this test passes on both. It is here to fail if a future change ever starts dropping blocks. |
 | `test_add_issuequery_block_over_the_configured_maximum_should_error` | `POST /my/add_block` is refused with 422 and the layout is unchanged — the limit is not only a dropdown attribute |
 | `test_add_issuequery_block_below_the_configured_maximum` | at 5, the fourth block is actually stored in the preference |
-| `test_add_issuequery_block_with_the_maximum_set_to_zero_should_allow_one_block` | the clamp: `0` does not disable the block type |
+| `test_add_issuequery_block_with_the_maximum_set_to_zero_should_error` | `0` means no new block, and the request that tries anyway gets 422 |
+| `test_post_edit_with_my_page_max_issuequery_blocks_over_the_upper_bound_should_error` | one over the bound is refused in the form and nothing is stored |
+| `test_post_edit_with_negative_my_page_max_issuequery_blocks_should_error` | the same at the low end |
+| `test_post_edit_with_my_page_max_issuequery_blocks_set_to_zero` | `0` itself is accepted and stored — the range is `0..`, not `1..` |
+| `test/unit/lib/redmine/my_page_test.rb` (5) | `MyPage.max_occurs`: the default of 1, an integer `:max_occurs` (the plugin compatibility claim), the setting-named one, `0`, and an unknown block name — including a block *id* such as `issuequery__1`, which is the shape `find_block` accepts and which used to raise `NoMethodError` |
 
 **Evidence (INV-8 — figures, not claims):**
 
@@ -338,10 +375,12 @@ anybody who does not set it.
 
 | Objection | Answer |
 |---|---|
-| "We should probably load content asynchronously before raising the number of queries that can be displayed." (note-9, #27313) | Agreed, and this patch raises nothing. The default is 3, so an installation that does not touch the setting renders exactly what it renders today — `before-select-at-default-maximum.png` and `select-at-default-maximum.png` are the same picture. The async work is a prerequisite for a higher *default*, not for letting an administrator choose. It also cuts the other way: today an installation that is suffering from dashboard queries cannot ask for fewer than three, and note-5 on the same issue is exactly that installation. |
+| "We should probably load content asynchronously before raising the number of queries that can be displayed." (note-9, #27313) | Agreed, and this patch raises nothing. The default is 3, so an installation that does not touch the setting renders exactly what it renders today — `before-select-at-default-maximum.png` and `select-at-default-maximum.png` are the same picture, and that is asserted by the verification script itself: the run compares the two files by SHA-256 and fails if they differ. The async work is a prerequisite for a higher *default*, not for letting an administrator choose. It also cuts the other way: today an installation that is suffering from dashboard queries cannot ask for fewer than three, and note-5 on the same issue is exactly that installation. |
 | Why not simply `max_occurs => 5`, as proposed in note-8? | That is the change note-9 declined, it costs every installation whether it wanted it or not, and 5 is as arbitrary as 3. See "Alternatives considered". |
 | A setting is permanent API and translation surface; is one number worth it? | The number is already core's, in a constant nobody can reach. This adds one `format: int` row to `config/settings.yml`, one field on an existing tab and one locale key — the same shape as `feeds_limit`, `gantt_items_limit` and `issues_export_limit`. No migration, no permission, no route. |
-| Should the setting be capped, as #27313's description suggests? | We did not cap it, because core does not cap `issues_export_limit`, `gantt_items_limit` or `activity_days_default` either, and any cap is another arbitrary number. If you want one, it is one line in `MyPage.max_occurs`. |
+| Should the setting be capped, as #27313's description suggests? | It is. The field accepts `0..10` and refuses anything else in the form, so an administrator cannot type a number the page cannot serve. The precedent is in the same helper: `MyHelper#render_timelog_block` clamps its `days` setting to `1..365`. The upper end is a judgement — 10 is what the issue description itself proposes ("up to 10") and double what note-8 asked for — and it is one constant, `Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS`, if you want a different number. |
+| Why is `0` allowed at all? | Because it is the value note-5 on this issue is asking for: an installation that has been hurt by dashboard queries can stop new custom query blocks being added. It removes nothing — the blocks a user already has keep rendering — and it is pinned by `test_add_issuequery_block_with_the_maximum_set_to_zero_should_error` and by `select-zero-maximum.png`. |
+| An out-of-range value used to be accepted and reinterpreted. | Not any more, and that is the one behaviour change since the first version of this patch. `Setting.validate_all_from_params` refuses it with `activerecord.errors.messages.greater_than_or_equal_to` / `less_than_or_equal_to`, the same messages and the same place `default_issue_due_date_offset` uses, so there is no new translation surface. |
 | `:max_occurs` now holds either an integer or a symbol. | It is resolved in exactly one place, `MyPage.max_occurs`, and an integer still means what it always did, so a block declaring a plain number keeps working. The alternative was to keep the literal `3` in the constant *and* add the setting, which leaves two sources for one default. |
 | What happens to a user who has more blocks than a lowered limit? | Nothing is removed or hidden. `block_options` only decides whether a *new* block can be added; the existing ones keep rendering. Proved by `test_page_should_render_issuequery_blocks_over_a_lowered_maximum` and by `lowered-maximum.png`, which shows four blocks with the limit at 1. |
 | `Setting[...]` inside a method called once per block on every My page render. | `Setting.[]` reads `@cached_settings`, and `block_options` already called `Redmine::MyPage.blocks[block][:max_occurs]` once per block before this patch. `MyPage.max_occurs` does the same one hash build plus a cached settings read; the per-render cost is unchanged. |
