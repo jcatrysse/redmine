@@ -586,3 +586,25 @@ Twee gevolgen:
 
 Gemeten met een wegwerp-worktree op `origin/master` per bestand:
 `git am --3way`, bij falen `git apply --check`.
+## Patches en regels
+
+- **De branch en het patchbestand lopen uiteen, en niets merkt het.**
+  `patch/wiki-export-attachments` (`2cb6231c7`) droeg het ontwerp dat Jan in
+  K-02 juist afwees; `patches/wiki-export-attachments/*.patch` droeg het
+  gekozen ontwerp. Ze verschillen in tien bestanden, waaronder een hele view
+  (`_export_options.html.erb`) die alleen in het patchbestand bestaat.
+  `tools/check-patch-clean.sh` keek naar de branch en zei PASS. Sinds
+  2026-09-05 leest hij de patchbestanden en vergelijkt hij ze met de branch —
+  draai hem op de **slug**, niet op de branch.
+- **Een regel die verval meet in plaats van kwaliteit wordt genegeerd.** De
+  oude INV-2 eiste dat een branch van het *huidige* `origin/master` afstamt.
+  Op 2026-09-05 faalden alle negen branches daarop, puur omdat trunk 88
+  commits verder stond — terwijl zes van de negen nog schoon applyden. Een
+  gate die altijd rood staat, zegt niets meer. Nu is het een waarschuwing, en
+  pas fataal met `--submit`, vlak voor het indienen.
+- **Controleer een aanname over Redmine voordat je er een regel van maakt.**
+  INV-3 zei dat Redmine "vrijwel commentaarloos" is. Gemeten op r25037: 1075
+  van de 3701 methodes in `app/{models,controllers,helpers}` en `lib/redmine`
+  hebben een commentaarregel er direct boven — 29%, inclusief
+  `MailHandler.extract_options_from_env`. Wat wél zeldzaam is, is commentaar
+  *binnen* een methode: 683 regels op ~55.600.
