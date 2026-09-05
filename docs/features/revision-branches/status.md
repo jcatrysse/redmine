@@ -3,9 +3,9 @@ slug: revision-branches
 feature: Git-branches op de revisie- en de issuepagina
 commit_51: cf826e3fd
 geoxyz: live
-geoxyz_commit: 115230bc2
+geoxyz_commit: 115230bc2 + 8c1fa23fb
 upstream: patch klaar
-patch: patches/revision-branches/2026-09-03-r24882-feature.patch
+patch: patches/revision-branches/2026-09-05-r25037-feature.patch
 issue: 5386
 ---
 
@@ -13,13 +13,18 @@ issue: 5386
 
 ## Waar het staat
 
+**Ronde 2 is af (2026-09-05).** Alle elf bevindingen van de review hebben een
+`Resolution:`-regel en zijn opgelost — niets weggeredeneerd, één keuze (F11)
+beantwoord door Jans g12. De patch is daarna opnieuw opgebouwd op verse trunk
+**r25037** (`bee32a926`, g05) en de bewijscijfers zijn in dezelfde beweging
+opnieuw gedraaid (g10).
+
 Af en klaar om in te dienen. De patch is opnieuw ontworpen, niet geport: van de
 5.1-commit `cf826e3fd` is de bedoeling overgenomen en verder niets. Hij ligt in
-twee bestanden onder `patches/revision-branches/`, gemaakt tegen trunk r24882,
-en dezelfde wijziging staat als commit `115230bc2` op
+twee bestanden onder `patches/revision-branches/`, gemaakt tegen trunk r25037,
+en dezelfde wijziging staat als de commits `115230bc2` + `8c1fa23fb` op
 `7.0-stable-GEOxyz`. De volledige suite is aan beide kanten gedraaid, RuboCop
-is schoon, en de functie is in een echte browser nagelopen met tien
-screenshots.
+is schoon, en de functie is in een echte browser nagelopen.
 
 De trunk-check leverde het belangrijkste van deze sessie op: dit hoort **niet**
 als nieuw issue. **#5386** bestaat sinds 2010, heeft 42 notes, en Jan staat er
@@ -27,17 +32,24 @@ zelf in als note #42. Daar staan ook de vier bezwaren van kerncommitter Toshi
 MARUYAMA die dit ontwerp moet weerleggen (notes 4, 17, 18 en 20). Ze staan
 woordelijk in het dossier, met per bezwaar het antwoord. Note 20 is de
 verrassing: die zegt dat als de issuepagina git gaat aanroepen, robots ook van
-de issuepagina moeten worden geweerd — en dat gaat niet op, want het tabblad
-"Geassociëerde revisies" is `:remote => true` zonder partial en wordt pas via
-XHR opgehaald, dus een crawler zonder JavaScript raakt het nooit. De
-revisiepagina staat al in `robots.txt` (`Disallow: /projects/<p>/repository`).
+de issuepagina moeten worden geweerd. Het antwoord staat sinds ronde 2 op het
+juiste slot: het tabblad "Geassociëerde revisies" is `:remote => true` zonder
+partial, én `IssuesController#issue_tab` begint met
+`render_error :status => 422 unless request.xhr?` — de URL is dus ook
+rechtstreeks niet op te halen. Wat overblijft is een crawler die JavaScript
+uitvoert; die wordt begrensd door de bovengrens op de tab. De revisiepagina
+staat al in `robots.txt` (`Disallow: /projects/<p>/repository`).
 
 ## Wat het doet
 
-Op de revisiepagina en bij "Geassociëerde revisies" van een issue komt er een
-regel met de Git-branches waarin die commit zit, elk als link naar de
-repository op die branch. Staat standaard uit; een beheerder zet het per
-weergave aan en kan branchnamen wegfilteren met een lijst namen of patronen.
+Op de revisiepagina (en op de diffpagina, die dezelfde partial rendert) en bij
+"Geassociëerde revisies" van een issue komt er een regel met de Git-branches
+waarin die commit zit, elk als link naar de repository op die branch. Staat
+standaard uit; een beheerder zet het per weergave aan en kan branchnamen
+wegfilteren met een lijst namen of patronen. De issuetab draait het commando
+niet meer boven `repository_log_display_limit` revisies (standaard 100): één
+Git-proces per rij, dus dat aantal is nu begrensd door een getal dat de
+beheerder toch al instelt.
 
 ## Bewijs
 
@@ -66,18 +78,19 @@ category SCM) — **geen nieuw issue**, dit is het hoofdissue voor dit onderwerp
 sinds 2010 en je staat er zelf in als note #42 van 2024-08-07. Hang er twee
 bestanden aan:
 
-- `patches/revision-branches/2026-09-03-r24882-feature.patch` — de code plus
+- `patches/revision-branches/2026-09-05-r25037-feature.patch` — de code plus
   `en.yml`
-- `patches/revision-branches/2026-09-03-r24882-locales.patch` — alleen `nl`,
+- `patches/revision-branches/2026-09-05-r25037-locales.patch` — alleen `nl`,
   `fr`, `de` en `es`
 
 De notetekst staat in `docs/features/revision-branches/dossier.md` vanaf
 "# The problem"; die is in het Engels en kan zo gekopieerd worden. Vermeld dat
-het tegen trunk r24882 is gemaakt. Twee dingen zijn het waard om in de note
+het tegen trunk r25037 is gemaakt. Drie dingen zijn het waard om in de note
 expliciet te noemen, want ze zijn het verschil met de zeven eerdere patches op
 dat issue: er wordt **niets** in de database bewaard (dat is het antwoord op
-note 17), en de weergave staat **standaard uit** (dat is het antwoord op
-note 18).
+note 17), de weergave staat **standaard uit**, en het aantal Git-processen op
+de issuetab is **begrensd** door `repository_log_display_limit` (dat samen is
+het antwoord op note 18).
 
 Daarnaast staat er één keuze voor je open, zie `docs/DECISIONS.md` — die
 blokkeert het indienen niet.
@@ -91,9 +104,12 @@ blokkeert het indienen niet.
   2026-09-01 (Git-only houden, het commando eronder houden, de vier
   instellingen houden, en de reactie van het core-team afwachten) is gevolgd en
   blijkt door de issuegeschiedenis **gesteund**: notes 4 en 17 verwerpen juist
-  een database-cache, en note 20 zegt dat de repositorypagina toch al drie
-  git-commando's aanroept en daarom al robot-uitgesloten is. Dus niet opnieuw
-  wegen of we een cache moeten bouwen of moeten splitsen.
+  een database-cache. Dus niet opnieuw wegen of we een cache moeten bouwen of
+  moeten splitsen. **Let op één correctie uit ronde 2 (F03):** note 20's "drie
+  git-commando's" gaat over de *repository-bladerpagina*, niet over de
+  revisiepagina. Die laatste roept op trunk **nul** SCM-commando's aan en
+  krijgt er met deze patch precies één bij. Gebruik die zin dus niet meer als
+  verdediging — hij is aantoonbaar onwaar en staat niet meer in het dossier.
 - **De vier instellingen hebben nu een verdediging per stuk,** en het paar
   `revision_branches_excluded` + `revision_branches_enable_regex` heeft direct
   precedent in core (`mail_handler_excluded_filenames` +

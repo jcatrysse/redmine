@@ -1,61 +1,44 @@
-From 181dda224c84c30d24ad417f7c1478639258afe3 Mon Sep 17 00:00:00 2001
+From 3e2c6b432cede0cb8207035e8a5020f29715b6e8 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Thu, 3 Sep 2026 12:12:35 +0000
+Date: Sat, 5 Sep 2026 17:46:42 +0000
 Subject: [PATCH] Show the Git branches that contain a revision (#5386).
 
-The revision page shows a commit's id, its parents and its children; an
-issue's associated revisions show the revision and a link to its diff.
-Neither says which branches the commit is reachable from, so "has this fix
-landed on the release branch?" cannot be answered without leaving Redmine.
-
-GitAdapter#branches_containing runs "git branch --no-color --contains" and
-returns the branch names as UTF-8. Changeset#branches asks the adapter when
-it responds to that, so the other five adapters are unaffected and a
-Mercurial implementation would need nothing else. Two settings decide where
-the list is rendered, both off by default: display_revision_branches on the
-revision page, display_associated_revision_branches in the associated
-revisions of an issue. They are separate because their cost differs in kind
--- the second runs one command per revision shown.
-
-Nothing is cached. Note-17 on this issue rejects storing branch membership
-because a deleted or force-pushed branch then leaves Redmine showing a
-branch the repository no longer has, with no event to correct it. Note-18
-warns about the cost of running the command repeatedly, and note-20 observes
-that repository pages already run several Git commands; hence the command on
-demand, off by default, and split over two settings.
-
-revision_branches_excluded drops branch names an administrator is not
-interested in, as a comma separated list of names or patterns, with
-revision_branches_enable_regex switching between shell style wildcards and
-regular expressions. This is the pair mail_handler_excluded_filenames and
-mail_handler_enable_regex_excluded_filenames already form, down to the
-anchoring and the case insensitive match. An invalid regular expression is
-logged and skipped rather than raised, since this one runs while a page is
-being rendered.
 ---
- app/helpers/repositories_helper.rb            | 16 ++++++
- app/models/changeset.rb                       | 27 ++++++++++
- app/views/issues/tabs/_changesets.html.erb    |  4 ++
- app/views/repositories/_changeset.html.erb    |  6 +++
- app/views/settings/_repositories.html.erb     | 14 +++++
- config/locales/en.yml                         |  5 ++
- config/settings.yml                           |  8 +++
- lib/redmine/scm/adapters/git_adapter.rb       | 18 +++++++
- test/functional/issues_controller_test.rb     | 53 +++++++++++++++++++
- .../repositories_git_controller_test.rb       | 41 ++++++++++++++
- test/unit/changeset_test.rb                   |  6 +++
- .../redmine/scm/adapters/git_adapter_test.rb  | 29 ++++++++++
- test/unit/repository_git_test.rb              | 53 +++++++++++++++++++
- 13 files changed, 280 insertions(+)
+ app/helpers/repositories_helper.rb            | 26 +++++++
+ app/models/changeset.rb                       | 29 +++++++
+ app/models/setting.rb                         |  3 +
+ app/views/issues/tabs/_changesets.html.erb    |  4 +
+ app/views/repositories/_changeset.html.erb    |  6 ++
+ app/views/settings/_repositories.html.erb     | 16 ++++
+ config/locales/en.yml                         |  6 ++
+ config/settings.yml                           |  8 ++
+ lib/redmine/scm/adapters/git_adapter.rb       | 19 +++++
+ test/functional/issues_controller_test.rb     | 75 +++++++++++++++++++
+ .../repositories_git_controller_test.rb       | 65 ++++++++++++++++
+ test/functional/settings_controller_test.rb   | 15 ++++
+ test/unit/changeset_test.rb                   |  6 ++
+ .../redmine/scm/adapters/git_adapter_test.rb  | 38 ++++++++++
+ test/unit/repository_git_test.rb              | 53 +++++++++++++
+ 15 files changed, 369 insertions(+)
 
 diff --git a/app/helpers/repositories_helper.rb b/app/helpers/repositories_helper.rb
-index 7cfbcdda0..8192f0291 100644
+index 7cfbcdda0..736ce4333 100644
 --- a/app/helpers/repositories_helper.rb
 +++ b/app/helpers/repositories_helper.rb
-@@ -32,6 +32,22 @@ module RepositoriesHelper
+@@ -32,6 +32,32 @@ module RepositoriesHelper
      end
    end
  
++  # Returns true if the branches of the given changesets are to be displayed.
++  # One SCM command is run per changeset, so they are left out altogether above
++  # Setting.repository_log_display_limit revisions
++  def display_changeset_branches?(changesets)
++    return false unless Setting.display_associated_revision_branches?
++
++    limit = Setting.repository_log_display_limit.to_i
++    limit > 0 && changesets.size <= limit
++  end
++
 +  def link_to_revision_branches(changeset)
 +    repository = changeset.repository
 +    safe_join(
@@ -76,7 +59,7 @@ index 7cfbcdda0..8192f0291 100644
      pagination_links_each @paginator do |text, parameters, options|
        if entry = @entries[parameters[:page] - 1]
 diff --git a/app/models/changeset.rb b/app/models/changeset.rb
-index 49c323aca..353b4e14f 100644
+index 49c323aca..4b6579ce2 100644
 --- a/app/models/changeset.rb
 +++ b/app/models/changeset.rb
 @@ -199,6 +199,18 @@ class Changeset < ApplicationRecord
@@ -98,17 +81,19 @@ index 49c323aca..353b4e14f 100644
    # Creates a new Change from it's common parameters
    def create_change(change)
      Change.create(:changeset     => self,
-@@ -228,6 +240,21 @@ class Changeset < ApplicationRecord
+@@ -228,6 +240,23 @@ class Changeset < ApplicationRecord
  
    private
  
++  # Setting.validate_all_from_params rejects a malformed regular expression at
++  # the form, so the rescue only catches a value written to the settings table
++  # by other means
 +  def excluded_branch_patterns
 +    Setting.revision_branches_excluded.to_s.split(',').map(&:strip).reject(&:blank?).filter_map do |pattern|
 +      if Setting.revision_branches_enable_regex?
 +        begin
 +          Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
-+        rescue RegexpError => e
-+          logger&.warn("Changeset: invalid regular expression in revision_branches_excluded setting: #{e.message}")
++        rescue RegexpError
 +          nil
 +        end
 +      else
@@ -120,16 +105,34 @@ index 49c323aca..353b4e14f 100644
    # Returns true if the issue is already linked to the same commit
    # from a different repository
    def issue_linked_to_same_commit?(issue)
+diff --git a/app/models/setting.rb b/app/models/setting.rb
+index 8a974bc5b..9524f9819 100644
+--- a/app/models/setting.rb
++++ b/app/models/setting.rb
+@@ -166,6 +166,9 @@ class Setting < ApplicationRecord
+        /[\r\n]+/],
+       [:mail_handler_enable_regex_excluded_filenames,
+        :mail_handler_excluded_filenames,
++       /\s*,\s*/],
++      [:revision_branches_enable_regex,
++       :revision_branches_excluded,
+        /\s*,\s*/]
+     ].each do |enable_regex, regex_field, delimiter|
+       if settings.key?(regex_field) || settings.key?(enable_regex)
 diff --git a/app/views/issues/tabs/_changesets.html.erb b/app/views/issues/tabs/_changesets.html.erb
-index 2df4d40c2..e8f4516fa 100644
+index 2df4d40c2..e9a07a713 100644
 --- a/app/views/issues/tabs/_changesets.html.erb
 +++ b/app/views/issues/tabs/_changesets.html.erb
-@@ -20,6 +20,10 @@
+@@ -1,3 +1,4 @@
++<% display_branches = display_changeset_branches?(@changesets) %>
+ <% @changesets.each do |changeset| %>
+   <div id="changeset-<%= changeset.id %>" class="changeset journal">
+     <h4 class="journal-header">
+@@ -20,6 +21,9 @@
                         :path => "",
                         :rev => changeset.identifier) %>)
          <% end %>
-+        <% if Setting.display_associated_revision_branches? &&
-+              (branches = link_to_revision_branches(changeset)).present? %>
++        <% if display_branches && (branches = link_to_revision_branches(changeset)).present? %>
 +          <em><%= l(:label_branch_plural) %>: <%= branches %></em>
 +        <% end %>
        </p>
@@ -153,10 +156,10 @@ index 393e03e56..121779744 100644
        <li>
          <strong><%= l(:label_child_revision) %></strong>
 diff --git a/app/views/settings/_repositories.html.erb b/app/views/settings/_repositories.html.erb
-index 3b5945960..b98708d61 100644
+index 3b5945960..0b6347384 100644
 --- a/app/views/settings/_repositories.html.erb
 +++ b/app/views/settings/_repositories.html.erb
-@@ -56,6 +56,20 @@
+@@ -56,6 +56,22 @@
  <p><%= setting_text_field :repository_log_display_limit, :size => 6 %></p>
  
  <p><%= setting_check_box :commit_logs_formatting %></p>
@@ -172,20 +175,22 @@ index 3b5945960..b98708d61 100644
 +    <%= l(:setting_revision_branches_enable_regex) %>
 +  </label>
 +  <em class="info"><%= l(:text_comma_separated) %>
-+  <%= l(:text_regexp_info) %></em>
++  <%= l(:label_example) %>: dependabot/*, wip-*</em>
 +</p>
++
++<p><em class="info"><%= l(:text_revision_branches_git_only) %></em></p>
  </div>
  
  <fieldset class="box tabular settings">
 diff --git a/config/locales/en.yml b/config/locales/en.yml
-index 6ebe23d46..52344831f 100644
+index bdbad19a0..1b85f09cc 100644
 --- a/config/locales/en.yml
 +++ b/config/locales/en.yml
 @@ -468,6 +468,10 @@ en:
    setting_user_format: Users display format
    setting_activity_days_default: Days displayed on project activity
    setting_display_subprojects_issues: Display subprojects issues on main projects by default
-+  setting_display_revision_branches: Display branches on the revision page
++  setting_display_revision_branches: Display branches on the revision and diff pages
 +  setting_display_associated_revision_branches: Display branches in associated revisions
 +  setting_revision_branches_excluded: Exclude branches by name
 +  setting_revision_branches_enable_regex: Enable regular expressions
@@ -200,6 +205,14 @@ index 6ebe23d46..52344831f 100644
    label_tag: Tag
    label_revision: Revision
    label_revision_plural: Revisions
+@@ -1368,6 +1373,7 @@ en:
+   text_scm_path_encoding_note: "Default: UTF-8"
+   text_subversion_repository_note: "Examples: file:///, http://, https://, svn://, svn+[tunnelscheme]://"
+   text_git_repository_note: Repository is bare and local (e.g. /gitrepo, c:\gitrepo)
++  text_revision_branches_git_only: Branch information is only available for Git repositories.
+   text_mercurial_repository_note: Local repository (e.g. /hgrepo, c:\hgrepo)
+   text_scm_command: Command
+   text_scm_command_version: Version
 diff --git a/config/settings.yml b/config/settings.yml
 index 667a4427f..d82688314 100644
 --- a/config/settings.yml
@@ -220,10 +233,10 @@ index 667a4427f..d82688314 100644
  # 0 means autologin is disabled
  autologin:
 diff --git a/lib/redmine/scm/adapters/git_adapter.rb b/lib/redmine/scm/adapters/git_adapter.rb
-index 28c2f7496..9c302f297 100644
+index d13f06834..4967625e0 100644
 --- a/lib/redmine/scm/adapters/git_adapter.rb
 +++ b/lib/redmine/scm/adapters/git_adapter.rb
-@@ -94,6 +94,24 @@ module Redmine
+@@ -94,6 +94,25 @@ module Redmine
            nil
          end
  
@@ -237,7 +250,8 @@ index 28c2f7496..9c302f297 100644
 +              name = line[2..].to_s.strip
 +              next if name.blank? || name.start_with?('(')
 +
-+              names << scm_iconv('UTF-8', @path_encoding, name)
++              name = scm_iconv('UTF-8', @path_encoding, name)
++              names << name if name
 +            end
 +          end
 +          names.sort!
@@ -249,10 +263,10 @@ index 28c2f7496..9c302f297 100644
            return @tags if @tags
  
 diff --git a/test/functional/issues_controller_test.rb b/test/functional/issues_controller_test.rb
-index 379214424..8e4dec3f2 100644
+index 3b016776b..04da4167d 100644
 --- a/test/functional/issues_controller_test.rb
 +++ b/test/functional/issues_controller_test.rb
-@@ -3320,6 +3320,59 @@ class IssuesControllerTest < Redmine::ControllerTest
+@@ -3320,6 +3320,81 @@ class IssuesControllerTest < Redmine::ControllerTest
      end
    end
  
@@ -293,8 +307,25 @@ index 379214424..8e4dec3f2 100644
 +    assert_select 'div#changeset-102 em', :count => 0
 +  end
 +
++  def test_show_changesets_tab_should_not_display_branches_above_the_revision_display_limit
++    issue = Issue.find(9)
++    issue.changeset_ids = [102, 103]
++    issue.save!
++    Changeset.any_instance.stubs(:branches).returns(['main'])
++
++    @request.session[:user_id] = 2
++    with_settings :display_associated_revision_branches => '1',
++                  :repository_log_display_limit => '1' do
++      get :issue_tab, :params => {:id => issue.id, :name => 'changesets'}, :xhr => true
++    end
++
++    assert_response :success
++    assert_select 'div#changeset-102'
++    assert_select 'div#changeset-103'
++    assert_select 'em', :text => /\ABranches:/, :count => 0
++  end
++
 +  def test_show_changesets_tab_should_not_display_branches_without_view_changesets_permission
-+    Role.find(1).remove_permission! :view_changesets
 +    issue = Issue.find(9)
 +    issue.changeset_ids = [102]
 +    issue.save!
@@ -303,20 +334,25 @@ index 379214424..8e4dec3f2 100644
 +    @request.session[:user_id] = 2
 +    with_settings :display_associated_revision_branches => '1' do
 +      get :issue_tab, :params => {:id => issue.id, :name => 'changesets'}, :xhr => true
++      assert_response :success
++      assert_select 'div#changeset-102 em', :text => 'Branches: main'
++
++      Role.find(1).remove_permission! :view_changesets
++      get :issue_tab, :params => {:id => issue.id, :name => 'changesets'}, :xhr => true
 +    end
 +
 +    assert_response :success
-+    assert_select 'div#changeset-102', :count => 0
++    assert_select 'em', :text => /\ABranches:/, :count => 0
 +  end
 +
    def test_show_render_changeset_comments_in_original_context
      issue = Issue.find(9)
      issue.changeset_ids = [110]
 diff --git a/test/functional/repositories_git_controller_test.rb b/test/functional/repositories_git_controller_test.rb
-index ae9c501ac..e4235e624 100644
+index ae9c501ac..a571b33cc 100644
 --- a/test/functional/repositories_git_controller_test.rb
 +++ b/test/functional/repositories_git_controller_test.rb
-@@ -748,6 +748,47 @@ class RepositoriesGitControllerTest < Redmine::RepositoryControllerTest
+@@ -748,6 +748,71 @@ class RepositoriesGitControllerTest < Redmine::RepositoryControllerTest
        end
      end
  
@@ -328,6 +364,30 @@ index ae9c501ac..e4235e624 100644
 +      with_settings :display_revision_branches => '1' do
 +        get(
 +          :revision,
++          :params => {
++            :id => PRJ_ID,
++            :repository_id => @repository.id,
++            :rev => 'fba357b886984ee71185ad2065e65fc0417d9b92'
++          }
++        )
++      end
++      assert_response :success
++      assert_select 'ul.revision-info li strong', :text => 'Branches'
++      assert_select(
++        'ul.revision-info li a[href=?]',
++        "/projects/subproject1/repository/#{@repository.id}/revisions/test_branch/show",
++        :text => 'test_branch'
++      )
++    end
++
++    def test_diff_should_show_the_branches_containing_the_revision
++      assert_equal 0, @repository.changesets.count
++      @repository.fetch_changesets
++      @project.reload
++      assert_equal NUM_REV, @repository.changesets.count
++      with_settings :display_revision_branches => '1' do
++        get(
++          :diff,
 +          :params => {
 +            :id => PRJ_ID,
 +            :repository_id => @repository.id,
@@ -364,6 +424,32 @@ index ae9c501ac..e4235e624 100644
      def test_empty_revision
        assert_equal 0, @repository.changesets.count
        @repository.fetch_changesets
+diff --git a/test/functional/settings_controller_test.rb b/test/functional/settings_controller_test.rb
+index a936ff0ab..8505032a0 100644
+--- a/test/functional/settings_controller_test.rb
++++ b/test/functional/settings_controller_test.rb
+@@ -302,6 +302,21 @@ class SettingsControllerTest < Redmine::ControllerTest
+     assert_select 'textarea[name=?]', 'settings[mail_handler_body_delimiters]', :text => 'Abc['
+   end
+ 
++  def test_post_revision_branches_excluded_should_not_save_an_invalid_regular_expression
++    post :edit, :params => {
++      :settings => {
++        :revision_branches_enable_regex => '1',
++        :revision_branches_excluded => 'Abc[',
++      }
++    }
++
++    assert_response :success
++    assert_equal '0', Setting.revision_branches_enable_regex
++    assert_equal '', Setting.revision_branches_excluded
++
++    assert_select_error /is not a valid regular expression/
++  end
++
+   def test_post_mail_handler_delimiters_should_save_valid_regex_delimiters
+     post :edit, :params => {
+       :settings => {
 diff --git a/test/unit/changeset_test.rb b/test/unit/changeset_test.rb
 index 2dc34f996..a7683063f 100644
 --- a/test/unit/changeset_test.rb
@@ -380,10 +466,10 @@ index 2dc34f996..a7683063f 100644
 +  end
  end
 diff --git a/test/unit/lib/redmine/scm/adapters/git_adapter_test.rb b/test/unit/lib/redmine/scm/adapters/git_adapter_test.rb
-index 3f0451601..3cfa1c930 100644
+index 3f0451601..20f488dc9 100644
 --- a/test/unit/lib/redmine/scm/adapters/git_adapter_test.rb
 +++ b/test/unit/lib/redmine/scm/adapters/git_adapter_test.rb
-@@ -114,6 +114,35 @@ class GitAdapterTest < ActiveSupport::TestCase
+@@ -114,6 +114,44 @@ class GitAdapterTest < ActiveSupport::TestCase
        assert_equal false, br_test.is_default
      end
  
@@ -407,6 +493,15 @@ index 3f0451601..3cfa1c930 100644
 +          'test_branch'
 +        ],
 +        @adapter.branches_containing('7234cb2750b63f47bff735edc50a1c0a433c2518')
++      )
++    end
++
++    def test_branches_containing_should_skip_names_that_cannot_be_converted
++      adapter =
++        Redmine::Scm::Adapters::GitAdapter.new(REPOSITORY_PATH, nil, nil, nil, 'ISO-2022-JP')
++      assert_equal(
++        ['latin-1-path-encoding', 'master', 'master-20120212', 'test-latin-1', 'test_branch'],
++        adapter.branches_containing('7234cb2750b63f47bff735edc50a1c0a433c2518')
 +      )
 +    end
 +

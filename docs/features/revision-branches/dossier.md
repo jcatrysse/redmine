@@ -24,9 +24,16 @@
   verwerpen precies wat alle eerdere patches deden: opslaan in de database. Wij
   slaan niets op en zetten het standaard uit. Het vierde bezwaar — "als de
   issuepagina git gaat aanroepen, moeten robots ook van de issuepagina worden
-  geweerd" — blijkt niet op te gaan, omdat het tabblad "Geassociëerde revisies"
-  pas via JavaScript wordt opgehaald; een crawler komt er dus nooit. Dat staat
-  nagekeken in het dossier.
+  geweerd" — gaat grotendeels niet op: het tabblad "Geassociëerde revisies"
+  wordt pas via JavaScript opgehaald én het eindpunt weigert alles wat geen XHR
+  is met een 422. Wat overblijft is een crawler die JavaScript uitvoert; die
+  wordt begrensd door de bovengrens die er sinds ronde 2 op zit.
+- **Wat ronde 2 (2026-09-05) veranderde:** elf reviewbevindingen opgelost. De
+  drie die ertoe doen: het instellingenformulier weigert nu een ongeldige
+  reguliere expressie in plaats van hem stil op te slaan, de issuetab heeft een
+  bovengrens gekregen (jouw keuze g12) zodat het aantal Git-processen begrensd
+  is, en één zin in de issuetekst die aantoonbaar onwaar was ("de revisiepagina
+  roept al drie Git-commando's aan") is vervangen door de gemeten cijfers.
 - **Wat jij nog moet doen:** het issue op redmine.org bijwerken. Dit hoort
   **niet** als nieuw issue: **#5386** is de plek (Feature, New, category SCM,
   jij staat er zelf in als note #42 van 2024-08-07). Hang de twee patches
@@ -422,15 +429,16 @@ confirmed:
   category SCM). Not a new issue: this is a 16-year-old request with the
   reviewer's objections already written down, and Jan is already note #42.
   Patch #7829 and Patch #38278 are the same subject and are already related.
-- **Patches attached:** `patches/revision-branches/2026-09-03-r24882-feature.patch`
+- **Patches attached:** `patches/revision-branches/2026-09-05-r25037-feature.patch`
   (code + `en.yml`) and `-locales.patch` (`nl`, `fr`, `de`, `es`)
-- **Made against:** `origin/master` r24882 (`2563fa6a5`, 2026-08-03)
+- **Made against:** `origin/master` r25037 (`bee32a926`, 2026-09-04)
 - **Status:** klaar om in te dienen — nog niet ingediend
 - **Feedback en wat ermee gebeurde:** —
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** `115230bc2`
+- **Commits op `7.0-stable-GEOxyz`:** `115230bc2` (de feature) en `8c1fa23fb`
+  (ronde 2: de formuliervalidatie, de bovengrens, de hints en de labels)
 - **Suites daar groen:** ja — `5977 runs, 31909 assertions, 0 failures, 0 errors, 39 skips`.
   Dat is echt 0/0: op `7.0-stable` bestaan de SCM-afhankelijke tests die op
   trunk falen niet in dezelfde vorm. Dit is de run ná de replay op de twee

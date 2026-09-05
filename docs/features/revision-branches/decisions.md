@@ -23,22 +23,29 @@ framework beslist het al. Class B staat in `docs/DECISIONS.md`.
   `mail_handler_excluded_filenames` / `mail_handler_enable_regex_excluded_filenames`,
   inclusief `\A…\z`-ankering, `IGNORECASE` en `*` → `.*`. Geen eigen syntaxis
   verzinnen als core er al één heeft.
-- **2026-09-03** — Een ongeldige reguliere expressie wordt gelogd en
+- ~~**2026-09-03** — Een ongeldige reguliere expressie wordt gelogd en
   overgeslagen; de overige patronen blijven werken. Core doet dat in
   `MailHandler` niet, maar daar is de context een achtergrondtaak en hier een
-  paginaweergave: een typefout van een beheerder mag de revisiepagina niet met
-  een 500 opblazen.
+  paginaweergave.~~ **Herzien 2026-09-05, review F01.** Core doet het wél, één
+  laag hoger: het paar staat in de tabel van `Setting.validate_all_from_params`
+  en wordt daar bij het opslaan geweigerd. Die rij is nu toegevoegd, dus het
+  formulier weigert `[` net als bij de mail handler. De `rescue RegexpError`
+  blijft staan, maar alleen als vangnet voor een waarde die rechtstreeks in de
+  `settings`-tabel is geschreven; de `logger.warn` erbij is weg, want die vuurde
+  één regel per gerenderde rij.
 - **2026-09-03** — Instellingen op de tab **Repositories**, niet op *Issue
   tracking* waar de 5.1-versie ze zette. Het is repositorygedrag en het staat
   naast `autofetch_changesets` en `repository_log_display_limit`.
 - **2026-09-03** — Sleutel `label_branch_plural`, niet `label_branches`.
   Redmine's meervoudsconventie is `label_x_plural` (`label_revision_plural`,
   `label_repository_plural`).
-- **2026-09-03** — Geen nieuwe sleutel voor de voorbeeldhint: `text_regexp_info`
-  bestaat al in alle vijf de bestanden en wordt in
-  `custom_fields/formats/_regexp.html.erb` al voor exact dit doel gebruikt.
-  `label_example` ervóór zetten leverde "Example: eg. ^[A-Z0-9]+$" op — pas
-  gezien op de screenshot, daarna weggehaald.
+- ~~**2026-09-03** — Geen nieuwe sleutel voor de voorbeeldhint:
+  `text_regexp_info` bestaat al in alle vijf de bestanden.~~ **Herzien
+  2026-09-05, review F06.** `text_regexp_info` toont "eg. `^[A-Z0-9]+$`", en dat
+  is alleen juist in de stand waarin het vinkje aan staat — de standaard is
+  glob. De hint volgt nu `app/views/settings/_mail_handler.html.erb`:
+  `l(:label_example)` plus de letterlijke voorbeelden `dependabot/*, wip-*`.
+  Nog steeds geen nieuwe sleutel.
 - **2026-09-03** — **Geen** groepering van branchnamen achter een
   `[prefix...]`-link, zoals de 5.1-versie deed. Twee redenen, en de tweede is
   beslissend: de heuristiek bakt een GEOxyz-branchconventie in core, én de
@@ -71,10 +78,34 @@ framework beslist het al. Class B staat in `docs/DECISIONS.md`.
 - **2026-09-03** — Het G9-opzetscript staat in
   `docs/features/revision-branches/seed.rb` en niet in `tools/`, want `tools/**`
   is eigendom van een framework-sessie.
+- **2026-09-05** — Bovengrens op de issuetab via de bestaande instelling
+  `Setting.repository_log_display_limit` (standaard 100), niet via een vijfde
+  eigen instelling (INV-6). Boven die grens valt de hele weergave weg in plaats
+  van de branches van de eerste N rijen te tonen: half gerenderd is een
+  bugmelding, alles-of-niets is uit te leggen in één zin. Jans keuze g12 besloot
+  *dát* er een grens komt; het getal en de instelling zijn Class A. Vastgelegd
+  als E-02 in `docs/exceptions.md`.
+- **2026-09-05** — De feature is Git-only, en dat staat er in woorden
+  (`text_revision_branches_git_only` onder het blok) in plaats van dat de
+  instellingen verborgen worden op een installatie zonder Git in `enabled_scm`.
+  Git aan staan met een Subversion-repository in dít project is een legitiem
+  gemengd geval waarin de instelling wél iets betekent; verbergen zou daar
+  fout zijn (review F05).
+- **2026-09-05** — Het label van `display_revision_branches` noemt nu beide
+  pagina's ("revision and diff pages"). `repositories/_changeset` wordt door
+  `revision.html.erb` én `diff.html.erb` gerenderd, dus de instelling stuurde
+  altijd al twee pagina's aan; alleen het label zei dat niet (review F04). De
+  gedeelde partial blijft zoals hij is — de regel hoort op beide plekken thuis.
 - **2026-09-03** — Geen wijziging aan `robots.txt`, ondanks note 20 ("if issue
   page will call git command, robot should exclude issue page, too"). De
   revisiepagina staat er al in via `Disallow: /projects/<p>/repository`
   (prefixmatch, dus ook de revisie-URL's), en de issuepagina roept git niet aan
   voor een crawler: het tabblad staat in `IssuesHelper#issue_history_tabs` als
   `:remote => true` zonder `:partial`, dus `common/_tabs.html.erb` rendert een
-  lege container en `getRemoteTab` haalt de inhoud pas via XHR op.
+  lege container en `getRemoteTab` haalt de inhoud pas via XHR op. **Aangevuld
+  2026-09-05, review F08:** het echte slot is `IssuesController#issue_tab`, dat
+  met `return render_error :status => 422 unless request.xhr?` begint — de URL
+  is dus ook rechtstreeks niet op te halen. Wat overblijft is een crawler die
+  JavaScript uitvoert en `?tab=changesets` volgt; die vuurt de XHR wel, en wordt
+  begrensd door de bovengrens hierboven. `Disallow: /issues/*/tab/` staat als
+  alternatief in het dossier, maar wordt niet ongevraagd toegevoegd.

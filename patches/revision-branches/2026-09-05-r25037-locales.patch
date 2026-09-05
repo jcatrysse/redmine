@@ -1,46 +1,17 @@
-From 181dda224c84c30d24ad417f7c1478639258afe3 Mon Sep 17 00:00:00 2001
+From 3e2c6b432cede0cb8207035e8a5020f29715b6e8 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Thu, 3 Sep 2026 12:12:35 +0000
+Date: Sat, 5 Sep 2026 17:46:42 +0000
 Subject: [PATCH] Show the Git branches that contain a revision (#5386).
 
-The revision page shows a commit's id, its parents and its children; an
-issue's associated revisions show the revision and a link to its diff.
-Neither says which branches the commit is reachable from, so "has this fix
-landed on the release branch?" cannot be answered without leaving Redmine.
-
-GitAdapter#branches_containing runs "git branch --no-color --contains" and
-returns the branch names as UTF-8. Changeset#branches asks the adapter when
-it responds to that, so the other five adapters are unaffected and a
-Mercurial implementation would need nothing else. Two settings decide where
-the list is rendered, both off by default: display_revision_branches on the
-revision page, display_associated_revision_branches in the associated
-revisions of an issue. They are separate because their cost differs in kind
--- the second runs one command per revision shown.
-
-Nothing is cached. Note-17 on this issue rejects storing branch membership
-because a deleted or force-pushed branch then leaves Redmine showing a
-branch the repository no longer has, with no event to correct it. Note-18
-warns about the cost of running the command repeatedly, and note-20 observes
-that repository pages already run several Git commands; hence the command on
-demand, off by default, and split over two settings.
-
-revision_branches_excluded drops branch names an administrator is not
-interested in, as a comma separated list of names or patterns, with
-revision_branches_enable_regex switching between shell style wildcards and
-regular expressions. This is the pair mail_handler_excluded_filenames and
-mail_handler_enable_regex_excluded_filenames already form, down to the
-anchoring and the case insensitive match. An invalid regular expression is
-logged and skipped rather than raised, since this one runs while a page is
-being rendered.
 ---
- config/locales/de.yml | 5 +++++
- config/locales/es.yml | 5 +++++
- config/locales/fr.yml | 5 +++++
- config/locales/nl.yml | 5 +++++
- 4 files changed, 20 insertions(+)
+ config/locales/de.yml | 6 ++++++
+ config/locales/es.yml | 6 ++++++
+ config/locales/fr.yml | 6 ++++++
+ config/locales/nl.yml | 6 ++++++
+ 4 files changed, 24 insertions(+)
 
 diff --git a/config/locales/de.yml b/config/locales/de.yml
-index 0b3e0eb03..f541f3c3f 100644
+index 4215b1ee7..de9b3f875 100644
 --- a/config/locales/de.yml
 +++ b/config/locales/de.yml
 @@ -462,6 +462,7 @@ de:
@@ -55,22 +26,30 @@ index 0b3e0eb03..f541f3c3f 100644
    setting_default_projects_tracker_ids: Standardmäßig aktivierte Tracker für neue Projekte
    setting_diff_max_lines_displayed: Maximale Anzahl anzuzeigender Diff-Zeilen
    setting_display_subprojects_issues: Tickets von Unterprojekten im Hauptprojekt anzeigen
-+  setting_display_revision_branches: Zweige auf der Revisionsseite anzeigen
++  setting_display_revision_branches: Zweige auf der Revisions- und der Vergleichsseite anzeigen
 +  setting_display_associated_revision_branches: Zweige bei zugehörigen Revisionen anzeigen
 +  setting_revision_branches_excluded: Zweige nach Namen ausschließen
 +  setting_revision_branches_enable_regex: Reguläre Ausdrücke verwenden
    setting_emails_footer: E-Mail-Fußzeile
    setting_emails_header: E-Mail-Kopfzeile
    setting_enabled_scm: Aktivierte Versionskontrollsysteme
+@@ -1089,6 +1094,7 @@ de:
+   text_enumeration_destroy_question: "%{count} Objekt(e) sind diesem Wert zugeordnet."
+   text_file_repository_writable: Verzeichnis für Dateien beschreibbar
+   text_git_repository_note: Repository hat kein Arbeitsverzeichnis (bare) und liegt lokal (z.B. /gitrepo, C:\gitrepo)
++  text_revision_branches_git_only: Zweig-Informationen sind nur für Git-Repositories verfügbar.
+   text_issue_added: "Ticket %{id} wurde erstellt von %{author}."
+   text_issue_category_destroy_assignments: Kategorie-Zuordnung entfernen
+   text_issue_category_destroy_question: "Einige Tickets (%{count}) sind dieser Kategorie zugeordnet. Was möchten Sie tun?"
 diff --git a/config/locales/es.yml b/config/locales/es.yml
-index 716f70bfc..1b9f5b054 100644
+index 62987704b..3e47bc51c 100644
 --- a/config/locales/es.yml
 +++ b/config/locales/es.yml
 @@ -738,6 +738,10 @@ es:
    setting_default_projects_public: Los proyectos nuevos son públicos por defecto
    setting_diff_max_lines_displayed: Número máximo de diferencias mostradas
    setting_display_subprojects_issues: Mostrar por defecto peticiones de proy. secundarios en el principal
-+  setting_display_revision_branches: Mostrar ramas en la página de revisión
++  setting_display_revision_branches: Mostrar ramas en las páginas de revisión y de diferencias
 +  setting_display_associated_revision_branches: Mostrar ramas en las revisiones asociadas
 +  setting_revision_branches_excluded: Excluir ramas por nombre
 +  setting_revision_branches_enable_regex: Habilitar expresiones regulares
@@ -85,15 +64,23 @@ index 716f70bfc..1b9f5b054 100644
    error_no_tracker_in_project: Este proyecto no tiene asociados tipos de peticiones. Por favor, revise la configuración.
    error_no_default_issue_status: No se ha definido un estado de petición por defecto. Por favor, revise la configuración (en "Administración" -> "Estados de las peticiones").
    text_journal_changed: "%{label} cambiado de %{old} a %{new}"
+@@ -980,6 +985,7 @@ es:
+   setting_issue_group_assignment: Permitir asignar peticiones a grupos
+   label_diff: diferencias
+   text_git_repository_note: El repositorio es básico y local (p.e. /gitrepo, c:\gitrepo)
++  text_revision_branches_git_only: La información de ramas solo está disponible para repositorios Git.
+   description_query_sort_criteria_direction: Dirección de ordenación
+   description_project_scope: Ámbito de búsqueda
+   description_user_mail_notification: Configuración de notificaciones por correo
 diff --git a/config/locales/fr.yml b/config/locales/fr.yml
-index 30612a0b3..6260bd1e8 100644
+index 79d42af5d..41d8c43c4 100644
 --- a/config/locales/fr.yml
 +++ b/config/locales/fr.yml
 @@ -425,6 +425,10 @@ fr:
    setting_user_format: Format d'affichage des utilisateurs
    setting_activity_days_default: Nombre de jours affichés sur l'activité des projets
    setting_display_subprojects_issues: Afficher par défaut les demandes des sous-projets sur les projets principaux
-+  setting_display_revision_branches: Afficher les branches sur la page de révision
++  setting_display_revision_branches: Afficher les branches sur les pages de révision et de diff
 +  setting_display_associated_revision_branches: Afficher les branches dans les révisions associées
 +  setting_revision_branches_excluded: Exclure les branches par leur nom
 +  setting_revision_branches_enable_regex: Utiliser les expressions régulières
@@ -108,15 +95,23 @@ index 30612a0b3..6260bd1e8 100644
    label_tag: Tag
    label_revision: Révision
    label_revision_plural: Révisions
+@@ -1150,6 +1155,7 @@ fr:
+   text_scm_path_encoding_note: "Défaut : UTF-8"
+   text_subversion_repository_note: "Exemples (en fonction des protocoles supportés) : file:///, http://, https://, svn://, svn+[tunnelscheme]://"
+   text_git_repository_note: "Chemin vers un dépôt vide et local (exemples : /gitrepo, c:\\gitrepo)"
++  text_revision_branches_git_only: "Les informations de branche ne sont disponibles que pour les dépôts Git."
+   text_mercurial_repository_note: "Chemin vers un dépôt local (exemples : /hgrepo, c:\\hgrepo)"
+   text_scm_command: Commande
+   text_scm_command_version: Version
 diff --git a/config/locales/nl.yml b/config/locales/nl.yml
-index d77753b53..cc5183007 100644
+index 1abe4573e..a31335ba0 100644
 --- a/config/locales/nl.yml
 +++ b/config/locales/nl.yml
 @@ -680,6 +680,10 @@ nl:
    setting_default_projects_public: Nieuwe projecten zijn standaard openbaar
    setting_diff_max_lines_displayed: Max aantal weergegeven diff regels
    setting_display_subprojects_issues: Standaardissues van subproject weergeven
-+  setting_display_revision_branches: Branches weergeven op de revisiepagina
++  setting_display_revision_branches: Branches weergeven op de revisie- en diffpagina
 +  setting_display_associated_revision_branches: Branches weergeven bij geassociëerde revisies
 +  setting_revision_branches_excluded: Branches uitsluiten op basis van naam
 +  setting_revision_branches_enable_regex: Reguliere expressies gebruiken
@@ -131,6 +126,14 @@ index d77753b53..cc5183007 100644
    error_no_tracker_in_project: Geen tracker is geassocieerd met dit project. Check de projectinstellingen.
    error_no_default_issue_status: Geen standaard issuestatus ingesteld. Check de configuratie (Ga naar "Administratie -> Issuestatussen").
    text_journal_changed: "%{label} gewijzigd van %{old} naar %{new}"
+@@ -920,6 +925,7 @@ nl:
+   setting_issue_group_assignment: Groepstoewijzingen toelaten
+   label_diff: diff
+   text_git_repository_note: "Lokaal versieoverzicht is leeg (Voorbeeld: /gitrepo, c:\\gitrepo)"
++  text_revision_branches_git_only: Branchinformatie is alleen beschikbaar voor Git-repositories.
+   description_query_sort_criteria_direction: Sortering
+   description_project_scope: Zoekbereik
+   description_user_mail_notification: Instellingen voor e-mailnotificaties
 -- 
 2.43.0
 
