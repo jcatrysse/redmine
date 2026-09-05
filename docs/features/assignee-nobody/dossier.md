@@ -224,26 +224,34 @@ Both halves of the `ev` disjunction are pinned by that: issue 1 matches through
 `journal_details.old_value`, issue 4 through the column's current value, so
 dropping either half changes the expected ids.
 
-**Evidence (INV-8):**
+**Evidence (INV-8), re-run against trunk r25037 on 2026-09-05:**
 
-- full suite with the patch: `bundle exec ruby bin/rails test` in
-  `/home/user/wt/patch-assignee-nobody` → **5798 runs, 30700 assertions, 27 failures, 2 errors, 92 skips**
-- full suite on a pristine trunk worktree at the same revision → **5790 runs,
-  30686 assertions, 27 failures, 2 errors, 92 skips**
-- the 29 failing test names are **identical on both sides**, and all 29 are
-  repository or changeset tests needing `svn`, `hg`, `bzr` or `cvs`, none of
-  which exist in this container. Diff of the two name lists: **empty**
-- RuboCop on `app/models/query.rb` and `test/unit/query_test.rb`: **0** offences
-  (baseline on the same two files at `origin/master`: **0**)
-- each new test verified red on the old code: `app/models/query.rb` was reverted
-  to `origin/master` in the patch worktree with the new tests left in place, and
-  the same nine tests were run: **9 runs, 3 assertions, 3 failures, 6 errors**.
-  Six of them error with the PostgreSQL cast failure, two fail on the missing
-  value list entry, and `test_operator_changed_from_nobody` fails rather than
-  errors — which is the silent-wrong-answer case, and is the reason the `cf`
-  operator is in this patch at all.
-- patch applies to pristine `origin/master` r24882: **yes**
-- `tools/check-patch-clean.sh`: **PASS**
+- full suite with the patch, system tests included: `bin/rails test:all` in
+  `/home/user/wt/patch-assignee-nobody` → **5990 runs, 31732 assertions,
+  27 failures, 2 errors, 92 skips**
+- full suite on a pristine trunk worktree at the same revision → **5977 runs,
+  31706 assertions, 28 failures, 2 errors, 92 skips**
+- the 29 failing names with the patch are a **strict subset** of trunk's 30.
+  They are repository and changeset tests needing `svn`, `hg`, `bzr` or `cvs`,
+  none of which exist in this container. The one name trunk has and the patched
+  run does not is `IssuesSystemTest#test_change_watch_or_unwatch_icon_from_sidebar`
+  (`expected "/my/page" to equal "/login"`), a login race in a Selenium test
+  that touches no query code. The run count differs by 13, which is exactly the
+  number of tests this patch adds.
+- RuboCop on `app/models/query.rb`, `test/unit/query_test.rb`,
+  `test/unit/user_query_test.rb` and
+  `test/functional/queries_controller_test.rb`: **0** offences (baseline on the
+  same four files at `origin/master` r25037: **0**)
+- new tests verified red on the old code. With `app/models/query.rb` reverted to
+  `origin/master` and the tests left in place, the eleven `nobody` tests in
+  `query_test.rb` give **2 failures, 7 errors** (the two gate tests pass there,
+  correctly — with no patch there is nothing to gate) and the two in
+  `user_query_test.rb` give **2 errors**. Per mutation, on the patched code:
+  parentheses removed → 2 failures, with `[1, 2, 3, 4, 7, 8, 9]` where `[8]` is
+  expected; both gates removed → 2 failures; the current-value half of `ev`
+  removed → 2 failures; the journal half removed → 3 errors.
+- patch applies to pristine `origin/master` r25037: **yes**
+- `tools/check-patch-clean.sh assignee-nobody --submit`: **PASS**
 
 # Live verification (G9)
 
@@ -331,7 +339,7 @@ form, so they are evidence that those five URLs raise and of nothing else.
   review-fix van ronde 2. De ronde-2-delta is **letterlijk gelijk** aan die van
   de trunkpatch (gecontroleerd door de twee diffs met elkaar te vergelijken),
   dus INV-10 blijft staan.
-- **Suites daar groen:** **5803 runs, 30987 assertions, 0 failures, 0 errors, 39 skips** — fully green, no known-failing set at all, because the SCM tests that fail on trunk do not fail on 7.0-stable. RuboCop 0 on the three changed files, baseline 0 at `origin/7.0-stable`. The trunk patch applied to 7.0-stable **verbatim** (`git apply` clean, identical diffstat), and the feature was driven in a browser there too with the same seven cases passing.
+- **Suites daar groen:** `test:all` → **6102 runs, 32270 assertions, 0 failures, 0 errors, 39 skips** — fully green, no known-failing set at all, because the SCM tests that fail on trunk do not fail on 7.0-stable. RuboCop op de gewijzigde bestanden: 1 offence, baseline 1 — één `Style/DirectiveScope` op `query.rb` die letterlijk zo in `origin/7.0-stable` staat en die trunk zelf al opgeruimd heeft. Van upstream, dus niet gefixt (INV-1). De ronde-2-delta op deze branch is regel voor regel gelijk aan die van de trunkpatch.
 - **`nl.yml` toegevoegd:** n.v.t. — geen nieuwe string
 - **`tools/check-geoxyz-branch.sh`:** PASS (`REF=7.0-stable-GEOxyz`)
 - **Wanneer kan deze commit vervallen?** Een geaccepteerde trunk-patch komt in
