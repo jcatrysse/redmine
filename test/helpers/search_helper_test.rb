@@ -55,6 +55,16 @@ class SearchHelperTest < Redmine::HelperTest
     )
   end
 
+  def test_tokens_to_question
+    assert_equal 'one two three', tokens_to_question(%w[one two three])
+    assert_equal 'one "two three" four', tokens_to_question(['one', 'two three', 'four'])
+    # the question tokenizes back to the tokens it was built from
+    assert_equal(
+      ['one', 'two three', 'four'],
+      Redmine::Search::Tokenizer.new(tokens_to_question(['one', 'two three', 'four'])).tokens
+    )
+  end
+
   def test_issues_filter_path
     # rubocop:disable Layout/LineLength
     assert_equal(

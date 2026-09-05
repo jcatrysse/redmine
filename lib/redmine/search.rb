@@ -55,8 +55,12 @@ module Redmine
         @scope = scope
         @projects = projects
         @cache = options.delete(:cache)
+        # one LIKE per token, per searchable class, per project: the cost this
+        # limit is here for. A caller with a cheaper query passes nil.
+        token_limit = options.delete(:token_limit) {5}
         @options = options
         @tokens = Tokenizer.new(@question).tokens
+        @tokens = @tokens.first(token_limit) if token_limit
       end
 
       # Returns the total result count
@@ -141,8 +145,7 @@ module Redmine
         end
         # tokens must be at least 2 characters long
         # but for Chinese characters (Chinese HANZI/Japanese KANJI), tokens can be one character
-        # no more than 5 tokens to search for
-        tokens.uniq.select{|w| w.length > 1 || w =~ /\p{Han}/}.first 5
+        tokens.uniq.select{|w| w.length > 1 || w =~ /\p{Han}/}
       end
     end
 

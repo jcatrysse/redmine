@@ -70,6 +70,12 @@ module SearchHelper
         '</ul>'.html_safe) unless links.empty?
   end
 
+  # Returns a question that tokenizes back to the given tokens, so that a filter
+  # built from it searches what the search engine actually searched
+  def tokens_to_question(tokens)
+    tokens.map {|token| token.match?(/\p{Zs}/) ? "\"#{token}\"" : token}.join(' ')
+  end
+
   def issues_filter_path(question, options)
     projects_scope = options[:projects_scope]
     titles_only = options[:titles_only]
