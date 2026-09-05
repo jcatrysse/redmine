@@ -826,3 +826,46 @@ groeit nauwelijks met de invoer. Oplossen: zet de meting in
 `ActiveRecord::Base.uncached { ... }`, of geef elke run een andere waarde.
 Controleer het resultaat altijd tegen één `EXPLAIN ANALYZE`; die liegt niet.
 Gevonden op 2026-09-05.
+
+## RuboCop zet de `Rails/*`-cops stil af zonder `Gemfile.lock` (2026-09-05)
+
+Twee metingen van dezelfde vier bestanden gaven 0 en 3 offences. De bestanden
+waren identiek; het verschil zat in de worktree. Zonder `Gemfile.lock` kan
+RuboCop de Rails-versie niet bepalen, en cops met een `TargetRailsVersion`-eis
+— `Rails/StrongParametersExpect` bijvoorbeeld — worden dan stilzwijgend
+overgeslagen. Geen waarschuwing, geen regel in de uitvoer.
+
+Waarom het pijn doet: G4 vergelijkt een meting op de patch met een baseline op
+de merge base. Zet je die baseline in een verse `git worktree` waar nog nooit
+`bundle install` heeft gedraaid, dan meet je twee verschillende cop-verzamelingen
+en lijkt de patch offences toe te voegen die er niet zijn — of, erger, verberg je
+er een.
+
+Doen: kopieer de `Gemfile.lock` naar de baseline-worktree vóór je meet, en zet
+het RuboCop-versienummer én de trunk-revisie bij de cijfers in het dossier.
+
+## `tools/dev-seed.rb` kan half klaar zijn en zegt het niet (2026-09-05)
+
+Op een verse `redmine_dev` stopte de seed halverwege: de projecten, gebruikers
+en versies stonden er, maar het issue in het subproject dat op de eigen versie
+van dat subproject zit niet. `tools/dev-server.sh` drukte gewoon PASS af. De
+G9-verificatie viel daarna om met "expected 1 issue, got 0", wat leest als een
+kapotte feature terwijl er niets mis was met de code.
+
+Doen: als een G9-script een verwacht object niet vindt, draai eerst
+`RAILS_ENV=development bundle exec ruby bin/rails runner tools/dev-seed.rb`
+opnieuw en kijk naar de regel `seeded: ... issues=10`. Klopt dat getal niet, dan
+is de seed het probleem en niet de patch. De seed is idempotent, dus opnieuw
+draaien kost niets.
+
+## `tools/check-ownership.sh` kent `docs/review/FINDINGS.md` niet (2026-09-05)
+
+Dat bestand is gegenereerd, net als `docs/REGISTER.md`: wie een bevinding
+oplost, draait `tools/findings.sh --write` en commit het resultaat. De
+ownership-controle heeft er alleen geen uitzondering voor en meldt het als
+"file(s) this session does not own". Twee sessies hebben het inmiddels
+gecommit; het is dus geen fout van de sessie maar een gat in het gereedschap.
+
+Doen: commit het toch, en meld de FAIL-regel in het sessieverslag zodat hij niet
+voor een echte overtreding wordt aangezien. Het echte gat dichten is een
+framework-wijziging en dus iets waar Jan om moet vragen.
