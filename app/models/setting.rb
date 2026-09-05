@@ -208,6 +208,28 @@ class Setting < ApplicationRecord
         end
       end
     end
+    if settings.key?(:my_page_max_issuequery_blocks)
+      value = settings[:my_page_max_issuequery_blocks].to_s.strip
+      unless value.blank?
+        begin
+          max_blocks = Integer(value, 10)
+          if max_blocks < 0
+            messages << [
+              :my_page_max_issuequery_blocks,
+              l('activerecord.errors.messages.greater_than_or_equal_to', :count => 0)
+            ]
+          elsif max_blocks > Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS
+            messages << [
+              :my_page_max_issuequery_blocks,
+              l('activerecord.errors.messages.less_than_or_equal_to',
+                :count => Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS)
+            ]
+          end
+        rescue ArgumentError
+          messages << [:my_page_max_issuequery_blocks, l('activerecord.errors.messages.not_a_number')]
+        end
+      end
+    end
     messages
   end
 
