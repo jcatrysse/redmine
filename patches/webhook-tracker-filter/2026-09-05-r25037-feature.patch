@@ -1,6 +1,6 @@
-From 90d3f67756ebe9178fcf19ef1c04fc4c689670fe Mon Sep 17 00:00:00 2001
+From bb69481e0a72d86b0f6bc474e974cd44b8fce171 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Thu, 3 Sep 2026 12:17:30 +0000
+Date: Sat, 5 Sep 2026 13:37:18 +0000
 Subject: [PATCH] Limit an outgoing webhook to the trackers selected on it.
 
 A webhook can be restricted to a set of projects but not any further, so a hook
@@ -14,13 +14,14 @@ existing hooks are unaffected. Events for objects that have no tracker are never
 filtered.
 ---
  app/controllers/webhooks_controller.rb        |  2 +-
- app/models/webhook.rb                         | 14 +++++++++--
- app/views/webhooks/_form.html.erb             |  8 +++++++
+ app/models/tracker.rb                         |  1 +
+ app/models/webhook.rb                         | 22 +++++++++-
+ app/views/webhooks/_form.html.erb             |  9 ++++
  config/locales/en.yml                         |  1 +
- ...20260903081500_create_trackers_webhooks.rb |  8 +++++++
- test/functional/webhooks_controller_test.rb   | 18 ++++++++++++++
- test/unit/webhook_test.rb                     | 24 +++++++++++++++++++
- 7 files changed, 72 insertions(+), 3 deletions(-)
+ ...20260903081500_create_trackers_webhooks.rb |  8 ++++
+ test/functional/webhooks_controller_test.rb   | 42 +++++++++++++++++++
+ test/unit/webhook_test.rb                     | 34 +++++++++++++++
+ 8 files changed, 116 insertions(+), 3 deletions(-)
  create mode 100644 db/migrate/20260903081500_create_trackers_webhooks.rb
 
 diff --git a/app/controllers/webhooks_controller.rb b/app/controllers/webhooks_controller.rb
@@ -36,8 +37,20 @@ index 27b8d2ddd..d0fb64e4e 100644
    end
  
    def find_webhook
+diff --git a/app/models/tracker.rb b/app/models/tracker.rb
+index e33ec333c..69141def6 100644
+--- a/app/models/tracker.rb
++++ b/app/models/tracker.rb
+@@ -33,6 +33,7 @@ class Tracker < ApplicationRecord
+   has_many :issues
+   has_many :workflow_rules, :dependent => :delete_all
+   has_and_belongs_to_many :projects
++  has_and_belongs_to_many :webhooks
+   has_and_belongs_to_many :custom_fields, :class_name => 'IssueCustomField',
+                           :join_table => "#{table_name_prefix}custom_fields_trackers#{table_name_suffix}",
+                           :association_foreign_key => 'custom_field_id'
 diff --git a/app/models/webhook.rb b/app/models/webhook.rb
-index 21a043e53..c644f941d 100644
+index f403f24e4..0bc4a1c81 100644
 --- a/app/models/webhook.rb
 +++ b/app/models/webhook.rb
 @@ -90,6 +90,7 @@ class Webhook < ApplicationRecord
@@ -48,7 +61,7 @@ index 21a043e53..c644f941d 100644
  
    validates :url, presence: true, webhook_endpoint: true, length: { maximum: 2000 }
    validates :secret, length: { maximum: 255 }, allow_blank: true
-@@ -118,19 +119,28 @@ class Webhook < ApplicationRecord
+@@ -121,19 +122,36 @@ class Webhook < ApplicationRecord
  
    # Finds hooks for the given event and object.
    # Returns an array of hooks that are active, have the given event in their list
@@ -65,7 +78,8 @@ index 21a043e53..c644f941d 100644
        .where(users: { status: User::STATUS_ACTIVE }, projects_webhooks: { project_id: object.project_id })
        .to_a.select do |hook|
 -      hook.events.include?(event) && object.visible?(hook.user) && hook.user.allowed_to?(:use_webhooks, object.project)
-+      hook.events.include?(event) && hook.matches_tracker?(object) && object.visible?(hook.user) && hook.user.allowed_to?(:use_webhooks, object.project)
++      hook.events.include?(event) && hook.matches_tracker?(object) &&
++        object.visible?(hook.user) && hook.user.allowed_to?(:use_webhooks, object.project)
      end
    end
  
@@ -76,14 +90,21 @@ index 21a043e53..c644f941d 100644
 +    tracker_ids.blank? || !object.respond_to?(:tracker_id) || tracker_ids.include?(object.tracker_id)
 +  end
 +
++  # Assigns the trackers of the hook from a list of ids, ignoring the ids of
++  # trackers that do not exist. The ids come from check boxes, so an unknown id
++  # is a forged request rather than something to answer with an error page.
++  def tracker_ids=(ids)
++    self.trackers = Tracker.where(id: ids)
++  end
++
    def setable_projects
      user = self.user || User.current
-     Project.visible(user).to_a.select{|p| user.allowed_to?(:use_webhooks, p)}
+     Project.allowed_to(user, :use_webhooks)
 diff --git a/app/views/webhooks/_form.html.erb b/app/views/webhooks/_form.html.erb
-index 2f99a6469..a9ec3f5e5 100644
+index 2f99a6469..2053aca07 100644
 --- a/app/views/webhooks/_form.html.erb
 +++ b/app/views/webhooks/_form.html.erb
-@@ -40,5 +40,13 @@
+@@ -40,5 +40,14 @@
        <%= hidden_field_tag('webhook[project_ids][]', '', :id => nil) %>
      </fieldset>
  
@@ -95,10 +116,11 @@ index 2f99a6469..a9ec3f5e5 100644
 +      <%= hidden_field_tag('webhook[tracker_ids][]', '', :id => nil) %>
 +      <em class="info"><%= l :webhook_trackers_info %></em>
 +    </fieldset>
++
    </div>
  </div>
 diff --git a/config/locales/en.yml b/config/locales/en.yml
-index 6ebe23d46..86e98fe37 100644
+index bdbad19a0..bcf7132fd 100644
 --- a/config/locales/en.yml
 +++ b/config/locales/en.yml
 @@ -1199,6 +1199,7 @@ en:
@@ -124,7 +146,7 @@ index 000000000..dbcb01d06
 +  end
 +end
 diff --git a/test/functional/webhooks_controller_test.rb b/test/functional/webhooks_controller_test.rb
-index 046be69ea..cf9de4ea3 100644
+index 046be69ea..ed9362050 100644
 --- a/test/functional/webhooks_controller_test.rb
 +++ b/test/functional/webhooks_controller_test.rb
 @@ -71,6 +71,24 @@ class WebhooksControllerTest < Redmine::ControllerTest
@@ -152,11 +174,42 @@ index 046be69ea..cf9de4ea3 100644
    test "should get edit" do
      get :edit, params: { id: @hook.id }
      assert_response :success
+@@ -82,6 +100,30 @@ class WebhooksControllerTest < Redmine::ControllerTest
+     assert_equal 'https://example.com/updated/hook', @hook.reload.url
+   end
+ 
++  test "should clear the trackers of a webhook" do
++    @hook.update! trackers: [Tracker.find(2)]
++    patch :update, params: { id: @hook.id, webhook: { tracker_ids: [''] } }
++    assert_redirected_to webhooks_path
++    assert_equal [], @hook.reload.trackers
++  end
++
++  test "should ignore a tracker id that does not exist" do
++    patch :update, params: { id: @hook.id, webhook: { tracker_ids: ['', '999999'] } }
++    assert_redirected_to webhooks_path
++    assert_equal [], @hook.reload.trackers
++  end
++
++  test "edit should check the boxes of the selected trackers" do
++    @hook.update! trackers: [Tracker.find(2)]
++    get :edit, params: { id: @hook.id }
++    assert_response :success
++    assert_select 'fieldset#webhook_tracker_ids' do
++      assert_select 'input[type=checkbox][value=?][checked=checked]', '2'
++      assert_select 'input[type=checkbox][value=?][checked=checked]', '1', count: 0
++      assert_select 'input[type=hidden][name=?][value=?]', 'webhook[tracker_ids][]', ''
++    end
++  end
++
+   test 'edit should not find hook of other user' do
+     get :edit, params: { id: @other_hook.id }
+     assert_response :not_found
 diff --git a/test/unit/webhook_test.rb b/test/unit/webhook_test.rb
-index e528a2a1c..e1bd4ce44 100644
+index e528a2a1c..b6982fa13 100644
 --- a/test/unit/webhook_test.rb
 +++ b/test/unit/webhook_test.rb
-@@ -170,6 +170,30 @@ class WebhookTest < ActiveSupport::TestCase
+@@ -170,6 +170,40 @@ class WebhookTest < ActiveSupport::TestCase
      assert_equal [hook], Webhook.hooks_for('issue.deleted', @issue)
    end
  
@@ -182,6 +235,16 @@ index e528a2a1c..e1bd4ce44 100644
 +    hook = create_hook events: ['news.created']
 +    hook.update! trackers: [Tracker.find(1)]
 +    assert_equal [hook], Webhook.hooks_for('news.created', News.find(1))
++  end
++
++  test "should drop the reference to a tracker that is destroyed" do
++    hook = create_hook
++    tracker = Tracker.generate!
++    hook.update! trackers: [Tracker.find(1), tracker]
++    tracker.destroy
++    assert_nil ActiveRecord::Base.connection.select_value("SELECT 1 FROM trackers_webhooks WHERE tracker_id = #{tracker.id}")
++    assert_equal [hook], Webhook.hooks_for('issue.created', Issue.find(1))
++    assert_equal [], Webhook.hooks_for('issue.created', Issue.find(2))
 +  end
 +
    test "schedule should enqueue jobs for hooks" do

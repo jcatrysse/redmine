@@ -3,9 +3,9 @@ slug: webhook-tracker-filter
 feature: Webhook beperken tot gekozen trackers
 commit_51: 25220b45d (deel)
 geoxyz: live
-geoxyz_commit: f2242bd86 + 646008041
+geoxyz_commit: f2242bd86 + 646008041 + 0fbad7c17
 upstream: patch klaar
-patch: patches/webhook-tracker-filter/2026-09-03-r24882-feature.patch
+patch: patches/webhook-tracker-filter/2026-09-05-r25037-feature.patch
 issue:
 ---
 
@@ -13,17 +13,22 @@ issue:
 
 ## Waar het staat
 
-Af, op één ding na: Jan moet het issue op redmine.org aanmaken. De patch is
-gemaakt, bewezen en geëxporteerd (twee bestanden), en dezelfde wijziging staat
-als commit `f2242bd86` op `7.0-stable-GEOxyz`. De volledige suite is aan drie
-kanten gedraaid (patch, schone trunk, GEOxyz), RuboCop is nul, en de functie is
-in een echte browser nagelopen met een echte HTTP-ontvanger die de uitgaande
-POSTs opving — voor en na.
+Af, op één ding na: Jan moet het issue op redmine.org aanmaken. Ronde 2 is
+uitgevoerd op 2026-09-05: alle elf reviewbevindingen hebben een
+`Resolution:`-regel, de patch is opnieuw tegen trunk r25037 gemaakt, de
+bewijscijfers zijn allemaal opnieuw gedraaid tegen die basis, en de
+G9-verificatie is in zijn geheel opnieuw gereden.
 
-De belangrijkste uitkomst van de trunk-check: **webhooks zitten inmiddels in
-Redmine core** (#29664, 25 commits, sinds 2025-10-07). De 5.1-commit bouwde die
-hele functie zelf; daarvan blijft dus alleen het trackerfilter over. Dat maakt
-deze patch klein: 8 bestanden, 73 toegevoegde regels inclusief tests.
+Er zijn drie codewijzigingen bij gekomen ten opzichte van ronde 1, alle drie
+uit Jans keuzes:
+
+- **g07** — `Tracker` krijgt `has_and_belongs_to_many :webhooks`, de spiegel van
+  wat `Project` al heeft. Een verwijderde tracker laat geen rijen meer achter in
+  `trackers_webhooks`.
+- **g16d** — `Webhook#tracker_ids=` laat ids van niet-bestaande trackers vallen,
+  zodat een met de hand geschreven POST geen 500 meer geeft.
+- **F09** — de conditie in `hooks_for` staat over twee regels in plaats van één
+  van 152 tekens.
 
 ## Wat het doet
 
@@ -31,58 +36,97 @@ Op een webhook kun je aanvinken voor welke trackers hij mag vuren. Issue-events
 gaan dan alleen nog naar de endpoint voor die trackers; vink je niets aan, dan
 vuurt de hook voor alle trackers, precies zoals nu.
 
+De belangrijkste uitkomst van de trunk-check blijft staan: **webhooks zitten
+inmiddels in Redmine core** (#29664, 25 commits, sinds 2025-10-07). De
+5.1-commit bouwde die hele functie zelf; daarvan blijft dus alleen het
+trackerfilter over. Deze patch is 8 bestanden en 116 toegevoegde regels
+inclusief tests.
+
 ## Bewijs
 
-- Volledige suite met patch (inclusief de vier vertalingen): **5926 runs,
-  31473 assertions, 27 failures, 2 errors, 92 skips**
-- Volledige suite op schone trunk: **5920 runs, 31455 assertions, 27 failures,
-  2 errors, 92 skips**. Faalnamen identiek: **ja** — 29 namen, byte-identieke
-  lijst, allemaal repository-/changeset-/`SysController`-tests die een
-  SCM-binary nodig hebben die dit image niet heeft.
-- Volledige suite op de **werkelijke tip** van `7.0-stable-GEOxyz`
-  (`646008041`, dus met beide eigen commits erop én de commits van de twee
-  parallelle sessies eronder): **5986 runs, 31936 assertions, 0 failures,
-  0 errors, 39 skips**. Dat is de boom die GEOxyz draait. (Eerdere runs op
-  tussenstanden: 5951/31818, 5963/31858 en 5963/31861 — alle vier 0 failures.)
-- Locale-consistentietest van Redmine zelf
-  (`test/unit/lib/redmine/i18n_test.rb`) samen met de webhooksuites, aan beide
-  kanten: **69 runs, 950 assertions, 0 failures, 0 errors**.
-- Webhooksuites apart (`webhook_test`, `webhook_payload_test`,
-  `webhooks_controller_test` in één proces): 66 runs, 246 assertions, 0 failures.
-- RuboCop op de gewijzigde bestanden: **0** (baseline op dezelfde bestanden op
-  de merge-base: **0**). Ook 0 in de GEOxyz-worktree.
-- Rood op oude code: 5 van de 6 nieuwe tests falen op een schone
-  trunk-worktree; de zesde
-  (`test_should_find_hook_for_issue_of_any_tracker_when_no_tracker_is_selected`)
-  is groen aan **beide** kanten en is de bewaker voor achterwaartse
-  compatibiliteit.
-- N+1 gemeten: met `preload(:trackers)` blijft `hooks_for` op 5 queries bij
-  zowel 5 als 20 hooks; zonder de preload gaat het naar 8 en 23.
-- `tools/check-patch-clean.sh`: **PASS** · `tools/check-geoxyz-branch.sh`:
-  **PASS** (snelle checks; de suite is de andere helft en staat hierboven)
-- Beide patchbestanden appliceren los op een verse `origin/master`-checkout, en
-  samen reproduceren ze de branch exact (gecontroleerd in een wegwerp-worktree).
-- Screenshots: **14**, gelezen: **ja** (de vier `hint-<taal>.png`-uitsnedes woord voor woord tegen de vertalingstabel) (zie de tabel in `dossier.md`; de twee
-  leveringstabellen zijn echte POSTs van de draaiende applicatie, opgevangen
-  door een echte HTTP-server, niet een bewering erover).
+Alles hieronder is op 2026-09-05 gedraaid tegen trunk r25037 (`bee32a926`), met
+`tools/test-env.sh … bundle exec ruby bin/rails test:all`, dus inclusief de
+systeemtests.
+
+- Volledige suite **met de patch**: **5987 runs, 31749 assertions, 27 failures,
+  2 errors, 92 skips**
+- Volledige suite op **schone trunk** r25037: **5977 runs, 31708 assertions, 27 failures, 2 errors, 92 skips**
+- Faalnamen identiek aan beide kanten: **29 namen, byte-identieke lijst** — het zijn
+  repository-, changeset- en `SysController`-tests die een SCM-binary nodig
+  hebben die dit image niet heeft (alleen `git` staat erin); geen ervan wordt
+  door deze patch geraakt.
+- Volledige suite op **`7.0-stable-GEOxyz`** met de wijziging erop
+  (`0fbad7c17`): **6106 runs, 32290 assertions, 0 failures, 0 errors,
+  39 skips**. 7.0-stable draagt de trunk-tests met die SCM-eis niet, dus daar is
+  het echt schoon.
+- Webhook- en trackersuites plus Redmine's eigen locale-consistentietest
+  (`webhook_test`, `webhook_payload_test`, `webhooks_controller_test`,
+  `tracker_test`, `i18n_test` in één proces): **115 runs, 1102 assertions,
+  0 failures** op de patch, **124 runs, 1134 assertions, 0 failures** op
+  GEOxyz.
+- RuboCop op de zes gewijzigde/toegevoegde Ruby-bestanden: **0**. Baseline op
+  dezelfde bestanden op de merge-base: **0**. Ook 0 in de GEOxyz-worktree.
+- **Rood op oude code**, per nieuwe test gemeten door de fix weg te halen en
+  opnieuw te draaien:
+  - `test_should_drop_the_reference_to_a_tracker_that_is_destroyed` → zonder
+    `has_and_belongs_to_many :webhooks` op `Tracker`: `Expected 1 to be nil`
+  - `test_should_ignore_a_tracker_id_that_does_not_exist` → zonder de
+    `tracker_ids=`-writer: `ActiveRecord::RecordNotFound: Couldn't find Tracker
+    with 'id'=999999`
+  - `test_edit_should_check_the_boxes_of_the_selected_trackers` → zonder de
+    lege `hidden_field_tag` in het formulier: `Expected at least 1 element
+    matching "input[type=hidden]…", found 0`. Dat is precies de mutatie die de
+    reviewer deed en die vóór ronde 2 groen bleef.
+  - de vijf tests uit ronde 1 zijn ongewijzigd; vier daarvan zijn rood op schone
+    trunk, en `test_should_find_hook_for_issue_of_any_tracker_when_no_tracker_is_selected`
+    is aan beide kanten groen en is de bewaker voor achterwaartse compatibiliteit.
+  - `test_should_clear_the_trackers_of_a_webhook` is aan beide kanten groen: hij
+    legt bestaand gedrag vast, net als de compatibiliteitstest.
+- **N+1 opnieuw gemeten** (de cijfers uit ronde 1 waren niet zelfconsistent, zie
+  bevinding F05). Getelde `sql.active_record`-notificaties rond een opgewarmde
+  `hooks_for`, `SCHEMA`/`TRANSACTION` eruit gefilterd; de kolom "zonder" komt uit
+  dezelfde boom met alleen de `preload`-regel weggehaald:
+
+  | matchende hooks | met `preload(:trackers)` | zonder |
+  |---|---|---|
+  | 1 | 4 | 4 |
+  | 5 | 4 | 8 |
+  | 20 | 4 | 23 |
+  | 20, elk met een tracker aangevinkt | 5 | 23 |
+  | 20 op `news.created`, terwijl `issue.created` vuurt | 2 | 1 |
+
+  Drie queries zijn de constante, de preload kost er precies één (twee als er
+  iets te laden valt), en zonder preload is het er één per matchende hook. De
+  laatste regel is het geval waarin de patch een query **kost**; die staat nu
+  ook in de bezwarentabel van het dossier.
+- Beide patchbestanden appliceren met `git am` los op een verse
+  `origin/master`-checkout van r25037, en samen reproduceren ze de branch exact
+  (gecontroleerd in een wegwerp-worktree).
+- `tools/check-patch-clean.sh webhook-tracker-filter --submit`: **PASS** ·
+  `tools/check-geoxyz-branch.sh`: **PASS**
+- Screenshots: **17**, gelezen: **ja**. De hele G9-run is op 2026-09-05 opnieuw
+  gedaan tegen r25037, before én after, plus een nieuw voor/na-paar voor de
+  verzonnen tracker-id.
 
 ## Wat Jan nog moet doen
 
 Maak een **nieuw** issue op redmine.org aan als follow-up van
 [#29664](https://www.redmine.org/issues/29664) — dus niet als note aan #29664
 zelf, dat issue is gesloten met target version 7.0.0. Hang er
-`patches/webhook-tracker-filter/2026-09-03-r24882-feature.patch` (code +
-`en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`) aan. De Engelse
+`patches/webhook-tracker-filter/2026-09-05-r25037-feature.patch` (code +
+`en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`) aan. Draai vlak daarvoor
+`tools/check-patch-clean.sh webhook-tracker-filter --submit`; is trunk intussen
+verder gelopen, dan ververst een sessie de patch eerst (g05). De Engelse
 issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem".
 
 Zeg in de beschrijving expliciet dat dit **note 37 van Holger Just op #29664
 beantwoordt**: hij vroeg om de monolithische 5.1-patch op te splitsen in losse
 patches, elk met de reden erbij, en gerebaseerd op de huidige trunk. Dit is
-punt 1 van je eigen note 36, los, tegen r24882, met de probleembeschrijving en
+punt 1 van je eigen note 36, los, tegen r25037, met de probleembeschrijving en
 de afgewogen alternatieven erbij. Dat is het sterkste argument dat er is — een
 committer heeft precies hierom gevraagd.
 
-Twee dingen die het waard zijn om erbij te zetten omdat ze de patch verdedigen
+Drie dingen die het waard zijn om erbij te zetten omdat ze de patch verdedigen
 vóórdat iemand ernaar vraagt:
 
 - Leeg = alle trackers, dus geen enkele bestaande hook verandert van gedrag bij
@@ -95,9 +139,13 @@ vóórdat iemand ernaar vraagt:
   herschrijven. Dat haalt het enige bezwaar weg dat de vier extra talen kunnen
   oproepen.
 - De patch voegt `preload(:trackers)` toe zodat `hooks_for` niet één query per
-  hook gaat doen. Noem #44386 erbij — daar haalde Marius Bălteanu een week
-  eerder een N+1 uit ditzelfde model, dus het is duidelijk dat het onderwerp
-  leeft.
+  hook gaat doen. Noem #44386 erbij — daar haalde Marius Bălteanu een N+1 uit
+  ditzelfde model, dus het is duidelijk dat het onderwerp leeft. r25011 zit in
+  de basis van deze patch.
+
+Er staat één keuze voor je open: **K-11** in `docs/DECISIONS.md`, over wat er
+moet gebeuren als de laatste tracker van een hook verwijderd wordt. Er is geen
+haast — we bouwden verder met de gedocumenteerde variant.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
 
@@ -110,24 +158,31 @@ vóórdat iemand ernaar vraagt:
   bestaande hook ongeldig bij een upgrade en is upstream niet verdedigbaar. Zie
   `decisions.md`.
 - **Het formulier biedt alle trackers** (`Tracker.sorted`), niet alleen die van
-  de gekozen projecten. Zes bestaande Redmine-views doen het zo; de
-  projectgebonden variant vraagt JavaScript en riskeert precies de N+1 die
-  #44386 net oploste.
+  de gekozen projecten, en ook niet `Tracker.visible(user)`. Zes bestaande
+  Redmine-views doen het zo, `ProjectsController` geeft `Tracker.sorted.to_a`
+  aan een scherm dat elke projectbeheerder bereikt, en het filter versmalt
+  alleen — een tracker die je niet mag zien matcht simpelweg nooit. Staat nu ook
+  als bezwaar-met-antwoord in het dossier (bevinding F08).
 - **De webhooklijst krijgt met opzet geen Trackers-kolom.** Een lege cel leest
   daar als "geen trackers" terwijl hij "alle trackers" betekent, en #44337
   stelt voor die lijst helemaal te herbouwen. Als een reviewer erom vraagt is
   het twee regels.
+- **Het Trackers-blok staat onvoorwaardelijk op het formulier**, ook op een hook
+  zonder issue-events, waar het niets doet. Verbergen vraagt JavaScript;
+  serverzijdig beslissen is verouderd tussen twee saves in. Afgewogen positie in
+  de bezwarentabel (bevinding F07).
+- **Een issue dat van tracker verandert, levert geen event meer op** voor een
+  hook die op de oude tracker stond. Inherent aan een filter per object, het
+  projectfilter doet hetzelfde, en repareren zou events sturen voor trackers die
+  de beheerder juist uitsloot. Benoemd in het dossier, niet gerepareerd (Jans
+  keuze g16f).
 - **Alle vijf de talen krijgen de sleutel.** Jan koos op 2026-09-03 optie B van
-  keuze **K-08** (die stond eerst als K-06 in het log; een parallelle sessie
-  gebruikte dat nummer tegelijk voor iets anders). Niet opnieuw afwegen. Elke
-  term is herleid tot een bestaande sleutel in datzelfde locale-bestand; de
-  tabel in `dossier.md` noemt per taal welke. Twee dingen om te weten:
-  in het Frans is `événements` het enige niet-herleide woord (`fr.yml` bevat het
-  nergens), en in het Spaans is een tracker een **tipo**, niet een "tracker" —
-  wie dat mist krijgt een hint die botst met de legenda erboven.
-- **De vijf codebestanden die deze patch raakt zijn byte-identiek tussen
-  `origin/master` en `7.0-stable-GEOxyz`.** Daarom is de GEOxyz-commit
-  letterlijk dezelfde diff en is er geen INV-10-afwijking.
+  keuze **K-08**. Niet opnieuw afwegen. Elke term is herleid tot een bestaande
+  sleutel in datzelfde locale-bestand; de tabel in `dossier.md` noemt per taal
+  welke. Twee dingen om te weten: in het Spaans is een tracker een **tipo**,
+  niet een "tracker", en in het Frans is sinds #44323 (`890812e49`) het hele
+  webhookblok vertaald — de eerdere bewering dat `événements` in `fr.yml` niet
+  herleid kon worden was onjuist en is ingetrokken (bevinding F03/F04).
 - **Wijzig `create_hook` in de testbestanden niet.** Dat is geprobeerd: de
   helper een `trackers:`-argument geven liet 17 bestaande tests op trunk erroren
   en verstopte daarmee het rood-bewijs. De nieuwe tests zetten trackers met
@@ -135,8 +190,11 @@ vóórdat iemand ernaar vraagt:
 - **De ontvanger in `verify/webhook-tracker-filter.mjs` bindt op `192.0.2.2`,
   niet op loopback.** `WebhookEndpointValidator` weigert loopback en link-local
   onvoorwaardelijk, dus een `127.0.0.1`-URL is nooit op te slaan als webhook.
-  Er is ook geen `http_proxy` gezet in deze container, dus plain HTTP gaat
-  direct.
+- **De vijf codebestanden van de patch zijn niet meer byte-identiek tussen
+  `origin/master` en `7.0-stable-GEOxyz`** — trunk heeft #44386 (r25011) en
+  7.0-stable niet, maar dat raakt `setable_projects`, niet deze feature. De
+  diff die deze feature toevoegt is aan beide kanten letterlijk dezelfde;
+  gecontroleerd bestand voor bestand.
 
 ## Gevonden, bewust niet gerepareerd (INV-1)
 
@@ -145,16 +203,18 @@ een eigen bugrapport, niet in deze patch; melden is genoeg.
 
 1. **Een verzonnen id in `webhook[project_ids][]` geeft een 500.**
    `hook.project_ids = [999999]` gooit `ActiveRecord::RecordNotFound`, en
-   `ApplicationController` heeft daar geen globale rescue voor. Reproduceerbaar
-   op schone trunk. `tracker_ids` erft die eigenschap, want de patch spiegelt
-   het projectenpatroon precies; het asymmetrisch dichtzetten zou slechter zijn.
+   `ApplicationController` heeft daar geen globale rescue voor. Opnieuw gemeten
+   op 2026-09-05: nog steeds zo. `tracker_ids` erfde die eigenschap; sinds Jans
+   keuze g16d is die kant wél dichtgezet, dus de twee velden verschillen nu
+   totdat het trunk-defect gerepareerd is. Dat staat als zodanig in het dossier.
 2. **`webhook_event_created` / `_updated` / `_deleted` staan in `de.yml` nog
    onvertaald** als `"%{object_name} created"`.
 3. **`object_name` wordt niet gelokaliseerd.** `_form.html.erb` geeft
    `:object_name => type.to_s.humanize` door — een Engelse klassenaam. De
    legenda erboven gebruikt wél `l(:"label_#{type}_plural")`. Zichtbaar in
-   `shots/webhook-form-de.png`: de fieldset heet `Tickets` en het vinkje erin
-   `Issue created`.
+   `shots/webhook-form-de.png` (fieldset `Tickets`, vinkje `Issue created`) en
+   in `shots/webhook-form-fr.png` (fieldset `Demandes`, vinkje
+   `Création de issue`).
 
 ## Volgende stap voor een sessie
 

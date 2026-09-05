@@ -1,6 +1,6 @@
-From 90d3f67756ebe9178fcf19ef1c04fc4c689670fe Mon Sep 17 00:00:00 2001
+From bb69481e0a72d86b0f6bc474e974cd44b8fce171 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Thu, 3 Sep 2026 12:17:30 +0000
+Date: Sat, 5 Sep 2026 13:37:18 +0000
 Subject: [PATCH] Limit an outgoing webhook to the trackers selected on it.
 
 A webhook can be restricted to a set of projects but not any further, so a hook
@@ -20,7 +20,7 @@ filtered.
  4 files changed, 4 insertions(+)
 
 diff --git a/config/locales/de.yml b/config/locales/de.yml
-index 0b3e0eb03..fcf3370b9 100644
+index 4215b1ee7..7146f6b27 100644
 --- a/config/locales/de.yml
 +++ b/config/locales/de.yml
 @@ -843,6 +843,7 @@ de:
@@ -32,7 +32,7 @@ index 0b3e0eb03..fcf3370b9 100644
    mail_body_account_activation_request: "Ein neuer Benutzer (%{value}) hat sich registriert. Sein Konto wartet auf Ihre Genehmigung:"
    mail_body_account_information: Ihre Konto-Informationen
 diff --git a/config/locales/es.yml b/config/locales/es.yml
-index 716f70bfc..0c679b848 100644
+index 62987704b..62b14a951 100644
 --- a/config/locales/es.yml
 +++ b/config/locales/es.yml
 @@ -1596,6 +1596,7 @@ es:
@@ -44,19 +44,19 @@ index 716f70bfc..0c679b848 100644
    label_integrations: Integrations
    label_alert_note: Note
 diff --git a/config/locales/fr.yml b/config/locales/fr.yml
-index 30612a0b3..65449817d 100644
+index 79d42af5d..a530cf059 100644
 --- a/config/locales/fr.yml
 +++ b/config/locales/fr.yml
-@@ -1508,6 +1508,7 @@ fr:
-     selected events occurs in one of the selected projects.
-   webhook_secret_info_html: If provided, Redmine will use this to create a hash signature
-     that is sent with each delivery as the value of the X-Redmine-Signature-256 header.
+@@ -1497,6 +1497,7 @@ fr:
+   label_webhook_events: Événements
+   webhook_url_info: Redmine enverra une requête POST à cette URL chaque fois qu'un des événements sélectionnés se produit dans un des projets sélectionnés.
+   webhook_secret_info_html: S'il est renseigné, Redmine l'utilisera pour créer une signature envoyée avec chaque requête dans l'en-tête X-Redmine-Signature-256.
 +  webhook_trackers_info: Les événements de demande ne sont envoyés que pour les trackers sélectionnés. Si aucun tracker n'est sélectionné, ils sont envoyés pour tous les trackers.
-   setting_webhooks_enabled: Enable webhooks
-   label_integrations: Integrations
+   setting_webhooks_enabled: Activer les webhooks
+   label_integrations: Intégrations
    label_alert_note: Note
 diff --git a/config/locales/nl.yml b/config/locales/nl.yml
-index d77753b53..38d78a81a 100644
+index 1abe4573e..3b6b6a05b 100644
 --- a/config/locales/nl.yml
 +++ b/config/locales/nl.yml
 @@ -1504,6 +1504,7 @@ nl:

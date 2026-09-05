@@ -3,6 +3,13 @@
 //   SHOT_DIR=docs/features/webhook-tracker-filter/shots \
 //   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node verify/webhook-tracker-filter.mjs
 //
+// FORGED_EXPECT=error runs the last step against a tree with the tracker_ids=
+//              writer removed, which is what the first version of this patch
+//              was: a forged tracker id then reaches Rails' own writer and the
+//              request ends in ActiveRecord::RecordNotFound. It shoots that as
+//              before-forged-tracker-id. Every other shot of the run is
+//              unaffected, so the run is repeated without the flag afterwards.
+//
 // MODE=before  runs against the unpatched instance: there is no tracker
 //              fieldset on the form at all, and every issue of every tracker is
 //              delivered. Shots are named before-*.
@@ -281,7 +288,7 @@ if (after) {
     ['nl', 'Issue-gebeurtenissen worden alleen verstuurd voor de geselecteerde trackers.',
      'Dutch — "gebeurtenissen" from label_user_mail_option_all, "verstuurd" from text_select_mail_notifications, "Trackers" from label_tracker_plural'],
     ['fr', 'Les événements de demande ne sont envoyés que pour les trackers sélectionnés.',
-     'French — "demande" from label_issue, "sélectionnés" from text_user_mail_option, "tous les trackers" from label_tracker_all'],
+     'French — "demande" from label_issue, "sélectionnés" from text_user_mail_option, "tous les trackers" from label_tracker_all, "événements" from label_webhook_events and from the webhook_url_info line right above it'],
     ['de', 'Ticket-Ereignisse werden nur für die ausgewählten Tracker gesendet.',
      'German — "Ticket" from label_issue, "Ereignisse" from label_webhook_events, "ausgewählten" from the webhook_url_info entry right above it'],
     ['es', 'Los eventos de peticiones solo se envían para los tipos seleccionados.',
@@ -312,6 +319,46 @@ if (after) {
   await s.go('/my/account');
   await s.page.selectOption('#user_language', 'en');
   await submitForm('#user_language');
+}
+
+// 8. A forged tracker id. The check boxes only ever offer real ids, so an id
+//    that does not exist means someone wrote the POST by hand. Rails' own
+//    tracker_ids= writer answers that with ActiveRecord::RecordNotFound, which
+//    is an internal error page rather than a rejected form; the writer on
+//    Webhook drops the unknown id instead. Last, because in the error case the
+//    request does not complete and the hook keeps whatever it had.
+if (after) {
+  const expectError = process.env.FORGED_EXPECT === 'error';
+  await s.go(editHref);
+  await s.page.evaluate(() => {
+    const box = document.querySelector('input[name="webhook[tracker_ids][]"][type=checkbox]');
+    box.value = '999999';
+    box.checked = true;
+  });
+  await submitForm('#webhook_url');
+  const body = await s.page.textContent('body');
+  const errored = /RecordNotFound/.test(body);
+  if (expectError && !errored) {
+    failures.push('forged tracker id: expected the unpatched writer to raise RecordNotFound');
+  }
+  if (!expectError && errored) {
+    failures.push('forged tracker id: the request ended in RecordNotFound');
+  }
+  if (!expectError) {
+    if (!/\/webhooks$/.test(s.page.url())) {
+      failures.push(`forged tracker id: stayed on ${s.page.url()}`);
+    }
+    await s.go(editHref);
+    const checked = await s.page.locator('input[name="webhook[tracker_ids][]"]:checked').count();
+    if (checked !== 0) failures.push(`forged tracker id: ${checked} tracker(s) checked after the forged post`);
+    await s.go('/webhooks');
+  }
+  await s.shot(
+    expectError ? 'before-forged-tracker-id' : 'forged-tracker-id',
+    expectError
+      ? 'A hand-written POST with tracker_ids[]=999999 before the fix — Rails\' own writer raises ActiveRecord::RecordNotFound and the user gets an internal error instead of a rejected value'
+      : 'The same POST with the fix — the unknown id is dropped, the hook is saved with no tracker selected, and the webhook list comes back normally'
+  );
 }
 
 report(s.shots);

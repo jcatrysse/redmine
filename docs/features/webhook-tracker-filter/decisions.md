@@ -48,12 +48,16 @@ opnieuw te wegen. Class B-keuzes staan in `docs/DECISIONS.md`.
   (`-locales.patch`), niet in het feature-patchbestand. Zo kan een committer die
   vertalingen liever aan de taalteams laat de feature aannemen en de andere
   weggooien, zonder dat er iets herschreven hoeft te worden.
-- **Beslist (autonoom):** in het Frans is `événements` het enige woord dat
-  **niet** herleid kon worden — `fr.yml` bevat het nergens. Het is geen
-  Redmine-vakterm (dat zijn *demande* en *trackers*, en die zijn wél herleid),
-  dus gebruikt en expliciet als zodanig gemeld in het dossier. In het Frans is
-  bovendien de enige bestaande `selectionnée` in `text_issues_destroy_confirmation`
-  een tikfout zonder accent; die is niet gekopieerd.
+- **Ingetrokken (2026-09-05, ronde 2, bevinding F03):** hierboven stond dat
+  `événements` in het Frans het enige niet-herleide woord was omdat `fr.yml` het
+  nergens bevat. Dat was gewoon onwaar: `label_user_mail_option_all` bevatte het
+  al op r24882, en op r25037 staat het in `label_webhook_events: Événements` en
+  in het vertaalde `webhook_url_info` — dat laatste is de zin die pal boven de
+  nieuwe hint op hetzelfde formulier staat, dus de sterkst denkbare bron. Elke
+  term in het Frans is nu herleid en het dossier noemt de sleutel. Wat wél klopt
+  en blijft staan: de enige bestaande `selectionnée` in
+  `text_issues_destroy_confirmation` is een tikfout zonder accent, en die is
+  niet gekopieerd.
 - **Beslist (autonoom):** in het Nederlands wordt "unchecked" niet letterlijk
   vertaald. `nl.yml` heeft geen enkel woord voor aanvinken (geen "aanvinken",
   geen "vinkje"), dus de tweede zin gebruikt "selecteert", wat er wél in staat.
@@ -69,8 +73,37 @@ opnieuw te wegen. Class B-keuzes staan in `docs/DECISIONS.md`.
   ongewijzigd; de nieuwe tests zetten trackers met `hook.update!`. De helper
   uitbreiden liet 17 bestaande tests op trunk erroren en verstopte daarmee het
   rood-bewijs.
-- **Beslist (autonoom):** `ActiveRecord::RecordNotFound` op een verzonnen
-  `project_ids`/`tracker_ids` (een 500, want er is geen globale rescue) is een
-  bestaand trunk-defect dat `project_ids` net zo raakt. Niet gefixt in deze
-  patch — dat zou asymmetrisch zijn en het is een eigen bugrapport. Gemeld in
-  het dossier.
+- **Herzien door Jan (2026-09-04, g16d):** hierboven stond dat een verzonnen
+  `tracker_ids` een bestaand trunk-defect is (`project_ids` doet hetzelfde) en
+  daarom niet gefixt werd, omdat het asymmetrisch zou zijn. Jan koos anders:
+  `tracker_ids` wordt wél afgevangen. Uitgevoerd als een `tracker_ids=`-writer
+  op `Webhook` die onbekende ids weglaat, wat de vorm is die Redmine zelf
+  gebruikt voor dit soort invoer (`Member#role_ids=`,
+  `User#notified_project_ids=`). Gemeten vóór en ná:
+  `hook.project_ids = [999999]` geeft nog steeds
+  `ActiveRecord::RecordNotFound`, `hook.tracker_ids = [999999]` geeft `[]`. De
+  asymmetrie blijft dus bestaan en staat als zodanig in het dossier, met het
+  trunk-defect erbij gemeld.
+- **Beslist (autonoom, ronde 2):** onbekende ids worden **stil weggelaten**, niet
+  als validatiefout teruggegeven. Een validatiefout vraagt dat de ongeldige ids
+  bewaard blijven tot na `valid?`, dus een extra attribuut en een extra
+  `validate` — machinerie voor een geval dat alleen bij een met de hand
+  geschreven POST optreedt. Trunk's eigen `before_validation` op `Webhook` laat
+  projecten die de gebruiker niet mag zetten ook stil vallen; dit volgt dat.
+- **Beslist (autonoom, ronde 2, g07/F02):** `Tracker` krijgt
+  `has_and_belongs_to_many :webhooks`, de spiegel van wat `Project` al heeft.
+  Een verwijderde tracker neemt zijn jointabelrijen mee. Wat het **niet**
+  verandert: een hook waarvan de laatste tracker verdwijnt houdt een lege
+  selectie over, en leeg betekent alle trackers. Dat is dezelfde regel als
+  overal elders in deze feature en het staat expliciet in het dossier; het
+  alternatief (de verwijdering blokkeren) hoort in `Tracker#check_integrity`
+  en is een andere wijziging. Zie de open keuze voor Jan in `docs/DECISIONS.md`.
+- **Beslist (autonoom, ronde 2, F07):** het Trackers-blok blijft onvoorwaardelijk
+  op het formulier staan, ook op een hook die geen enkel issue-event heeft. Het
+  verbergen vraagt JavaScript (dat deze patch overal vermijdt) en serverzijdig
+  beslissen op de opgeslagen events is verouderd tussen twee saves in. Het staat
+  nu als afgewogen positie in de bezwarentabel.
+- **Beslist (autonoom, ronde 2, F09):** de conditie in `hooks_for` wordt over
+  twee regels gezet in plaats van één regel van 152 tekens. De twee goedkope
+  controles staan op de eerste regel, de twee dure op de tweede — dat is precies
+  de volgorde waar het dossier zich op beroept.
