@@ -30,3 +30,53 @@
   is gitignored. Zonder de regel in de Gemfile boot deze branch dus niet uit een
   verse clone, wat op 5.1 ook zo was. De gem eist `activerecord >= 7.1` en
   `rack >= 2.0.8, < 4`; de branch pint Rails 8.1.3.1 en `rack >= 3.1.3`.
+
+## Ronde 2, 2026-09-05 — na Jans keuze g02
+
+- **Beslist (autonoom, 2026-09-05):** de deploycontrole is een **rake-taak**
+  (`redmine:sessions:check`) en geen psql-regel in de runbook. Reden: hij moet
+  de dingen weten die alleen de applicatie weet — welke sessionstore
+  geconfigureerd staat en welke tabelnaam die store gebruikt — en hij moet in de
+  deploy als eigen stap kunnen falen met exit 1. Een psql-regel kan het eerste
+  niet en moet het tweede hardcoderen.
+- **Beslist (autonoom, 2026-09-05):** de logica staat in
+  `lib/redmine/session_store_check.rb`; `lib/tasks/session_store.rake` roept één
+  methode aan. Zelfde reden als bij `ldap-mail-prefs`: `.rubocop.yml` sluit
+  `lib/tasks/**` uit en de suite kan een rake-bestand niet laden.
+- **Beslist (autonoom, 2026-09-05):** de controle kijkt naar de **kolommen** van
+  een index, niet naar zijn naam. Een database die vanaf 5.1 is meegekomen kan
+  anders heten geïndexeerde kolommen hebben; wat de store nodig heeft is een
+  unieke index op `session_id` en een index op `updated_at`, niet twee bepaalde
+  namen.
+- **Beslist (autonoom, 2026-09-05):** de bewaartermijn is **7 dagen**, als
+  `Redmine::SessionStoreCheck::TRIM_DAYS`. De gem-standaard van 30 dagen is voor
+  Redmine te ruim, want er komt een rij bij per **paginaweergave** en niet per
+  login: 100 anonieme GETs op `/login` gaven 100 rijen in vijf seconden
+  (gemeten in de review). Zeven dagen begrenst de tabel op ongeveer een week
+  paginaweergaves, en een gebruiker die binnen die week terugkomt merkt er
+  niets van, want elke request zet `updated_at` opnieuw.
+- **Beslist (autonoom, 2026-09-05):** `secure_session_only => true`. Dit is de
+  enige regel die voorkomt dat een rij met een sessie-id in leesbare vorm — wat
+  een database die van 5.1 komt kan bevatten — een werkend inlogkoekje is voor
+  iedereen die de tabel of een back-up kan lezen. Kosten: zulke rijen worden
+  geweigerd, dus die gebruikers loggen één keer opnieuw in. Dat is dezelfde
+  eenmalige logout die de deploy sowieso al aankondigde.
+- **Beslist (autonoom, 2026-09-05):** de **serializer blijft Marshal**.
+  `:json` en `:hybrid` zijn hier niet gratis: `app/helpers/queries_helper.rb`
+  bewaart `session[:issue_query]` als een hash met **symboolsleutels** en leest
+  hem ook zo terug (`session[session_key][:filters]`). Een JSON-rondgang geeft
+  stringsleutels terug, dus het onthouden filter op de issuelijst zou stilletjes
+  stoppen met werken. Een aanval die databaseschrijfrechten vereist wegnemen
+  door een functie te breken die elke gebruiker gebruikt, is de verkeerde ruil.
+- **Beslist (autonoom, 2026-09-05):** de migratie weigert een rollback
+  (`down` gooit `ActiveRecord::IrreversibleMigration`) in plaats van hem te
+  laten slagen. De tabel droppen logt iedereen uit en vernietigt elke levende
+  sessie; dat mag geen bijeffect van een routineuze `db:rollback` zijn.
+- **Beslist (autonoom, 2026-09-05):** de controle op `secure_session_only`
+  staat **niet** in de deploytaak. Het kan niet betrouwbaar: de store haalt de
+  optie met `options.delete` uit `Rails.application.config.session_options`
+  zodra de middleware-stack gebouwd wordt, dus na het opstarten is de sleutel
+  weg en zou een controle erop altijd "uit" melden. Het gedrag is in plaats
+  daarvan vastgelegd in
+  `test/integration/session_store_test.rb`, wat sterker bewijs is dan een
+  configuratielezing.

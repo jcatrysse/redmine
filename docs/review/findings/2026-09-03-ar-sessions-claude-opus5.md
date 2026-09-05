@@ -62,12 +62,13 @@ free, though — see F05 for what it costs.
 
 ### F01 — `db:migrate` reports success without a word while leaving the app unable to serve a single request
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** blocker
 - **Confidence:** confirmed
 - **Category:** correctness
 - **Where:** `db/migrate/20240929111106_add_sessions_table.rb`, and the deploy note in `docs/features/ar-sessions/status.md` / `docs/REGISTER.md`
 - **Invariant touched:** none (INV-10 is not in play — this is a GEOxyz-only change by design)
+- **Resolution:** fixed 2026-09-05 — `redmine:sessions:check` fails with exit 1 on a missing or wrongly shaped table; the outage scenario reproduced and then caught (Jan g02)
 
 **What is wrong**
 
@@ -123,18 +124,40 @@ one-liner in the runbook, or a `db:migrate`-safe re-check is the fixing session'
 call. The migration's own guard should also not be the only line of defence,
 because on the very database that matters the guard never executes.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, per Jan's g02. `redmine:sessions:check`
+(`lib/redmine/session_store_check.rb`, `lib/tasks/session_store.rake`) is the
+deploy step this needed: it fails with exit 1 when the table is missing, when a
+column the store needs is gone, or when either index is gone. The scenario in
+this finding was reproduced end to end and then run against the fix, on the
+development database of a live instance:
+
+```
+$ psql -c 'drop table sessions;'                          DROP TABLE
+$ psql -tAc "select count(*) from schema_migrations
+             where version='20240929111106';"             1
+$ bin/rails db:migrate                                    (no output, exit 0)
+$ node verify/ar-sessions.mjs   (STEP=missing-table)      GET /login -> HTTP 500
+$ bin/rails redmine:sessions:check
+  FAIL  the table 'sessions' does not exist, so every request would be a 500 - /login included
+  exit 1
+```
+
+The 500 is committed as `shots/before-login-500-without-the-sessions-table.png`
+and the same URL after the table is restored as
+`shots/after-login-with-the-sessions-table.png`. The deploy note now names the
+check as its own step between `db:migrate` and letting traffic in.
 
 ---
 
 ### F02 — The two deploy notes describe two different production databases, and the difference decides whether the old session rows are dangerous
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** major
 - **Confidence:** confirmed (the contradiction; the production state itself is unverifiable from here)
 - **Category:** backward-compat
 - **Where:** `docs/features/ar-sessions/status.md` ("Wat Jan nog moet doen"), mirrored in `docs/REGISTER.md`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — the check reports the row count and the number of older-store rows, so the deploy asks production instead of the note guessing
 
 **What is wrong**
 
@@ -180,18 +203,32 @@ rather than reasoned about afterwards: does the `sessions` table exist there
 today, does it hold rows, and what do the `session_id` values look like. Whatever
 the answer, only one of the two sentences should survive.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, and the fix is that the note no longer
+reasons about production — it tells Jan to ask it. `redmine:sessions:check`
+prints the row count and the number of rows written by an older store, which is
+exactly the pair that settles which of the two worlds GEOxyz is in: rows present
+with `<n>::` ids means 5.1 was already on the database store and nobody is
+logged out; no table or no rows means the deployment being replaced used the
+cookie store and everyone is. The contradictory sentences are gone from
+`status.md`; what replaces them is one conditional statement plus the command
+that resolves it. Measured on a real table:
+
+```
+  rows                               2
+  rows written by an older store     1
+```
 
 ---
 
 ### F03 — A `sessions` row whose `session_id` is stored in plain text is accepted as a valid login, so the "reading the table gives you nothing" claim only holds for rows this gem wrote
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** major
 - **Confidence:** confirmed (mechanism); the precondition — that production has such rows — is unverified
 - **Category:** security
 - **Where:** `config/application.rb:104` (`:active_record_store`, no `secure_session_only`)
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — `secure_session_only => true`, pinned by an integration test that is red without it
 
 **What is wrong**
 
@@ -248,18 +285,30 @@ true, and matches `db:sessions:clear`), and/or refusing the insecure fallback in
 the store configuration. Whichever is chosen, `status.md`'s claim about the table
 should be narrowed to the rows this version writes.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. `config/application.rb` now passes
+`:secure_session_only => true`, which turns off the store's fallback in
+`get_session_with_fallback` that looks the raw cookie value up as a
+`session_id`. Pinned by
+`test/integration/session_store_test.rb#test_a_plain_text_session_id_should_not_be_accepted_as_a_login`,
+which clones a signed-in row under a plain-text id and asks for `/my/account`:
+with the option it is a redirect to `/login`, and with the option removed as a
+mutation the same test gets `200 OK` — i.e. the finding's exploit reproduced
+inside the suite. `redmine:sessions:check` counts the rows that predate the
+secure id and names `db:sessions:clear` / `db:sessions:upgrade` as the way to
+get rid of them; `status.md`'s claim about the table is narrowed to the rows
+this version writes.
 
 ---
 
 ### F04 — The table grows with request volume rather than with logins, and the change ships neither a cron entry nor a chosen threshold
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** performance
 - **Where:** `config/application.rb:104`; deploy note in `status.md` / `docs/REGISTER.md`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — retention chosen at 7 days, cron line written out, and the check predicts the size of the first trim (Jan g02)
 
 **What is wrong**
 
@@ -317,18 +366,36 @@ written into the deploy note rather than described in prose, and a plan for the
 first trim on a table that may already be large. Whether the delete needs
 batching depends on the number the fixing session picks.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, per Jan's g02. The retention window is a
+decision now, not the gem's default: **7 days**, as
+`Redmine::SessionStoreCheck::TRIM_DAYS`, with the cron line written out in the
+deploy note instead of described. `redmine:sessions:check` reports how many rows
+the next trim would delete, so the size of the first one is known before it runs
+rather than after. Verified that the number the check predicts is the number the
+gem's task actually deletes:
+
+```
+  rows                               4
+  rows the first trim would delete   3
+$ SESSION_DAYS_TRIM_THRESHOLD=7 bin/rails db:sessions:trim
+  rows                               1
+```
+
+The batching question the finding leaves open is answered the same way: the
+count tells Jan whether the first trim is a one-liner or wants doing in
+batches, and the note says so with the statement to use.
 
 ---
 
 ### F05 — `db:rollback` on this migration reports "reverted" and does nothing, then leaves the app 500-ing until someone re-migrates
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
 - **Where:** `db/migrate/20240929111106_add_sessions_table.rb:3`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — the migration is `up`/`down` and `down` raises `IrreversibleMigration` instead of recording a rollback that does nothing
 
 **What is wrong**
 
@@ -374,18 +441,36 @@ session with it — which is the opposite trade-off. Whichever way it goes, the
 behaviour belongs in the deploy note, because "rollback" and "roll back the
 schema" are not the same thing here.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The migration is `up`/`down` instead of
+`change`, and `down` raises `ActiveRecord::IrreversibleMigration`. Dropping the
+table would log every user out and destroy every live session, so refusing is
+the right half of the choice this finding offered, and it is now loud instead of
+silent. Measured, with a row in the table:
+
+```
+$ bin/rails db:migrate:down VERSION=20240929111106
+  == 20240929111106 AddSessionsTable: reverting
+  ActiveRecord::IrreversibleMigration (exit 1)
+$ psql: table, both indexes and the row still there
+$ psql -tAc "select count(*) from schema_migrations where version='20240929111106';"  1
+```
+
+The `schema_migrations` row survives, so the inconsistent state this finding
+described — and the 500 on every request that followed it — cannot happen. The
+`up` path was re-verified from scratch on an empty database: the table and both
+indexes are created.
 
 ---
 
 ### F06 — The boot failure is real and loud, but the error message quoted in the note does not exist in Rails 8.1
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
 - **Where:** `docs/features/ar-sessions/status.md` (deploy note 1), `docs/REGISTER.md`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — the note quotes the message Rails 8.1 actually raises
 
 **What is wrong**
 
@@ -428,18 +513,22 @@ rather than executing it.
 Quote the message Rails 8.1 actually prints, or drop the quotation and keep the
 instruction.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The invented quotation is gone from
+`status.md`; the note now gives the message Rails 8.1 actually raises,
+`Unable to resolve session store :active_record_store`, and says that it never
+names the gem to install.
 
 ---
 
 ### F07 — Session data is `Marshal`-loaded from the database, so database write access becomes code execution in the Redmine process
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed (mechanism), speculative as an exploit path (needs write access)
 - **Category:** security
 - **Where:** `config/application.rb:104` (no `ActiveRecord::SessionStore.serializer` set)
 - **Invariant touched:** none
+- **Resolution:** decided 2026-09-05 — the serializer stays Marshal, because a JSON round-trip loses the symbol keys of `session[:issue_query]`; reason recorded in `decisions.md`
 
 **What is wrong**
 
@@ -472,18 +561,28 @@ decision with a line in `decisions.md`, in either direction. Note that Redmine
 stores non-trivial objects in the session, so a straight switch to `:json` is not
 free — that is exactly what `:hybrid` is for.
 
-**Resolution:**
+**Resolution:** decided, 2026-09-05, and the decision is **not** to change the
+serializer — with the reason written down, which is what the finding asked for.
+`:json` and `:hybrid` are not free here: `app/helpers/queries_helper.rb:370`
+stores `session[:issue_query] = {:project_id => …, :filters => …, :group_by =>
+…}` and reads it back with symbol keys at line 382, and a JSON round-trip
+returns string keys, so the remembered issue filter would silently stop working
+on every page that uses it. Removing an attack that needs database write access
+by breaking a feature every user touches is the wrong trade. Recorded in
+`docs/features/ar-sessions/decisions.md`. If Jan wants it closed anyway, it is a
+change to Redmine's own session usage first, not to this line.
 
 ---
 
 ### F08 — `t.text` is unlimited on PostgreSQL but 64 KB on MySQL, where an oversized session becomes a 500 instead of a truncation
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed (mechanism), unverified for GEOxyz (adapter unknown to me)
 - **Category:** portability
 - **Where:** `db/migrate/20240929111106_add_sessions_table.rb:7`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — the check prints the adapter and the `data` column limit of the database it is run against
 
 **What is wrong**
 
@@ -516,18 +615,24 @@ If production is PostgreSQL, one line in `status.md` saying so closes this. If i
 is MySQL, the column type deserves a deliberate choice rather than the
 generator's default.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, by making the deploy answer it instead of
+the dossier guessing. `redmine:sessions:check` prints the adapter and the
+declared limit of the `data` column, taken from the database it is run against:
+`session size limit  none (text)` on PostgreSQL, and the byte count with "a
+bigger session raises" wherever the column has one. So the MySQL question is
+answered by the same command that has to be run at deploy time anyway.
 
 ---
 
 ### F09 — Nothing in the suite asserts that sessions are in the database, and the 65 functional test files never touch the store at all
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
 - **Where:** the commit adds no test
 - **Invariant touched:** none (G3)
+- **Resolution:** fixed 2026-09-05 — `test/integration/session_store_test.rb` (4 tests, red on `:cookie_store`) plus 11 unit tests for the check
 
 **What is wrong**
 
@@ -561,18 +666,26 @@ One small integration test, in the shape Redmine's own
 `test/integration/*_test.rb` files use. It also gives the fixing session a place
 to pin F03's expectation (that the stored id is not the cookie value).
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05.
+`test/integration/session_store_test.rb`, four tests: the session is in the
+table, the stored id is not the cookie value, deleting the row logs the user
+out, and a plain-text id is refused. Reverting `config/application.rb` to
+`:cookie_store` as a mutation gives **2 failures and 2 errors** in that file, so
+it is the regression test this finding asked for. Plus
+`test/unit/lib/redmine/session_store_check_test.rb`, eleven tests for the deploy
+check, each of the four structural checks confirmed red by removing it.
 
 ---
 
 ### F10 — The one committed screenshot would look identical with the old store, and there is no before/after pair
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
 - **Where:** `docs/features/ar-sessions/shots/logged-in-with-a-database-session.png`, `verify/ar-sessions.mjs`
 - **Invariant touched:** none (G9)
+- **Resolution:** fixed 2026-09-05 — the shot that could not fail is deleted; a 500/working pair and a revocation pair replace it
 
 **What is wrong**
 
@@ -605,18 +718,32 @@ somewhere visible or captured as text next to the shot, a before/after pair, and
 at least one screenshot of the change correctly failing (the 500 with the table
 absent is a good one, and it doubles as F01's regression evidence).
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. `verify/ar-sessions.mjs` was rewritten
+into three steps and the screenshot this finding is about was deleted, because
+it could not fail. What replaces it:
+
+| Screenshot | What it shows |
+|---|---|
+| `before-login-500-without-the-sessions-table.png` | `/login` as a 500, `PG::UndefinedTable: relation "sessions" does not exist` — F01's failure path, in a browser |
+| `after-login-with-the-sessions-table.png` | the same URL with the table restored |
+| `revoked-before-deleting-the-row.png` | signed in on `/my/account` |
+| `revoked-after-deleting-the-row.png` | the same page after `delete from sessions`: the login form |
+
+The cookie/row pair is captured as text by the same script and quoted in
+`status.md` (`cookie bytes=32 … value=ea5b2a82…` next to
+`database session_id=2::10bb2045…`, and "cookie value stored verbatim? no").
 
 ---
 
 ### F11 — `status.md`'s RuboCop evidence lists a file this commit does not touch
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
 - **Where:** `docs/features/ar-sessions/status.md` ("RuboCop op de gewijzigde bestanden: 0 offences op 4 bestanden")
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — the RuboCop line names the files this feature changes
 
 **What is wrong**
 
@@ -639,18 +766,24 @@ rest of the table.
 `rubocop --force-exclusion --format simple Gemfile config/application.rb db/migrate/20240929111106_add_sessions_table.rb`
 → 0 offences.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The RuboCop line in `status.md` now names
+the files this feature actually changes. For the ronde-2 commit that is five
+linted files — `config/application.rb`, the migration,
+`lib/redmine/session_store_check.rb` and the two tests — with 0 offences;
+`lib/tasks/session_store.rake` is not inspected, because `.rubocop.yml` excludes
+`lib/tasks/**`.
 
 ---
 
 ### Q01 — The commit's committer is `Claude <noreply@anthropic.com>` (INV-4), which traps.md records as knowingly not fixed
 
-- **Status:** question
+- **Status:** resolved
 - **Severity:** question
 - **Confidence:** confirmed
 - **Category:** conventions
 - **Where:** commit `95bbb9750` metadata
 - **Invariant touched:** INV-4
+- **Resolution:** answered 2026-09-05 — this session commits as Jan; the two commits it put on the branch earlier today are named as worse, and are not force-pushed away
 
 **What is wrong**
 
@@ -677,7 +810,18 @@ any patch is affected.
 `origin/7.0-stable..origin/7.0-stable-GEOxyz`; `git show 95bbb9750 | grep -i
 "claude\|co-authored\|generated\|opus\|anthropic\|session_01\|TODO"` → nothing.
 
-**Resolution:**
+**Resolution:** partly fixed, 2026-09-05, and the honest part first: the two
+commits **this framework's own sessions** put on the branch on 2026-09-05
+(`113f32117`, `030aaf471`) are worse than the ones this finding is about — their
+**author** is `Claude <noreply@anthropic.com>`, not just their committer. That
+was my mistake; `docs/traps.md` names the fix and I did not apply it. From this
+commit on, the worktree carries
+`git config user.name "Jan Catrysse" / user.email jan.catrysse@geoxyz.eu`, so
+`8bf6dce3e` has Jan as both author and committer. The earlier commits stay as
+they are: correcting them needs a force push on a branch other sessions push to,
+and `docs/traps.md` already records that as not worth it. Worth knowing that
+`tools/check-geoxyz-branch.sh` greps commit *messages* only, so it does not see
+this at all — that is why it went unnoticed twice.
 
 ---
 

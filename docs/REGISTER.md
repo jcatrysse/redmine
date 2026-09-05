@@ -19,7 +19,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041`) | patch klaar | — |
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`28c618860`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
-| [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`95bbb9750`) | nooit | — |
+| [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`8bf6dce3e`) | nooit | — |
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | live (`fe737441b`) | nooit | — |
 | [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key en credentials.yml.enc negeren | `8ec9951d3` | live (`e2c0447b6`) | nooit | — |
@@ -32,32 +32,68 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
-- `ldap-mail-prefs` — cse_01Uj81prd9E9fJdD9bx7J61X sinds 2026-09-05
+- `ar-sessions` — cse_01Uj81prd9E9fJdD9bx7J61X sinds 2026-09-05
 
 ## Openstaand voor Jan
 
 ### `ar-sessions`
 
-**Twee dingen bij de deploy, en het eerste is niet optioneel.**
+**Drie stappen bij de deploy, in deze volgorde, en daarna één cronregel.**
 
-1. `bundle install` moet gedraaid worden vóór de eerste start: er staat een
-   nieuwe gem in de `Gemfile` (`activerecord-session_store`). Zonder die gem
-   start Redmine niet — Rails geeft dan letterlijk de melding dat
-   `ActiveRecord::SessionStore` uit Rails is gehaald en een gem is.
-2. `bin/rails db:migrate` maakt de tabel aan. Op de bestaande database van
-   GEOxyz doet die migratie **niets**, want hij heeft hetzelfde nummer als op
-   5.1 en staat daar dus al in `schema_migrations`.
+1. `bundle install` vóór de eerste start. Er staat een gem in de `Gemfile`
+   (`activerecord-session_store`) en zonder die gem start Redmine niet. Wat
+   Rails 8.1 dan zegt is niet de oude, expliciete melding maar
+   `Unable to resolve session store :active_record_store` — het noemt de gem
+   dus **niet**.
+2. `bundle exec rake db:migrate RAILS_ENV=production`.
+3. `bundle exec rake redmine:sessions:check RAILS_ENV=production`, **als eigen
+   stap, vóór er verkeer op de nieuwe code komt.** Stap 2 kan deze controle
+   niet zijn: op de database die het uitmaakt staat `20240929111106` al in
+   `schema_migrations`, dus de migratie wordt overgeslagen zonder één regel
+   uitvoer — en als de tabel er dan niet is, is elke pagina een 500, `/login`
+   incluis. De controle faalt in dat geval met exit 1 en zegt waarom.
 
-En twee dingen om te weten:
+   Diezelfde controle drukt bij succes af wat je moet weten:
 
-- **Iedereen is één keer uitgelogd** na de deploy. De oude cookies zijn
-  payloads, geen sessie-ids, dus ze worden niet herkend. Eén keer opnieuw
-  inloggen, daarna nooit meer.
-- **Zet `db:sessions:trim` in de cron.** De tabel groeit anders eindeloos; de
-  taak komt uit de gem en gooit standaard alles ouder dan 30 dagen weg
-  (`SESSION_DAYS_TRIM_THRESHOLD=<dagen>` om dat te wijzigen). De index op
-  `updated_at` in de migratie bestaat precies daarvoor — dat is de reden dat hij
-  er staat, niet netheid.
+   ```
+     database adapter                   PostgreSQL
+     session size limit                 none (text)
+     rows                               0
+     rows the first trim would delete   0
+     rows written by an older store     0
+   ```
+
+4. **De cronregel, dagelijks**, met de gekozen bewaartermijn van 7 dagen:
+
+   ```
+   0 4 * * *  cd /pad/naar/redmine && RAILS_ENV=production SESSION_DAYS_TRIM_THRESHOLD=7 bundle exec rake db:sessions:trim
+   ```
+
+   Is `rows the first trim would delete` bij stap 3 groot (honderdduizenden),
+   doe de eerste opruiming dan in porties in plaats van in één transactie:
+
+   ```sql
+   DELETE FROM sessions WHERE id IN (
+     SELECT id FROM sessions WHERE updated_at < now() - interval '7 days' LIMIT 50000);
+   ```
+
+   en herhaal tot er niets meer weggaat.
+
+**En twee dingen om te weten.**
+
+- **Wie er uitgelogd wordt, hangt af van wat er nu op productie staat**, en
+  stap 3 vertelt het je. Zegt de controle `rows: 0` of bestaat de tabel niet,
+  dan kwam de installatie van de cookiestore en logt **iedereen** één keer
+  opnieuw in. Staan er rijen, dan draaide 5.1 al op de databasestore; dan
+  blijven de sessies met een `<n>::`-id gewoon geldig en loggen alleen de
+  gebruikers achter de rijen onder `rows written by an older store` opnieuw in
+  — die worden sinds deze commit geweigerd. In het statusbestand stonden hier
+  eerder twee zinnen die elkaar tegenspraken; dit is er één, en hij wordt door
+  een commando beantwoord in plaats van beredeneerd.
+- **Rijen van een oudere store zijn dood gewicht.** Ze kunnen niemand meer
+  inloggen, maar ze staan er wel. `bundle exec rake db:sessions:clear` maakt de
+  tabel leeg (iedereen eruit), `db:sessions:upgrade` herschrijft ze naar de
+  veilige vorm (niemand eruit). Kies zelf.
 
 ### `assignee-nobody`
 
