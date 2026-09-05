@@ -201,17 +201,24 @@ existing blocks keep rendering and only the "Add" entry goes grey
 now returns a symbol rather than `3`; `MyPage.max_occurs('issuequery')` returns
 the integer.
 
-Every input the field accepts, measured in a console
-(`Setting.my_page_max_issuequery_blocks = x; Redmine::MyPage.max_occurs('issuequery')`):
+Every input the field accepts, measured end to end through the real form path
+(`Setting.set_all_from_params`, then `Redmine::MyPage.max_occurs('issuequery')`),
+starting from the default of 3 each time:
 
-| Stored | Setting keeps | `max_occurs` | Why |
-|---|---|---|---|
-| `3` (default) | `"3"` | 3 | unchanged behaviour |
-| `""` | `"3"` | 3 | `Setting`'s own `validates_numericality_of` rejects it, so nothing is stored |
-| `"abc"` | previous value | previous | same validation |
-| `0` | `"0"` | 1 | clamped — a zero must not disable a block type a user already has |
-| `-2` | `"-2"` | 1 | clamped; `only_integer` accepts a negative, the clamp catches it |
-| any other block (`news`, `activity`, …) | — | 1 | `:max_occurs` absent, so the `|| 1` path, exactly as before |
+| Typed in the form | Refused | Setting keeps | `max_occurs` | Why |
+|---|---|---|---|---|
+| `3` (default) | no | `"3"` | 3 | unchanged behaviour |
+| `""` | no | `"3"` | 3 | `Setting`'s own `validates_numericality_of` rejects it, so nothing is stored and the previous value survives |
+| `abc` | **yes** | `"3"` | 3 | "is not a number" |
+| `2.9` | **yes** | `"3"` | 3 | "is not a number" — `only_integer` |
+| `0` | no | `"0"` | 0 | no new custom query block may be added; the ones a user already has keep rendering |
+| `-2` | **yes** | `"3"` | 3 | "must be greater than or equal to 0" |
+| `5` | no | `"5"` | 5 | |
+| `10` | no | `"10"` | 10 | the upper bound itself is accepted |
+| `11` | **yes** | `"3"` | 3 | "must be less than or equal to 10" |
+| `999999` | **yes** | `"3"` | 3 | the same |
+| any other block (`news`, `activity`, …) | — | — | 1 | `:max_occurs` absent, so the `|| 1` path, exactly as before |
+| an unknown block name or a block id (`issuequery__1`) | — | — | 1 | guarded lookup; it used to raise `NoMethodError` |
 
 # Alternatives considered
 
@@ -309,11 +316,14 @@ the one who has to defend the server.
 Exercised by hand in a real Redmine at `http://127.0.0.1:3000`, seeded by
 `tools/dev-seed.rb`, driven by `verify/mypage-query-blocks.mjs` (`MODE=before`
 against a pristine trunk worktree, `MODE=after` against the patch). Screenshots
-in `docs/features/mypage-query-blocks/shots/`.
+in `docs/features/mypage-query-blocks/shots/`. Every block on the page is
+pointed at a public saved query the run creates itself, so the shots show
+rendered issue lists rather than empty "Custom query" forms.
 
 | Function | Screenshot | What it shows |
 |---|---|---|
 | The setting exists, at its default | `before-settings-general.png` / `settings-general.png` | no field between "Days displayed on project activity" and "Host name and path" before; the new field showing `3` after |
+| The setting has a range | `rejected-out-of-range.png` | one above the upper bound is refused with "must be less than or equal to 10" and nothing is stored |
 | The default is unchanged | `before-select-at-default-maximum.png` / `select-at-default-maximum.png` | "Issues" greyed out with three blocks, identically on both instances |
 | Three blocks render either way | `before-dropdown-at-default-maximum.png` / `dropdown-at-default-maximum.png` | the same three blocks and the same add-block list |
 | Raising the limit re-enables the entry | `before-select-raised-maximum.png` / `select-raised-maximum.png` | grey before (there is nothing to raise), black after the limit is set to 5 |
@@ -325,7 +335,8 @@ Failure paths verified:
 |---|---|---|---|
 | Limit lowered to 1 while a user already has four blocks | `lowered-maximum.png` | all four keep rendering, adding is blocked | all four render, "Issues" greyed out |
 | The same case in the add-block list | `select-lowered-maximum.png` | "Issues" disabled | disabled |
-| Limit `0` | covered by `test_add_issuequery_block_with_the_maximum_set_to_zero_should_allow_one_block` | one block still allowed | allowed |
+| Limit `0` | `select-zero-maximum.png` | no new block may be added, the four already there survive | "Issues" greyed out, four blocks still rendering |
+| One above the upper bound | `rejected-out-of-range.png` | refused in the form, nothing stored | the error line above the tab, and the field still reads 3 |
 
 Screenshots read, not just generated: yes. Two things were found by looking at
 the images rather than by the assertions.
@@ -344,31 +355,56 @@ the images rather than by the assertions.
 # What asynchronous loading would and would not fix
 
 Note-9 is the one objection standing between #27313 and a decision, so it is
-worth being precise about what it buys. Measured on this patch, one public
-`IssueQuery` per block, counting `sql.active_record` outside SCHEMA and CACHE:
+worth being precise about what it buys.
 
-| Blocks | SQL queries for `GET /my/page` | Response body |
-|---|---|---|
-| 0 | 10 | 13 KB |
-| 1 | 41 | 30 KB |
-| 3 | 85 | 65 KB |
-| 6 | 151 | 118 KB |
+**Measurement conditions**, so this is reproducible rather than quoted: Redmine
+trunk r25037 with this patch, PostgreSQL 16, Ruby 3.3.6, **Redmine's own test
+fixtures** (`test/fixtures`, loaded by an integration test — not a seeded
+instance, so the numbers are ones a committer can reproduce), one **distinct**
+public `IssueQuery` per block so that no two blocks issue identical SQL,
+`sql.active_record` counted with `SCHEMA` and cached statements excluded, and
+one warm request before each measured one.
 
-Loading the blocks asynchronously spreads those 151 queries over six separate
-requests. The total is unchanged and slightly higher, because each request
-repeats the session lookup, `User.current` and the render setup. What it buys is
-perceived latency: the page shell arrives at once and one slow block no longer
-holds up the rest. What note-5 describes — a server brought down by five blocks
-on a page auto-refreshed every minute — is load, and async does not reduce load.
+| Blocks | SQL queries for `GET /my/page` | Marginal | Response body |
+|---|---|---|---|
+| 0 | 5 | — | 12.9 KB |
+| 1 | 18 | +13 | 29.7 KB |
+| 2 | 22 | +4 | 46.7 KB |
+| 3 | 26 | +4 | 63.6 KB |
+| 6 | 32 | +2 per block | 114.2 KB |
 
-There is also no cheap N+1 hiding here. Of the ~41 queries a single block costs,
-25 are `issue_count` plus `issues(:limit => 10)` themselves, 7 are
-`available_filters` and 6 `available_columns`; and the count does not scale with
-the number of rows (10 issues → 41 queries, 1 issue → 40). The cost is the query
-work, not overhead.
+Three consecutive runs gave identical figures.
 
-So the two changes answer different problems, and this one answers note-5's:
-an administrator gets a ceiling, in both directions, and nothing is raised for
+The absolute numbers depend heavily on the dataset — a My page block spends most
+of its queries enumerating `available_filters` and `available_columns`, which
+grows with the number of projects, versions, categories, users and custom
+fields. On a large installation the marginal cost per block is several times
+this. What does not change with the dataset is the shape: the cost is linear in
+the number of blocks, and it is query work rather than overhead.
+
+Two things this measurement says that help the argument:
+
+- **The first block is the expensive one.** It costs 13 queries; every block
+  after it costs 2 to 4, because Rails' per-request query cache absorbs the
+  statements the earlier blocks already ran. So the difference between three
+  blocks and six is 6 queries here, not 26.
+- **Six blocks pointing at the same saved query cost exactly what one block
+  costs** — 18 queries, measured. "Six blocks" is a worst case only when the six
+  queries are different, which is the case the table above measures.
+- **The response body grows by a steady ~17 KB per block**, and that is the part
+  asynchronous loading does not change either: the same HTML still has to be
+  produced and sent, in six responses instead of one.
+
+Loading the blocks asynchronously spreads those same queries over as many
+separate requests. The total is unchanged and slightly higher, because each
+request repeats the session lookup, `User.current` and the render setup. What it
+buys is perceived latency: the page shell arrives at once and one slow block no
+longer holds up the rest. What note-5 describes — a server brought down by five
+blocks on a page auto-refreshed every minute — is load, and async does not
+reduce load.
+
+So the two changes answer different problems, and this one answers note-5's: an
+administrator gets a ceiling, in both directions, and nothing is raised for
 anybody who does not set it.
 
 # Anticipated objections
@@ -392,9 +428,9 @@ anybody who does not set it.
 - **Issue:** [#27313](https://www.redmine.org/issues/27313) — existing, status
   New, target "Candidate for next major release". Do **not** open a new issue;
   this is a note on that one, and the note has to answer note-9.
-- **Patches attached:** `patches/mypage-query-blocks/2026-09-03-r24882-feature.patch`
+- **Patches attached:** `patches/mypage-query-blocks/2026-09-05-r25037-feature.patch`
   (code + `en.yml`) and `-locales.patch` (`nl`, `fr`, `de`, `es`)
-- **Made against:** `origin/master` r24882 (2026-08-03)
+- **Made against:** `origin/master` r25037 = `bee32a926` (2026-09-05)
 - **Status:** nog niet ingediend — wacht op Jan
 - **Feedback en wat ermee gebeurde:** —
 

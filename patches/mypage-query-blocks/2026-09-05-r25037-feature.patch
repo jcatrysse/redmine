@@ -1,0 +1,361 @@
+From 72609af8058e50590a1969139d8fff142ec867af Mon Sep 17 00:00:00 2001
+From: Jan Catrysse <jan.catrysse@geoxyz.eu>
+Date: Thu, 3 Sep 2026 07:25:58 +0000
+Subject: [PATCH] Make the maximum number of custom query blocks on My page
+ configurable (#27313).
+
+:max_occurs may now name a setting instead of holding an integer, and
+Redmine::MyPage.max_occurs resolves it. The new my_page_max_issuequery_blocks
+setting defaults to 3, the value CORE_BLOCKS held since r16413 (#1565), and is
+accepted between 0 and Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS. Lowering it does
+not hide blocks a user already has: only adding another one is refused.
+---
+ app/models/setting.rb                       | 22 +++++
+ app/views/settings/_general.html.erb        |  2 +
+ config/locales/en.yml                       |  1 +
+ config/settings.yml                         |  3 +
+ lib/redmine/my_page.rb                      | 15 +++-
+ test/functional/my_controller_test.rb       | 97 +++++++++++++++++++++
+ test/functional/settings_controller_test.rb | 38 ++++++++
+ test/unit/lib/redmine/my_page_test.rb       | 48 ++++++++++
+ 8 files changed, 224 insertions(+), 2 deletions(-)
+ create mode 100644 test/unit/lib/redmine/my_page_test.rb
+
+diff --git a/app/models/setting.rb b/app/models/setting.rb
+index 8a974bc5b..8e5d5ae47 100644
+--- a/app/models/setting.rb
++++ b/app/models/setting.rb
+@@ -208,6 +208,28 @@ class Setting < ApplicationRecord
+         end
+       end
+     end
++    if settings.key?(:my_page_max_issuequery_blocks)
++      value = settings[:my_page_max_issuequery_blocks].to_s.strip
++      unless value.blank?
++        begin
++          max_blocks = Integer(value, 10)
++          if max_blocks < 0
++            messages << [
++              :my_page_max_issuequery_blocks,
++              l('activerecord.errors.messages.greater_than_or_equal_to', :count => 0)
++            ]
++          elsif max_blocks > Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS
++            messages << [
++              :my_page_max_issuequery_blocks,
++              l('activerecord.errors.messages.less_than_or_equal_to',
++                :count => Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS)
++            ]
++          end
++        rescue ArgumentError
++          messages << [:my_page_max_issuequery_blocks, l('activerecord.errors.messages.not_a_number')]
++        end
++      end
++    end
+     messages
+   end
+ 
+diff --git a/app/views/settings/_general.html.erb b/app/views/settings/_general.html.erb
+index da498865b..91b70a9ed 100644
+--- a/app/views/settings/_general.html.erb
++++ b/app/views/settings/_general.html.erb
+@@ -14,6 +14,8 @@
+ 
+ <p><%= setting_text_field :activity_days_default, :size => 6 %> <%= l(:label_day_plural) %></p>
+ 
++<p><%= setting_text_field :my_page_max_issuequery_blocks, :size => 6 %></p>
++
+ <p><%= setting_text_field :host_name, :size => 60 %>
+ <em class="info"><%= l(:label_example) %>: <%= @guessed_host_and_path %></em></p>
+ 
+diff --git a/config/locales/en.yml b/config/locales/en.yml
+index bdbad19a0..46ea2a5d0 100644
+--- a/config/locales/en.yml
++++ b/config/locales/en.yml
+@@ -467,6 +467,7 @@ en:
+   setting_per_page_options: Objects per page options
+   setting_user_format: Users display format
+   setting_activity_days_default: Days displayed on project activity
++  setting_my_page_max_issuequery_blocks: Maximum number of custom queries displayed on My page
+   setting_display_subprojects_issues: Display subprojects issues on main projects by default
+   setting_enabled_scm: Enabled SCM
+   setting_mail_handler_body_delimiters: "Truncate emails after one of these lines"
+diff --git a/config/settings.yml b/config/settings.yml
+index 667a4427f..200205400 100644
+--- a/config/settings.yml
++++ b/config/settings.yml
+@@ -89,6 +89,9 @@ issues_export_limit:
+ activity_days_default:
+   format: int
+   default: 10
++my_page_max_issuequery_blocks:
++  format: int
++  default: 3
+ per_page_options:
+   default: '25,50,100'
+ search_results_per_page:
+diff --git a/lib/redmine/my_page.rb b/lib/redmine/my_page.rb
+index 7aa2753ec..ee03ae346 100644
+--- a/lib/redmine/my_page.rb
++++ b/lib/redmine/my_page.rb
+@@ -23,12 +23,16 @@ module Redmine
+ 
+     CORE_GROUPS = ['top', 'left', 'right']
+ 
++    # Upper bound of the my_page_max_issuequery_blocks setting: every block on
++    # My page runs its own query when the page is rendered
++    MAX_ISSUEQUERY_BLOCKS = 10
++
+     CORE_BLOCKS = {
+       'issuesassignedtome' => {:label => :label_assigned_to_me_issues},
+       'issuesreportedbyme' => {:label => :label_reported_issues},
+       'issuesupdatedbyme' => {:label => :label_updated_issues},
+       'issueswatched' => {:label => :label_watched_issues},
+-      'issuequery' => {:label => :label_issue_plural, :max_occurs => 3},
++      'issuequery' => {:label => :label_issue_plural, :max_occurs => :my_page_max_issuequery_blocks},
+       'news' => {:label => :label_news_latest},
+       'calendar' => {:label => :label_calendar},
+       'documents' => {:label => :label_document_plural},
+@@ -56,7 +60,7 @@ module Redmine
+ 
+         occurs = indexes.size
+         block_id = indexes.any? ? "#{block}__#{indexes.max + 1}" : block
+-        disabled = (occurs >= (Redmine::MyPage.blocks[block][:max_occurs] || 1))
++        disabled = (occurs >= max_occurs(block))
+         block_id = nil if disabled
+ 
+         label = block_options[:label]
+@@ -65,6 +69,13 @@ module Redmine
+       options
+     end
+ 
++    # Returns the maximum number of occurrences of the given block, reading the
++    # setting named by :max_occurs when the limit is configurable
++    def self.max_occurs(block)
++      max_occurs = blocks.fetch(block, {})[:max_occurs] || 1
++      max_occurs.is_a?(Symbol) ? Setting[max_occurs].to_i : max_occurs
++    end
++
+     def self.valid_block?(block, blocks_in_use=[])
+       block.present? && block_options(blocks_in_use).map(&:last).include?(block)
+     end
+diff --git a/test/functional/my_controller_test.rb b/test/functional/my_controller_test.rb
+index 92fbb9643..0719289dd 100644
+--- a/test/functional/my_controller_test.rb
++++ b/test/functional/my_controller_test.rb
+@@ -224,6 +224,67 @@ class MyControllerTest < Redmine::ControllerTest
+     end
+   end
+ 
++  def test_page_should_disable_issuequery_option_at_the_default_maximum
++    user = User.find(2)
++    user.pref.my_page_layout = {'top' => ['issuequery', 'issuequery__1', 'issuequery__2']}
++    user.pref.save!
++
++    get :page
++    assert_response :success
++
++    assert_select '#block-select' do
++      assert_select 'option[disabled]', :text => 'Issues'
++    end
++  end
++
++  def test_page_should_enable_issuequery_option_below_the_configured_maximum
++    with_settings :my_page_max_issuequery_blocks => 5 do
++      user = User.find(2)
++      user.pref.my_page_layout = {'top' => ['issuequery', 'issuequery__1', 'issuequery__2']}
++      user.pref.save!
++
++      get :page
++      assert_response :success
++
++      assert_select '#block-select' do
++        assert_select 'option[value=?]:not([disabled])', 'issuequery__3', :text => 'Issues'
++      end
++    end
++  end
++
++  def test_page_should_disable_issuequery_option_at_a_lowered_maximum
++    with_settings :my_page_max_issuequery_blocks => 2 do
++      user = User.find(2)
++      user.pref.my_page_layout = {'top' => ['issuequery', 'issuequery__1']}
++      user.pref.save!
++
++      get :page
++      assert_response :success
++
++      assert_select '#block-select' do
++        assert_select 'option[disabled]', :text => 'Issues'
++      end
++    end
++  end
++
++  def test_page_should_render_issuequery_blocks_over_a_lowered_maximum
++    with_settings :my_page_max_issuequery_blocks => 2 do
++      user = User.find(2)
++      user.pref.my_page_layout = {'top' => ['issuequery', 'issuequery__1', 'issuequery__2']}
++      user.pref.save!
++
++      get :page
++      assert_response :success
++
++      assert_select '#block-issuequery'
++      assert_select '#block-issuequery__1'
++      assert_select '#block-issuequery__2'
++      assert_select '#block-select' do
++        assert_select 'option[disabled]', :text => 'Issues'
++      end
++    end
++  end
++
+   def test_page_with_activity
+     user = User.find(2)
+     user.pref.my_page_layout = {'top' => ['activity']}
+@@ -805,6 +866,42 @@ class MyControllerTest < Redmine::ControllerTest
+     assert_response :unprocessable_content
+   end
+ 
++  def test_add_issuequery_block_over_the_configured_maximum_should_error
++    with_settings :my_page_max_issuequery_blocks => 2 do
++      user = User.find(2)
++      user.pref.my_page_layout = {'top' => ['issuequery', 'issuequery__1']}
++      user.pref.save!
++
++      post(:add_block, :params => {:block => 'issuequery__2'})
++      assert_response :unprocessable_content
++      assert_not_include 'issuequery__2', User.find(2).pref[:my_page_layout]['top']
++    end
++  end
++
++  def test_add_issuequery_block_below_the_configured_maximum
++    with_settings :my_page_max_issuequery_blocks => 5 do
++      user = User.find(2)
++      user.pref.my_page_layout = {'top' => ['issuequery', 'issuequery__1', 'issuequery__2']}
++      user.pref.save!
++
++      post(:add_block, :params => {:block => 'issuequery__3'})
++      assert_redirected_to '/my/page'
++      assert_include 'issuequery__3', User.find(2).pref[:my_page_layout]['top']
++    end
++  end
++
++  def test_add_issuequery_block_with_the_maximum_set_to_zero_should_error
++    with_settings :my_page_max_issuequery_blocks => 0 do
++      user = User.find(2)
++      user.pref.my_page_layout = {'top' => []}
++      user.pref.save!
++
++      post(:add_block, :params => {:block => 'issuequery'})
++      assert_response :unprocessable_content
++      assert_not_include 'issuequery', User.find(2).pref[:my_page_layout]['top']
++    end
++  end
++
+   def test_remove_block
+     post(
+       :remove_block,
+diff --git a/test/functional/settings_controller_test.rb b/test/functional/settings_controller_test.rb
+index a936ff0ab..9f3c0c726 100644
+--- a/test/functional/settings_controller_test.rb
++++ b/test/functional/settings_controller_test.rb
+@@ -155,6 +155,44 @@ class SettingsControllerTest < Redmine::ControllerTest
+     end
+   end
+ 
++  def test_post_edit_with_my_page_max_issuequery_blocks_over_the_upper_bound_should_error
++    with_settings :my_page_max_issuequery_blocks => '3' do
++      post :edit, :params => {
++        :settings => {
++          :my_page_max_issuequery_blocks => (Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS + 1).to_s
++        }
++      }
++      assert_response :success
++      assert_select '#errorExplanation'
++      assert_equal '3', Setting.my_page_max_issuequery_blocks
++    end
++  end
++
++  def test_post_edit_with_negative_my_page_max_issuequery_blocks_should_error
++    with_settings :my_page_max_issuequery_blocks => '3' do
++      post :edit, :params => {
++        :settings => {
++          :my_page_max_issuequery_blocks => '-1'
++        }
++      }
++      assert_response :success
++      assert_select '#errorExplanation'
++      assert_equal '3', Setting.my_page_max_issuequery_blocks
++    end
++  end
++
++  def test_post_edit_with_my_page_max_issuequery_blocks_set_to_zero
++    with_settings :my_page_max_issuequery_blocks => '3' do
++      post :edit, :params => {
++        :settings => {
++          :my_page_max_issuequery_blocks => '0'
++        }
++      }
++      assert_redirected_to '/settings'
++      assert_equal '0', Setting.my_page_max_issuequery_blocks
++    end
++  end
++
+   def test_post_edit_with_invalid_setting_should_not_error
+     post :edit, :params => {
+       :settings => {
+diff --git a/test/unit/lib/redmine/my_page_test.rb b/test/unit/lib/redmine/my_page_test.rb
+new file mode 100644
+index 000000000..feebdeefd
+--- /dev/null
++++ b/test/unit/lib/redmine/my_page_test.rb
+@@ -0,0 +1,48 @@
++# frozen_string_literal: true
++
++# Redmine - project management software
++# Copyright (C) 2006-  Jean-Philippe Lang
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License
++# as published by the Free Software Foundation; either version 2
++# of the License, or (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the Free Software
++# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
++
++require_relative '../../../test_helper'
++
++class Redmine::MyPageTest < ActiveSupport::TestCase
++  def test_max_occurs_should_return_one_by_default
++    assert_equal 1, Redmine::MyPage.max_occurs('news')
++  end
++
++  def test_max_occurs_should_return_an_integer_max_occurs
++    Redmine::MyPage.stubs(:blocks).returns({'news' => {:label => :label_news_latest, :max_occurs => 2}})
++    assert_equal 2, Redmine::MyPage.max_occurs('news')
++  end
++
++  def test_max_occurs_should_read_the_setting_named_by_max_occurs
++    with_settings :my_page_max_issuequery_blocks => '7' do
++      assert_equal 7, Redmine::MyPage.max_occurs('issuequery')
++    end
++  end
++
++  def test_max_occurs_should_return_zero_when_the_setting_is_zero
++    with_settings :my_page_max_issuequery_blocks => '0' do
++      assert_equal 0, Redmine::MyPage.max_occurs('issuequery')
++    end
++  end
++
++  def test_max_occurs_should_return_one_for_an_unknown_block
++    assert_equal 1, Redmine::MyPage.max_occurs('issuequery__1')
++    assert_equal 1, Redmine::MyPage.max_occurs('does_not_exist')
++  end
++end
+-- 
+2.43.0
+
