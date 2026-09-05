@@ -175,8 +175,12 @@ function addFilter(field, operator, values) {
   if (!filterOptions) return;
 
   if (filterOptions['remote'] && filterOptions['values'] == null) {
-    var params = $('#filters-table').closest('form').serializeArray();
-    params.push({name: 'name', value: field});
+    // Send the filter parameters only: the form may be a POST form whose
+    // other fields, authenticity_token included, do not belong in a URL.
+    var params = $.grep($('#filters-table').closest('form').serializeArray(), function(param) {
+      return /^(f\[\]|op\[|v\[)/.test(param.name);
+    });
+    params.push({'name': 'name', 'value': field});
 
     $.getJSON(filtersUrl, params).done(function(data) {
       filterOptions['values'] = data;
