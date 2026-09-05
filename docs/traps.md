@@ -869,3 +869,24 @@ gecommit; het is dus geen fout van de sessie maar een gat in het gereedschap.
 Doen: commit het toch, en meld de FAIL-regel in het sessieverslag zodat hij niet
 voor een echte overtreding wordt aangezien. Het echte gat dichten is een
 framework-wijziging en dus iets waar Jan om moet vragen.
+
+## Een lokale `geoxyz/framework` kan een *andere* historie zijn (2026-09-05)
+
+`docs/STATE.md` zegt: `git checkout geoxyz/framework && git merge --ff-only
+origin/geoxyz/framework`. Deze sessie startte in een container waar al een
+lokale branch met die naam bestond — 50 commits, tot en met "Review round 1",
+maar met een **niet-verwante** historie: `git merge-base` gaf niets en de merge
+faalde met `fatal: refusing to merge unrelated histories`. De remote stond
+ondertussen 51 commits verder, inclusief ronde 2 voor twee slugs.
+
+Het gevaarlijke deel is niet de foutmelding maar wat eraan voorafgaat: `git
+checkout` slaagt, en `docs/STATE.md` op schijf is dan de *oude* versie — zonder
+de sectie "Huidige fase", dus zonder de hele ronde-2-opdracht. Wie de melding
+van `merge --ff-only` wegleest en gewoon `cat docs/REGISTER.md` doet, begint aan
+werk dat al af is.
+
+Doen: controleer na het uitchecken dat je op de remote zit, en herstel met
+`git checkout -B geoxyz/framework origin/geoxyz/framework` als dat niet zo is.
+De sessiebranch die de omgeving mint (`claude/...`) wees hier wél naar de juiste
+commit, dus die is bruikbaar als kruiscontrole:
+`git log --oneline -1 origin/geoxyz/framework` naast je eigen HEAD.
