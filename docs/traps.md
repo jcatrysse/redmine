@@ -890,3 +890,23 @@ Doen: controleer na het uitchecken dat je op de remote zit, en herstel met
 De sessiebranch die de omgeving mint (`claude/...`) wees hier wél naar de juiste
 commit, dus die is bruikbaar als kruiscontrole:
 `git log --oneline -1 origin/geoxyz/framework` naast je eigen HEAD.
+
+
+## Een "suggested direction" in een bevinding is een hypothese, geen meting (2026-09-05)
+
+Bij `gitignore-credentials` F01 stond dat Rails' eigen vorm (`/config/*.key`)
+overnemen meteen ook F02 zou oplossen, "since Rails checks for its own string
+before appending". Dat klopt niet, en het was in vijf minuten te weerleggen:
+`EncryptionKeyFileGenerator#ensure_key_files_are_ignored_silently` doet
+`File.read(".gitignore").include?(ignore)` waarbij `ignore` het **hele** blok is
+dat `key_ignore` maakt — lege regel, `# Ignore key files for decrypting
+credentials and more.`, de globregel, lege regel. Een kale globregel zit daar
+niet in, dus Rails plakt zijn blok er alsnog achter. Gemeten op railties 8.1.3.1
+met drie varianten van hetzelfde `.gitignore`; alleen het letterlijke blok
+onderdrukt de aanvulling.
+
+De les is niet dat de reviewer slordig was — de rest van die bevinding is tot op
+het commando gemeten. Het is dat het deel van een bevinding dat "how I verified
+it" heet gemeten is, en het deel dat "suggested direction" heet niet. Wie in
+ronde 2 een fix bouwt op zo'n zin, neemt een ongemeten aanname over als feit.
+Meet hem eerst; kost hier één `gem unpack` en drie kopieën van een bestand.
