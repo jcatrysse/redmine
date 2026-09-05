@@ -642,3 +642,41 @@ een `Resolution:`-regel in
 - **F09 vervalt als vraag voor Jan.** Die vroeg of de patch ingediend mocht
   worden met de fout erin; g06 beantwoordde hem al met "eerst repareren", en dat
   is nu gebeurd, op beide branches.
+
+### K-11 — wat gebeurt er met een webhook als zijn laatste tracker verwijderd wordt? (webhook-tracker-filter)
+
+Opgekomen in ronde 2 bij bevinding F02. Jans keuze g07 is uitgevoerd: `Tracker`
+heeft nu de omgekeerde koppeling, dus een verwijderde tracker neemt zijn rijen in
+`trackers_webhooks` mee in plaats van ze te laten liggen. Dat lost de rommel op,
+maar niet het gedrag dat de bevinding als kop had: een hook die op precies één
+tracker stond en die tracker kwijtraakt, houdt een **lege** selectie over — en
+leeg betekent in deze feature "alle trackers". De hook vuurt daarna dus weer voor
+elk issue in zijn projecten.
+
+Hoe erg is dat echt: na de verwijdering bestaat er geen enkel issue meer met die
+tracker (Redmine weigert een tracker met issues te verwijderen), dus er komt
+niets bij op díe tracker. Wat er wél bij komt is de rest van het project: issues
+van de andere trackers gaan weer naar het endpoint. Dat is precies het lek dat de
+feature zou dichten, alleen nu na een beheerdersactie in plaats van door een
+verkeerde instelling.
+
+- **Keuze:** laten zoals het is en het opschrijven, of Redmine de verwijdering
+  laten tegenhouden zolang er nog een hook naar die tracker wijst?
+- **Opties:**
+  A) **Opschrijven** (nu gebouwd). Het dossier zegt op twee plaatsen wat er
+     gebeurt en waarom. Nul extra code, en het volgt dezelfde regel als de rest
+     van de feature.
+  B) **Verwijdering blokkeren** via `Tracker#check_integrity`, zoals Redmine dat
+     al doet voor een tracker met issues. De beheerder krijgt dan een foutmelding
+     en moet eerst de hook aanpassen. Extra code in een kernmodel, en een
+     beheerder die een tracker opruimt kan gestuit worden door een webhook van
+     iemand anders die hij niet mag zien.
+  C) **De hook deactiveren** als zijn laatste tracker verdwijnt. Niemand krijgt
+     te veel, maar er stopt stil een integratie, en dat is een verrassing van een
+     andere soort.
+- **Aanbeveling:** A. Het is de enige optie die geen nieuw gedrag verzint voor een
+  zeldzame beheerdersactie, en upstream neemt een patch met minder verrassingen
+  eerder aan. B is verdedigbaar maar hoort dan als eigen wijziging op `Tracker`,
+  niet in deze patch.
+- **Haast?** nee — we bouwden verder met A, en het staat als afgewogen positie in
+  de bezwarentabel van het dossier.
