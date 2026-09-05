@@ -240,13 +240,15 @@ class Changeset < ApplicationRecord
 
   private
 
+  # Setting.validate_all_from_params rejects a malformed regular expression at
+  # the form, so the rescue only catches a value written to the settings table
+  # by other means
   def excluded_branch_patterns
     Setting.revision_branches_excluded.to_s.split(',').map(&:strip).reject(&:blank?).filter_map do |pattern|
       if Setting.revision_branches_enable_regex?
         begin
           Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
-        rescue RegexpError => e
-          logger&.warn("Changeset: invalid regular expression in revision_branches_excluded setting: #{e.message}")
+        rescue RegexpError
           nil
         end
       else

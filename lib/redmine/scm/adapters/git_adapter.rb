@@ -104,7 +104,8 @@ module Redmine
               name = line[2..].to_s.strip
               next if name.blank? || name.start_with?('(')
 
-              names << scm_iconv('UTF-8', @path_encoding, name)
+              name = scm_iconv('UTF-8', @path_encoding, name)
+              names << name if name
             end
           end
           names.sort!

@@ -467,7 +467,7 @@ en:
   setting_activity_days_default: Days displayed on project activity
   setting_my_page_max_issuequery_blocks: Maximum number of custom queries displayed on My page
   setting_display_subprojects_issues: Display subprojects issues on main projects by default
-  setting_display_revision_branches: Display branches on the revision page
+  setting_display_revision_branches: Display branches on the revision and diff pages
   setting_display_associated_revision_branches: Display branches in associated revisions
   setting_revision_branches_excluded: Exclude branches by name
   setting_revision_branches_enable_regex: Enable regular expressions
@@ -1375,6 +1375,7 @@ en:
   text_scm_path_encoding_note: "Default: UTF-8"
   text_subversion_repository_note: "Examples: file:///, http://, https://, svn://, svn+[tunnelscheme]://"
   text_git_repository_note: Repository is bare and local (e.g. /gitrepo, c:\gitrepo)
+  text_revision_branches_git_only: Branch information is only available for Git repositories.
   text_mercurial_repository_note: Local repository (e.g. /hgrepo, c:\hgrepo)
   text_scm_command: Command
   text_scm_command_version: Version

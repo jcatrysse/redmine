@@ -137,6 +137,15 @@ class GitAdapterTest < ActiveSupport::TestCase
       )
     end
 
+    def test_branches_containing_should_skip_names_that_cannot_be_converted
+      adapter =
+        Redmine::Scm::Adapters::GitAdapter.new(REPOSITORY_PATH, nil, nil, nil, 'ISO-2022-JP')
+      assert_equal(
+        ['latin-1-path-encoding', 'master', 'master-20120212', 'test-latin-1', 'test_branch'],
+        adapter.branches_containing('7234cb2750b63f47bff735edc50a1c0a433c2518')
+      )
+    end
+
     def test_branches_containing_with_unknown_or_blank_revision_should_return_empty_array
       assert_equal [], @adapter.branches_containing('0123456789012345678901234567890123456789')
       assert_equal [], @adapter.branches_containing('')

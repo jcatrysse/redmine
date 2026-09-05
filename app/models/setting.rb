@@ -166,6 +166,9 @@ class Setting < ApplicationRecord
        /[\r\n]+/],
       [:mail_handler_enable_regex_excluded_filenames,
        :mail_handler_excluded_filenames,
+       /\s*,\s*/],
+      [:revision_branches_enable_regex,
+       :revision_branches_excluded,
        /\s*,\s*/]
     ].each do |enable_regex, regex_field, delimiter|
       if settings.key?(regex_field) || settings.key?(enable_regex)

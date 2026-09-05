@@ -3357,8 +3357,25 @@ class IssuesControllerTest < Redmine::ControllerTest
     assert_select 'div#changeset-102 em', :count => 0
   end
 
+  def test_show_changesets_tab_should_not_display_branches_above_the_revision_display_limit
+    issue = Issue.find(9)
+    issue.changeset_ids = [102, 103]
+    issue.save!
+    Changeset.any_instance.stubs(:branches).returns(['main'])
+
+    @request.session[:user_id] = 2
+    with_settings :display_associated_revision_branches => '1',
+                  :repository_log_display_limit => '1' do
+      get :issue_tab, :params => {:id => issue.id, :name => 'changesets'}, :xhr => true
+    end
+
+    assert_response :success
+    assert_select 'div#changeset-102'
+    assert_select 'div#changeset-103'
+    assert_select 'em', :text => /\ABranches:/, :count => 0
+  end
+
   def test_show_changesets_tab_should_not_display_branches_without_view_changesets_permission
-    Role.find(1).remove_permission! :view_changesets
     issue = Issue.find(9)
     issue.changeset_ids = [102]
     issue.save!
@@ -3367,10 +3384,15 @@ class IssuesControllerTest < Redmine::ControllerTest
     @request.session[:user_id] = 2
     with_settings :display_associated_revision_branches => '1' do
       get :issue_tab, :params => {:id => issue.id, :name => 'changesets'}, :xhr => true
+      assert_response :success
+      assert_select 'div#changeset-102 em', :text => 'Branches: main'
+
+      Role.find(1).remove_permission! :view_changesets
+      get :issue_tab, :params => {:id => issue.id, :name => 'changesets'}, :xhr => true
     end
 
     assert_response :success
-    assert_select 'div#changeset-102', :count => 0
+    assert_select 'em', :text => /\ABranches:/, :count => 0
   end
 
   def test_show_render_changeset_comments_in_original_context
