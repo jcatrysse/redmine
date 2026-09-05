@@ -422,3 +422,27 @@ het managementrapport dat bij die ronde hoort.
 - **g18 De 81 kleinere punten worden allemaal afgewerkt.** Tegen mijn advies in
   (ik adviseerde de 27 feitelijke correcties mee te nemen en de rest te laten
   liggen met een reden). Jan wil de lijst leeg voor ronde 3.
+## Uitgevoerd — g13, de vier achterlopende regels (2026-09-05)
+
+Jans keuze g13 (2026-09-04) uitgevoerd. Wat er is gemeten en wat er is
+veranderd, zodat ronde 3 het niet opnieuw hoeft af te leiden:
+
+| Punt | Meting op 2026-09-05 | Wat de regel nu zegt |
+|---|---|---|
+| 1. patchregel | alle 9 patchbranches falen "stamt af van `origin/master`" omdat trunk 88 commits verder staat (r24882 → r25037); 6 van de 9 applyen als bestand nog schoon | INV-2: standalone is permanent, "applyt op trunk" geldt op het moment van indienen. Waarschuwing, met `--submit` fataal |
+| 2. commentaarregel | 1075 van 3701 methodes in `app/{models,controllers,helpers}` + `lib/redmine` hebben commentaar direct erboven (29%); 683 commentaarregels binnen een methode-body op ~55.600 regels | INV-3: commentaar boven een methode is normaal, commentaar binnen een methode dat de regel herhaalt niet. Match het bestand dat je bewerkt |
+| 3. check-patch-clean | de branch/bestand-drift bij `wiki-export-attachments` was onzichtbaar: 10 bestanden verschil, waaronder `_export_options.html.erb` dat alleen in het patchbestand bestaat | het script leest `patches/<slug>/*.patch` en vergelijkt ze met `patch/<slug>`. Nieuw resultaat over de tien slugs: 7 schoon, 2 verouderd (`mypage-query-blocks`, `webhook-tracker-filter` — precies hun F01), 1 fout (`wiki-export-attachments` F01) |
+| 4. uitzonderingen | ronde 1 vond twee bewuste afwijkingen die nergens als keuze stonden | `docs/exceptions.md`, gedeeld en append-only. Eén regel per feature, met het alternatief en wat het kost. INV-7 en INV-8 kennen geen uitzondering |
+
+Autonoom ingevuld binnen g13, omdat de keuze zelf al gemaakt was:
+
+- **`--submit` is de vorm waarin punt 1 en g05 samenvallen.** Zonder vlag is
+  verouderd een waarschuwing; met de vlag is het een fout. Zo blijft er één
+  script in plaats van twee, en staat de strengere variant precies op het
+  moment waar g05 hem wil.
+- **Het script accepteert nog steeds een branch**, maar zegt er dan bij dat het
+  bestand is wat aan het issue hangt. Anders zou een oude aanroep stil iets
+  anders controleren dan de aanroeper denkt.
+- **De drift-vergelijking gebeurt op de merge-base van de branch**, niet op
+  huidig trunk. Anders zou verval (punt 1) als drift verschijnen en waren de
+  twee signalen weer door elkaar gaan lopen.
