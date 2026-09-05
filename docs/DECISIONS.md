@@ -548,3 +548,48 @@ Jan vroeg beide punten uit het sessierapport meteen aan te passen.
   `Layout/TrailingWhitespace`: FAIL met het bestand en de cop erbij. G4 en G8
   in `CLAUDE.md` zeggen dat nu ook: een melding die upstream al op zijn eigen
   regel had is van upstream, niet van de patch.
+
+## Autonoom besloten — mypage-query-blocks, ronde 2 (2026-09-05)
+
+Tien reviewbevindingen van 2026-09-03 afgewerkt, alle tien gerepareerd; geen
+`wont-fix`. Wat er onderweg zelf besloten is, staat per punt in
+`docs/features/mypage-query-blocks/decisions.md`. Twee daarvan zijn breder dan
+de feature en horen ook hier:
+
+- **Een grens op een instelling weigeren we in het formulier, we knippen hem
+  niet bij.** `Setting.validate_all_from_params` is waar Redmine dit al doet
+  (`default_issue_due_date_offset`), en de drie foutteksten
+  (`not_a_number`, `greater_than_or_equal_to`, `less_than_or_equal_to`) bestaan
+  in alle vijftig localebestanden, dus er komt geen vertaalwerk bij. Klemmen
+  laat het formulier iets anders tonen dan wat er draait; dat was precies
+  bevinding F03.
+- **Meetcijfers in een dossier worden op Redmine's eigen testfixtures gemeten,
+  niet op `tools/dev-seed.rb`.** Een committer die het naspeelt heeft die
+  fixtures. Cijfers die hij niet reproduceert kosten de hele note
+  geloofwaardigheid, ook als de conclusie klopt (bevinding F04).
+
+## Open — keuze voor Jan (toegevoegd 2026-09-05, mypage-query-blocks)
+
+### K-10 — welk getal wordt de bovengrens van `my_page_max_issuequery_blocks`?
+
+Je koos met g16b dát er een bovengrens komt. Welk getal het wordt is een keuze
+die ik niet voor je hoor te maken, want hij is zichtbaar voor de beheerder en
+hij is het eerste waar een committer over gaat praten.
+
+- **Wat het is:** het maximum dat een beheerder in Beheer → Configuratie →
+  Algemeen kan invullen voor "Maximum number of custom queries displayed on My
+  page". Boven dat getal weigert het formulier de waarde. Het staat als één
+  constante `Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS` in `lib/redmine/my_page.rb`.
+- **Opties:**
+  - **A) 10** — wat de issuebeschrijving van #27313 zelf voorstelt ("up to 10"),
+    en ruim het dubbele van wat Go MAEDA vroeg. Dit is wat er nu in zit.
+  - **B) 5** — precies wat Go MAEDA in note-8 voorstelde. Voorzichtiger, en
+    makkelijker te verdedigen tegenover note-9 van Jean-Philippe Lang, maar het
+    sluit de vraag van de oorspronkelijke melder (10) uit.
+  - **C) een hoger rond getal, bijvoorbeeld 20** — de grens is dan puur een
+    tikfoutbeveiliging (999999) en geen uitspraak over wat verstandig is.
+- **Aanbeveling:** A. Het getal komt uit het issue zelf, dus het is niet ons
+  getal maar dat van de melder; en de gemeten kosten (~17 KB HTML en enkele
+  queries per blok extra) maken tien lijsten op één pagina zwaar maar niet
+  onredelijk.
+- **Haast?** Nee. We bouwden verder met A, en een ander getal is één regel.
