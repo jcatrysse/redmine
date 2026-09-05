@@ -324,61 +324,80 @@ The two rows added to the table for copies and duplicates are inherited
 `update_attribute`/`copy_from` behaviour rather than anything the guard
 decides, and they are measured in the dossier rather than pinned in a test.
 
-**Evidence (INV-8 — figures, not claims):**
+**Evidence (INV-8 — figures, not claims):** all re-run on 2026-09-05 against
+trunk **r25037** (`bee32a926`), the revision the patch is now made against.
 
 - **full** suite with the patch:
   `tools/test-env.sh /home/user/wt/patch-webhook-issue-closed bundle exec ruby bin/rails test:all`
-  → **5929 runs, 31487 assertions, 27 failures, 2 errors, 92 skips**
-- **full** suite on a pristine trunk worktree (same command, `wt/base`) →
-  **5920 runs, 31449 assertions, 28 failures, 2 errors, 92 skips**. The nine
-  extra runs are the eight new tests plus the one the existing parametrised
-  loop generates for the new event.
-- **Failure names compared, not counts.** The patch run's **29** failing names
-  are a strict **subset** of the pristine run's **30**: all 29 are the same
-  `RepositoriesControllerTest` (14), `Redmine::ApiTest::RepositoriesTest` (8),
-  `SysControllerTest` (5), `UserTest#test_destroy_should_nullify_changesets`
-  and
+  → **5988 runs, 31747 assertions, 27 failures, 2 errors, 92 skips**
+- **full** suite on a pristine trunk worktree at the same revision (same
+  command, `wt/base`) → **5977 runs, 31708 assertions, 27 failures, 2 errors,
+  92 skips**. The eleven extra runs are the ten new tests plus the one the
+  existing parametrised payload loop generates for the new event.
+- **Failure names compared, not counts, and this time the two sets are
+  identical.** Both runs fail the same **29** tests, name for name — the
+  `comm` of the two sorted sets is empty in both directions.
+  They break down as `RepositoriesControllerTest` (14),
+  `Redmine::ApiTest::RepositoriesTest` (8), `SysControllerTest` (5),
+  `UserTest#test_destroy_should_nullify_changesets` and
   `Redmine::ApiTest::IssuesTest#test_GET_/issues/:id.xml_should_not_disclose_associated_changesets_from_projects_the_user_has_no_access_to`
   — every one of them needs an SCM binary this container does not have
-  (`svn`, `hg`, `bzr`, `cvs` are all absent; only `git` is present). The one
-  name the pristine run has on top,
-  `ListAutofillSystemTest#test_remove_list_marker_with_single_halfwidth_space_variants`,
-  failed with `expected "/my/page" to equal "/login"` — a login race in the
-  Selenium harness, in a Markdown list-marker test that has nothing to do with
-  webhooks. So **the patch introduces no failure**.
+  (`svn`, `hg`, `bzr`, `cvs` are all absent; only `git` is present). So **the
+  patch introduces no failure**, and unlike the r24882 measurement there is no
+  flake on either side to explain away.
 - webhook suites in one process (`webhook_test`, `webhook_payload_test`,
-  `webhooks_controller_test`): **68 runs, 254 assertions, 0 failures, 0
-  errors**, against **60 runs, 226 assertions, 0 failures** on pristine trunk.
-- the same three plus Redmine's own locale consistency test
-  (`test/unit/lib/redmine/i18n_test.rb`): **96 runs, 1057 assertions, 0
-  failures, 0 errors**.
-- RuboCop on the changed files: **0** offences (baseline on the same files at
-  the merge base: **0**).
-- **Red on the old code:** the two test files were copied onto a pristine trunk
-  worktree and run there — **60 runs, 213 assertions, 2 failures, 3 errors**.
-  So **5 of the 8 new tests fail**, with these messages:
-  - `issue closed payload should contain journal` →
-    `ArgumentError: invalid event: issue.closed`
-  - `issue closed payload should use the issue timestamp when there is no journal`
-    → same `ArgumentError`
+  `webhooks_controller_test`): **71 runs, 262 assertions, 0 failures, 0
+  errors, 0 skips**.
+- On `7.0-stable-GEOxyz`, the same three plus Redmine's own locale consistency
+  test (`test/unit/lib/redmine/i18n_test.rb`): **110 runs, 1104 assertions,
+  0 failures, 0 errors**.
+- RuboCop on the changed Ruby files: **0** offences (four files; `en.yml` is
+  not Ruby). Baseline on the same four files at the merge base, measured in a
+  worktree with the same `Gemfile.lock` so the same cops run: **0**.
+- **Red on the old code:** the two test files were copied onto a pristine
+  trunk worktree at r25037 and run there — **62 runs, 218 assertions,
+  2 failures, 3 errors**. So **5 of the 10 new tests fail** on old code:
+  - `issue closed payload should contain journal` and
+    `issue closed payload should use the issue timestamp when there is no journal`
+    → `ArgumentError: invalid event: issue.closed` (2 of the 3 errors)
   - `should enqueue a job for a hook subscribed to issue closed when an issue is closed`
     → `ActiveRecord::RecordInvalid: Validation failed: Events is invalid`
+    (the third error)
   - `should trigger issue closed webhook when an issue is created with a closed status`
     and `should trigger issue closed webhook again when a reopened issue is closed`
     → `expected exactly once, invoked never: Webhook.trigger("issue.closed", …)`
-    (these two are the 2 failures; the three above are the 3 errors)
-  - The remaining **three are guards** and are green on **both** sides by design:
-    the `.never` expectations for closed→closed, for reopening, and for editing
-    a closed issue. On old code they pass because the event does not exist; on
-    new code they pass because the condition is right. Said plainly so nobody
-    mistakes them for evidence of the new behaviour — they are evidence against
-    a future regression.
-- patch applies to pristine `origin/master` r24882: **yes** — applied in a
-  throwaway worktree at `origin/master`, and the resulting diff is byte-for-byte
-  the branch's own diff (`index` and hunk-offset lines filtered out).
-- `tools/check-patch-clean.sh`: **PASS** (descends from trunk, 6 Redmine files,
-  locales `en.yml` only, no AI trace in message or authorship, applies to a
-  pristine checkout)
+    (the 2 failures)
+- **The other five are guards, and they are not idle either.** They are the
+  `.never` expectations — created with an open status, closed → another closed
+  status, reopened, a field edited while closed, a note added while closed —
+  and they are green on old code because the event does not exist there. What
+  proves they are load-bearing is a mutation: delete the
+  `if saved_change_to_closed_on?` condition and run `webhook_test` →
+  **36 runs, 127 assertions, 5 failures, 0 errors**, all five of them. Said
+  plainly so nobody mistakes the two halves: five tests prove the new
+  behaviour, five protect it.
+- **The measurements the dossier's own claims rest on**, taken with a probe in
+  the patch worktree that counts `sql.active_record` statements and reads the
+  types of the enqueued `WebhookJob`s:
+  - queries touching `webhooks` around one `Issue#save`, with zero hooks in the
+    table: enabled `closing 2 / non-closing 1`, disabled `0 / 0`
+  - one save inside `Issue.transaction` → `["issue.closed", "issue.updated"]`;
+    two saves of the same issue inside one transaction →
+    `["issue.updated"]`, with `closed_on` set
+  - `copy_from(keep_status: true)` of a closed issue →
+    `["issue.closed", "issue.created"]`; without `keep_status` →
+    `["issue.created"]`, status `New`
+  - closing an issue that has one duplicate → two `issue.closed` and two
+    `issue.updated`
+  - created directly in a closed status → `["issue.closed", "issue.created"]`,
+    in that queue order
+- patch applies to pristine `origin/master` r25037: **yes** —
+  `tools/check-patch-clean.sh webhook-issue-closed --submit` applies it in a
+  throwaway checkout and confirms the patch file and the branch are the same
+  change.
+- `tools/check-patch-clean.sh --submit`: **PASS** (5 Redmine files, locales
+  `en.yml` only, no AI trace in header or message, applies to a pristine
+  r25037 checkout, file and branch agree)
 
 # Locales — why `en.yml` only
 
@@ -438,6 +457,10 @@ for Jan.
 
 Exercised by hand in a real Redmine at `http://127.0.0.1:3000`, seeded by
 `tools/dev-seed.rb`, with a real HTTP receiver catching the outgoing POSTs.
+**Re-run on 2026-09-05 against the rebuilt patch** (r25037, with the timestamp
+mapping moved into `Issue::Webhookable`), so the "after" shots are of the code
+that is actually being submitted; the "before" shots are the unpatched
+instance and are unchanged.
 Both modes drive the **same seven changes** to one issue through the web UI —
 create, plain note, status change to another open status, close, move to a
 second closed status, reopen, close again — and the only difference is what
@@ -467,13 +490,19 @@ Failure paths verified:
 | a note with no status change | `deliveries.png` row absent | no delivery | no delivery — journal #1 has no matching row |
 | "Enable webhooks" turned off, then reopen and close again | `deliveries-webhooks-disabled.png` | nothing at all | "0 POST request(s) received. No delivery received." — journals #7 and #8 in `issue-history.png` are that reopen and that closing |
 
-Screenshots read, not just generated: **yes.** What was looked for, and found:
-the two cropped fieldsets counted (three boxes vs four) and the new label read
-in place between "Issue updated" and "Issue deleted"; the tick in the reopened
-edit form confirmed to be on "Issue closed" and on nothing else; both delivery
-tables read row by row against the journal in the matching `issue-history`
-shot, which is how the four "no delivery" rows above are conclusions rather
-than absences; and the disabled-setting page read to say "0" and "No delivery
+Screenshots read, not just generated: **yes**, and read again after the
+2026-09-05 re-run. What was looked for, and found: the two cropped fieldsets
+counted (three boxes vs four) and the new label read in place — `issue-events.png`
+shows *Issue created / Issue updated / Issue closed / Issue deleted*; the tick
+in the reopened edit form confirmed to be on "Issue closed" and on nothing
+else; both delivery tables read row by row against the journal in the matching
+`issue-history` shot. That last reading is what makes the "no delivery" rows
+conclusions rather than absences: the issue's journal has **eight** entries —
+a plain note, `New` → `In Progress`, `In Progress` → `Closed`, `Closed` →
+`Rejected`, `Rejected` → `In Progress`, `In Progress` → `Closed`, then a reopen
+and a close with webhooks off — and the receiver page lists exactly **two**
+deliveries, both `issue.closed`, carrying the notes of journals 3 and 6.
+The disabled-setting page reads "0 POST request(s) received" and "No delivery
 received" rather than merely showing an empty table.
 
 One thing the screenshots show that is **not** this patch, mentioned so nobody
@@ -514,19 +543,34 @@ report.
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** `827e9e7d5`
-- **Suites daar groen:** ja — volledige suite op de branchtip `827e9e7d5`:
-  **5995 runs, 31969 assertions, 0 failures, 0 errors, 39 skips**. (Een eerdere
-  run van dezelfde tip, gelijktijdig met twee andere volledige suites, gaf
-  2 failures; beide waren browsergedreven systeemtests met een
-  inlograce-signature, beide bestanden daarna apart groen — 28 runs,
-  264 assertions, 0 failures — en de volledige suite alleen gedraaid dus ook.)
-  Webhooksuites plus de i18n-test daar: **102 runs, 1076 assertions,
-  0 failures**. RuboCop in die worktree: **0**.
+- **Commits op `7.0-stable-GEOxyz`:** `827e9e7d5` (2026-09-03, de feature) en
+  `7e92b5596` (2026-09-05, het ronde-2 ontwerp: de tijdstempelmapping terug uit
+  `lib/redmine/acts/webhookable.rb` naar `Issue::Webhookable`, de regel waarom
+  boven de bewaking, en de twee testwijzigingen). **Twee** commits en geen
+  herschreven historie: een force push op de branch die GEOxyz draait maakt elke
+  checkout daar ongeldig. Dezelfde afweging als bij `ldap-mail-prefs`, en het
+  registerveld wijst naar de laatste.
+- **Identiek aan de patch (INV-10):** ja, mechanisch nagegaan — de drie
+  productiebestanden (`app/models/issue.rb`,
+  `app/models/concerns/issue/webhookable.rb`, `lib/redmine/acts/webhookable.rb`)
+  zijn **byte-identiek** tussen de patch-worktree en de GEOxyz-worktree.
+  `en.yml` en `webhook_test.rb` verschillen, maar alleen doordat de GEOxyz-tak
+  ook andere features draagt; de hunks van deze feature zijn regel voor regel
+  dezelfde.
+- **Suites daar groen:** ja — volledige suite op de branchtip `7e92b5596`:
+  **6121 runs, 32338 assertions, 0 failures, 0 errors, 39 skips**, in één run,
+  zonder gelijktijdige andere suite en dus zonder flake om weg te redeneren.
+  Dat is de boom die GEOxyz draait. Webhooksuites plus Redmine's eigen
+  locale-consistentietest daar: **110 runs, 1104 assertions, 0 failures**.
+  RuboCop in die worktree op de vijf gewijzigde bestanden: **0**.
 - **`nl.yml` toegevoegd:** nee — zie de localesectie; `en.yml` alleen, aan
   beide kanten identiek, dus geen INV-10-afwijking
-- **`tools/check-geoxyz-branch.sh`:** **PASS** (merge met upstream `7.0-stable`: niets te mergen, al current; lint 0 op 33 gewijzigde Ruby-bestanden; locales binnen en/nl/fr/de/es; eigen commits kloppen met het register)
+- **`tools/check-geoxyz-branch.sh`:** **PASS** (merge met upstream
+  `7.0-stable`: niets te mergen, al current; lint 1 offence op 66 gewijzigde
+  Ruby-bestanden, en die ene staat al op een regel van upstream zelf — baseline
+  1, dus de branch voegt er nul toe; locales binnen en/nl/fr/de/es; 33 eigen
+  commits, kloppend met het register)
 - **Wanneer kan deze commit vervallen?** Trunk staat op `7.0.0 devel` en
   Redmine backportt geen features naar een stable branch, dus een geaccepteerde
-  patch komt in **7.1 of later**. De GEOxyz-commit blijft nodig tot GEOxyz zelf
-  naar die release gaat.
+  patch komt in **7.1 of later**. De GEOxyz-commits blijven nodig tot GEOxyz
+  zelf naar die release gaat.

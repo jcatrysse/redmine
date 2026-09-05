@@ -3,7 +3,7 @@ slug: webhook-issue-closed
 feature: Apart issue.closed-event op de webhook
 commit_51: 25220b45d (deel)
 geoxyz: live
-geoxyz_commit: 3cd3c1527
+geoxyz_commit: 7e92b5596
 upstream: patch klaar
 patch: patches/webhook-issue-closed/2026-09-05-r25037-feature.patch
 issue:
@@ -25,7 +25,7 @@ na, met dezelfde zeven wijzigingen aan hetzelfde issue.
 een `Resolution:`-regel. Drie ervan wijzigden code, zeven de begeleidende
 tekst. De patch is opnieuw op **r25037** (`bee32a926`) gezet, 88 commits verder
 dan de eerste versie, zonder conflict — en op `7.0-stable-GEOxyz` staat het
-ontwerp nu in een tweede commit, `3cd3c1527`, naast de oorspronkelijke
+ontwerp nu in een tweede commit, `7e92b5596`, naast de oorspronkelijke
 `827e9e7d5`. (Twee commits omdat de branch die GEOxyz draait nooit herschreven
 wordt; het registerveld wijst naar de laatste.)
 
@@ -51,55 +51,62 @@ heropenen, wél opnieuw als het issue daarna weer dichtgaat.
 
 ## Bewijs
 
-- Volledige suite met patch: **5929 runs, 31487 assertions, 27 failures,
+Alles opnieuw gemeten op **2026-09-05**, tegen trunk **r25037** (`bee32a926`).
+
+- Volledige suite met patch: **5988 runs, 31747 assertions, 27 failures,
   2 errors, 92 skips**
-- Volledige suite op schone trunk: **5920 runs, 31449 assertions, 28 failures,
-  2 errors, 92 skips**. Faalnamen vergeleken, niet aantallen: de **29** namen
-  van de patchrun zijn een strikte **deelverzameling** van de **30** van de
-  schone run. Alle 29 zijn repository-/changeset-/`SysController`-tests die een
-  SCM-binary nodig hebben die dit image niet heeft. De ene naam die de schone
-  run extra had is
-  `ListAutofillSystemTest#test_remove_list_marker_with_single_halfwidth_space_variants`
-  (`expected "/my/page" to equal "/login"`) — een inlograce in de
-  Selenium-harnas van een Markdown-test die niets met webhooks te maken heeft.
-  De patch introduceert dus **geen enkele** fout.
-- Volledige suite op de **werkelijke tip** van `7.0-stable-GEOxyz`
-  (`827e9e7d5`, met de zeven eerdere features eronder): **5995 runs,
-  31969 assertions, 0 failures, 0 errors, 39 skips**. Dat is de boom die GEOxyz
-  draait.
-  **Eerlijk erbij:** de eerste run van diezelfde tip gaf 2 failures, en beide
-  waren **systeemtests** (`OauthProviderSystemTest#test_application_creation_and_authorization`
-  met `expected "/" to equal "/login"`, en `IssuesSystemTest#test_bulk_edit`).
-  Die run liep gelijktijdig met de twee andere volledige suites, en drie
-  browsergedreven suites op 4 cores is precies de situatie waarin dit soort
-  inlograces omvalt — dezelfde signature viel in de schone-trunk-run op
-  `ListAutofillSystemTest`. Beide bestanden zijn daarna eerst samen apart
-  gedraaid (**28 runs, 264 assertions, 0 failures**) en daarna is de volledige
-  suite nog een keer alleen gedraaid: de nul hierboven. Dus flakes, niet de
-  patch — maar niet weggelaten.
+- Volledige suite op schone trunk r25037: **5977 runs, 31708 assertions,
+  27 failures, 2 errors, 92 skips**. De elf extra runs zijn de tien nieuwe
+  tests plus de ene die trunks eigen geparametriseerde payloadlus voor het
+  nieuwe event genereert.
+- **Faalnamen vergeleken, niet aantallen — en de twee verzamelingen zijn nu
+  identiek.** Beide runs falen op dezelfde **29** namen; `comm` van de twee
+  gesorteerde lijsten is in beide richtingen leeg. Uitsplitsing:
+  `RepositoriesControllerTest` (14), `Redmine::ApiTest::RepositoriesTest` (8),
+  `SysControllerTest` (5), `UserTest#test_destroy_should_nullify_changesets` en
+  één `Redmine::ApiTest::IssuesTest`. Alle 29 hebben een SCM-binary nodig die
+  dit image niet heeft (`svn`, `hg`, `bzr`, `cvs` ontbreken; alleen `git` is er).
+  De patch introduceert dus **geen enkele** fout. Anders dan bij de meting op
+  r24882 hoeft er deze keer aan geen van beide kanten een flake weggeredeneerd
+  te worden.
 - Webhooksuites apart (`webhook_test`, `webhook_payload_test`,
-  `webhooks_controller_test` in één proces): **68 runs, 254 assertions,
-  0 failures, 0 errors**, tegen **60 runs, 226 assertions, 0 failures** op
-  schone trunk. Op `7.0-stable-GEOxyz`: **102 runs, 1076 assertions,
-  0 failures** (met de i18n-test erbij).
-- Locale-consistentietest van Redmine zelf
-  (`test/unit/lib/redmine/i18n_test.rb`) samen met de webhooksuites: **96 runs,
-  1057 assertions, 0 failures, 0 errors**.
-- RuboCop op de gewijzigde bestanden: **0** (baseline op dezelfde bestanden op
-  de merge-base: **0**). Ook 0 in de GEOxyz-worktree.
-- Rood op oude code: **60 runs, 213 assertions, 2 failures, 3 errors** met de
-  twee testbestanden op een schone trunk-worktree, dus **5 van de 8** nieuwe
-  tests falen daar (drie keer `ArgumentError: invalid event: issue.closed` of
-  `Validation failed: Events is invalid`, twee keer
-  `expected exactly once, invoked never`). De andere **drie zijn bewakers** met
-  een `.never`-verwachting (gesloten→gesloten, heropenen, en een gewone edit
-  van een gesloten issue) en staan aan **beide** kanten groen; ze bewijzen niet
-  het nieuwe gedrag maar beschermen tegen een toekomstige regressie. Zo staat
-  het ook in het dossier.
-- Patchbestand appliceert los op een verse `origin/master`-checkout en
-  reproduceert de branch exact (gecontroleerd in een wegwerp-worktree).
-- `tools/check-patch-clean.sh`: **PASS** · `tools/check-geoxyz-branch.sh`:
-  **PASS** (snelle checks; de suite is de andere helft en staat hierboven)
+  `webhooks_controller_test` in één proces): **71 runs, 262 assertions,
+  0 failures, 0 errors, 0 skips**. Op `7.0-stable-GEOxyz`, dezelfde drie plus
+  Redmine's eigen locale-consistentietest: **110 runs, 1104 assertions,
+  0 failures, 0 errors**.
+- RuboCop op de gewijzigde Ruby-bestanden: **0** (vier bestanden; `en.yml` is
+  geen Ruby). Baseline op dezelfde vier op de merge-base, gemeten in een
+  worktree met dezelfde `Gemfile.lock` zodat dezelfde cops draaien: **0**. In
+  de GEOxyz-worktree, vijf bestanden: **0**.
+- **Rood op oude code:** de twee testbestanden op een schone trunk-worktree
+  (r25037) — **62 runs, 218 assertions, 2 failures, 3 errors**, dus **5 van de
+  10** nieuwe tests falen daar. Drie keer `ArgumentError: invalid event:
+  issue.closed` of `Validation failed: Events is invalid`, twee keer
+  `expected exactly once, invoked never`.
+- **De andere vijf zijn bewakers, en die staan óók niet stil.** Het zijn de
+  `.never`-verwachtingen (aangemaakt met open status, gesloten→andere gesloten
+  status, heropenen, veld gewijzigd terwijl gesloten, notitie terwijl
+  gesloten). Ze zijn groen op oude code omdat het event daar niet bestaat.
+  Wat bewijst dat ze dragen is een mutatie: haal `if saved_change_to_closed_on?`
+  weg en draai `webhook_test` → **36 runs, 127 assertions, 5 failures**, alle
+  vijf. Vijf tests bewijzen dus het nieuwe gedrag, vijf beschermen het.
+- **De metingen waar de dossierclaims op steunen** (probe die
+  `sql.active_record` telt en de types van de `WebhookJob`s in de wachtrij
+  leest): queries op `webhooks` rond één `Issue#save`, nul hooks in de tabel —
+  aan `sluitend 2 / niet-sluitend 1`, uit `0 / 0`; twee saves van hetzelfde
+  issue in één transactie → alleen `issue.updated`; kopie met "status
+  behouden" → `issue.closed` + `issue.created`; sluiten met één duplicaat →
+  twee keer beide; direct gesloten aangemaakt → `issue.closed` staat vóór
+  `issue.created` in de wachtrij.
+- Volledige suite op de tip van `7.0-stable-GEOxyz` (`7e92b5596`, met de
+  eerdere features eronder): **6121 runs, 32338 assertions, 0 failures,
+  0 errors, 39 skips** — in één run, zonder gelijktijdige andere suite, dus
+  geen flake om weg te redeneren.
+- `tools/check-patch-clean.sh webhook-issue-closed --submit`: **PASS** — het
+  patchbestand applyt op een verse r25037-checkout en is dezelfde wijziging als
+  de branch. `tools/check-geoxyz-branch.sh`: **PASS** (lint 1 offence op 66
+  bestanden, en die stond al op een regel van upstream — baseline 1, de branch
+  voegt er nul toe).
 - Screenshots: **10**, gelezen: **ja** — de twee uitsnedes van het
   vinkjesblok geteld (drie tegen vier) en het nieuwe label op zijn plek
   gelezen, en beide leveringstabellen regel voor regel tegen het journaal in de
@@ -204,13 +211,17 @@ verder met `en.yml` alleen.
   labels plus een Engels "Issue closed" — precies de half-Engelse uitkomst
   waartegen dit argument pleit, nu bereikt langs de andere kant. Volledige
   onderbouwing in `dossier.md`.
-- **De drie codebestanden die deze patch raakt zijn byte-identiek tussen
-  `origin/master` en `7.0-stable-GEOxyz`** (`issue.rb`,
-  `concerns/issue/webhookable.rb`, `acts/webhookable.rb`). `en.yml` en
-  `webhook_test.rb` verschillen wel, maar in andere regio's van het bestand, dus
-  de cherry-pick landde schoon. De twee diffs zijn regel voor regel vergeleken
-  (na het wegfilteren van `index`- en hunk-regels): **identiek**. Geen
-  INV-10-afwijking.
+- **De drie codebestanden die deze feature raakt zijn byte-identiek tussen de
+  patch-worktree en de GEOxyz-worktree** (`issue.rb`,
+  `concerns/issue/webhookable.rb`, `acts/webhookable.rb`) — opnieuw
+  gecontroleerd na de ronde-2 wijziging, met `diff` op de bestanden zelf.
+  `en.yml` en `webhook_test.rb` verschillen wel, maar alleen doordat de
+  GEOxyz-tak ook andere features draagt; de hunks van deze feature zijn regel
+  voor regel dezelfde. Geen INV-10-afwijking.
+- **Op `7.0-stable-GEOxyz` staat deze feature in twee commits**, `827e9e7d5`
+  (de feature) en `7e92b5596` (het ronde-2 ontwerp). Dat is met opzet: de
+  branch die GEOxyz draait wordt nooit herschreven, want een force push maakt
+  elke checkout daar ongeldig. Zelfde afweging als bij `ldap-mail-prefs`.
 - **De end-to-end test leest niet de eerste `WebhookJob` in de wachtrij.**
   Sinds ronde 2 (F07) onthoudt hij `enqueued_jobs.size` vóór het blok. Dat
   terugdraaien laat de test bij een regressie omvallen op een payload van de
@@ -259,5 +270,9 @@ verder met `en.yml` alleen.
 
 ## Volgende stap voor een sessie
 
-Af — niets te doen. Wachten tot Jan het issue heeft aangemaakt; vul dan het
-`issue:`-veld in de front matter en de "Submission"-sectie van `dossier.md` in.
+Af — ronde 2 incluis, niets te doen. Wachten tot Jan het issue heeft
+aangemaakt; vul dan het `issue:`-veld in de front matter en de
+"Submission"-sectie van `dossier.md` in. Vlak vóór het indienen nog één keer
+`tools/check-patch-clean.sh webhook-issue-closed --submit` draaien (g05): als
+trunk intussen verder is gelopen, is dat de plek waar dat blijkt, en dan worden
+de bewijscijfers in dezelfde beweging opnieuw gedraaid.

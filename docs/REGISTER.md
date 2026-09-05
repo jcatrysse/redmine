@@ -15,7 +15,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2 + 8c1fa23fb`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa + f260958c6`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0 + e2f060570`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
-| [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`827e9e7d5`) | patch klaar | — |
+| [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`7e92b5596`) | patch klaar | — |
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041 + 0fbad7c17 + 72a3a8e22`) | patch klaar | — |
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`7006c4f00`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
@@ -29,6 +29,10 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `webhook-issue-closed` — cse_01Lz8jajhEiPFphSZYDtJ6P8 sinds 2026-09-05
 
 ## Openstaand voor Jan
 
@@ -285,7 +289,7 @@ De Engelse tekst staat in `dossier.md` vanaf "The problem"; de voor/na-paren in
 Maak een **nieuw** issue op redmine.org aan als follow-up van
 [#29664](https://www.redmine.org/issues/29664) — dus niet als note aan #29664
 zelf, dat issue is gesloten met target version 7.0.0. Hang er
-`patches/webhook-issue-closed/2026-09-03-r24882-feature.patch` aan. Dat is
+`patches/webhook-issue-closed/2026-09-05-r25037-feature.patch` aan. Dat is
 **één** bestand: er is geen aparte locales-patch, en de reden daarvoor staat
 hieronder en in het dossier onder "Locales — why `en.yml` only". De Engelse
 issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem".
@@ -297,7 +301,7 @@ select trackers. 2. An option to only trigger on issue close. 3.
 Documentation. 4. A full list of webhooks for admin users. 5. More languages.
 6. Amended testing."* En **note 37 van Holger Just** vroeg precies om dit: die
 monolithische patch opsplitsen in losse stukken, tegen de huidige trunk, met
-per stuk de reden erbij. Dit is punt 2, los, tegen r24882. `webhook-tracker-filter`
+per stuk de reden erbij. Dit is punt 2, los, tegen r25037. `webhook-tracker-filter`
 was punt 1; dien ze los in, niet samen.
 
 Drie dingen die het waard zijn om erbij te zetten omdat ze de patch verdedigen
@@ -308,14 +312,19 @@ vóórdat iemand ernaar vraagt:
   nooit terug voor dit event. Er is een end-to-end test die een hook met
   **alleen** `issue.closed` sluit en precies één job verwacht, en een
   screenshot van echte leveringen die het in een draaiende Redmine laat zien.
-- **De tabel met de acht overgangen** uit het dossier ("Which transitions fire,
-  and which do not"). Twee rijen daarvan zijn wat een ontvanger die dit uit
+- **De tabel met de overgangen** uit het dossier ("Which transitions fire, and
+  which do not"). Twee rijen daarvan zijn wat een ontvanger die dit uit
   `issue.updated` reconstrueert als eerste fout doet: `Closed` → `Rejected` is
   geen tweede sluiting, en een gewone edit van een gesloten issue is er ook
-  geen. Elke rij heeft een test.
+  geen. **Zeven** van de acht rijen hebben een eigen test; de achtste
+  ("verwijderd") niet, en waarom staat erbij — een `after_save_commit` kan door
+  een destroy niet bereikt worden. Er staan sinds ronde 2 twee rijen bij die
+  geërfd gedrag beschrijven: een kopie met "status behouden", en de cascade via
+  `close_duplicates` die één statuswijziging in N+1 events omzet.
 - **Er zit geen instelling, migratie, gem, route of permissie in.** Buiten de
-  tests acht toegevoegde en drie verwijderde regels, waarvan één toevoeging een
-  locale-string is.
+  tests dertien toegevoegde en twee verwijderde regels over drie bestanden,
+  waarvan één toevoeging een locale-string is en twee commentaar. En: **geen
+  enkel bestand onder `lib/redmine/`**.
 
 Er staat één keuze voor je open: **K-09** in `docs/DECISIONS.md`, over de
 vertalingen. Er is geen haast — het blokkeert het indienen niet, we bouwden
