@@ -28,7 +28,7 @@ class Tracker < ApplicationRecord
        start_date due_date estimated_hours done_ratio description priority_id).freeze
   CORE_FIELDS_ALL = (CORE_FIELDS_UNDISABLABLE + CORE_FIELDS).freeze
 
-  before_destroy :check_integrity
+  before_destroy :check_integrity, :deactivate_webhooks
   belongs_to :default_status, :class_name => 'IssueStatus'
   has_many :issues
   has_many :workflow_rules, :dependent => :delete_all
@@ -170,5 +170,15 @@ class Tracker < ApplicationRecord
 
   def check_integrity
     raise "Cannot delete tracker" if Issue.where(:tracker_id => self.id).any?
+  end
+
+  # Deactivates the webhooks this tracker is the only selected one on. An empty
+  # tracker selection means every tracker, so those hooks would start firing for
+  # the whole project instead of stopping, the way a hook does when its last
+  # project is deleted.
+  def deactivate_webhooks
+    webhooks.preload(:trackers).each do |hook|
+      hook.update_column(:active, false) if hook.tracker_ids == [id]
+    end
   end
 end

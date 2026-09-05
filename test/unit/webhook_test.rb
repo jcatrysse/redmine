@@ -200,8 +200,25 @@ class WebhookTest < ActiveSupport::TestCase
     hook.update! trackers: [Tracker.find(1), tracker]
     tracker.destroy
     assert_nil ActiveRecord::Base.connection.select_value("SELECT 1 FROM trackers_webhooks WHERE tracker_id = #{tracker.id}")
+    assert hook.reload.active?
     assert_equal [hook], Webhook.hooks_for('issue.created', Issue.find(1))
     assert_equal [], Webhook.hooks_for('issue.created', Issue.find(2))
+  end
+
+  test "should deactivate a hook whose only tracker is destroyed" do
+    hook = create_hook
+    tracker = Tracker.generate!
+    hook.update! trackers: [tracker]
+    tracker.destroy
+    assert_not hook.reload.active?
+    assert_equal [], Webhook.hooks_for('issue.created', Issue.find(1))
+  end
+
+  test "should not deactivate a hook with no tracker selected when a tracker is destroyed" do
+    hook = create_hook
+    Tracker.generate!.destroy
+    assert hook.reload.active?
+    assert_equal [hook], Webhook.hooks_for('issue.created', Issue.find(1))
   end
 
   test "schedule should enqueue jobs for hooks" do
