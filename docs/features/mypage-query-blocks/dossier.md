@@ -276,40 +276,53 @@ the one who has to defend the server.
 
 **Evidence (INV-8 — figures, not claims):**
 
-- **full** suite, patch worktree, run on the exact committed tree:
-  `tools/test-env.sh /home/user/wt/patch-mypage-query-blocks bundle exec ruby bin/rails test:all`
-  → **5926 runs, 31483 assertions, 27 failures, 2 errors, 92 skips**
-  (an earlier run, before the `nl.yml` wording was changed, gave 5926 / 31485 /
-  27 / 2 / 92 — the same failures, two assertions apart because Redmine
-  randomises test order and some tests assert conditionally)
-- **full** suite, pristine trunk r24882 (`/home/user/wt/base`, database
-  `redmine_test_base`) → **5920 runs, 31455 assertions, 27 failures, 2 errors,
-  92 skips**
-- the 29 failing test names are **identical** on both sides (`diff` of the sorted
-  name lists is empty), in both patch runs. All 29 live in
-  `Redmine::ApiTest::IssuesTest`, `Redmine::ApiTest::RepositoriesTest`,
-  `RepositoriesControllerTest`, `SysControllerTest` and `UserTest` and need
-  `svn`, `hg`, `bzr` or `cvs`, none of which is installed in this container. They
-  fail on trunk regardless of this patch.
-- touched suites together in one process
-  (`setting_test`, `settings_controller_test`, `my_controller_test`,
-  `i18n_test`) → **126 runs, 1325 assertions, 0 failures, 0 errors**
-- RuboCop on the changed Ruby files (`lib/redmine/my_page.rb`,
-  `test/functional/my_controller_test.rb`): **0** offences. Baseline on the same
-  two files at `origin/master`: **0**.
-- each new test verified red on the old code: the three production files were
-  reset with `git checkout origin/master --` while the new tests stayed in place,
-  and `my_controller_test.rb` then ran **62 runs, 347 assertions, 0 failures, 5
-  errors** — the five `with_settings` tests all raised
-  `RuntimeError: There's no setting named my_page_max_issuequery_blocks` from
-  `app/models/setting.rb:402`. That is the honest form of "red" for a new
-  setting: the capability does not exist to test. The sixth test,
-  `test_page_should_disable_issuequery_option_at_the_default_maximum`, is a
-  **guard** and is deliberately green on both sides (1 run, 5 assertions, 0
-  failures on trunk) — it is the test that would catch a change to the default,
-  which is this patch's central promise.
-- patch applies to pristine `origin/master` r24882: yes
-- `tools/check-patch-clean.sh`: PASS
+- **full** suite, patch worktree, run on the exact committed tree
+  (`tools/test-env.sh /home/user/wt/patch-mypage-query-blocks bundle exec ruby bin/rails test:all`,
+  PostgreSQL 16, Ruby 3.3.6, system tests included)
+  → **5992 runs, 31762 assertions, 27 failures, 2 errors, 92 skips**
+- **full** suite, pristine trunk r25037 (`/tmp/base-mypage`, database
+  `redmine_test_trunk`, same command) → **5977 runs, 31708 assertions,
+  27 failures, 2 errors, 92 skips**. The 15 extra runs on the patch side are
+  exactly the 15 new tests.
+- the 29 failing test names are **identical** on both sides — `diff` of the
+  sorted name lists is empty. They are 14 in `RepositoriesControllerTest`, 8 in
+  `Redmine::ApiTest::RepositoriesTest`, 5 in `SysControllerTest`, 1 in
+  `Redmine::ApiTest::IssuesTest` and 1 in `UserTest`, and every one of them
+  needs `svn`, `hg`, `bzr` or `cvs`, none of which is installed in this
+  container. They fail on trunk regardless of this patch.
+- touched suites together in one process (`my_controller_test`,
+  `settings_controller_test`, `setting_test`, `my_page_test`, `i18n_test`)
+  → **135 runs, 1346 assertions, 0 failures, 0 errors, 0 skips**
+- RuboCop on the changed Ruby files (`app/models/setting.rb`,
+  `lib/redmine/my_page.rb`, `test/functional/my_controller_test.rb`,
+  `test/functional/settings_controller_test.rb`,
+  `test/unit/lib/redmine/my_page_test.rb`): **0** offences, baseline on the same
+  files at `origin/master`: **0**.
+- each new test verified red on the old code, by three separate mutations of the
+  worktree with the new tests left in place:
+  - **all production files reset** to `origin/master` → 92 runs, 459
+    assertions, **14 errors**: eleven `RuntimeError: There's no setting named
+    my_page_max_issuequery_blocks` and three `NoMethodError: undefined method
+    'max_occurs' for module Redmine::MyPage`. That is the honest form of "red"
+    for a new setting: the capability does not exist to test.
+  - **only `lib/redmine/my_page.rb` reset**, the setting and the validation kept
+    → 5 failures and 7 errors, and the failures are behavioural:
+    `..._enable_issuequery_option_below_the_configured_maximum`,
+    `..._disable_issuequery_option_at_a_lowered_maximum`,
+    `..._add_issuequery_block_over_the_configured_maximum_should_error`,
+    `..._add_issuequery_block_below_the_configured_maximum`,
+    `..._with_the_maximum_set_to_zero_should_error`.
+  - **only the upper-bound branch removed** from `Setting.validate_all_from_params`
+    → `test_post_edit_with_my_page_max_issuequery_blocks_over_the_upper_bound_should_error`
+    fails, and nothing else does. Each half of the range is pinned separately.
+  - two tests are **guards, deliberately green on both sides**, and are labelled
+    as such in the table above:
+    `test_page_should_disable_issuequery_option_at_the_default_maximum` (changing
+    the default in `config/settings.yml` from 3 to 5 makes it fail) and
+    `test_page_should_render_issuequery_blocks_over_a_lowered_maximum`.
+- `tools/check-patch-clean.sh mypage-query-blocks --submit`: **PASS** — both
+  files apply to a pristine `origin/master` r25037 checkout, touch only Redmine
+  paths, keep to the five locales, carry no AI trace, and agree with the branch.
 
 # Live verification (G9)
 
@@ -351,6 +364,15 @@ the images rather than by the assertions.
    so the DOM cannot show it and the assertion alone proves nothing a reviewer
    can see. The select is therefore also cropped on its own
    (`select-*.png`), where the grey/black pair is unambiguous.
+3. The first round of shots showed four *empty* "Custom query" forms, not four
+   issue lists, because nothing in the run had a saved query to select — so the
+   page whose cost this note argues about had never been photographed. The run
+   now creates one public query itself and points every block at it;
+   `fourth-block.png` is four rendered issue lists of ten rows each.
+4. The two shots that the note calls the same picture are now the same picture
+   by construction: the pointer is parked before the crop, and the run compares
+   the two files by SHA-256 (`c786076ccd8692104de3b07c613e3227` in both) and
+   fails if they differ. The earlier pair differed by a stray browser tooltip.
 
 # What asynchronous loading would and would not fix
 

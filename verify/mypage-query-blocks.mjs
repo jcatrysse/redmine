@@ -61,9 +61,15 @@ function digest(file) {
 
 // Creates the public query the blocks display. Idempotent: the dev database is
 // shared between the two runs, so the second one finds it already there.
+async function savedQueryExists() {
+  // The issues sidebar is where a global public query shows up; the /queries
+  // index does not list one that belongs to no project.
+  await s.go('/issues');
+  return (await s.page.locator(`#sidebar a:text-is("${QUERY_NAME}")`).count()) > 0;
+}
+
 async function ensureSavedQuery() {
-  await s.go('/queries?type=IssueQuery');
-  if (await s.page.locator(`a:text-is("${QUERY_NAME}")`).count()) return;
+  if (await savedQueryExists()) return;
 
   await s.go('/queries/new?type=IssueQuery');
   await s.page.fill('#query_name', QUERY_NAME);
@@ -71,8 +77,7 @@ async function ensureSavedQuery() {
   await s.page.check('#query_is_for_all');
   await s.page.click('input[type=submit]');
   await s.page.waitForLoadState('networkidle');
-  await s.go('/queries?type=IssueQuery');
-  if (!(await s.page.locator(`a:text-is("${QUERY_NAME}")`).count())) {
+  if (!(await savedQueryExists())) {
     failures.push(`saved query: ${QUERY_NAME} was not created`);
   }
 }
@@ -83,7 +88,7 @@ async function ensureSavedQuery() {
 async function configureBlocks() {
   for (let i = 0; i < 20; i++) {
     await s.go('/my/page');
-    const select = s.page.locator('.mypage-box select[name^="settings["]').first();
+    const select = s.page.locator('.mypage-box select[name$="[query_id]"]').first();
     if (!(await select.count())) return;
     await select.selectOption({label: QUERY_NAME});
     await select.locator('xpath=ancestor::form').locator('input[type=submit]').click();
