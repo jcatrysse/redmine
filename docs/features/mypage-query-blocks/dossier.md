@@ -458,15 +458,25 @@ anybody who does not set it.
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** `198cbfb63`
-- **Suites daar groen:** volledige suite, database `redmine_test_geoxyz` →
-  **5945 runs, 31800 assertions, 0 failures, 0 errors, 39 skips**. Helemaal
-  groen: de 29 SCM-fouten van trunk bestaan op `7.0-stable` niet.
-- **Diff identiek aan de patch:** ja, mechanisch nagemeten — `diff` van de
-  productie-diff op beide branches is leeg (INV-10). Alleen de locale-bestanden
-  staan op een andere regel, omdat de GEOxyz-branch al sleutels van
-  `wiki-export-attachments` onderaan heeft.
+- **Commits op `7.0-stable-GEOxyz`:** `198cbfb63` (ronde 1) en `47eec6f1d`
+  (ronde 2 — het bereik op de instelling). Twee commits in plaats van één,
+  omdat `198cbfb63` al gepusht was: een branch die GEOxyz uitcheckt wordt niet
+  herschreven.
+- **Suites daar groen:** volledige suite (`test:all`), database
+  `redmine_test_geoxyz` → **6097 runs, 32266 assertions, 0 failures, 0 errors,
+  39 skips**. Helemaal groen: de 29 SCM-fouten van trunk bestaan op
+  `7.0-stable` niet.
+- **Diff identiek aan de patch:** ja, mechanisch nagemeten (INV-10). Per
+  aangeraakt bestand is `diff(patch-worktree, geoxyz-worktree)` vergeleken met
+  `diff(origin/master, origin/7.0-stable)`; voor `my_page.rb` en de drie
+  testbestanden zijn die letterlijk gelijk, en voor `setting.rb` en
+  `settings.yml` verschillen alleen de regelnummers respectievelijk de
+  instellingen van andere features die op de GEOxyz-branch staan en niet in
+  trunk. Het toegevoegde validatieblok, de `settings.yml`-regel en alle vijf de
+  localesleutels zijn woord voor woord gelijk.
 - **`nl.yml` toegevoegd:** ja — dezelfde vijf locales als de patch (INV-10)
-- **`tools/check-geoxyz-branch.sh`:** PASS
+- **`tools/check-geoxyz-branch.sh`:** PASS — niets te mergen met upstream
+  `7.0-stable`, geen AI-sporen, en lint 1 offence op 61 gewijzigde Ruby-bestanden
+  die allemaal op regels van upstream zelf staan (baseline 1)
 - **Wanneer kan deze commit vervallen?** Een geaccepteerde trunk-patch komt in
   7.1 of later, nooit in 7.0-stable. Dus pas als GEOxyz naar die release gaat.
