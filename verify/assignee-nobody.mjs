@@ -3,21 +3,25 @@
 //   SHOT_DIR=docs/features/assignee-nobody/shots \
 //   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node verify/assignee-nobody.mjs
 //
-// MODE=before  runs against the unpatched instance: shots are named before-*,
-//              and every case asserts what the old code does — which for four
-//              of the six operators is an error page, and for one is a silently
-//              empty result.
-// MODE=after   runs against the patched instance and asserts the right answer.
+// MODE=before      runs against the unpatched instance: shots are named before-*,
+//                  and every case asserts what the old code does — which for four
+//                  of the six operators is an error page, and for one is a
+//                  silently empty result.
+// MODE=after       runs against the patched instance and asserts the right answer.
+// MODE=regression  runs only the group-filter case, against the round-1 patch
+//                  before the review fix, where the folded condition escaped the
+//                  EXISTS correlation. Shots are named regression-*.
 //
 // The seeded project (tools/dev-seed.rb) has, among its open issues:
-//   4 unassigned, 4 assigned to `dev` and 1 assigned to `tester`. One of
-//   dev's ("Picked up from the queue") carries a journal recording the change
-//   from nobody. Those counts are what the cases below expect.
+//   5 unassigned (one of them in the subproject), 4 assigned to `dev` and 1
+//   assigned to `tester`. One of dev's ("Picked up from the queue") carries a
+//   journal recording the change from nobody. Those counts are what the cases
+//   below expect.
 import { session, report } from '../tools/verify-lib.mjs';
 
 const PROJECT = '/projects/geoxyz-verify';
 const mode = process.env.MODE || 'before';
-const prefix = mode === 'before' ? 'before-' : '';
+const prefix = mode === 'after' ? '' : `${mode}-`;
 const s = await session(process.env.SHOT_DIR);
 
 // The user ids are not fixed by the seed, so look them up through the page the
@@ -37,7 +41,7 @@ const cases = [
     op: '=',
     values: ['none', dev],
     before: 'error',
-    after: 8,
+    after: 9,
     caption: 'Assignee is nobody or dev — the queue plus what dev already has',
   },
   {
@@ -53,7 +57,7 @@ const cases = [
     op: '=',
     values: ['none'],
     before: 'error',
-    after: 4,
+    after: 5,
     caption: 'Assignee is nobody, selected as a value — same as the none operator',
   },
   {
@@ -61,7 +65,7 @@ const cases = [
     op: 'ev',
     values: ['none'],
     before: 'error',
-    after: 5,
+    after: 6,
     caption: 'Assignee has been nobody — the queue plus the issue picked up from it',
   },
   {
@@ -95,7 +99,7 @@ function filterUrl({ op, values }) {
 
 const failures = [];
 
-for (const c of cases) {
+for (const c of (mode === 'regression' ? [] : cases)) {
   const expected = mode === 'before' ? c.before : c.after;
   // go() refuses an error page, and on the unpatched instance four of these
   // cases are exactly that, so navigate directly and read the outcome.
@@ -137,8 +141,48 @@ for (const c of cases) {
   );
 }
 
+// Round 2, F01: the folded condition has to stay inside the EXISTS subquery of
+// UserQuery#sql_for_is_member_of_group_field. Here `before` is the round-1 code
+// rather than pristine trunk, so MODE=before is run against a checkout of the
+// unfixed patch: there the OR escapes the correlation and the admin user list
+// answers with every user instead of the one member of the group.
+await s.go('/groups');
+const groupHref = await s.page
+  .locator('table.groups tbody tr td a')
+  .filter({ hasText: 'verify-group' })
+  .first()
+  .getAttribute('href');
+const groupId = groupHref.split('/')[2];
+
+const groupQuery = new URLSearchParams();
+groupQuery.append('set_filter', '1');
+groupQuery.append('f[]', 'is_member_of_group');
+groupQuery.append('op[is_member_of_group]', '=');
+groupQuery.append('v[is_member_of_group][]', 'none');
+groupQuery.append('v[is_member_of_group][]', groupId);
+const groupResponse = await s.page.goto(`${s.BASE}/users?${groupQuery.toString()}`);
+await s.page.waitForLoadState('networkidle');
+const groupRows = await s.page.locator('table.users tbody tr').count();
+// verify-group has exactly one member, and that is the whole answer. On
+// pristine trunk the 'none' value reaches an integer column and the page is an
+// error; on the round-1 patch the OR escapes the correlation and the list
+// answers with every user it can see; only the fixed code says one.
+const groupStatus = groupResponse.status();
+const groupGot = groupStatus >= 400 ? 'error' : groupRows;
+const groupExpected = {before: 'error', regression: 'many', after: 1}[mode];
+const groupOk =
+  groupExpected === 'many' ? (groupGot !== 'error' && groupGot > 1) : groupGot === groupExpected;
+if (!groupOk) {
+  failures.push(`group-filter-nobody: expected ${groupExpected}, got ${groupGot} (HTTP ${groupStatus})`);
+}
+await s.shot(
+  `${prefix}group-filter-nobody`,
+  `Member of no group or of verify-group — ${groupGot === 'error' ? `HTTP ${groupStatus}` : `${groupRows} user(s)`}; one member is the right answer`
+);
+
 // The pseudo-value has to be in the dropdown, next to << me >>, or none of the
 // above is reachable without hand-writing a URL.
+if (mode !== 'regression') {
 await s.go(`${PROJECT}/issues?set_filter=1&f[]=assigned_to_id&op[assigned_to_id]==&v[assigned_to_id][]=${dev}`);
 // A closed native select shows only the selected entry, so expand it into the
 // multi-select listbox first — that is what puts every option in the image.
@@ -155,6 +199,7 @@ await s.shot(
   `${prefix}filter-dropdown`,
   `The assignee dropdown${hasNobody ? ' offers << nobody >>' : ' has no way to say nobody'}`
 );
+}
 
 report(s.shots);
 await s.browser.close();

@@ -1,4 +1,4 @@
-From d6f6a73255f43c41599f8197cc14da469d1561b8 Mon Sep 17 00:00:00 2001
+From d0243086dbf4b8140eab3d9c16c0304e99f25935 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Wed, 2 Sep 2026 20:10:57 +0000
 Subject: [PATCH] Assigned to issuelist filter: added <nobody> value (#5535).
@@ -17,13 +17,14 @@ from journal_details.old_value.
 Custom field filters are excluded, since a list custom field may have
 "none" among its own possible values.
 ---
- app/models/query.rb                        |  24 ++++-
+ app/models/query.rb                        |  26 +++-
  test/functional/queries_controller_test.rb |   5 +-
- test/unit/query_test.rb                    | 104 ++++++++++++++++++++-
- 3 files changed, 127 insertions(+), 6 deletions(-)
+ test/unit/query_test.rb                    | 139 ++++++++++++++++++++-
+ test/unit/user_query_test.rb               |  15 +++
+ 4 files changed, 178 insertions(+), 7 deletions(-)
 
 diff --git a/app/models/query.rb b/app/models/query.rb
-index 7558f7409..d5447340c 100644
+index 824dc027d..b49136806 100644
 --- a/app/models/query.rb
 +++ b/app/models/query.rb
 @@ -651,6 +651,7 @@ class Query < ApplicationRecord
@@ -34,8 +35,12 @@ index 7558f7409..d5447340c 100644
      assigned_to_values +=
        (Setting.issue_group_assignment? ? principals : users).sort_by{|p| [p.status, p]}.
          collect{|s| [s.name, s.id.to_s, l("status_#{User::LABEL_BY_STATUS[s.status]}")]}
-@@ -1244,6 +1245,10 @@ class Query < ApplicationRecord
+@@ -1242,8 +1243,14 @@ class Query < ApplicationRecord
+   end
+ 
    # Helper method to generate the WHERE sql for a +field+, +operator+ and a +value+
++  # The returned condition is self-contained, so that callers can splice it into
++  # a larger expression
    def sql_for_field(field, operator, value, db_table, db_field, is_custom_filter=false)
      sql = ''
 +    match_null =
@@ -45,23 +50,23 @@ index 7558f7409..d5447340c 100644
      case operator
      when "="
        if value.any?
-@@ -1282,6 +1287,7 @@ class Query < ApplicationRecord
+@@ -1282,6 +1289,7 @@ class Query < ApplicationRecord
          # IN an empty set
          sql = "1=0"
        end
-+      sql = "#{db_table}.#{db_field} IS NULL OR (#{sql})" if match_null
++      sql = "(#{db_table}.#{db_field} IS NULL OR (#{sql}))" if match_null
      when "!"
        if value.any?
          sql =
-@@ -1293,6 +1299,7 @@ class Query < ApplicationRecord
+@@ -1293,6 +1301,7 @@ class Query < ApplicationRecord
          # NOT IN an empty set
          sql = "1=1"
        end
-+      sql = "#{db_table}.#{db_field} IS NOT NULL AND (#{sql})" if match_null
++      sql = "(#{db_table}.#{db_field} IS NOT NULL AND (#{sql}))" if match_null
      when "!*"
        sql = "#{db_table}.#{db_field} IS NULL"
        sql += " OR #{db_table}.#{db_field} = ''" if is_custom_filter || [:text, :string].include?(type_for(field))
-@@ -1468,7 +1475,7 @@ class Query < ApplicationRecord
+@@ -1468,7 +1477,7 @@ class Query < ApplicationRecord
        sql = sql_contains("#{db_table}.#{db_field}", value.first, :ends_with => true)
      when "ev", "!ev", "cf"
        # has been,  has never been, changed from
@@ -70,7 +75,7 @@ index 7558f7409..d5447340c 100644
          neg = (operator.start_with?('!') ? 'NOT' : '')
          subquery =
            "SELECT 1 FROM #{Journal.table_name}" +
-@@ -1479,11 +1486,11 @@ class Query < ApplicationRecord
+@@ -1479,11 +1488,11 @@ class Query < ApplicationRecord
            " AND #{JournalDetail.table_name}.property = 'attr'" +
            " AND #{JournalDetail.table_name}.prop_key = '#{db_field}'" +
            " AND " +
@@ -84,7 +89,7 @@ index 7558f7409..d5447340c 100644
            else
              ''
            end
-@@ -1498,6 +1505,17 @@ class Query < ApplicationRecord
+@@ -1498,6 +1507,17 @@ class Query < ApplicationRecord
      return sql
    end
  
@@ -120,10 +125,10 @@ index 297bfa232..04d4d600c 100644
      assert_include ["Dave2 Lopper2", "5", "locked"], json
    end
 diff --git a/test/unit/query_test.rb b/test/unit/query_test.rb
-index ebf7fc991..2fb7dce47 100644
+index ebf7fc991..eb17cb966 100644
 --- a/test/unit/query_test.rb
 +++ b/test/unit/query_test.rb
-@@ -1001,6 +1001,101 @@ class QueryTest < ActiveSupport::TestCase
+@@ -1001,6 +1001,134 @@ class QueryTest < ActiveSupport::TestCase
      end
    end
  
@@ -163,8 +168,9 @@ index ebf7fc991..2fb7dce47 100644
 +    none_query = IssueQuery.new(:name => '_')
 +    none_query.add_filter('assigned_to_id', '!*', [''])
 +
-+    assert_equal find_issues_with_query(none_query).map(&:id).sort,
-+                 find_issues_with_query(query).map(&:id).sort
++    result = find_issues_with_query(query).map(&:id).sort
++    assert result.any?
++    assert_equal find_issues_with_query(none_query).map(&:id).sort, result
 +  end
 +
 +  def test_filter_assigned_to_not_nobody_alone_should_match_the_any_operator
@@ -173,59 +179,91 @@ index ebf7fc991..2fb7dce47 100644
 +    any_query = IssueQuery.new(:name => '_')
 +    any_query.add_filter('assigned_to_id', '*', [''])
 +
-+    assert_equal find_issues_with_query(any_query).map(&:id).sort,
-+                 find_issues_with_query(query).map(&:id).sort
++    result = find_issues_with_query(query).map(&:id).sort
++    assert result.any?
++    assert_equal find_issues_with_query(any_query).map(&:id).sort, result
++  end
++
++  # Issue 1 is unassigned and issue 4 is assigned to user 2; the journals below
++  # make each of them match through one half of the "has been" disjunction only,
++  # so neither half can be dropped without changing the expected ids.
++  def journalize_assignee_changes
++    User.current = User.find(1)
++    became_assigned = Issue.find(1)
++    became_assigned.init_journal(User.current)
++    became_assigned.update(:assigned_to_id => 2)
++    became_unassigned = Issue.find(4)
++    became_unassigned.init_journal(User.current)
++    became_unassigned.update(:assigned_to_id => nil)
 +  end
 +
 +  def test_operator_has_been_nobody
-+    User.current = User.find(1)
-+    issue = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
-+    issue.init_journal(User.current)
-+    issue.update(:assigned_to_id => 2)
-+    always_assigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to_id => 2)
++    journalize_assignee_changes
 +
 +    query = IssueQuery.new(:name => '_')
 +    query.add_filter('assigned_to_id', 'ev', ['none'])
 +    result = find_issues_with_query(query)
 +
-+    assert_include issue, result
-+    assert_not_include always_assigned, result
++    assert_equal [1, 4, 5, 6, 7, 9, 10, 13, 14], result.map(&:id).sort
 +  end
 +
 +  def test_operator_has_never_been_nobody
-+    User.current = User.find(1)
-+    issue = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
-+    issue.init_journal(User.current)
-+    issue.update(:assigned_to_id => 2)
-+    always_assigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to_id => 2)
++    journalize_assignee_changes
 +
 +    query = IssueQuery.new(:name => '_')
 +    query.add_filter('assigned_to_id', '!ev', ['none'])
 +    result = find_issues_with_query(query)
 +
-+    assert_not_include issue, result
-+    assert_include always_assigned, result
++    assert_equal [2, 3], result.map(&:id).sort
 +  end
 +
 +  def test_operator_changed_from_nobody
-+    User.current = User.find(1)
-+    issue = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
-+    issue.init_journal(User.current)
-+    issue.update(:assigned_to_id => 2)
-+    unassigned = Issue.generate!(:project_id => 1, :tracker_id => 1, :assigned_to => nil)
++    journalize_assignee_changes
 +
 +    query = IssueQuery.new(:name => '_')
 +    query.add_filter('assigned_to_id', 'cf', ['none'])
 +    result = find_issues_with_query(query)
 +
-+    assert_include issue, result
-+    assert_not_include unassigned, result
++    assert_equal [1], result.map(&:id).sort
++  end
++
++  def test_filter_fixed_version_nobody_or_version
++    query = IssueQuery.new(:name => '_', :project => Project.find(1))
++    query.add_filter('fixed_version_id', '=', ['none', '2'])
++
++    assert_equal [1, 2, 3, 5, 6, 7, 9, 10, 13, 14],
++                 find_issues_with_query(query).map(&:id).sort
++  end
++
++  def test_filter_nobody_should_not_apply_to_list_filters
++    query = IssueQuery.new(:name => '_')
++    query.add_filter('priority_id', '=', ['none', '5'])
++
++    assert_not_include "#{Issue.table_name}.priority_id IS NULL", query.statement
++  end
++
++  def test_filter_nobody_should_not_apply_to_list_custom_fields
++    field =
++      IssueCustomField.generate!(
++        :field_format => 'list', :possible_values => ['none', 'yes'],
++        :is_filter => true, :is_for_all => true, :trackers => Tracker.all
++      )
++    matching = Issue.generate!(:project_id => 1, :tracker_id => 1,
++                               :custom_field_values => {field.id.to_s => 'none'})
++    Issue.generate!(:project_id => 1, :tracker_id => 1,
++                    :custom_field_values => {field.id.to_s => 'yes'})
++    Issue.generate!(:project_id => 1, :tracker_id => 1)
++
++    query = IssueQuery.new(:name => '_')
++    query.filters = {"cf_#{field.id}" => {:operator => '=', :values => ['none']}}
++
++    assert_equal [matching.id], find_issues_with_query(query).map(&:id)
 +  end
 +
    def test_filter_notes
      user = User.generate!
      Journal.create!(:user_id => user.id, :journalized => Issue.find(2), :notes => 'Notes.')
-@@ -3449,6 +3544,13 @@ class QueryTest < ActiveSupport::TestCase
+@@ -3449,6 +3577,13 @@ class QueryTest < ActiveSupport::TestCase
      assert_equal 'board', query.display_type
    end
  
@@ -239,14 +277,43 @@ index ebf7fc991..2fb7dce47 100644
    def test_assigned_to_values_should_be_sorted_by_status_and_name
      User.delete_all
      20.times do |i|
-@@ -3461,6 +3563,6 @@ class QueryTest < ActiveSupport::TestCase
+@@ -3459,8 +3594,8 @@ class QueryTest < ActiveSupport::TestCase
+     query = IssueQuery.new(:name => '_')
+     query.stubs(:users).returns(User.all)
  
++    assigned_to_values = query.assigned_to_values.reject {|_, value| %w[me none].include?(value)}
      expected_names = User.order(:status, :firstname).all.map(&:name)
-     assigned_to_values = query.assigned_to_values
+-    assigned_to_values = query.assigned_to_values
 -    assert_equal expected_names, assigned_to_values[1..].map(&:first)
-+    assert_equal expected_names, assigned_to_values[2..].map(&:first)
++    assert_equal expected_names, assigned_to_values.map(&:first)
    end
  end
+diff --git a/test/unit/user_query_test.rb b/test/unit/user_query_test.rb
+index 356886c5b..305e57383 100644
+--- a/test/unit/user_query_test.rb
++++ b/test/unit/user_query_test.rb
+@@ -172,6 +172,21 @@ class UserQueryTest < ActiveSupport::TestCase
+     assert_not users.map(&:id).include? 8
+   end
+ 
++  def test_group_filter_with_a_nobody_value_should_stay_correlated
++    q = UserQuery.new name: '_'
++    q.add_filter('is_member_of_group', '=', ['none', '10'])
++    users = find_users_with_query q
++    assert_equal [8], users.map(&:id)
++  end
++
++  def test_group_filter_not_with_a_nobody_value_should_stay_correlated
++    q = UserQuery.new name: '_'
++    q.add_filter('is_member_of_group', '!', ['none', '10'])
++    users = find_users_with_query q
++    assert users.any?
++    assert_not users.map(&:id).include? 8
++  end
++
+   def test_auth_source_filter
+     user = User.find(1)
+     user.update_column :auth_source_id, 1
 -- 
 2.43.0
 
