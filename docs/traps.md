@@ -795,3 +795,34 @@ uit de `sql.active_record`-stroom wegfiltert. Wat wél reproduceerbaar is, is he
 verschil tussen twee runs van hetzelfde script op dezelfde boom, waarbij je voor
 de tweede run alleen de `preload`-regel weghaalt. Zet daarom in een dossier
 altijd beide kolommen uit één meting, en noem hoe je gefilterd hebt.
+
+## Een worktree die al voor tests is klaargemaakt, start niet als dev-server
+
+`tools/dev-server.sh` schrijft `config/database.yml` alleen als het bestand er
+nog **niet** is (`if [ ! -f config/database.yml ]`). Wie eerst de runbook-stap
+voor tests doet, heeft dan een `database.yml` met alleen een `test:`-blok, en
+`dev-server.sh` laat dat staan — waarna Rails in `development` afslaat op een
+ontbrekende configuratie in plaats van te zeggen wat er mist. Het valt op omdat
+de server niet met 200 antwoordt en `db:migrate` er stil voor faalt.
+
+Oplossing: voeg het `development:`-blok zelf toe aan de `database.yml` van die
+worktree (`redmine_dev` als database), of gebruik voor G9 een verse worktree
+zonder `database.yml`. Gevonden op 2026-09-05 bij `search-token-limit`, waar
+dezelfde worktree eerst de volledige suite draaide en daarna de
+G9-verificatie moest serveren.
+
+## Een benchmark in `rails runner` meet de query-cache, niet de database
+
+ActiveRecord's query-cache staat aan binnen `bin/rails runner`. Een identieke
+query een tweede keer stellen komt dus uit het geheugen, en het klassieke
+patroon "één keer warmlopen, dan meten" meet daarna niets. Bij
+`search-token-limit` gaf dat op 50 000 issues een filter met duizend
+zoekwoorden van **11 ms** — terwijl `EXPLAIN ANALYZE` op dezelfde query
+10,5 seconden uitvoeringstijd aanwees. Het verschil is een factor 700, en de
+snelle uitkomst zag er volkomen geloofwaardig uit.
+
+Herkennen: de AND- en de OR-variant geven precies dezelfde tijd, en de tijd
+groeit nauwelijks met de invoer. Oplossen: zet de meting in
+`ActiveRecord::Base.uncached { ... }`, of geef elke run een andere waarde.
+Controleer het resultaat altijd tegen één `EXPLAIN ANALYZE`; die liegt niet.
+Gevonden op 2026-09-05.
