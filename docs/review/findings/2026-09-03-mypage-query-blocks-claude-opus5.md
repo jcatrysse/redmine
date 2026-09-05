@@ -655,7 +655,7 @@ a framework file, and a query in the seed is a framework session's call.
 - **Category:** settings-surface
 - **Where:** `config/settings.yml:93-95`; `lib/redmine/my_page.rb:71-73`
 - **Invariant touched:** none
-- **Resolution:** fixed 2026-09-05 — bounded to `0..Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS` (10) per Jan g16b; which number stays an open choice for Jan
+- **Resolution:** fixed 2026-09-05 — bounded to `0..Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS` (20) per Jan g16b, and the number itself is Jan's K-10 option C
 
 **What is wrong — and this is a settled decision, so it is a question for Jan, not a finding against the patch**
 
@@ -697,11 +697,12 @@ because core does cap this one.
 
 **Resolution:** fixed, 2026-09-05 — Jan reopened the settled decision himself
 (g16b, 2026-09-04) and chose to bound the setting. It is now
-`0..Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS` (10), refused in the form rather
+`0..Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS` (20), refused in the form rather
 than clamped, and the dossier leads with the `render_timelog_block` precedent
-this finding supplied. The remaining judgement — whether 10 is the right ceiling
-— is written up as an open choice for Jan in the dossier and in
-`docs/DECISIONS.md`; it is one constant either way.
+this finding supplied. The number itself went to Jan as K-10 and he chose 20
+(option C): the bound is a guard against a typo rather than a recommendation, so
+it sits well above the 3, 5 and 10 the issue discusses and still keeps `999999`
+out of the field.
 
 ---
 

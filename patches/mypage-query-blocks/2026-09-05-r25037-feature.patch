@@ -1,4 +1,4 @@
-From 72609af8058e50590a1969139d8fff142ec867af Mon Sep 17 00:00:00 2001
+From 6af3b35c48c0a3360fd7d323b7f0d781469f6ca0 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Thu, 3 Sep 2026 07:25:58 +0000
 Subject: [PATCH] Make the maximum number of custom query blocks on My page
@@ -14,11 +14,11 @@ not hide blocks a user already has: only adding another one is refused.
  app/views/settings/_general.html.erb        |  2 +
  config/locales/en.yml                       |  1 +
  config/settings.yml                         |  3 +
- lib/redmine/my_page.rb                      | 15 +++-
+ lib/redmine/my_page.rb                      | 16 +++-
  test/functional/my_controller_test.rb       | 97 +++++++++++++++++++++
  test/functional/settings_controller_test.rb | 38 ++++++++
  test/unit/lib/redmine/my_page_test.rb       | 48 ++++++++++
- 8 files changed, 224 insertions(+), 2 deletions(-)
+ 8 files changed, 225 insertions(+), 2 deletions(-)
  create mode 100644 test/unit/lib/redmine/my_page_test.rb
 
 diff --git a/app/models/setting.rb b/app/models/setting.rb
@@ -94,16 +94,17 @@ index 667a4427f..200205400 100644
    default: '25,50,100'
  search_results_per_page:
 diff --git a/lib/redmine/my_page.rb b/lib/redmine/my_page.rb
-index 7aa2753ec..ee03ae346 100644
+index 7aa2753ec..96e56215e 100644
 --- a/lib/redmine/my_page.rb
 +++ b/lib/redmine/my_page.rb
-@@ -23,12 +23,16 @@ module Redmine
+@@ -23,12 +23,17 @@ module Redmine
  
      CORE_GROUPS = ['top', 'left', 'right']
  
-+    # Upper bound of the my_page_max_issuequery_blocks setting: every block on
-+    # My page runs its own query when the page is rendered
-+    MAX_ISSUEQUERY_BLOCKS = 10
++    # Upper bound of the my_page_max_issuequery_blocks setting. It is a guard
++    # against a typo rather than a recommendation: every block on My page runs
++    # its own query when the page is rendered
++    MAX_ISSUEQUERY_BLOCKS = 20
 +
      CORE_BLOCKS = {
        'issuesassignedtome' => {:label => :label_assigned_to_me_issues},
@@ -115,7 +116,7 @@ index 7aa2753ec..ee03ae346 100644
        'news' => {:label => :label_news_latest},
        'calendar' => {:label => :label_calendar},
        'documents' => {:label => :label_document_plural},
-@@ -56,7 +60,7 @@ module Redmine
+@@ -56,7 +61,7 @@ module Redmine
  
          occurs = indexes.size
          block_id = indexes.any? ? "#{block}__#{indexes.max + 1}" : block
@@ -124,7 +125,7 @@ index 7aa2753ec..ee03ae346 100644
          block_id = nil if disabled
  
          label = block_options[:label]
-@@ -65,6 +69,13 @@ module Redmine
+@@ -65,6 +70,13 @@ module Redmine
        options
      end
  

@@ -1,4 +1,4 @@
-From 72609af8058e50590a1969139d8fff142ec867af Mon Sep 17 00:00:00 2001
+From 6af3b35c48c0a3360fd7d323b7f0d781469f6ca0 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Thu, 3 Sep 2026 07:25:58 +0000
 Subject: [PATCH] Make the maximum number of custom query blocks on My page

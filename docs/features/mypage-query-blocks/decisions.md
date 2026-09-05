@@ -22,8 +22,9 @@ Hieronder ronde 2, 2026-09-05.
 - **Beslist (autonoom, 2026-09-05):** de bovengrens staat als constante
   `Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS` in `lib/redmine/my_page.rb`, naast de
   blokkentabel die hij begrenst, en niet als los getal in `setting.rb`. Zo staan
-  de validatie en de blokdefinitie op één plek. **Welk getal** het moet zijn is
-  geen Class A-keuze; die staat als open keuze voor Jan in `docs/DECISIONS.md`.
+  de validatie en de blokdefinitie op één plek. **Welk getal** het moest worden
+  was geen Class A-keuze: Jan koos op 2026-09-05 **20** (K-10, optie C), met als
+  motivering dat de grens een tikfoutbeveiliging is en geen aanbeveling.
 - **Beslist (autonoom, 2026-09-05):** `MyPage.max_occurs` gebruikt
   `blocks.fetch(block, {})` in plaats van `blocks[block]`. Het is nu publieke
   API en een blok-*id* (`issuequery__1`, de vorm die `find_block` wel accepteert)

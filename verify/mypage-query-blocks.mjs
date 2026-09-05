@@ -20,6 +20,10 @@ const FIELD = '#settings_my_page_max_issuequery_blocks';
 // creates one public query and points every block at it.
 const QUERY_NAME = 'Verification query';
 
+// Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS — kept in step by hand, and the run
+// fails if the form ever stops refusing one above it.
+const UPPER_BOUND = 20;
+
 const mode = process.env.MODE || 'before';
 const prefix = mode === 'before' ? 'before-' : '';
 const after = mode !== 'before';
@@ -247,11 +251,11 @@ if (after) {
 //    refused at the form instead of being stored and then quietly ignored.
 if (after) {
   await s.go('/settings?tab=general');
-  await s.page.fill(FIELD, '11');
+  await s.page.fill(FIELD, String(UPPER_BOUND + 1));
   await s.page.click('input[type=submit]');
   await s.page.waitForLoadState('networkidle');
   if (!(await s.page.locator('#errorExplanation').count())) {
-    failures.push('rejected-out-of-range: 11 was accepted without an error');
+    failures.push(`rejected-out-of-range: ${UPPER_BOUND + 1} was accepted without an error`);
   }
   await s.page.mouse.move(0, 0);
   await s.shot(

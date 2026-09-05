@@ -22,13 +22,13 @@
   nieuw issue aanmaken), en in die note het antwoord op note-9 van JPL zetten.
   De Engelse tekst staat hieronder kant-en-klaar vanaf "The problem".
 - **Wat er in ronde 2 veranderd is (2026-09-05):** de instelling heeft nu een
-  bereik — 0 tot en met 10 — en alles daarbuiten wordt in het formulier
+  bereik — 0 tot en met 20 — en alles daarbuiten wordt in het formulier
   geweigerd in plaats van stilletjes anders uitgelegd. Daarmee is `0` een
   bruikbare waarde geworden ("geen nieuwe eigen zoekopdrachten meer"), wat
   precies is wat note-5 op dat issue vroeg, en is de bovengrens uit de
-  issuebeschrijving ("certainly with some maximum") ingevuld. Welk getal die
-  bovengrens moet zijn is een keuze die onderaan dit dossier voor jou
-  openstaat.
+  issuebeschrijving ("certainly with some maximum") ingevuld. Het getal 20 is
+  jouw keuze (K-10, optie C): de grens is een tikfoutbeveiliging en geen
+  aanbeveling.
 
 ## Trunk check (G1)
 
@@ -130,7 +130,7 @@ The literal 3 moves from the constant to `config/settings.yml`, which leaves one
 place where the default lives.
 
 The setting is accepted between `0` and `Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS`
-(10). Anything outside that range is refused in the settings form, next to the
+(20). Anything outside that range is refused in the settings form, next to the
 field, the way `default_issue_due_date_offset` already refuses a negative in
 `Setting.validate_all_from_params`. Both ends of the range earn their keep:
 
@@ -138,9 +138,13 @@ field, the way `default_issue_due_date_offset` already refuses a negative in
   on #27313 asks for, and it is the direction the hardcoded 3 makes impossible
   today. It removes nothing: a user who already has blocks keeps them.
 - the upper bound answers the issue description's own "certainly with some
-  maximum". Every block is a real marginal cost (see the measurements below),
-  and Redmine clamps the other My page block setting at both ends already —
-  `MyHelper#render_timelog_block` does `days = 7 if days < 1 || days > 365`.
+  maximum". It is deliberately generous — 20 is well above every number this
+  issue discusses (3 today, 5 in note-8, 10 in the description) — because its
+  job is to keep a value the page cannot serve out of the field, not to tell an
+  administrator what is sensible. Every block is a real marginal cost (see the
+  measurements below), and Redmine bounds the other My page block setting at
+  both ends already: `MyHelper#render_timelog_block` does
+  `days = 7 if days < 1 || days > 365`.
 
 Nothing is silently reinterpreted: a value the form accepts is the value that
 runs.
@@ -214,8 +218,8 @@ starting from the default of 3 each time:
 | `0` | no | `"0"` | 0 | no new custom query block may be added; the ones a user already has keep rendering |
 | `-2` | **yes** | `"3"` | 3 | "must be greater than or equal to 0" |
 | `5` | no | `"5"` | 5 | |
-| `10` | no | `"10"` | 10 | the upper bound itself is accepted |
-| `11` | **yes** | `"3"` | 3 | "must be less than or equal to 10" |
+| `20` | no | `"20"` | 20 | the upper bound itself is accepted |
+| `21` | **yes** | `"3"` | 3 | "must be less than or equal to 20" |
 | `999999` | **yes** | `"3"` | 3 | the same |
 | any other block (`news`, `activity`, …) | — | — | 1 | `:max_occurs` absent, so the `|| 1` path, exactly as before |
 | an unknown block name or a block id (`issuequery__1`) | — | — | 1 | guarded lookup; it used to raise `NoMethodError` |
@@ -336,7 +340,7 @@ rendered issue lists rather than empty "Custom query" forms.
 | Function | Screenshot | What it shows |
 |---|---|---|
 | The setting exists, at its default | `before-settings-general.png` / `settings-general.png` | no field between "Days displayed on project activity" and "Host name and path" before; the new field showing `3` after |
-| The setting has a range | `rejected-out-of-range.png` | one above the upper bound is refused with "must be less than or equal to 10" and nothing is stored |
+| The setting has a range | `rejected-out-of-range.png` | one above the upper bound is refused with "must be less than or equal to 20" and nothing is stored |
 | The default is unchanged | `before-select-at-default-maximum.png` / `select-at-default-maximum.png` | "Issues" greyed out with three blocks, identically on both instances |
 | Three blocks render either way | `before-dropdown-at-default-maximum.png` / `dropdown-at-default-maximum.png` | the same three blocks and the same add-block list |
 | Raising the limit re-enables the entry | `before-select-raised-maximum.png` / `select-raised-maximum.png` | grey before (there is nothing to raise), black after the limit is set to 5 |
@@ -436,7 +440,7 @@ anybody who does not set it.
 | "We should probably load content asynchronously before raising the number of queries that can be displayed." (note-9, #27313) | Agreed, and this patch raises nothing. The default is 3, so an installation that does not touch the setting renders exactly what it renders today — `before-select-at-default-maximum.png` and `select-at-default-maximum.png` are the same picture, and that is asserted by the verification script itself: the run compares the two files by SHA-256 and fails if they differ. The async work is a prerequisite for a higher *default*, not for letting an administrator choose. It also cuts the other way: today an installation that is suffering from dashboard queries cannot ask for fewer than three, and note-5 on the same issue is exactly that installation. |
 | Why not simply `max_occurs => 5`, as proposed in note-8? | That is the change note-9 declined, it costs every installation whether it wanted it or not, and 5 is as arbitrary as 3. See "Alternatives considered". |
 | A setting is permanent API and translation surface; is one number worth it? | The number is already core's, in a constant nobody can reach. This adds one `format: int` row to `config/settings.yml`, one field on an existing tab and one locale key — the same shape as `feeds_limit`, `gantt_items_limit` and `issues_export_limit`. No migration, no permission, no route. |
-| Should the setting be capped, as #27313's description suggests? | It is. The field accepts `0..10` and refuses anything else in the form, so an administrator cannot type a number the page cannot serve. The precedent is in the same helper: `MyHelper#render_timelog_block` clamps its `days` setting to `1..365`. The upper end is a judgement — 10 is what the issue description itself proposes ("up to 10") and double what note-8 asked for — and it is one constant, `Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS`, if you want a different number. |
+| Should the setting be capped, as #27313's description suggests? | It is. The field accepts `0..20` and refuses anything else in the form, so an administrator cannot type a number the page cannot serve. The precedent is in the same helper: `MyHelper#render_timelog_block` bounds its `days` setting to `1..365`. The upper end is deliberately not a recommendation: 20 is well above the 3 that is there today, the 5 of note-8 and the 10 of the description, so it constrains nobody who has thought about it and still keeps `999999` out. It is one constant, `Redmine::MyPage::MAX_ISSUEQUERY_BLOCKS`, if you would rather it were lower. |
 | Why is `0` allowed at all? | Because it is the value note-5 on this issue is asking for: an installation that has been hurt by dashboard queries can stop new custom query blocks being added. It removes nothing — the blocks a user already has keep rendering — and it is pinned by `test_add_issuequery_block_with_the_maximum_set_to_zero_should_error` and by `select-zero-maximum.png`. |
 | An out-of-range value used to be accepted and reinterpreted. | Not any more, and that is the one behaviour change since the first version of this patch. `Setting.validate_all_from_params` refuses it with `activerecord.errors.messages.greater_than_or_equal_to` / `less_than_or_equal_to`, the same messages and the same place `default_issue_due_date_offset` uses, so there is no new translation surface. |
 | `:max_occurs` now holds either an integer or a symbol. | It is resolved in exactly one place, `MyPage.max_occurs`, and an integer still means what it always did, so a block declaring a plain number keeps working. The alternative was to keep the literal `3` in the constant *and* add the setting, which leaves two sources for one default. |
@@ -458,10 +462,10 @@ anybody who does not set it.
 
 ## GEOxyz
 
-- **Commits op `7.0-stable-GEOxyz`:** `198cbfb63` (ronde 1) en `47eec6f1d`
-  (ronde 2 — het bereik op de instelling). Twee commits in plaats van één,
-  omdat `198cbfb63` al gepusht was: een branch die GEOxyz uitcheckt wordt niet
-  herschreven.
+- **Commits op `7.0-stable-GEOxyz`:** `198cbfb63` (ronde 1), `47eec6f1d`
+  (ronde 2 — het bereik op de instelling) en `1b4a29a0b` (de bovengrens op 20,
+  Jans keuze K-10). Drie commits in plaats van één, omdat elk van de vorige al
+  gepusht was: een branch die GEOxyz uitcheckt wordt niet herschreven.
 - **Suites daar groen:** volledige suite (`test:all`), database
   `redmine_test_geoxyz` → **6097 runs, 32266 assertions, 0 failures, 0 errors,
   39 skips**. Helemaal groen: de 29 SCM-fouten van trunk bestaan op
