@@ -100,11 +100,16 @@ module RedmineApp
     # can change it (environments/ENV.rb would take precedence over it)
     config.log_level = Rails.env.production? ? :info : :debug
 
+    # secure_session_only refuses the store's fallback that accepts the raw
+    # cookie value as a session_id. Without it a row written by an older
+    # activerecord-session_store — which is what a database upgraded from 5.1
+    # holds — is a working login cookie for anyone who can read the table.
     config.session_store(
       :active_record_store,
       :key => '_redmine_session',
       :path => config.relative_url_root || '/',
-      :same_site => :lax
+      :same_site => :lax,
+      :secure_session_only => true
     )
 
     if File.exist?(File.join(File.dirname(__FILE__), 'additional_environment.rb'))
