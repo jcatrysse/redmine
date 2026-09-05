@@ -1245,6 +1245,8 @@ class Query < ApplicationRecord
   end
 
   # Helper method to generate the WHERE sql for a +field+, +operator+ and a +value+
+  # The returned condition is self-contained, so that callers can splice it into
+  # a larger expression
   def sql_for_field(field, operator, value, db_table, db_field, is_custom_filter=false)
     sql = ''
     match_null =
@@ -1289,7 +1291,7 @@ class Query < ApplicationRecord
         # IN an empty set
         sql = "1=0"
       end
-      sql = "#{db_table}.#{db_field} IS NULL OR (#{sql})" if match_null
+      sql = "(#{db_table}.#{db_field} IS NULL OR (#{sql}))" if match_null
     when "!"
       if value.any?
         sql =
@@ -1301,7 +1303,7 @@ class Query < ApplicationRecord
         # NOT IN an empty set
         sql = "1=1"
       end
-      sql = "#{db_table}.#{db_field} IS NOT NULL AND (#{sql})" if match_null
+      sql = "(#{db_table}.#{db_field} IS NOT NULL AND (#{sql}))" if match_null
     when "!*"
       sql = "#{db_table}.#{db_field} IS NULL"
       sql += " OR #{db_table}.#{db_field} = ''" if is_custom_filter || [:text, :string].include?(type_for(field))
