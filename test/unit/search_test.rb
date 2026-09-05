@@ -217,6 +217,13 @@ class SearchTest < ActiveSupport::TestCase
     assert_equal %w[one two three four five], f.tokens
   end
 
+  def test_fetcher_should_use_every_token_with_a_nil_token_limit
+    f = Redmine::Search::Fetcher.new('one two three four five six seven',
+                                     User.anonymous, %w(issues), Project.all,
+                                     :token_limit => nil)
+    assert_equal %w[one two three four five six seven], f.tokens
+  end
+
   private
 
   def remove_permission(role, permission)

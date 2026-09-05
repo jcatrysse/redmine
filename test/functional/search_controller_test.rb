@@ -452,6 +452,16 @@ class SearchControllerTest < Redmine::ControllerTest
     assert_select '#search-results dt.project', 0
   end
 
+  def test_search_should_apply_issues_filter_on_the_tokens_the_search_used
+    get :index, :params => {:q => 'recipes aaaa bbbb cccc dddd eeee', :all_words => ''}
+    assert_response :success
+
+    assert_select 'p.buttons a[href]' do |links|
+      query = CGI.parse(URI.parse(links.first['href']).query)
+      assert_equal ['recipes aaaa bbbb cccc dddd'], query['v[any_searchable][]']
+    end
+  end
+
   def test_search_should_not_show_apply_issues_filter_button_if_no_issues_found
     get :index, :params => {:q => 'commits'}
     assert_response :success
