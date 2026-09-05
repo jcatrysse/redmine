@@ -748,3 +748,52 @@ een `Resolution:`-regel in
   voor het filter "Any searchable text" en voor de knop moest blijven gelden;
   g08 beantwoordde de eerste helft met "repareren" en deze sessie de tweede met
   "de knop volgt de zoekmachine".
+
+## Uitgevoerd — ronde 2 voor `version-subprojects` (2026-09-05)
+
+Alle twaalf bevindingen van de review van 2026-09-03 hebben een
+`Resolution:`-regel. Drie ervan raakten code, de rest tekst.
+
+- **g16g uitgevoerd.** De note begint met de regressie, en het getal is
+  gecorrigeerd: **zes naar vijf** als beheerder, niet zes naar vier. Alleen
+  versie 7 verdwijnt door de sharing; versie 6 verdween in het oude getal door
+  `Version.visible`, wat een ander verschijnsel is.
+- **g09 en g10 uitgevoerd.** Elke claim in het dossier heeft nu een gemeten
+  getal: 5 SQL-statements tegen trunk's 2 (6 tegen 2 koud), 665 tekens tegen
+  134 in de URL van het AJAX-verzoek, volledige suite met systeemtests
+  27 failures / 2 errors op beide kanten met dezelfde 29 namen.
+- **g05 uitgevoerd.** De branch is opnieuw opgebouwd op `origin/master` r25037
+  en alle cijfers zijn daar opnieuw gemeten. Het oude patchbestand
+  (`2026-09-03-r24882-feature.patch`) is vervangen, niet bewaard: het heeft
+  nooit aan het issue gehangen.
+- **g18 uitgevoerd.** Ook de nits: de commitboodschap is één regel, de drie
+  tests van Go MAEDA zijn als zodanig gemarkeerd, en de `c=foo`-500 is
+  verdwenen omdat het endpoint `c` niet meer leest.
+
+## Open — keuze voor Jan (toegevoegd 2026-09-05, version-subprojects)
+
+- **K-12 Keuze:** het doelversiefilter mist nog één randgeval van precies het
+  defect dat deze patch repareert. Dichten of benoemen?
+
+  Het gaat om een versie die van een tussenliggend project naar zijn
+  *afstammelingen* gedeeld is, terwijl een expliciet subprojectfilter dat
+  tussenliggende project buiten de query laat maar zijn subproject erin. Zo'n
+  versie kan wel aan een issue in dat subproject hangen, maar staat niet in het
+  filter. Met Redmine's eigen fixtures: project 1 - 5 - 6, een
+  `descendants`-versie in project 5, filter "Subproject is project 6" — de
+  versie ontbreekt.
+
+- **Opties:**
+  A) **Benoemen.** Het dossier zegt precies wat de lijst wel is en noemt dit
+     geval erbij, zodat een reviewer het in de note vindt en niet in de code.
+     De patch blijft vier productieregels.
+  B) **Dichten.** De vraag wordt "welke versies kan enig project in de query
+     toewijzen", wat een bredere en ingewikkeldere SQL-voorwaarde is dan wat
+     jij of Go MAEDA ooit op dit issue heeft voorgesteld.
+
+- **Aanbeveling:** A, en dat is ook wat er nu staat. Een patch die één regel
+  verandert wordt aangenomen; een patch die de deelsemantiek herdefinieert
+  krijgt een discussie van maanden. Het randgeval bestaat vandaag ook al en
+  wordt door deze patch niet erger.
+
+- **Haast?** Nee — we bouwden verder met A, en het staat benoemd in het dossier.
