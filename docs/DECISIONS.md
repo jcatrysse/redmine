@@ -446,3 +446,26 @@ Autonoom ingevuld binnen g13, omdat de keuze zelf al gemaakt was:
 - **De drift-vergelijking gebeurt op de merge-base van de branch**, niet op
   huidig trunk. Anders zou verval (punt 1) als drift verschijnen en waren de
   twee signalen weer door elkaar gaan lopen.
+
+## Autonoom besloten — ldap-mail-prefs, ronde 2 (2026-09-05)
+
+Framework-relevante keuzes van deze sessie. De feature-eigen keuzes staan in
+`docs/features/ldap-mail-prefs/decisions.md`.
+
+- **Een feature mag een tweede commit krijgen op `7.0-stable-GEOxyz`.**
+  `ldap-mail-prefs` staat er nu met twee: `add935736` (2026-09-03) en
+  `113f32117` (de ronde-2 herbouw). "Eén commit per feature" botst hier met
+  "nooit geschiedenis herschrijven op de branch die GEOxyz draait", en die
+  tweede regel weegt zwaarder: een force push maakt elke checkout van GEOxyz
+  ongeldig. Het registerveld `geoxyz_commit` wijst naar de laatste.
+- **`7.0-stable-GEOxyz` is bijgewerkt met upstream `7.0-stable`** (32 commits
+  achter, nu gelijk). Het enige conflict zat in `config/locales/fr.yml` en is
+  opgelost volgens de regel die CLAUDE.md al gaf: beide kanten houden —
+  upstream's vertalingen voor de gedeelde sleutels, GEOxyz's eigen sleutels
+  erbij. Dat raakt `webhook-tracker-filter` en `mypage-query-blocks`, maar
+  alleen mechanisch: er is geen ontwerpkeuze gewijzigd.
+- **Drie kleine gaten in het gereedschap gevonden en in `docs/traps.md` gezet**
+  (de `Resolution:`-vorm die `findings.sh` niet ziet, `###` binnen een
+  codeblok dat spookbevindingen oplevert, en `docs/review/FINDINGS.md` dat niet
+  in de OWNED-lijst van `check-ownership.sh` staat). Niet zelf gerepareerd:
+  `tools/**` hoort bij een sessie die Jan daar expliciet om vraagt.
