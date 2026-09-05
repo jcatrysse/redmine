@@ -530,3 +530,21 @@ staan in `docs/features/wiki-export-attachments/decisions.md`.
   `2026-09-01-r24882-*` zijn verwijderd in plaats van bewaard: ze hebben nooit
   aan een issue gehangen, en de drift-controle van `check-patch-clean.sh`
   vergelijkt élk bestand onder `patches/<slug>/` met de branch.
+
+## Uitgevoerd — framework-punten uit wiki-export-attachments ronde 2 (Jan, 2026-09-05)
+
+Jan vroeg beide punten uit het sessierapport meteen aan te passen.
+
+- **`docs/exceptions.md` is geen tabel meer.** Eén blok met vijf vaste velden
+  per uitzondering (`### E-nn — <slug>`, Regel, Wat er bewust gebeurt,
+  Alternatief en wat het kost, Beslist, Datum), onderaan toegevoegd met
+  `tools/append-note.sh`. E-01 staat er zo; de placeholder-rij is weg.
+  `append-note.sh` zet nu een lege regel vóór elk blok.
+- **`tools/check-geoxyz-branch.sh` meet een lint-baseline.** Dezelfde
+  Ruby-bestanden worden ook op `origin/7.0-stable` gelint, met upstreams eigen
+  config, en alleen wat de branch per bestand en cop méér heeft telt als fout.
+  Op de huidige tip: PASS (1 melding, `Rails/StrongParametersExpect` op een
+  regel van upstream, baseline 1). Op een proefbranch met één toegevoegde
+  `Layout/TrailingWhitespace`: FAIL met het bestand en de cop erbij. G4 en G8
+  in `CLAUDE.md` zeggen dat nu ook: een melding die upstream al op zijn eigen
+  regel had is van upstream, niet van de patch.
