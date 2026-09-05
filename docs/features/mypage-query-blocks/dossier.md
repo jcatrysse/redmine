@@ -324,8 +324,8 @@ the one who has to defend the server.
     `test_page_should_disable_issuequery_option_at_the_default_maximum` (changing
     the default in `config/settings.yml` from 3 to 5 makes it fail) and
     `test_page_should_render_issuequery_blocks_over_a_lowered_maximum`.
-- alle bovenstaande cijfers zijn **na** de verhoging van de bovengrens naar 20
-  opnieuw gedraaid, niet overgenomen uit de ronde ervoor.
+- every figure above was re-run **after** the upper bound was raised to 20, not
+  carried over from the round before it.
 - `tools/check-patch-clean.sh mypage-query-blocks --submit`: **PASS** — both
   files apply to a pristine `origin/master` r25037 checkout, touch only Redmine
   paths, keep to the five locales, carry no AI trace, and agree with the branch.
