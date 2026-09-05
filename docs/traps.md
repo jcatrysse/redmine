@@ -725,3 +725,29 @@ Gemeten met een wegwerp-worktree op `origin/master` per bestand:
   statusbestand; de regel zelf niet fixen (INV-1). Waarom dezelfde check op
   2026-09-02 PASS gaf is niet uitgezocht. Framework-punt voor Jan: het script
   meet geen baseline.
+
+## Uit assignee-nobody, ronde 2 (2026-09-05)
+
+- **Kopieer nooit een heel testbestand van de patch-worktree naar de
+  GEOxyz-worktree.** `test/unit/query_test.rb` op `7.0-stable-GEOxyz` draagt de
+  tests van **alle** features die dat bestand raken; een `cp` van de trunkversie
+  gooide hier in één klap de vijf `fixed_version`-tests van
+  `version-subprojects` weg. De diff-vergelijking liet het meteen zien, maar
+  alleen omdat hij gedraaid werd. Pas de delta toe (dezelfde tekstvervanging,
+  of `git apply -3`) en controleer daarna dat de ronde-delta op beide branches
+  regel voor regel gelijk is.
+- **Verwachte aantallen in `verify/<slug>.mjs` verlopen als `tools/dev-seed.rb`
+  groeit.** De seed kreeg er sinds ronde 1 een subprojectissue bij, dus drie van
+  de zes verwachte tellingen stonden er één naast. Dat is geen bug in de
+  feature, en het script vond het zelf omdat het de aantallen **asserteert**
+  vóór het de foto maakt — een verificatiescript dat alleen screenshots maakt,
+  had hier niets gemerkt.
+- **Een `test:all`-run op schone trunk kan één faalnaam méér hebben dan de
+  gepatchte run.** Hier was dat
+  `IssuesSystemTest#test_change_watch_or_unwatch_icon_from_sidebar`
+  (`expected "/my/page" to equal "/login"`), een inlograce in een Selenium-test.
+  Vergelijk dus de **namenlijsten** en niet de aantallen: "27 tegen 28" leest
+  als een regressie in de verkeerde richting terwijl het een deelverzameling is.
+- **`tools/session-push.sh` en `tools/append-note.sh` weigeren op een vuile
+  boom**, ook als het vuil een gegenereerd bestand is. Draai
+  `tools/register.sh --write` dus vóór je commit, niet erna.
