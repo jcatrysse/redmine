@@ -813,3 +813,41 @@ Alle twaalf bevindingen van de review van 2026-09-03 hebben een
   #43534 heeft voorgesteld, en het randgeval bestaat vandaag op kale trunk
   evengoed — de patch maakt het niet erger. Een reviewer die het vindt, vindt
   het in de note.
+
+## Uitgevoerd — ronde 2 voor `revision-branches` (2026-09-05)
+
+Alle elf bevindingen van de review van 2026-09-03 hebben een
+`Resolution:`-regel. Zeven raakten code, vier tekst, en één was een vraag aan
+jou die met g12 al beantwoord was.
+
+- **g12 uitgevoerd, beide helften.** De uitzondering staat als **E-02** in
+  `docs/exceptions.md`: welke regel bewust wordt overtreden (de SCM-aanroep per
+  rij in een view-loop), waarom een cache geen alternatief is, en wat het kost.
+  En de bovengrens zit erin: boven `repository_log_display_limit` revisies
+  (standaard 100) toont de issuetab helemaal geen branches meer en draait hij
+  dus geen enkel Git-proces. Geen vijfde instelling (INV-6) — hergebruik van
+  een getal dat de beheerder toch al kent. Daarmee is ook F11 beantwoord.
+- **De belangrijkste codefix was er één die niemand had voorzien (F01).** De
+  patch kopieerde het instellingenpaar van de mail handler, maar niet de
+  validatie die er één laag hoger bij hoort. Een beheerder kon `[` invullen als
+  reguliere expressie, het werd zonder mopperen opgeslagen, en vanaf dat moment
+  deed de uitsluitingslijst niets — zonder melding. Nu weigert het formulier
+  het, met precies dezelfde tekst als bij de mail handler:
+  *"Exclude branches by name is not a valid regular expression (premature end
+  of char-class: /[/)"*. Er is een screenshot van.
+- **Eén zin uit de issuetekst is verwijderd omdat hij aantoonbaar onwaar was
+  (F03).** "De revisiepagina roept al drie Git-commando's aan" gaat over de
+  *bladerpagina*, niet over de revisiepagina; die laatste roept er nul aan.
+  Op een issue van zestien jaar oud, waar de auteur van die note zelf meeleest,
+  is dat het soort zin dat de rest van het betoog meesleurt.
+- **g09 en g10 uitgevoerd.** Elke claim in het dossier heeft nu een gemeten
+  getal, opnieuw gedraaid tegen r25037.
+- **g05 uitgevoerd.** De branch is opnieuw opgebouwd op `origin/master` r25037.
+  De oude patchbestanden (`2026-09-03-r24882-*.patch`) zijn vervangen, niet
+  bewaard: ze hebben nooit aan het issue gehangen.
+- **g18 uitgevoerd.** Ook de kleine punten: het label noemt nu ook de
+  diffpagina (die dezelfde partial rendert), de voorbeeldhint toont een glob in
+  plaats van een reguliere expressie omdat glob de standaardstand is, er staat
+  in woorden dat de functie alleen voor Git werkt, de permissietest test nu ook
+  echt iets, een branchnaam die niet omgezet kan worden laat de pagina niet meer
+  crashen, en de commitboodschap is één regel.
