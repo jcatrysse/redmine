@@ -1,6 +1,6 @@
-From e6471d37c49b57a375fe7525e67dc0d2f7c2dafb Mon Sep 17 00:00:00 2001
+From f3234c1ec46158c477112e8c42a7ec2650c76cc4 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Sat, 5 Sep 2026 19:55:51 +0000
+Date: Sat, 5 Sep 2026 20:13:42 +0000
 Subject: [PATCH] Add a separate issue.closed webhook event.
 
 A hook that only needs to know when an issue is closed has to subscribe to
@@ -13,12 +13,12 @@ closing and not again while the issue stays closed, moves to another closed
 status, or is reopened. The payload carries the closing journal, like
 issue.updated does.
 ---
- app/models/concerns/issue/webhookable.rb | 12 +++-
+ app/models/concerns/issue/webhookable.rb | 12 ++-
  app/models/issue.rb                      |  2 +-
  config/locales/en.yml                    |  1 +
- test/unit/webhook_payload_test.rb        | 23 +++++++
- test/unit/webhook_test.rb                | 88 ++++++++++++++++++++++++
- 5 files changed, 124 insertions(+), 2 deletions(-)
+ test/unit/webhook_payload_test.rb        | 23 ++++++
+ test/unit/webhook_test.rb                | 95 ++++++++++++++++++++++++
+ 5 files changed, 131 insertions(+), 2 deletions(-)
 
 diff --git a/app/models/concerns/issue/webhookable.rb b/app/models/concerns/issue/webhookable.rb
 index 7c59329e5..2412f2dfd 100644
@@ -112,10 +112,10 @@ index 027071ffa..f89671cb1 100644
      @issue.destroy
      p = WebhookPayload.new('issue.deleted', @issue, @dlopper)
 diff --git a/test/unit/webhook_test.rb b/test/unit/webhook_test.rb
-index e528a2a1c..e2be09a05 100644
+index e528a2a1c..31a617923 100644
 --- a/test/unit/webhook_test.rb
 +++ b/test/unit/webhook_test.rb
-@@ -234,6 +234,86 @@ class WebhookTest < ActiveSupport::TestCase
+@@ -234,6 +234,93 @@ class WebhookTest < ActiveSupport::TestCase
      assert_equal attachment.filename, journal.details.last.old_value
    end
  
@@ -138,6 +138,13 @@ index e528a2a1c..e2be09a05 100644
 +      assert_equal issue.id, payload.dig('data', 'issue', 'id')
 +      assert_equal 'Done', payload.dig('data', 'journal', 'notes')
 +    end
++  end
++
++  test "should not trigger issue closed webhook when an issue is created with an open status" do
++    Webhook.expects(:trigger).with('issue.created', instance_of(Issue)).once
++    Webhook.expects(:trigger).with('issue.closed', instance_of(Issue)).never
++
++    Issue.generate! project: @project, status: IssueStatus.where(is_closed: false).order(:id).first
 +  end
 +
 +  test "should trigger issue closed webhook when an issue is created with a closed status" do
@@ -202,7 +209,7 @@ index e528a2a1c..e2be09a05 100644
    test "should compute correct signature" do
      # we're implementing the same signature mechanism as GitHub, so might as well re-use their
      # example. https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries
-@@ -346,6 +426,14 @@ class WebhookTest < ActiveSupport::TestCase
+@@ -346,6 +433,14 @@ class WebhookTest < ActiveSupport::TestCase
      Webhook.create!(url: url, user: user, projects: projects, events: events, active: active)
    end
  
