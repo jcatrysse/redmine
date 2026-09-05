@@ -20,9 +20,15 @@
 module Issue::Webhookable
   extend ActiveSupport::Concern
 
+  included do
+    # closing? is gone once the save is done, and closed_on is no substitute: closing again within its resolution leaves it unchanged.
+    before_save ->{ @closing_for_webhook = closing? }
+    after_save_commit ->{ Webhook.trigger(event_name('closed'), self) if @closing_for_webhook }
+  end
+
   def webhook_payload(user, action)
     h = super
-    if action == 'updated' && current_journal.present?
+    if %w(updated closed).include?(action) && current_journal.present?
       journal = journals.visible(user).find_by_id(current_journal.id)
       if journal.present?
         h[:data][:journal] = journal_payload(journal, user)
@@ -30,6 +36,11 @@ module Issue::Webhookable
       end
     end
     h
+  end
+
+  # 'closed' is an Issue-only action, so the generic timestamp mapping does not know it.
+  def webhook_payload_timestamp(action)
+    action == 'closed' ? updated_on.iso8601 : super
   end
 
   private

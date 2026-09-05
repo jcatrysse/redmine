@@ -56,6 +56,29 @@ class WebhookPayloadTest < ActiveSupport::TestCase
     assert_equal 'new subject', i[:subject], i.inspect
   end
 
+  test "issue closed payload should contain journal" do
+    @issue.init_journal(@dlopper, 'Fixed')
+    @issue.status = IssueStatus.where(:is_closed => true).order(:id).first
+    @issue.save!
+    p = WebhookPayload.new('issue.closed', @issue, @dlopper)
+    assert h = p.to_h
+    assert_equal 'issue.closed', h[:type]
+    assert_equal @issue.journals.last.created_on.iso8601, h[:timestamp]
+    assert j = h.dig(:data, :journal)
+    assert_equal 'Fixed', j[:notes]
+    assert_equal 'Dave Lopper', j[:user][:name]
+    assert_equal @issue.status_id, h.dig(:data, :issue, :status, :id)
+  end
+
+  test "issue closed payload should use the issue timestamp when there is no journal" do
+    issue = Issue.generate!(:project => @project, :status => IssueStatus.where(:is_closed => true).order(:id).first)
+    p = WebhookPayload.new('issue.closed', issue, @dlopper)
+    assert h = p.to_h
+    assert_equal 'issue.closed', h[:type]
+    assert_equal issue.updated_on.iso8601, h[:timestamp]
+    assert_nil h.dig(:data, :journal)
+  end
+
   test "should compute payload of deleted issue" do
     @issue.destroy
     p = WebhookPayload.new('issue.deleted', @issue, @dlopper)
