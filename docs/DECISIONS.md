@@ -797,3 +797,19 @@ Alle twaalf bevindingen van de review van 2026-09-03 hebben een
   wordt door deze patch niet erger.
 
 - **Haast?** Nee — we bouwden verder met A, en het staat benoemd in het dossier.
+
+## Beslist (Jan) — K-12, 2026-09-05
+
+- **K-12 `version-subprojects`: het `descendants`-randgeval wordt benoemd, niet
+  gedicht.** Optie A, conform het advies. De code blijft vier productieregels;
+  het dossier zegt onder "Proposed change" precies wat de waardelijst wél is
+  ("the versions the project can assign, plus the visible versions belonging to
+  the projects the query covers") en noemt het resterende geval met de
+  reproductie op Redmine's eigen fixtures erbij, plus een rij in de
+  objectietabel. Er verandert dus niets aan de patch: hij stond al zo.
+
+  Reden om het niet te dichten: de vraag "welke versies kan *enig* project in de
+  query toewijzen" is een bredere SQL-voorwaarde dan wat Jan of Go MAEDA ooit op
+  #43534 heeft voorgesteld, en het randgeval bestaat vandaag op kale trunk
+  evengoed — de patch maakt het niet erger. Een reviewer die het vindt, vindt
+  het in de note.
