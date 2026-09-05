@@ -880,3 +880,47 @@ hebben nu een `Resolution:`-regel. De feature-eigen keuzes staan in
   strak bestand, die de `.enc`-bestanden bovendien niet dekken, wegen niet op
   tegen één `git checkout -- .gitignore` na de eerste `credentials:edit`. Die
   instructie staat nu in `status.md`.
+
+
+## Uitgevoerd — ronde 2 voor `webhook-issue-closed` (2026-09-05)
+
+Alle **tien** bevindingen uit
+`docs/review/findings/2026-09-03-webhook-issue-closed-claude-opus5.md` hebben nu
+een `Resolution:`-regel: **drie** wijzigden code, **zeven** de begeleidende
+tekst. De patch staat op **r25037** (g05), en de bewijscijfers zijn in dezelfde
+beweging opnieuw gedraaid (g10). Feature-eigen keuzes staan in
+`docs/features/webhook-issue-closed/decisions.md` onder "Ronde 2".
+
+Wat hier hoort omdat het buiten die ene feature betekenis heeft:
+
+- **Jans g16e is uitgevoerd**: de `closed_on`-bewaking draagt nu één regel
+  *waarom*. Dat is meteen het eerste concrete geval van de nieuwe INV-3: één
+  regel boven een callback die een niet-vanzelfsprekend waarom vastlegt, en
+  géén regel binnen een methode die herhaalt wat de code doet.
+- **F05 verplaatste code in plaats van het argument bij te stellen.** Het
+  dossier voerde het argument dat `closed` issuespecifiek is, en zette de naam
+  toch in `lib/redmine/acts/webhookable.rb`. Nu overschrijft
+  `Issue::Webhookable` de tijdstempelmapping en raakt de patch **geen enkel
+  bestand onder `lib/redmine/`**. Kosten: twee regels productiecode meer
+  (13/2 over drie bestanden in plaats van 8/3 over vier). Voor een los
+  ingediend deelstuk uit een grotere patch is een kleinere blast radius het
+  betere verhaal — dat is de generaliseerbare afweging.
+- **Een reviewfix kan dekking wegnemen die niemand geteld had.** F07 vroeg de
+  end-to-end test de job te laten lezen die zijn eigen blok in de wachtrij
+  zette in plaats van de eerste `WebhookJob` in het proces. Terecht — maar
+  precies dat toeval was wat rij 1 van de overgangstabel dekte volgens F03. Na
+  de fix stond die rij zonder dekking. Opgelost met een eigen bewaker; gemeten
+  door de bewaking weg te muteren: **5** tests vallen nu om waar het er 4
+  waren. In `docs/traps.md` gezet.
+- **K-09 krijgt een tweede feitencorrectie, en die gaat de andere kant op dan
+  de eerste.** `fr.yml` heeft de groep `webhook_event_*` inmiddels wél vertaald
+  (tussen r24882 en r25037). Op r25037 geldt: **49** niet-Engelse bestanden
+  dragen de groep, **42** letterlijk Engels, **zeven** vertaald — `bg cs fr gl
+  hu ja zh-TW`. Gevolg voor de keuze: een Franse beheerder ziet nu drie
+  vertaalde labels plus een Engels "Issue closed", en dat is precies de
+  half-Engelse uitkomst waar optie C tegen pleitte — nu bereikt door optie A te
+  nemen. De aanbeveling blijft **A** voor `nl`, `de` en `es` (daar staat de
+  hele groep nog Engels, dus daar is niets half). Voor `fr` alleen is er nu een
+  argument vóór B of C dat er op r24882 niet was. **Het blokkeert het indienen
+  nog steeds niet**, en de cijfers dragen voortaan hun revisie mee zodat ze
+  niet nog een keer stil verlopen.
