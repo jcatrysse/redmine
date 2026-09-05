@@ -49,12 +49,13 @@ Jan, not an assertion that the line is wrong.
 
 ### F01 — Per-environment credential keys (`config/credentials/<env>.key`) are not ignored, so a production master key can still be committed
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** security
 - **Where:** `.gitignore:11` and `.gitignore:14`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — `/config/credentials/` added (Jan g11); the six paths measured with `git check-ignore -v`, and `git add -A --dry-run` no longer stages `production.key`
 
 **What is wrong**
 
@@ -145,12 +146,13 @@ become ignored" sweep below, because a glob is wider than an exact path.
 
 ### F02 — Rails appends its own ignore block on top of these lines, dirtying a tracked file
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** conventions
 - **Where:** `.gitignore:14`
 - **Invariant touched:** none (but see below)
+- **Resolution:** documented 2026-09-05, deliberately not changed — suppressing Rails needs its whole block verbatim (measured), which g11's shape does not use; `status.md` says Rails will append and that the appended block should be reverted
 
 **What is wrong**
 
@@ -209,18 +211,43 @@ kept deliberately, that is a defensible choice — but then it is worth a line i
 `status.md` saying Rails will append its own block and that the appended block
 should be reverted, so the next person is not surprised.
 
-**Resolution:**
+**Resolution:** the second option, 2026-09-05: documented in `status.md`, the
+`.gitignore` left in the shape Jan chose in g11. Not a dodge — the first option
+was measured and does not work in the form this finding suggests.
+
+Three variants of `.gitignore`, each run against
+`EncryptionKeyFileGenerator#ensure_key_files_are_ignored_silently` from railties
+8.1.3.1, the version this branch pins:
+
+| `.gitignore` contains | `config/master.key` | result |
+|---|---|---|
+| the branch's three rules | — | **appends** `"\n# Ignore key files…\n/config/*.key\n\n"` |
+| those plus a bare `/config/*.key` | — | **appends anyway** |
+| those plus Rails' block verbatim, comment and blank lines included | — | unchanged |
+
+So the only thing that silences Rails is copying its four lines in full, and
+that is what was rejected: it is a comment line plus a blank-line-padded block
+in a file that is otherwise a tidy alphabetical list, it duplicates rules that
+are already there, and it does not cover the `.enc` files that g16a wants
+ignored. The cost of not doing it is one `git checkout -- .gitignore` after the
+first `bin/rails credentials:edit`, and that instruction is now in `status.md`
+under "wat er al bekend is". Note the appended block only ever happens when
+Rails *generates* a key: `add_key_file` returns early if the key file already
+exists, which is the ops flow where the key is copied in from a password
+manager.
+
 
 ---
 
 ### F03 — Ignoring `config/credentials.yml.enc` inverts Rails' intended workflow — is that deliberate?
 
-- **Status:** question
+- **Status:** resolved
 - **Severity:** question
 - **Confidence:** confirmed
 - **Category:** minimality
 - **Where:** `.gitignore:11`
 - **Invariant touched:** INV-1 (raised as a question, not asserted as a violation)
+- **Resolution:** answered by Jan, g16a — reading (a): the line stays, deliberately, and the reason plus its price is now in `status.md`
 
 **What is wrong**
 
@@ -286,4 +313,15 @@ This is a decision, not a defect. Whichever way it goes, the reasoning belongs
 in `status.md` next to the `/.github/` note, because the next person to read the
 file will otherwise assume the `.enc` line was copied in by habit and "fix" it.
 
-**Resolution:**
+**Resolution:** put to Jan on 2026-09-04 and answered there — g16a, reading (a),
+against the advice given: `config/credentials.yml.enc` stays ignored, because he
+wants nothing to do with credentials in the repository at all. The line is
+therefore deliberate and is not to be removed as INV-1 scope creep.
+
+Done 2026-09-05: the reasoning is in `status.md`, in the "wat er al bekend is"
+section next to the `/.github/` note, exactly where this finding asked for it —
+including the price, so that whoever does adopt Rails credentials later reads it
+first: the encrypted half would live only on the machine that created it, and
+`Rails.application.credentials.foo` would return `nil` on the server rather than
+raising anywhere obvious.
+

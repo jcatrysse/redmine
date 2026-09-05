@@ -22,7 +22,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`8bf6dce3e`) | nooit | — |
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | live (`fe737441b`) | nooit | — |
-| [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key en credentials.yml.enc negeren | `8ec9951d3` | live (`e2c0447b6`) | nooit | — |
+| [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key, de credentials-map en credentials.yml.enc negeren | `8ec9951d3` | live (`e2c0447b6 + 3f5eb3be2`) | nooit | — |
 | [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: notificatievoorkeuren van LDAP-accounts zetten na een import | `9e2c38e2d` | live (`113f32117`) | nooit | — |
 | [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | live (`351fe9e54 + 55ae9d1dd + 885f04097`) | nooit | [#43355](https://www.redmine.org/issues/43355) |
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
@@ -32,7 +32,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
-- `revision-branches` — cse_01CbbdcKLufx6e9EHQtVD4qP sinds 2026-09-05
+- `gitignore-credentials` — cse_01KwHvNpJmp9HNZ9SKYSTR4T sinds 2026-09-05
 
 ## Openstaand voor Jan
 
