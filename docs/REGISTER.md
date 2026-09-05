@@ -16,7 +16,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
 | [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`827e9e7d5`) | patch klaar | — |
-| [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041`) | patch klaar | — |
+| [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041 + 0fbad7c17`) | patch klaar | — |
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`7006c4f00`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
 | [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`8bf6dce3e`) | nooit | — |
@@ -29,6 +29,10 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `webhook-tracker-filter` — cse_01PMHt4Nh5Y8yZv3aSKf2zsk sinds 2026-09-05
 
 ## Openstaand voor Jan
 
@@ -314,18 +318,20 @@ verder met `en.yml` alleen.
 Maak een **nieuw** issue op redmine.org aan als follow-up van
 [#29664](https://www.redmine.org/issues/29664) — dus niet als note aan #29664
 zelf, dat issue is gesloten met target version 7.0.0. Hang er
-`patches/webhook-tracker-filter/2026-09-03-r24882-feature.patch` (code +
-`en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`) aan. De Engelse
+`patches/webhook-tracker-filter/2026-09-05-r25037-feature.patch` (code +
+`en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`) aan. Draai vlak daarvoor
+`tools/check-patch-clean.sh webhook-tracker-filter --submit`; is trunk intussen
+verder gelopen, dan ververst een sessie de patch eerst (g05). De Engelse
 issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem".
 
 Zeg in de beschrijving expliciet dat dit **note 37 van Holger Just op #29664
 beantwoordt**: hij vroeg om de monolithische 5.1-patch op te splitsen in losse
 patches, elk met de reden erbij, en gerebaseerd op de huidige trunk. Dit is
-punt 1 van je eigen note 36, los, tegen r24882, met de probleembeschrijving en
+punt 1 van je eigen note 36, los, tegen r25037, met de probleembeschrijving en
 de afgewogen alternatieven erbij. Dat is het sterkste argument dat er is — een
 committer heeft precies hierom gevraagd.
 
-Twee dingen die het waard zijn om erbij te zetten omdat ze de patch verdedigen
+Drie dingen die het waard zijn om erbij te zetten omdat ze de patch verdedigen
 vóórdat iemand ernaar vraagt:
 
 - Leeg = alle trackers, dus geen enkele bestaande hook verandert van gedrag bij
@@ -338,9 +344,13 @@ vóórdat iemand ernaar vraagt:
   herschrijven. Dat haalt het enige bezwaar weg dat de vier extra talen kunnen
   oproepen.
 - De patch voegt `preload(:trackers)` toe zodat `hooks_for` niet één query per
-  hook gaat doen. Noem #44386 erbij — daar haalde Marius Bălteanu een week
-  eerder een N+1 uit ditzelfde model, dus het is duidelijk dat het onderwerp
-  leeft.
+  hook gaat doen. Noem #44386 erbij — daar haalde Marius Bălteanu een N+1 uit
+  ditzelfde model, dus het is duidelijk dat het onderwerp leeft. r25011 zit in
+  de basis van deze patch.
+
+Er staat één keuze voor je open: **K-11** in `docs/DECISIONS.md`, over wat er
+moet gebeuren als de laatste tracker van een hook verwijderd wordt. Er is geen
+haast — we bouwden verder met de gedocumenteerde variant.
 
 ### `wiki-export-attachments`
 
