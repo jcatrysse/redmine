@@ -17,7 +17,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
 | [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`827e9e7d5`) | patch klaar | — |
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041`) | patch klaar | — |
-| [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`28c618860`) | patch klaar | — |
+| [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`7006c4f00`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
 | [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`8bf6dce3e`) | nooit | — |
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
@@ -32,7 +32,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
-- `ar-sessions` — cse_01Uj81prd9E9fJdD9bx7J61X sinds 2026-09-05
+- `wiki-export-attachments` — cse_01QfGWBQ4nn6NDZQKjcUpcRs sinds 2026-09-05
 
 ## Openstaand voor Jan
 
@@ -340,9 +340,13 @@ vóórdat iemand ernaar vraagt:
 
 Maak een nieuw issue op redmine.org als follow-up van
 [#43978](https://www.redmine.org/issues/43978) en hang er
-`patches/wiki-export-attachments/2026-09-01-r24882-feature.patch` en
-`-locales.patch` aan. De Engelse issuetekst staat kant-en-klaar in
-`dossier.md` vanaf "The problem". Het argument dat erbij hoort: de indiener van
-#43978 liet bijlagen bewust weg omdat ze drie ontwerpvragen opwerpen
-(archiefstructuur, naamconflicten, verwijzingen in de tekst) — het dossier
-beantwoordt die drie.
+`patches/wiki-export-attachments/2026-09-05-r25037-feature.patch` en
+`-locales.patch` aan. Draai vlak daarvoor
+`tools/check-patch-clean.sh wiki-export-attachments --submit`; als trunk
+intussen verder is, ververst een sessie de patch eerst (g05). De Engelse
+issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem". Het
+argument dat erbij hoort: de indiener van #43978 liet bijlagen bewust weg
+omdat ze drie ontwerpvragen opwerpen (archiefstructuur, naamconflicten,
+verwijzingen in de tekst) — het dossier beantwoordt die drie, en het
+voor/na-archiefpaar toont het naamconflict dat de geneste indeling zelf
+oplevert.

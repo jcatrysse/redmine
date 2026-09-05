@@ -1,0 +1,700 @@
+From f434bff6446bdf374a75409c943cb8cae2640166 Mon Sep 17 00:00:00 2001
+From: Jan Catrysse <jan.catrysse@geoxyz.eu>
+Date: Sat, 5 Sep 2026 08:34:47 +0000
+Subject: [PATCH] Preserve the wiki page hierarchy and include page attachments
+ in the ZIP export.
+
+The ZIP export added in #43978 flattens the wiki: every page becomes a
+top-level <title>.txt, so the parent/child structure Redmine has is lost,
+and pages whose titles sanitise to the same name need an (n) suffix that
+the hierarchy would have made unnecessary.
+
+The archive now mirrors the wiki instead: one directory per page, nested
+by parent, holding that page's source.
+
+An option on the ZIP export dialog adds each page's attachments to its own
+directory, next to the source, so that a bare-filename reference such as
+!diagram.png! resolves once the archive is unpacked. Attachments are opt-in
+because their total size is checked against bulk_download_max_size, as
+AttachmentsController#download_all does; the source-only export therefore
+keeps working for a wiki whose attachments exceed the limit.
+
+Inside a page directory the page source, the child page directories and
+the attachments share one namespace: an attachment named after the page or
+after a child page gets the (n) suffix instead of replacing the page source
+or clashing with the directory. The renaming is Attachment#archived_filename,
+extracted from Attachment.archive_attachments so that both archives apply
+the same rule.
+
+The archive construction lives in Redmine::Export::ZIP::WikiZipHelper next
+to the PDF and text export helpers; wiki_pages_to_zip and
+archived_wiki_page_filename move there unchanged.
+
+test_export_to_zip and test_export_to_zip_should_sanitize_non_portable_entry_name_characters
+are updated for the new entry paths.
+---
+ app/controllers/wiki_controller.rb            |  66 ++----
+ app/models/attachment.rb                      |  28 ++-
+ app/views/wiki/_export_options.html.erb       |  15 ++
+ app/views/wiki/date_index.html.erb            |   7 +-
+ app/views/wiki/index.html.erb                 |   7 +-
+ config/initializers/zeitwerk.rb               |   3 +-
+ config/locales/en.yml                         |   1 +
+ lib/redmine/export/zip/wiki_zip_helper.rb     |  99 ++++++++
+ test/functional/wiki_controller_test.rb       | 216 +++++++++++++++++-
+ test/unit/attachment_test.rb                  |   7 +
+ .../export/zip/wiki_zip_helper_test.rb        |  43 ++++
+ 11 files changed, 429 insertions(+), 63 deletions(-)
+ create mode 100644 app/views/wiki/_export_options.html.erb
+ create mode 100644 lib/redmine/export/zip/wiki_zip_helper.rb
+ create mode 100644 test/unit/lib/redmine/export/zip/wiki_zip_helper_test.rb
+
+diff --git a/app/controllers/wiki_controller.rb b/app/controllers/wiki_controller.rb
+index 3bc196064..c9380a74d 100644
+--- a/app/controllers/wiki_controller.rb
++++ b/app/controllers/wiki_controller.rb
+@@ -45,6 +45,8 @@ class WikiController < ApplicationController
+   include AttachmentsHelper
+   helper :watchers
+   include Redmine::Export::PDF
++  include Redmine::Export::ZIP::WikiZipHelper
++  include ActionView::Helpers::NumberHelper
+ 
+   # List of pages, sorted alphabetically and by parent (hierarchy)
+   def index
+@@ -323,12 +325,19 @@ class WikiController < ApplicationController
+         send_file_headers! :type => 'application/pdf', :filename => "#{@project.identifier}.pdf"
+       end
+       format.zip do
+-        file_name = "#{@project.identifier}-wiki.zip"
+-        send_data(
+-          wiki_pages_to_zip(@pages),
+-          :type => Redmine::MimeType.of(file_name),
+-          :filename => filename_for_content_disposition(file_name)
+-        )
++        attachments_by_page = params[:with_attachments] == '1' ? wiki_page_attachments(@pages) : {}
++        if wiki_attachments_too_big?(attachments_by_page)
++          flash[:error] = l(:error_bulk_download_size_too_big,
++                            :max_size => number_to_human_size(Setting.bulk_download_max_size.to_i.kilobytes))
++          redirect_to project_wiki_index_path(@project)
++        else
++          file_name = "#{@project.identifier}-wiki.zip"
++          send_data(
++            wiki_pages_to_zip(@pages, attachments_by_page),
++            :type => Redmine::MimeType.of(file_name),
++            :filename => filename_for_content_disposition(file_name)
++          )
++        end
+       end
+     end
+   end
+@@ -411,46 +420,15 @@ class WikiController < ApplicationController
+                 to_a
+   end
+ 
+-  def wiki_pages_to_zip(pages)
+-    Zip.unicode_names = true
+-    archived_file_names = []
+-    buffer = Zip::OutputStream.write_buffer do |zos|
+-      pages.each do |page|
+-        filename = archived_wiki_page_filename(page, archived_file_names)
+-        entry = Zip::Entry.new('', filename)
+-        if page.updated_on.present?
+-          local_time = User.current.convert_time_to_user_timezone(page.updated_on)
+-          # DOS timestamp stores user's displayed local time
+-          entry.time = Zip::DOSTime.new(
+-            local_time.year, local_time.month, local_time.day,
+-            local_time.hour, local_time.min, local_time.sec
+-          )
+-          # UT extra field stores time in UTC
+-          entry.extra[:universaltime].mtime = local_time.utc
+-        end
+-        zos.put_next_entry(entry)
+-        zos << page.content.text.to_s
+-      end
++  def wiki_page_attachments(pages)
++    pages.each_with_object({}) do |page, attachments_by_page|
++      attachments = page.attachments.select(&:readable?)
++      attachments_by_page[page.id] = attachments if attachments.any?
+     end
+-    buffer.string
+-  ensure
+-    buffer&.close
+   end
+ 
+-  def archived_wiki_page_filename(page, archived_file_names)
+-    extension = '.txt'
+-    # Keep this character set aligned with Attachment#sanitize_filename.
+-    # Unlike attachments, do not drop path-like components from wiki titles.
+-    sanitized_title = page.title.tr('\\', '_').gsub(/[\/?%*:|"'<>\n\r\x00]+/, '_')
+-    filename = "#{sanitized_title}#{extension}"
+-    dup_count = 0
+-
+-    while archived_file_names.include?(filename)
+-      dup_count += 1
+-      filename = "#{sanitized_title}(#{dup_count})#{extension}"
+-    end
+-
+-    archived_file_names << filename
+-    filename
++  def wiki_attachments_too_big?(attachments_by_page)
++    total_size = attachments_by_page.values.sum {|attachments| attachments.sum(&:filesize)}
++    total_size > Setting.bulk_download_max_size.to_i.kilobytes
+   end
+ end
+diff --git a/app/models/attachment.rb b/app/models/attachment.rb
+index a6d6fcb6c..49924acb6 100644
+--- a/app/models/attachment.rb
++++ b/app/models/attachment.rb
+@@ -457,18 +457,8 @@ class Attachment < ApplicationRecord
+     archived_file_names = []
+     buffer = Zip::OutputStream.write_buffer do |zos|
+       attachments.each do |attachment|
+-        filename = attachment.filename
+-        # rename the file if a file with the same name already exists
+-        dup_count = 0
+-        while archived_file_names.include?(filename)
+-          dup_count += 1
+-          extname = File.extname(attachment.filename)
+-          basename = File.basename(attachment.filename, extname)
+-          filename = "#{basename}(#{dup_count})#{extname}"
+-        end
+-        zos.put_next_entry(filename)
++        zos.put_next_entry(attachment.archived_filename(archived_file_names))
+         zos << File.binread(attachment.diskfile)
+-        archived_file_names << filename
+       end
+     end
+     buffer.string
+@@ -476,6 +466,22 @@ class Attachment < ApplicationRecord
+     buffer&.close
+   end
+ 
++  # Returns the name of the attachment inside an archive, renamed with a (n)
++  # suffix if a file with the same name already exists in archived_file_names,
++  # and adds it to that list
++  def archived_filename(archived_file_names)
++    name = filename
++    dup_count = 0
++    while archived_file_names.include?(name)
++      dup_count += 1
++      extname = File.extname(filename)
++      basename = File.basename(filename, extname)
++      name = "#{basename}(#{dup_count})#{extname}"
++    end
++    archived_file_names << name
++    name
++  end
++
+   # Moves an existing attachment to its target directory
+   def move_to_target_directory!
+     return unless !new_record? && readable?
+diff --git a/app/views/wiki/_export_options.html.erb b/app/views/wiki/_export_options.html.erb
+new file mode 100644
+index 000000000..503bfc00c
+--- /dev/null
++++ b/app/views/wiki/_export_options.html.erb
+@@ -0,0 +1,15 @@
++<div id="zip-export-options" style="display:none;">
++  <h3 class="title"><%= l(:label_export_options, :export_format => 'ZIP') %></h3>
++  <%= form_tag({:action => 'export', :format => 'zip'}, :method => :get, :id => 'zip-export-form') do %>
++  <p>
++    <label>
++      <%= check_box_tag 'with_attachments', '1', false %>
++      <%= l(:label_include_attachments) %>
++    </label>
++  </p>
++  <p class="buttons">
++    <%= submit_tag l(:button_export), :name => nil, :onclick => "hideModal(this);", :data => { :disable_with => false } %>
++    <%= link_to_function l(:button_cancel), "hideModal(this);" %>
++  </p>
++  <% end %>
++</div>
+diff --git a/app/views/wiki/date_index.html.erb b/app/views/wiki/date_index.html.erb
+index cb82bff16..1533f7d36 100644
+--- a/app/views/wiki/date_index.html.erb
++++ b/app/views/wiki/date_index.html.erb
+@@ -32,12 +32,17 @@
+   <% if User.current.allowed_to?(:export_wiki_pages, @project) %>
+   <%= f.link_to('PDF', :url => {:action => 'export', :format => 'pdf'}) %>
+   <%= f.link_to('HTML', :url => {:action => 'export'}) %>
+-  <%= f.link_to('ZIP', :url => {:action => 'export', :format => 'zip'}) %>
++  <%= f.link_to('ZIP', :url => {:action => 'export', :format => 'zip'},
++                :onclick => "showModal('zip-export-options', '350px'); return false;") %>
+   <% end %>
+   <%= f.link_to 'Atom', :url => {:controller => 'activities', :action => 'index', :id => @project, :show_wiki_edits => 1, :key => User.current.atom_key} %>
+ <% end %>
+ <% end %>
+ 
++<% if User.current.allowed_to?(:export_wiki_pages, @project) && !@pages.empty? %>
++<%= render :partial => 'wiki/export_options' %>
++<% end %>
++
+ <% content_for :header_tags do %>
+ <%= auto_discovery_link_tag(:atom, :controller => 'activities', :action => 'index', :id => @project, :show_wiki_edits => 1, :format => 'atom', :key => User.current.atom_key) %>
+ <% end %>
+diff --git a/app/views/wiki/index.html.erb b/app/views/wiki/index.html.erb
+index d3fd300fd..3f3983603 100644
+--- a/app/views/wiki/index.html.erb
++++ b/app/views/wiki/index.html.erb
+@@ -25,7 +25,8 @@
+   <% if User.current.allowed_to?(:export_wiki_pages, @project) %>
+   <%= f.link_to('PDF', :url => {:action => 'export', :format => 'pdf'}) %>
+   <%= f.link_to('HTML', :url => {:action => 'export'}) %>
+-  <%= f.link_to('ZIP', :url => {:action => 'export', :format => 'zip'}) %>
++  <%= f.link_to('ZIP', :url => {:action => 'export', :format => 'zip'},
++                :onclick => "showModal('zip-export-options', '350px'); return false;") %>
+   <% end %>
+   <%= f.link_to 'Atom',
+                 :url => {:controller => 'activities', :action => 'index',
+@@ -34,6 +35,10 @@
+ <% end %>
+ <% end %>
+ 
++<% if User.current.allowed_to?(:export_wiki_pages, @project) && !@pages.empty? %>
++<%= render :partial => 'wiki/export_options' %>
++<% end %>
++
+ <% content_for :header_tags do %>
+ <%= auto_discovery_link_tag(
+       :atom, :controller => 'activities', :action => 'index',
+diff --git a/config/initializers/zeitwerk.rb b/config/initializers/zeitwerk.rb
+index c9f7286d6..848848789 100644
+--- a/config/initializers/zeitwerk.rb
++++ b/config/initializers/zeitwerk.rb
+@@ -21,7 +21,8 @@ Rails.autoloaders.each do |loader|
+     'pdf' => 'PDF',
+     'url' => 'URL',
+     'pop3' => 'POP3',
+-    'imap' => 'IMAP'
++    'imap' => 'IMAP',
++    'zip' => 'ZIP'
+   )
+   IGNORE_LIST.each do |mod|
+     loader.ignore lib.join(mod)
+diff --git a/config/locales/en.yml b/config/locales/en.yml
+index bdbad19a0..662840ee1 100644
+--- a/config/locales/en.yml
++++ b/config/locales/en.yml
+@@ -1050,6 +1050,7 @@ en:
+   label_child_revision: Child
+   label_export_options: "%{export_format} export options"
+   label_copy_attachments: Copy attachments
++  label_include_attachments: Include attachments
+   label_copy_subtasks: Copy subtasks
+   label_item_position: "%{position} of %{count}"
+   label_completed_versions: Completed versions
+diff --git a/lib/redmine/export/zip/wiki_zip_helper.rb b/lib/redmine/export/zip/wiki_zip_helper.rb
+new file mode 100644
+index 000000000..45df54508
+--- /dev/null
++++ b/lib/redmine/export/zip/wiki_zip_helper.rb
+@@ -0,0 +1,99 @@
++# frozen_string_literal: true
++
++# Redmine - project management software
++# Copyright (C) 2006-  Jean-Philippe Lang
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License
++# as published by the Free Software Foundation; either version 2
++# of the License, or (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the Free Software
++# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
++
++module Redmine
++  module Export
++    module ZIP
++      module WikiZipHelper
++        # Returns a ZIP string of a set of wiki pages, one directory per page
++        # mirroring the wiki hierarchy, with the attachments given per page id
++        # written into the directory of their page
++        def wiki_pages_to_zip(pages, attachments_by_page = {})
++          Zip.unicode_names = true
++          page_ids = pages.map(&:id)
++          pages_by_parent_id = pages.group_by {|page| page.parent_id if page_ids.include?(page.parent_id)}
++          directories = wiki_page_directories(pages_by_parent_id)
++          buffer = Zip::OutputStream.write_buffer do |zos|
++            directories.each do |page, directory|
++              page_filename = "#{File.basename(directory)}.txt"
++              zos.put_next_entry(zip_entry(File.join(directory, page_filename), page.updated_on))
++              zos << page.content.text.to_s
++
++              # An attachment may not take the name of the page source or of a child page directory
++              child_directories = pages_by_parent_id.fetch(page.id, []).map {|child| File.basename(directories[child])}
++              archived_file_names = [page_filename, *child_directories]
++              attachments_by_page.fetch(page.id, []).each do |attachment|
++                filename = attachment.archived_filename(archived_file_names)
++                zos.put_next_entry(zip_entry(File.join(directory, filename), attachment.created_on))
++                zos << File.binread(attachment.diskfile)
++              end
++            end
++          end
++          buffer.string
++        ensure
++          buffer&.close
++        end
++
++        # Directories mirror the wiki hierarchy so that an attachment sits next
++        # to the page source referring to it
++        def wiki_page_directories(pages_by_parent_id, parent_id = nil, parent_directory = '')
++          archived_file_names = []
++          pages_by_parent_id.fetch(parent_id, []).each_with_object({}) do |page, directories|
++            name = File.basename(archived_wiki_page_filename(page, archived_file_names), '.txt')
++            directory = parent_directory.blank? ? name : File.join(parent_directory, name)
++            directories[page] = directory
++            directories.merge!(wiki_page_directories(pages_by_parent_id, page.id, directory))
++          end
++        end
++
++        def zip_entry(name, time)
++          entry = Zip::Entry.new('', name)
++          if time.present?
++            local_time = User.current.convert_time_to_user_timezone(time)
++            # DOS timestamp stores user's displayed local time
++            entry.time = Zip::DOSTime.new(
++              local_time.year, local_time.month, local_time.day,
++              local_time.hour, local_time.min, local_time.sec
++            )
++            # UT extra field stores time in UTC
++            entry.extra[:universaltime].mtime = local_time.utc
++          end
++          entry
++        end
++
++        def archived_wiki_page_filename(page, archived_file_names)
++          extension = '.txt'
++          # Keep this character set aligned with Attachment#sanitize_filename.
++          # Unlike attachments, do not drop path-like components from wiki titles.
++          sanitized_title = page.title.tr('\\', '_').gsub(/[\/?%*:|"'<>\n\r\x00]+/, '_')
++          filename = "#{sanitized_title}#{extension}"
++          dup_count = 0
++
++          while archived_file_names.include?(filename)
++            dup_count += 1
++            filename = "#{sanitized_title}(#{dup_count})#{extension}"
++          end
++
++          archived_file_names << filename
++          filename
++        end
++      end
++    end
++  end
++end
+diff --git a/test/functional/wiki_controller_test.rb b/test/functional/wiki_controller_test.rb
+index 9f4ee657b..d33dcd6b4 100644
+--- a/test/functional/wiki_controller_test.rb
++++ b/test/functional/wiki_controller_test.rb
+@@ -1162,11 +1162,19 @@ class WikiControllerTest < Redmine::ControllerTest
+       pages = Project.find(1).wiki.pages.includes(:content).to_a.index_by(&:title)
+       zip_entries = zip_entries_from_response
+ 
+-      assert_equal pages.keys.sort.map {|title| "#{title}.txt"}, zip_entries.keys.sort
++      assert_equal [
++        'Another_page/Another_page.txt',
++        'Another_page/Child_1/Child_1.txt',
++        'Another_page/Child_1/Child_1_1/Child_1_1.txt',
++        'Another_page/Child_2/Child_2.txt',
++        'CookBook_documentation/CookBook_documentation.txt',
++        'CookBook_documentation/Page_with_an_inline_image/Page_with_an_inline_image.txt',
++        'Page_with_sections/Page_with_sections.txt',
++        'Этика_менеджмента/Этика_менеджмента.txt'
++      ], zip_entries.keys.sort
+ 
+       zip_entries.each do |name, entry|
+-        title = name.delete_suffix('.txt')
+-        page = pages.fetch(title)
++        page = pages.fetch(File.basename(name, '.txt'))
+         local_time = user.convert_time_to_user_timezone(page.updated_on)
+ 
+         assert_equal page.content.text, entry[:content]
+@@ -1192,11 +1200,209 @@ class WikiControllerTest < Redmine::ControllerTest
+       assert_response :success
+ 
+       zip_entries = zip_entries_from_response
+-      assert_equal 'sanitized', zip_entries['Foo_.txt'][:content]
+-      assert_not_includes zip_entries.keys, 'Foo*.txt'
++      assert_equal 'sanitized', zip_entries['Foo_/Foo_.txt'][:content]
++      assert_not_includes zip_entries.keys, 'Foo*/Foo*.txt'
+     end
+   end
+ 
++  def test_export_to_zip_should_nest_pages_by_hierarchy
++    @request.session[:user_id] = 2
++    get :export, :params => {:project_id => 'ecookbook', :format => 'zip'}
++
++    assert_response :success
++
++    child = WikiPage.find_by(:title => 'Child_1_1')
++    assert_equal 'Child_1', child.parent.title
++    assert_equal 'Another_page', child.parent.parent.title
++    assert_includes zip_entries_from_response.keys,
++                    'Another_page/Child_1/Child_1_1/Child_1_1.txt'
++  end
++
++  def test_export_to_zip_with_attachments
++    set_tmp_attachments_directory
++    page = Project.find(1).wiki.find_page('Child_1_1')
++    attachment = Attachment.create!(
++      :container => page,
++      :file => uploaded_test_file('testfile.txt', 'text/plain'),
++      :author_id => 2
++    )
++
++    @request.session[:user_id] = 2
++    get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '1'}
++
++    assert_response :success
++
++    zip_entries = zip_entries_from_response
++    entry = zip_entries['Another_page/Child_1/Child_1_1/testfile.txt']
++    assert_not_nil entry
++    assert_equal File.binread(attachment.diskfile), entry[:content]
++    local_time = User.find(2).convert_time_to_user_timezone(attachment.created_on)
++    assert_equal local_time.utc.to_i, entry[:utc_time].utc.to_i
++
++    # The page source sits in the same directory, so a reference such as
++    # !testfile.txt! resolves once the archive is unpacked.
++    assert_equal page.content.text, zip_entries['Another_page/Child_1/Child_1_1/Child_1_1.txt'][:content]
++  end
++
++  def test_export_to_zip_should_not_include_attachments_by_default
++    set_tmp_attachments_directory
++    page = Project.find(1).wiki.find_page('CookBook_documentation')
++    Attachment.create!(
++      :container => page,
++      :file => uploaded_test_file('testfile.txt', 'text/plain'),
++      :author_id => 2
++    )
++
++    @request.session[:user_id] = 2
++    get :export, :params => {:project_id => 'ecookbook', :format => 'zip'}
++
++    assert_response :success
++    assert_not_includes zip_entries_from_response.keys, "#{page.title}/testfile.txt"
++  end
++
++  def test_export_to_zip_with_attachments_set_to_zero_should_not_include_attachments
++    set_tmp_attachments_directory
++    page = Project.find(1).wiki.find_page('CookBook_documentation')
++    Attachment.create!(
++      :container => page,
++      :file => uploaded_test_file('testfile.txt', 'text/plain'),
++      :author_id => 2
++    )
++
++    @request.session[:user_id] = 2
++    get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '0'}
++
++    assert_response :success
++    assert_not_includes zip_entries_from_response.keys, "#{page.title}/testfile.txt"
++  end
++
++  def test_export_to_zip_with_attachments_should_rename_duplicate_attachment_filenames
++    set_tmp_attachments_directory
++    page = Project.find(1).wiki.find_page('CookBook_documentation')
++    2.times do
++      Attachment.create!(
++        :container => page,
++        :file => uploaded_test_file('testfile.txt', 'text/plain'),
++        :author_id => 2
++      )
++    end
++
++    @request.session[:user_id] = 2
++    get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '1'}
++
++    assert_response :success
++
++    entry_names = zip_entries_from_response.keys
++    assert_includes entry_names, "#{page.title}/testfile.txt"
++    assert_includes entry_names, "#{page.title}/testfile(1).txt"
++  end
++
++  def test_export_to_zip_with_attachments_should_rename_an_attachment_named_after_the_page
++    set_tmp_attachments_directory
++    page = Project.find(1).wiki.find_page('CookBook_documentation')
++    attachment = Attachment.create!(
++      :container => page,
++      :file => uploaded_test_file('testfile.txt', 'text/plain'),
++      :filename => 'CookBook_documentation.txt',
++      :author_id => 2
++    )
++
++    @request.session[:user_id] = 2
++    get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '1'}
++
++    assert_response :success
++
++    zip_entries = zip_entries_from_response
++    assert_equal page.content.text, zip_entries['CookBook_documentation/CookBook_documentation.txt'][:content]
++    assert_equal File.binread(attachment.diskfile), zip_entries['CookBook_documentation/CookBook_documentation(1).txt'][:content]
++  end
++
++  def test_export_to_zip_with_attachments_should_rename_an_attachment_named_after_a_child_page
++    set_tmp_attachments_directory
++    page = Project.find(1).wiki.find_page('CookBook_documentation')
++    attachment = Attachment.create!(
++      :container => page,
++      :file => uploaded_test_file('testfile.txt', 'text/plain'),
++      :filename => 'Page_with_an_inline_image',
++      :author_id => 2
++    )
++
++    @request.session[:user_id] = 2
++    get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '1'}
++
++    assert_response :success
++
++    zip_entries = zip_entries_from_response
++    assert_not_includes zip_entries.keys, 'CookBook_documentation/Page_with_an_inline_image'
++    assert_equal File.binread(attachment.diskfile), zip_entries['CookBook_documentation/Page_with_an_inline_image(1)'][:content]
++    assert_equal WikiPage.find_by(:title => 'Page_with_an_inline_image').content.text,
++                 zip_entries['CookBook_documentation/Page_with_an_inline_image/Page_with_an_inline_image.txt'][:content]
++  end
++
++  def test_export_to_zip_with_attachments_should_be_denied_when_total_size_exceeds_maximum
++    set_tmp_attachments_directory
++    Attachment.create!(
++      :container => Project.find(1).wiki.find_page('CookBook_documentation'),
++      :file => uploaded_test_file('testfile.txt', 'text/plain'),
++      :author_id => 2
++    )
++
++    @request.session[:user_id] = 2
++    with_settings :bulk_download_max_size => 0 do
++      get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '1'}
++    end
++
++    assert_redirected_to '/projects/ecookbook/wiki/index'
++    assert_equal 'These attachments cannot be bulk downloaded because the total file size exceeds the maximum allowed size (0 Bytes)',
++                 flash[:error]
++  end
++
++  def test_export_to_zip_should_be_allowed_when_bulk_download_max_size_is_exceeded
++    set_tmp_attachments_directory
++    Attachment.create!(
++      :container => Project.find(1).wiki.find_page('CookBook_documentation'),
++      :file => uploaded_test_file('testfile.txt', 'text/plain'),
++      :author_id => 2
++    )
++
++    @request.session[:user_id] = 2
++    with_settings :bulk_download_max_size => 0 do
++      get :export, :params => {:project_id => 'ecookbook', :format => 'zip'}
++    end
++
++    assert_response :success
++    assert_not_empty zip_entries_from_response
++  end
++
++  def test_index_should_show_zip_export_options
++    @request.session[:user_id] = 2
++    get :index, :params => {:project_id => 'ecookbook'}
++
++    assert_response :success
++    assert_select 'p.other-formats a.zip[onclick*=?]', 'zip-export-options'
++    assert_select 'div#zip-export-options' do
++      assert_select 'form[action=?][method=?]', '/projects/ecookbook/wiki/export.zip', 'get'
++      assert_select 'input[type=checkbox][name=?][value=?]', 'with_attachments', '1'
++    end
++  end
++
++  def test_date_index_should_show_zip_export_options
++    @request.session[:user_id] = 2
++    get :date_index, :params => {:project_id => 'ecookbook'}
++
++    assert_response :success
++    assert_select 'div#zip-export-options form[action=?]', '/projects/ecookbook/wiki/export.zip'
++  end
++
++  def test_index_should_not_show_zip_export_options_without_permission
++    Role.find_by_name('Manager').remove_permission! :export_wiki_pages
++    @request.session[:user_id] = 2
++    get :index, :params => {:project_id => 'ecookbook'}
++
++    assert_response :success
++    assert_select 'div#zip-export-options', 0
++  end
++
+   def test_export_without_permission_should_be_denied
+     @request.session[:user_id] = 2
+     Role.find_by_name('Manager').remove_permission! :export_wiki_pages
+diff --git a/test/unit/attachment_test.rb b/test/unit/attachment_test.rb
+index 8ad4b5973..6f78e2367 100644
+--- a/test/unit/attachment_test.rb
++++ b/test/unit/attachment_test.rb
+@@ -427,6 +427,13 @@ class AttachmentTest < ActiveSupport::TestCase
+     assert_equal ['testfile.txt', 'testfile(1).txt'], file_names
+   end
+ 
++  def test_archived_filename_should_rename_a_file_whose_name_is_already_taken
++    attachment = Attachment.new(:filename => 'testfile.txt')
++    archived_file_names = ['testfile.txt', 'testfile(1).txt']
++    assert_equal 'testfile(2).txt', attachment.archived_filename(archived_file_names)
++    assert_equal ['testfile.txt', 'testfile(1).txt', 'testfile(2).txt'], archived_file_names
++  end
++
+   def test_move_from_root_to_target_directory_should_move_root_files
+     a = Attachment.find(20)
+     assert a.disk_directory.blank?
+diff --git a/test/unit/lib/redmine/export/zip/wiki_zip_helper_test.rb b/test/unit/lib/redmine/export/zip/wiki_zip_helper_test.rb
+new file mode 100644
+index 000000000..6241d06e8
+--- /dev/null
++++ b/test/unit/lib/redmine/export/zip/wiki_zip_helper_test.rb
+@@ -0,0 +1,43 @@
++# frozen_string_literal: true
++
++# Redmine - project management software
++# Copyright (C) 2006-  Jean-Philippe Lang
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License
++# as published by the Free Software Foundation; either version 2
++# of the License, or (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the Free Software
++# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
++
++require_relative '../../../../../test_helper'
++
++class WikiZipHelperTest < ActiveSupport::TestCase
++  include Redmine::Export::ZIP::WikiZipHelper
++
++  def test_wiki_pages_to_zip_should_export_a_page_whose_parent_is_not_given_at_the_root
++    pages = WikiPage.where(:title => ['Child_1', 'Child_1_1']).includes(:content).to_a
++
++    assert_equal ['Child_1/Child_1.txt', 'Child_1/Child_1_1/Child_1_1.txt'],
++                 zip_entry_names(wiki_pages_to_zip(pages))
++  end
++
++  private
++
++  def zip_entry_names(zip_data)
++    names = []
++    Zip::InputStream.open(StringIO.new(zip_data)) do |io|
++      while (entry = io.get_next_entry)
++        names << entry.name
++      end
++    end
++    names
++  end
++end
+-- 
+2.43.0
+

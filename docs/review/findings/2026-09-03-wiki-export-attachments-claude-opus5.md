@@ -71,12 +71,13 @@ functionally, but not as new lines.
 
 ### F01 — `patch/wiki-export-attachments` implements the design Jan rejected; the dossier, the `.patch` files and the GEOxyz commit implement the one he chose
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** blocker
 - **Confidence:** confirmed
 - **Category:** dossier
 - **Where:** `origin/patch/wiki-export-attachments` @ `2cb6231c7` vs `patches/wiki-export-attachments/2026-09-01-r24882-feature.patch` and `7.0-stable-GEOxyz` @ `28c618860`
 - **Invariant touched:** none directly; it defeats INV-2/INV-9's purpose, since the branch is what a re-export would `format-patch` from
+- **Resolution:** fixed 2026-09-05 — `patch/wiki-export-attachments` rebuilt from `origin/master` `bee32a926` (r25037) as one commit, `f434bff64`, carrying the chosen design plus the round-2 fixes; `patches/wiki-export-attachments/2026-09-05-r25037-{feature,locales}.patch` are exported from it and `tools/check-patch-clean.sh` confirms branch and files agree (Jan g04)
 
 **What is wrong**
 
@@ -143,18 +144,27 @@ Everything else in this findings file was assessed against the patch files, whic
 the deliverable; if the branch is brought forward rather than the patch files back,
 the rest of this review still applies.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, per Jan's g04. The branch was reset to
+`origin/master` `bee32a926` (r25037), the two committed patch files were applied
+to it, the round-2 fixes below were made on top, and the whole was committed as
+one commit, `f434bff64`, authored by Jan. The old branch tip `2cb6231c7` (the
+rejected design) is gone; the old `2026-09-01-r24882-*.patch` files are
+replaced by `2026-09-05-r25037-{feature,locales}.patch`, exported from the new
+commit. `tools/check-patch-clean.sh wiki-export-attachments` now runs its drift
+check against that branch and passes. The GEOxyz branch carries the same change
+as a second commit, `7006c4f00`, on top of `28c618860`.
 
 ---
 
 ### F02 — An attachment named `<PageTitle>.txt` produces two ZIP entries at the same path, and the page's own source text silently disappears from the archive
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** blocker
 - **Confidence:** confirmed
 - **Category:** correctness
 - **Where:** `app/controllers/wiki_controller.rb` — `wiki_pages_to_zip` (the `archived_file_names = []` reset inside the per-page loop) and `archived_attachment_filename`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — the page source file and the child page directories are seeded into the names an attachment is renamed against; `test_export_to_zip_with_attachments_should_rename_an_attachment_named_after_the_page` is red on the old code and the case was reproduced and re-run in a browser (Jan g03)
 
 **What is wrong**
 
@@ -224,18 +234,35 @@ against that is incomplete. Worth a test that asserts the page source is present
 *and* the attachment is present *and* they are at different paths, since the current
 tests only ever assert presence.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, per Jan's g03. `wiki_pages_to_zip` now
+starts the per-directory name list with the page source file and the names of
+the child page directories before any attachment is renamed against it, so an
+attachment called `<PageTitle>.txt` becomes `<PageTitle>(1).txt` and the page
+source keeps its path. The rename loop itself is the one core already had, now
+`Attachment#archived_filename` (F04). Pinned by
+`test_export_to_zip_with_attachments_should_rename_an_attachment_named_after_the_page`,
+which asserts the page text at `CookBook_documentation/CookBook_documentation.txt`
+and the attachment bytes at `CookBook_documentation/CookBook_documentation(1).txt`.
+On the old code it errors — the `(1)` entry does not exist — and the archive it
+produced was the one this finding describes. Reproduced live as well: on the
+verification wiki an attachment `Wiki.txt` on page `Wiki` gave, before the fix,
+a 7-entry archive whose `Wiki/Wiki.txt` was the 33-byte attachment
+(`before-fix-zip-colliding-attachments.zip`); after it, 8 entries with the
+37-byte page source at `Wiki/Wiki.txt` and the attachment at `Wiki/Wiki(1).txt`
+(`zip-colliding-attachments.zip`). Both archives are committed next to the
+dossier.
 
 ---
 
 ### F03 — An attachment named after a child page collides with that child's directory, and `unzip` then refuses to extract the child page's source
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** correctness
 - **Where:** `app/controllers/wiki_controller.rb` — `wiki_pages_to_zip` / `wiki_page_directories`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — same name list as F02, so an attachment named after a child page becomes `<name>(1)`; `test_export_to_zip_with_attachments_should_rename_an_attachment_named_after_a_child_page` is red on the old code, and `unzip` of the live archive goes from exit 2 to a clean extraction
 
 **What is wrong**
 
@@ -279,18 +306,30 @@ within it. Reserving the child directory names before writing attachments is the
 narrow version; a single helper that hands out a unique name inside a directory is
 the version that cannot be got wrong again later.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, together with F02: the child page directory
+names are part of the seeded list, so the attachment gets the suffix and the
+directory keeps its name. Pinned by
+`test_export_to_zip_with_attachments_should_rename_an_attachment_named_after_a_child_page`,
+which asserts that `CookBook_documentation/Page_with_an_inline_image` is *not*
+an entry, that the attachment is at `CookBook_documentation/Page_with_an_inline_image(1)`,
+and that the child page's source is still at its own path. Red on the old code
+with exactly the entry this finding predicted. Live: before the fix `unzip -o`
+of the verification archive exited 2 with three `checkdir error … exists but is
+not directory` lines and the child page's source and both `diagram*.txt` never
+reached the disk; after it all eight entries extract. The extraction output is
+quoted in the dossier.
 
 ---
 
 ### F04 — `archived_attachment_filename` re-implements `Attachment.archive_attachments`' rename loop line for line, and the dossier says nothing was copied
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** minimality
 - **Where:** `app/controllers/wiki_controller.rb` — `archived_attachment_filename`; compare `app/models/attachment.rb` — `Attachment.archive_attachments`
 - **Invariant touched:** INV-1
+- **Resolution:** fixed 2026-09-05 — the rename loop is lifted out of `Attachment.archive_attachments` into `Attachment#archived_filename`, which both archives call; `archive_attachments` loses ten lines, a unit test pins the method, and the dossier names the extraction
 
 **What is wrong**
 
@@ -326,18 +365,27 @@ method that both call sites use, or say plainly in the dossier that it is duplic
 and why. What would be worse than either is fixing F02/F03 in the controller copy
 only.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. `Attachment#archived_filename(archived_file_names)`
+is the `while … include?` loop from `archive_attachments`, moved, not copied:
+`archive_attachments` now calls it and is ten lines shorter, and the wiki export
+calls the same method with its pre-seeded list. The controller copy is gone.
+`test_archived_filename_should_rename_a_file_whose_name_is_already_taken` pins
+the method directly (`NoMethodError` on the old code), and the three existing
+`archive_attachments` tests still pass against the shortened method. The
+dossier's "Proposed change" now says that two pieces of existing code move —
+the timestamp helper and this loop — and why.
 
 ---
 
 ### F05 — `test_export_to_zip` now computes its expected paths with a test-side copy of the production algorithm, and its set-equality assertion was weakened to a count
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
 - **Where:** `test/functional/wiki_controller_test.rb` — `test_export_to_zip` and the new private `wiki_page_titles_to_root`
 - **Invariant touched:** INV-7 in spirit (the assertion is not weakened to get green, but it is weakened)
+- **Resolution:** fixed 2026-09-05 — `test_export_to_zip` asserts the eight literal entry paths of the fixture wiki as a sorted array again, and the test-side `wiki_page_titles_to_root` helper is deleted
 
 **What is wrong**
 
@@ -376,18 +424,26 @@ Assert the literal expected entry names for the fixture wiki, as a set, the way 
 test did before. If a helper is still wanted for readability it should not be the
 production algorithm; the fixture hierarchy is six pages and does not change.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The test lists the eight paths the ecookbook
+fixture wiki must produce and compares them with `zip_entries.keys.sort`, the
+same shape the trunk test had; the per-entry loop keeps the content and the two
+timestamp assertions. The `wiki_page_titles_to_root` helper is gone. With set
+equality restored, the F02 archive (eight entries, one of them wrong) fails this
+test too, which is the point. The dossier's own listing of the fixture wiki said
+six pages; it is eight (`Page_with_sections` and `Этика_менеджмента` are roots
+too), and the dossier is corrected.
 
 ---
 
 ### F06 — No test exercises an attachment on a nested page, which is the combination the feature exists for
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
 - **Where:** `test/functional/wiki_controller_test.rb` — `test_export_to_zip_with_attachments` and the four other `with_attachments` tests
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — `test_export_to_zip_with_attachments` attaches to `Child_1_1`, three levels deep, and asserts `Another_page/Child_1/Child_1_1/testfile.txt` next to `Another_page/Child_1/Child_1_1/Child_1_1.txt`
 
 **What is wrong**
 
@@ -420,18 +476,25 @@ One of the existing `with_attachments` tests moved onto a page with a parent, or
 extra assertion on a grandchild, would close it. `Child_1_1` under `Child_1` under
 `Another_page` already exists in the fixtures.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The existing attachment test moved from the
+root page to the grandchild `Child_1_1`, as suggested, and asserts the literal
+nested path for both the attachment and the page source beside it. A regression
+that wrote attachments to the archive root or to the top-level ancestor now
+fails here. Red on pristine trunk (no attachments in the archive at all), green
+on the old patch — the behaviour was right, the guard was missing, exactly as
+the finding said.
 
 ---
 
 ### F07 — A page whose parent is not in the exported collection is silently dropped instead of exported
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** probable
 - **Category:** correctness
 - **Where:** `app/controllers/wiki_controller.rb` — `wiki_pages_to_zip` / `wiki_page_directories(pages.group_by(&:parent_id))`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — a page whose parent is not among the exported pages is grouped with the roots instead of being unreachable; `WikiZipHelperTest` exports `[Child_1, Child_1_1]` and gets `Child_1/Child_1.txt` and `Child_1/Child_1_1/Child_1_1.txt`
 
 **What is wrong**
 
@@ -472,18 +535,30 @@ reviewer would be satisfied by pages the walk did not reach being written at the
 archive root, or by the test asserting set equality (F05) over the *whole* wiki so
 that a dropped page fails loudly.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. `wiki_pages_to_zip` groups by
+`parent_id` only when that parent is in the collection; otherwise the page is a
+root. So every page given appears exactly once, whatever subset a caller passes,
+and the property no longer depends on `export` loading the whole wiki. One line
+of code. Pinned by
+`test_wiki_pages_to_zip_should_export_a_page_whose_parent_is_not_given_at_the_root`
+in the new `test/unit/lib/redmine/export/zip/wiki_zip_helper_test.rb`, which
+calls the helper with `Child_1` and `Child_1_1` but not `Another_page`, and
+expects `Child_1` at the root. Together with F05's set equality over the whole
+fixture wiki, a dropped page now fails loudly in two places. A `parent_id`
+cycle is still not handled; `validate_parent_title` makes it unreachable and it
+is named in the dossier's "Found but not fixed".
 
 ---
 
 ### F08 — `.sort_by(&:title)` is redundant and disagrees with the ordering the `pages` association already applies
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** minimality
 - **Where:** `app/controllers/wiki_controller.rb` — `wiki_page_directories`, `pages_by_parent_id.fetch(parent_id, []).sort_by(&:title)`
 - **Invariant touched:** INV-1
+- **Resolution:** fixed 2026-09-05 — `.sort_by(&:title)` removed; the walk uses the order of the `pages` association, which is `LOWER(title)`
 
 **What is wrong**
 
@@ -515,18 +590,22 @@ Drop it and rely on the association, or keep an explicit sort and make it the sa
 `LOWER(title)` comparison the association uses — and then say in the dossier that the
 ordering is deliberate rather than inherited.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The line is gone, so sibling order inside the
+archive is the association's case-insensitive order and `wiki_page_directories`
+does no sorting, like `render_page_hierarchy`. The dossier's comparison with
+`render_page_hierarchy` is accurate again.
 
 ---
 
 ### F09 — Wiki-page attachments go into the archive without the container-level visibility check that every other bulk download applies
 
-- **Status:** open
+- **Status:** wont-fix
 - **Severity:** question
 - **Confidence:** confirmed
 - **Category:** security
 - **Where:** `app/controllers/wiki_controller.rb` — `wiki_page_attachments`; compare `app/controllers/attachments_controller.rb` — `find_downloadable_attachments`
 - **Invariant touched:** none
+- **Resolution:** wont-fix 2026-09-05 — Jan's g14: no `attachments_visible?` guard; the dossier now states the accurate comparison (the `download_all` caller checks it, the export does not) and why `:export_wiki_pages` on the project is sufficient
 
 **What is wrong — and this is a settled decision, so it is a question for Jan, not a change request**
 
@@ -587,18 +666,30 @@ version: that `archive_attachments`' caller *does* check `attachments_visible?`,
 the wiki export deliberately does not, and why the `:export_wiki_pages` grant is
 considered sufficient. Anticipating the objection is worth more than avoiding it.
 
-**Resolution:**
+**Resolution:** wont-fix, 2026-09-05, decided by Jan (g14, 2026-09-04): there
+is no leak to close, so one paragraph in the dossier instead of code. The
+rationale is corrected as this finding asked: `AttachmentsController#download_all`
+does check `attachments_visible?` on the container before calling
+`archive_attachments`; the wiki export does not, deliberately, because within a
+project Redmine has no per-page read right — `WikiPage#visible?` and
+`attachments_visible?` both resolve to `:view_wiki_pages` on the project, the
+export already requires `:export_wiki_pages` on that same project and already
+hands that user every page's text, and a role granted export without view is a
+misconfiguration rather than a boundary this export can defend. `readable?` is
+still applied. The "Alternatives considered" paragraph and a row in "Anticipated
+objections" now say exactly this.
 
 ---
 
 ### F10 — ~85 lines of archive construction now live in `WikiController` rather than under `lib/redmine/export/`
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** question
 - **Confidence:** confirmed
 - **Category:** conventions
 - **Where:** `app/controllers/wiki_controller.rb` — `wiki_pages_to_zip`, `wiki_page_directories`, `zip_entry`, `archived_attachment_filename`, `wiki_page_attachments`, `wiki_attachments_too_big?`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-05 — the archive construction moved to `Redmine::Export::ZIP::WikiZipHelper` under `lib/redmine/export/zip/`, next to the PDF and text helpers; the two policy helpers stay in the controller like `find_downloadable_attachments` (Jan g16c)
 
 **What is wrong**
 
@@ -634,18 +725,32 @@ methods along with it turns a minimality objection into a scope objection instea
 which is the trade to think about, and a reason a committer might well prefer it left
 alone for now.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05, per Jan's g16c: moved, not rewritten.
+`wiki_pages_to_zip`, `wiki_page_directories`, `zip_entry` and
+`archived_wiki_page_filename` live in `lib/redmine/export/zip/wiki_zip_helper.rb`
+as `Redmine::Export::ZIP::WikiZipHelper`, the shape of
+`Redmine::Export::PDF::WikiPdfHelper` and `Redmine::Export::Text::VersionsTextHelper`;
+the controller includes it next to `Redmine::Export::PDF`. `ZIP` is registered
+as an acronym in `config/initializers/zeitwerk.rb` like `PDF` and `CSV`, which
+is also what keeps the namespace from shadowing the `Zip` gem. Trunk's two
+methods from #43978 move along unchanged, which the dossier states as the one
+place this patch touches lines the feature did not need to touch (Jan's choice,
+recorded in `docs/exceptions.md`). `wiki_page_attachments` and
+`wiki_attachments_too_big?` stay in the controller: they read `params` and a
+setting and decide, which is where `AttachmentsController` keeps the same
+decision. `bin/rails zeitwerk:check` passes.
 
 ---
 
 ### F11 — An attachment filename of `..` reaches the archive as `<Page>/..`; page titles, by contrast, cannot escape at all
 
-- **Status:** open
+- **Status:** wont-fix
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** security
 - **Where:** `app/controllers/wiki_controller.rb` — `archived_attachment_filename`; `Attachment#sanitize_filename`
 - **Invariant touched:** none
+- **Resolution:** wont-fix 2026-09-05 — not this patch's gap, as the finding says; the `sanitize_filename` hole is named in the dossier's "Found but not fixed" for a separate report
 
 **What is wrong**
 
@@ -701,18 +806,24 @@ renaming an entry component that is `.` or `..` inside the archive builder is ch
 and defensible; the `sanitize_filename` gap itself is a separate report, and the
 dossier's "Found but not fixed" section is the right place to name it.
 
-**Resolution:**
+**Resolution:** wont-fix, 2026-09-05. Nothing changed in the archive builder:
+the entry `<Page>/..` cannot escape, `unzip` skips it, and the same filename
+reaches the root as a bare `..` through core's existing per-page download, which
+is the version worth reporting. The dossier's "Found but not fixed" now names
+the `Attachment#sanitize_filename` gap with the reproduction, and says that the
+nesting this patch adds makes the wiki export the safer of the two paths.
 
 ---
 
 ### F12 — The comment above `wiki_page_directories` half restates what the method does
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
 - **Where:** `app/controllers/wiki_controller.rb`, immediately above `def wiki_page_directories`
 - **Invariant touched:** INV-3
+- **Resolution:** fixed 2026-09-05 — the comment above `wiki_page_directories` keeps the reason and drops the restatement
 
 **What is wrong**
 
@@ -739,7 +850,9 @@ Read the diff.
 
 Keep the reason, drop the restatement.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-05. The comment is now "Directories mirror the
+wiki hierarchy so that an attachment sits next to the page source referring to
+it" — the why, without spelling out the return value.
 
 ---
 

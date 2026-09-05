@@ -1,6 +1,6 @@
-From c865851020e7cdb87ba7eb48359e98c45d7335c4 Mon Sep 17 00:00:00 2001
+From f434bff6446bdf374a75409c943cb8cae2640166 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Wed, 2 Sep 2026 16:33:09 +0000
+Date: Sat, 5 Sep 2026 08:34:47 +0000
 Subject: [PATCH] Preserve the wiki page hierarchy and include page attachments
  in the ZIP export.
 
@@ -19,6 +19,17 @@ because their total size is checked against bulk_download_max_size, as
 AttachmentsController#download_all does; the source-only export therefore
 keeps working for a wiki whose attachments exceed the limit.
 
+Inside a page directory the page source, the child page directories and
+the attachments share one namespace: an attachment named after the page or
+after a child page gets the (n) suffix instead of replacing the page source
+or clashing with the directory. The renaming is Attachment#archived_filename,
+extracted from Attachment.archive_attachments so that both archives apply
+the same rule.
+
+The archive construction lives in Redmine::Export::ZIP::WikiZipHelper next
+to the PDF and text export helpers; wiki_pages_to_zip and
+archived_wiki_page_filename move there unchanged.
+
 test_export_to_zip and test_export_to_zip_should_sanitize_non_portable_entry_name_characters
 are updated for the new entry paths.
 ---
@@ -29,7 +40,7 @@ are updated for the new entry paths.
  4 files changed, 4 insertions(+)
 
 diff --git a/config/locales/de.yml b/config/locales/de.yml
-index 0b3e0eb03..fc12d5a59 100644
+index 4215b1ee7..e09da5650 100644
 --- a/config/locales/de.yml
 +++ b/config/locales/de.yml
 @@ -491,6 +491,7 @@ de:
@@ -41,7 +52,7 @@ index 0b3e0eb03..fc12d5a59 100644
    label_copy_source: Quelle
    label_copy_subtasks: Untergeordnetes Ticket kopieren
 diff --git a/config/locales/es.yml b/config/locales/es.yml
-index 716f70bfc..be2e86ae8 100644
+index 62987704b..790783a9c 100644
 --- a/config/locales/es.yml
 +++ b/config/locales/es.yml
 @@ -1008,6 +1008,7 @@ es:
@@ -53,7 +64,7 @@ index 716f70bfc..be2e86ae8 100644
    label_completed_versions: Versiones completadas
    text_project_identifier_info: Solo se permiten letras en minúscula (a-z), números, guiones y barras bajas.<br />Una vez guardado, el identificador no se puede cambiar.
 diff --git a/config/locales/fr.yml b/config/locales/fr.yml
-index 30612a0b3..f6b34cada 100644
+index 79d42af5d..afc8ee15e 100644
 --- a/config/locales/fr.yml
 +++ b/config/locales/fr.yml
 @@ -928,6 +928,7 @@ fr:
@@ -65,7 +76,7 @@ index 30612a0b3..f6b34cada 100644
    label_item_position: "%{position} sur %{count}"
    label_completed_versions: Versions passées
 diff --git a/config/locales/nl.yml b/config/locales/nl.yml
-index d77753b53..3ddd3517b 100644
+index 1abe4573e..f0d783d01 100644
 --- a/config/locales/nl.yml
 +++ b/config/locales/nl.yml
 @@ -949,6 +949,7 @@ nl:

@@ -7,7 +7,13 @@
 // MODE=modal            opens the ZIP dialog and downloads both ways, by clicking.
 // MODE=denied           expects the size-limit error instead of a download.
 // MODE=forbidden        expects 403 on the direct URL.
+// MODE=collisions       exports with attachments named after the page and after
+//                       a child page, and extracts the archive to show what
+//                       survives (round-2 findings F02 and F03).
 import { execFileSync } from 'node:child_process';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { session, report } from '../tools/verify-lib.mjs';
 
 const WIKI = '/projects/geoxyz-verify/wiki';
@@ -32,6 +38,22 @@ async function saveZip(download, name) {
   await download.saveAs(path);
   console.log(`\n${name}  (${download.suggestedFilename()})`);
   console.log(execFileSync('unzip', ['-l', path], { encoding: 'utf8' }));
+  return path;
+}
+
+// Extract into a scratch directory and list what is actually on disk: a
+// duplicate entry or a file/directory clash only shows up here, not in `-l`.
+function extractAndList(path) {
+  const dir = mkdtempSync(join(tmpdir(), 'wiki-zip-'));
+  let out = '';
+  try {
+    out += execFileSync('unzip', ['-o', path, '-d', dir], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (e) {
+    out += `${e.stdout || ''}${e.stderr || ''}(unzip exit ${e.status})\n`;
+  }
+  out += execFileSync('find', [dir, '-type', 'f', '-printf', '%P  %s bytes\\n'], { encoding: 'utf8' });
+  console.log(out);
+  return out;
 }
 
 await s.go(`${WIKI}/index`);
@@ -62,7 +84,34 @@ if (mode === 'modal') {
   await saveZip(download, `${prefix}zip-with-attachments.zip`);
 }
 
+if (mode === 'collisions') {
+  // The page `Wiki` carries an attachment `Wiki.txt` (the name of its own
+  // source file) and one called `Child_one` (the name of a child page's
+  // directory), added by the session's seed. Show them, then export.
+  await s.go(`${WIKI}/Wiki`);
+  // The attachment list is a collapsed fieldset; open it so the names are in the picture.
+  await s.page.click('fieldset.collapsible.collapsed legend');
+  await s.shot(`${prefix}wiki-page-colliding-attachments`,
+               'Page "Wiki" with attachments Wiki.txt and Child_one, the two names its directory already uses');
+  await openDialog();
+  await s.page.check('#zip-export-form input[name=with_attachments]');
+  const [download] = await Promise.all([
+    s.page.waitForEvent('download'),
+    s.page.click('#zip-export-form input[type=submit]'),
+  ]);
+  const path = await saveZip(download, `${prefix}zip-with-attachments.zip`);
+  extractAndList(path);
+}
+
 if (mode === 'denied') {
+  // With the limit at zero the source-only export must still work...
+  await openDialog();
+  const [download] = await Promise.all([
+    s.page.waitForEvent('download'),
+    s.page.click('#zip-export-form input[type=submit]'),
+  ]);
+  await saveZip(download, `${prefix}zip-without-attachments-at-limit-zero.zip`);
+  // ...and the export with attachments is refused.
   await openDialog();
   await s.page.check('#zip-export-form input[name=with_attachments]');
   await s.page.click('#zip-export-form input[type=submit]');
