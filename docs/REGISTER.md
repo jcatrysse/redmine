@@ -30,10 +30,6 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
 
-## Nu in behandeling
-
-- `gitignore-credentials` — cse_01KwHvNpJmp9HNZ9SKYSTR4T sinds 2026-09-05
-
 ## Openstaand voor Jan
 
 ### `ar-sessions`
