@@ -851,3 +851,32 @@ jou die met g12 al beantwoord was.
   in woorden dat de functie alleen voor Git werkt, de permissietest test nu ook
   echt iets, een branchnaam die niet omgezet kan worden laat de pagina niet meer
   crashen, en de commitboodschap is één regel.
+
+
+## Uitgevoerd — gitignore-credentials, ronde 2 (2026-09-05)
+
+Jans keuzes g11 en g16a uitgevoerd; alle drie de bevindingen van die review
+hebben nu een `Resolution:`-regel. De feature-eigen keuzes staan in
+`docs/features/gitignore-credentials/decisions.md`.
+
+- **g11 is één regel geworden, `/config/credentials/`** — de map, niet een glob
+  per bestandstype. Die dekt `<env>.key` én `<env>.yml.enc` ineens, blijft
+  kloppen voor een omgevingsnaam die nog niemand bedacht heeft, en past in de
+  alfabetische `/config/`-rij. Gemeten met de bestanden echt op schijf: zes van
+  de zes paden worden gepakt, `git add -A --dry-run` zette vóór de wijziging
+  `config/credentials/production.key` klaar en erna alleen `.gitignore`, en geen
+  enkel gevolgd bestand raakt verstopt. Commit `3f5eb3be2` op
+  `7.0-stable-GEOxyz`; dit is de tweede commit van deze feature, volgens het
+  patroon dat bij `ldap-mail-prefs` is vastgelegd.
+- **g16a staat nu met zijn prijs in `status.md`**, niet alleen als keuze:
+  gebruikt GEOxyz ooit Rails-credentials, dan blijft het versleutelde bestand
+  achter op de machine die het maakte en geeft `Rails.application.credentials`
+  op de server stil `nil`. Vandaag kost het niets — Redmine leest credentials
+  nergens.
+- **F02 is bewust niet gerepareerd, en dat is gemeten in plaats van aangenomen.**
+  Rails' automatische aanvulling van `.gitignore` onderdrukken vereist zijn
+  volledige blok inclusief commentaarregel; de vorm die de bevinding voorstelde
+  (een kale `/config/*.key`) doet dat aantoonbaar niet. Vier regels ruis in een
+  strak bestand, die de `.enc`-bestanden bovendien niet dekken, wegen niet op
+  tegen één `git checkout -- .gitignore` na de eerste `credentials:edit`. Die
+  instructie staat nu in `status.md`.
