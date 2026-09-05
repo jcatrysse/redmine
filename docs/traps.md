@@ -910,3 +910,33 @@ het commando gemeten. Het is dat het deel van een bevinding dat "how I verified
 it" heet gemeten is, en het deel dat "suggested direction" heet niet. Wie in
 ronde 2 een fix bouwt op zo'n zin, neemt een ongemeten aanname over als feit.
 Meet hem eerst; kost hier één `gem unpack` en drie kopieën van een bestand.
+
+
+## Een reviewfix kan dekking wegnemen die niemand geteld had (2026-09-05)
+
+Uit `webhook-issue-closed`, ronde 2. Twee bevindingen uit dezelfde review
+raakten elkaar zonder dat een van beide dat wist:
+
+- **F07** zei: de end-to-end test leest de *eerste* `WebhookJob` in de
+  procesbrede wachtrij in plaats van de job die zijn eigen `assert_enqueued_jobs`-blok
+  erin zette. Terecht, en de fix is één regel: de lengte van de wachtrij vóór
+  het blok onthouden.
+- **F03** zei: rij 1 van de overgangstabel ("aangemaakt met een open status")
+  heeft geen eigen test, maar wordt *incidenteel* gedekt — want als die create
+  ten onrechte `issue.closed` zou afvuren, leest de end-to-end test de
+  verkeerde job en valt om.
+
+Die incidentele dekking wás het gedrag dat F07 wegneemt. Na de F07-fix stond
+rij 1 dus helemaal zonder dekking, en niets zei dat: de suite bleef groen, en
+de mutatietest ging van 4 rode tests naar 4 rode tests met een andere naam
+erbij weggevallen.
+
+Wat het zichtbaar maakte: **de mutatie opnieuw draaien ná de fix**, niet alleen
+ervóór. De review had gemeten dat weghalen van `if saved_change_to_closed_on?`
+4 tests rood maakte; na de fix waren dat er nog steeds 4, maar niet dezelfde
+vier. Pas met een eigen bewaker voor rij 1 erbij worden het er 5.
+
+De regel eruit: **als je een test verandert die een review "vangt het bij
+toeval" noemde, draai de mutatie opnieuw en tel welke tests omvallen — niet
+hoeveel.** En: twee bevindingen die naar dezelfde test wijzen, lees je samen
+voordat je er één van fixt.
