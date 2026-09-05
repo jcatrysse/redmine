@@ -72,7 +72,7 @@ module Redmine
           ts = case action
                when 'created'
                  created_on
-               when 'updated', 'closed'
+               when 'updated'
                  updated_on
                else
                  Time.now
