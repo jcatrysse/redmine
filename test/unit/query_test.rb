@@ -214,6 +214,27 @@ class QueryTest < ActiveSupport::TestCase
     end
   end
 
+  def test_fixed_version_filter_should_return_the_issues_of_an_offered_subproject_version
+    with_settings :display_subprojects_issues => '1' do
+      version = Version.create!(:project => Project.find(3), :name => 'Unshared subproject version')
+      issue = Issue.generate!(:project_id => 3, :fixed_version => version)
+      query = IssueQuery.new(:project => Project.find(1), :name => '_')
+      assert_include version.id.to_s, query.available_filters["fixed_version_id"][:values].map(&:second)
+      query.add_filter('fixed_version_id', '=', [version.id.to_s])
+      assert_query_result [issue], query
+    end
+  end
+
+  def test_time_entry_query_fixed_version_filter_should_include_subproject_versions
+    with_settings :display_subprojects_issues => '1' do
+      version = Version.create!(:project => Project.find(3), :name => 'Unshared subproject version')
+      query = TimeEntryQuery.new(:project => Project.find(1), :name => '_')
+      filter = query.available_filters["issue.fixed_version_id"]
+      assert_not_nil filter
+      assert_include version.id.to_s, filter[:values].map(&:second)
+    end
+  end
+
   def test_query_with_multiple_custom_fields
     query = IssueQuery.find(1)
     assert query.valid?
