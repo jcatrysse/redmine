@@ -1,3 +1,4 @@
+<% display_branches = display_changeset_branches?(@changesets) %>
 <% @changesets.each do |changeset| %>
   <div id="changeset-<%= changeset.id %>" class="changeset journal">
     <h4 class="journal-header">
@@ -19,6 +20,9 @@
                        :repository_id => changeset.repository.identifier_param,
                        :path => "",
                        :rev => changeset.identifier) %>)
+        <% end %>
+        <% if display_branches && (branches = link_to_revision_branches(changeset)).present? %>
+          <em><%= l(:label_branch_plural) %>: <%= branches %></em>
         <% end %>
       </p>
       <div class="wiki changeset-comments">

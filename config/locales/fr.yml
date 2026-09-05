@@ -425,6 +425,10 @@ fr:
   setting_user_format: Format d'affichage des utilisateurs
   setting_activity_days_default: Nombre de jours affichés sur l'activité des projets
   setting_display_subprojects_issues: Afficher par défaut les demandes des sous-projets sur les projets principaux
+  setting_display_revision_branches: Afficher les branches sur les pages de révision et de diff
+  setting_display_associated_revision_branches: Afficher les branches dans les révisions associées
+  setting_revision_branches_excluded: Exclure les branches par leur nom
+  setting_revision_branches_enable_regex: Utiliser les expressions régulières
   setting_enabled_scm: SCM activés
   setting_mail_handler_body_delimiters: "Tronquer les emails après l'une de ces lignes"
   setting_mail_handler_enable_regex: "Utiliser les expressions regulières"
@@ -758,6 +762,7 @@ fr:
   label_repository_new: Nouveau dépôt
   label_repository_plural: Dépôts
   label_branch: Branche
+  label_branch_plural: Branches
   label_tag: Tag
   label_revision: Révision
   label_revision_plural: Révisions
@@ -1150,6 +1155,7 @@ fr:
   text_scm_path_encoding_note: "Défaut : UTF-8"
   text_subversion_repository_note: "Exemples (en fonction des protocoles supportés) : file:///, http://, https://, svn://, svn+[tunnelscheme]://"
   text_git_repository_note: "Chemin vers un dépôt vide et local (exemples : /gitrepo, c:\\gitrepo)"
+  text_revision_branches_git_only: "Les informations de branche ne sont disponibles que pour les dépôts Git."
   text_mercurial_repository_note: "Chemin vers un dépôt local (exemples : /hgrepo, c:\\hgrepo)"
   text_scm_command: Commande
   text_scm_command_version: Version

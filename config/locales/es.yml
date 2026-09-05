@@ -738,6 +738,10 @@ es:
   setting_default_projects_public: Los proyectos nuevos son públicos por defecto
   setting_diff_max_lines_displayed: Número máximo de diferencias mostradas
   setting_display_subprojects_issues: Mostrar por defecto peticiones de proy. secundarios en el principal
+  setting_display_revision_branches: Mostrar ramas en las páginas de revisión y de diferencias
+  setting_display_associated_revision_branches: Mostrar ramas en las revisiones asociadas
+  setting_revision_branches_excluded: Excluir ramas por nombre
+  setting_revision_branches_enable_regex: Habilitar expresiones regulares
   setting_emails_footer: Pie de mensajes
   setting_enabled_scm: Activar SCM
   setting_feeds_limit: Límite de contenido para sindicación
@@ -836,6 +840,7 @@ es:
   label_view_all_revisions: Ver todas las revisiones
   label_tag: Etiqueta
   label_branch: Rama
+  label_branch_plural: Ramas
   error_no_tracker_in_project: Este proyecto no tiene asociados tipos de peticiones. Por favor, revise la configuración.
   error_no_default_issue_status: No se ha definido un estado de petición por defecto. Por favor, revise la configuración (en "Administración" -> "Estados de las peticiones").
   text_journal_changed: "%{label} cambiado de %{old} a %{new}"
@@ -980,6 +985,7 @@ es:
   setting_issue_group_assignment: Permitir asignar peticiones a grupos
   label_diff: diferencias
   text_git_repository_note: El repositorio es básico y local (p.e. /gitrepo, c:\gitrepo)
+  text_revision_branches_git_only: La información de ramas solo está disponible para repositorios Git.
   description_query_sort_criteria_direction: Dirección de ordenación
   description_project_scope: Ámbito de búsqueda
   description_user_mail_notification: Configuración de notificaciones por correo

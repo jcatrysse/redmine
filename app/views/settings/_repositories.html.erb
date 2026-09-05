@@ -56,6 +56,22 @@
 <p><%= setting_text_field :repository_log_display_limit, :size => 6 %></p>
 
 <p><%= setting_check_box :commit_logs_formatting %></p>
+
+<p><%= setting_check_box :display_revision_branches %></p>
+
+<p><%= setting_check_box :display_associated_revision_branches %></p>
+
+<p>
+  <%= setting_textarea :revision_branches_excluded %>
+  <label class="block">
+    <%= setting_check_box :revision_branches_enable_regex, :label => false %>
+    <%= l(:setting_revision_branches_enable_regex) %>
+  </label>
+  <em class="info"><%= l(:text_comma_separated) %>
+  <%= l(:label_example) %>: dependabot/*, wip-*</em>
+</p>
+
+<p><em class="info"><%= l(:text_revision_branches_git_only) %></em></p>
 </div>
 
 <fieldset class="box tabular settings">

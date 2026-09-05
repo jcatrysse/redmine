@@ -199,6 +199,18 @@ class Changeset < ApplicationRecord
     @next ||= repository&.next_changeset(self)
   end
 
+  # Returns the names of the branches containing this changeset,
+  # less the ones excluded by Setting.revision_branches_excluded
+  def branches
+    return [] if scmid.blank? || !repository.scm.respond_to?(:branches_containing)
+
+    names = repository.scm.branches_containing(scmid)
+    patterns = excluded_branch_patterns
+    return names if patterns.empty?
+
+    names.reject {|name| patterns.any? {|pattern| pattern.match?(name)}}
+  end
+
   # Creates a new Change from it's common parameters
   def create_change(change)
     Change.create(:changeset     => self,
@@ -227,6 +239,23 @@ class Changeset < ApplicationRecord
   end
 
   private
+
+  # Setting.validate_all_from_params rejects a malformed regular expression at
+  # the form, so the rescue only catches a value written to the settings table
+  # by other means
+  def excluded_branch_patterns
+    Setting.revision_branches_excluded.to_s.split(',').map(&:strip).reject(&:blank?).filter_map do |pattern|
+      if Setting.revision_branches_enable_regex?
+        begin
+          Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
+        rescue RegexpError
+          nil
+        end
+      else
+        %r{\A#{Regexp.escape(pattern).gsub("\\*", ".*")}\z}i
+      end
+    end
+  end
 
   # Returns true if the issue is already linked to the same commit
   # from a different repository
