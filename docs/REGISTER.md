@@ -9,7 +9,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
-| [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`9d28be94d`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
+| [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`9d28be94d + d8e0db501`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`f117ea32e + 21c232ce1`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63 + 47eec6f1d + 1b4a29a0b`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
@@ -29,6 +29,10 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `assignee-nobody` — cse_01DDYjmEqEkwDpKjVKdq7j9U sinds 2026-09-05
 
 ## Openstaand voor Jan
 
@@ -93,12 +97,15 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ### `assignee-nobody`
 
-Hang `patches/assignee-nobody/2026-09-02-r24882-feature.patch` als note aan
+Hang `patches/assignee-nobody/2026-09-05-r25037-feature.patch` als note aan
 [#5535](https://www.redmine.org/issues/5535), met de uitleg dat de afhandeling
 generiek in `Query#sql_for_field` zit en dat **alle zeven operatoren** gedekt
 zijn in plaats van alleen `=`. Dat is het inhoudelijke verschil met de
 bestaande patches: vier van die operatoren gaven daar een HTTP 500 op
 PostgreSQL en `cf` gaf stil nul resultaten.
+
+Draai vlak daarvoor `tools/check-patch-clean.sh assignee-nobody --submit`; is
+trunk intussen verder gelopen, dan ververst een sessie de patch eerst (g05).
 
 ### `imap-oauth`
 
