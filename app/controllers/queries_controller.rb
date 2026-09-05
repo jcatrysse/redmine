@@ -100,6 +100,9 @@ class QueriesController < ApplicationController
       raise Unauthorized
     end
 
+    # Query#add_filters iterates the field list, so a scalar f raises there
+    q.build_from_params(params.slice(:f, :op, :v)) if params[:f].is_a?(Array)
+
     filter = q.available_filters[params[:name].to_s]
     values = filter ? filter.values : []
 

@@ -823,6 +823,101 @@ class QueriesControllerTest < Redmine::ControllerTest
     assert_include ["eCookbook - 2.0", "3", "open"], json
   end
 
+  def test_filter_should_take_the_current_filters_into_account
+    version = Version.create!(:project => Project.find(3), :name => 'Unshared subproject version', :status => 'open')
+
+    @request.session[:user_id] = 2
+    get(
+      :filter,
+      :params => {
+        :project_id => 1,
+        :name => 'fixed_version_id',
+        :f => ['subproject_id'],
+        :op => {'subproject_id' => '='},
+        :v => {'subproject_id' => [version.project_id.to_s]}
+      }
+    )
+    assert_response :success
+    assert_equal 'application/json', response.media_type
+    json = ActiveSupport::JSON.decode(response.body)
+    assert_include ["eCookbook Subproject 1 - Unshared subproject version", version.id.to_s, "open"], json
+  end
+
+  # The filter comes straight off the request, so a hand-made one can name any
+  # project id. Project 2 is not project 1 nor one of its subprojects.
+  def test_filter_should_not_offer_versions_of_a_project_outside_the_tree
+    version = Version.create!(:project => Project.find(2), :name => 'Unrelated project version', :status => 'open')
+
+    @request.session[:user_id] = 1
+    get(
+      :filter,
+      :params => {
+        :project_id => 1,
+        :name => 'fixed_version_id',
+        :f => ['subproject_id'],
+        :op => {'subproject_id' => '='},
+        :v => {'subproject_id' => ['2']}
+      }
+    )
+    assert_response :success
+    json = ActiveSupport::JSON.decode(response.body)
+    assert_not_include ["OnlineStore - Unrelated project version", version.id.to_s, "open"], json
+    assert_equal [], json.select {|_name, id, _status| id == version.id.to_s}
+  end
+
+  def test_filter_should_still_offer_versions_of_an_archived_subproject_never
+    subproject = Project.find(3)
+    version = Version.create!(:project => subproject, :name => 'Archived subproject version', :status => 'open')
+    subproject.update_column(:status, Project::STATUS_ARCHIVED)
+
+    @request.session[:user_id] = 1
+    get(
+      :filter,
+      :params => {
+        :project_id => 1,
+        :name => 'fixed_version_id',
+        :f => ['subproject_id'],
+        :op => {'subproject_id' => '='},
+        :v => {'subproject_id' => ['3']}
+      }
+    )
+    assert_response :success
+    json = ActiveSupport::JSON.decode(response.body)
+    assert_equal [], json.select {|_name, id, _status| id == version.id.to_s}
+  end
+
+  def test_filter_should_ignore_request_params_that_are_not_filters
+    @request.session[:user_id] = 2
+    get(
+      :filter,
+      :params => {
+        :project_id => 1,
+        :name => 'fixed_version_id',
+        :c => 'subject',
+        :t => 'estimated_hours'
+      }
+    )
+    assert_response :success
+    assert_equal 'application/json', response.media_type
+    json = ActiveSupport::JSON.decode(response.body)
+    assert_include ["eCookbook - 2.0", "3", "open"], json
+  end
+
+  def test_filter_should_ignore_a_filter_field_list_that_is_not_a_list
+    @request.session[:user_id] = 2
+    get(
+      :filter,
+      :params => {
+        :project_id => 1,
+        :name => 'fixed_version_id',
+        :f => 'subproject_id',
+        :op => {'subproject_id' => '='}
+      }
+    )
+    assert_response :success
+    assert_equal 'application/json', response.media_type
+  end
+
   def test_version_filter_time_entries_with_project_id_should_return_filter_values
     @request.session[:user_id] = 2
     get(
