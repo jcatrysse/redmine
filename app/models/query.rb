@@ -660,7 +660,16 @@ class Query < ApplicationRecord
   def fixed_version_values
     versions = []
     if project
-      versions = project.shared_versions.to_a
+      # project_statement takes the subproject ids from the filter as they were
+      # submitted, which is right for an issue query but not enough here: this
+      # is reached from QueriesController#filter, where the filter comes
+      # straight off the request, so the scope is narrowed to the project's own
+      # tree as well.
+      in_tree = project.self_and_descendants.where.not(:status => Project::STATUS_ARCHIVED)
+      versions =
+        project.shared_versions.to_a |
+        Version.visible.preload(:project).
+          where(:project_id => in_tree).where(project_statement).to_a
     else
       versions = Version.visible.to_a
     end
