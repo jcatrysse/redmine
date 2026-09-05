@@ -89,7 +89,6 @@ issues_export_limit:
 activity_days_default:
   format: int
   default: 10
-# Maximum number of issue query blocks on My page
 my_page_max_issuequery_blocks:
   format: int
   default: 3

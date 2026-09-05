@@ -23,6 +23,10 @@ module Redmine
 
     CORE_GROUPS = ['top', 'left', 'right']
 
+    # Upper bound of the my_page_max_issuequery_blocks setting: every block on
+    # My page runs its own query when the page is rendered
+    MAX_ISSUEQUERY_BLOCKS = 10
+
     CORE_BLOCKS = {
       'issuesassignedtome' => {:label => :label_assigned_to_me_issues},
       'issuesreportedbyme' => {:label => :label_reported_issues},
@@ -68,8 +72,8 @@ module Redmine
     # Returns the maximum number of occurrences of the given block, reading the
     # setting named by :max_occurs when the limit is configurable
     def self.max_occurs(block)
-      max_occurs = blocks[block][:max_occurs] || 1
-      max_occurs.is_a?(Symbol) ? [Setting[max_occurs].to_i, 1].max : max_occurs
+      max_occurs = blocks.fetch(block, {})[:max_occurs] || 1
+      max_occurs.is_a?(Symbol) ? Setting[max_occurs].to_i : max_occurs
     end
 
     def self.valid_block?(block, blocks_in_use=[])
