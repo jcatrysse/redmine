@@ -53,23 +53,26 @@ beheerder toch al instelt.
 
 ## Bewijs
 
-- Volledige suite met patch: `5934 runs, 31502 assertions, 27 failures, 2 errors, 92 skips`
-- Volledige suite op schone trunk r24882: `5920 runs, 31455 assertions, 27 failures, 2 errors, 92 skips`, de 29 faalnamen zijn **byte-identiek** aan die van de patch-run (alle 29 SCM-afhankelijk, `svn`/`hg`/`bzr`/`cvs` staan niet in dit image)
-- Volledige suite op `7.0-stable-GEOxyz`: `5977 runs, 31909 assertions, 0 failures, 0 errors, 39 skips` — echt 0/0, want de
-  SCM-afhankelijke tests die op trunk falen bestaan daar niet in dezelfde vorm.
-  Dit is de run **ná** de replay: tijdens deze sessie duwde een parallelle
-  sessie twee commits (`f117ea32e` imap-oauth, `f2242bd86`
-  webhook-tracker-filter) onder de mijne, dus is de suite daarna nog een keer
-  volledig gedraaid, met hun migratie erbij. De run vóór de replay gaf
-  `5959 runs, 31847 assertions, 0 failures, 0 errors, 39 skips`.
-- RuboCop op de 8 gewijzigde Ruby-bestanden: 0 (baseline 0), en op de
-  GEOxyz-branch ook 0 (baseline 0)
-- `tools/check-patch-clean.sh`: PASS · `tools/check-geoxyz-branch.sh`: PASS
-- Elk patchbestand applyt los op een schone `origin/master`, en samen geven ze
-  exact de boom van `patch/revision-branches`: geverifieerd met `git am` in een
-  wegwerp-worktree
-- Screenshots: 10 (9 before, 10 after), gelezen: ja — en dat leverde één
-  correctie op (zie hieronder)
+Alles opnieuw gedraaid op 2026-09-05 tegen trunk **r25037** (`bee32a926`).
+
+- Volledige suite met patch: `5995 runs, 31785 assertions, 27 failures, 2 errors, 92 skips`
+- Volledige suite op schone trunk r25037: `5977 runs, 31715 assertions, 27 failures, 2 errors, 92 skips` — de 29 faalnamen zijn **identiek** aan die van de patch-run (alle 29 SCM-afhankelijk, `svn`/`hg`/`bzr`/`cvs` staan niet in dit image). Het verschil van 18 runs is precies wat de patch aan tests toevoegt.
+- Aangeraakte suites in één proces: `672 runs, 4275 assertions, 0 failures, 0 errors, 16 skips`
+- Volledige suite op `7.0-stable-GEOxyz`: TODO_GEOXYZ_SUITE
+- Aangeraakte suites op `7.0-stable-GEOxyz`: `675 runs, 4331 assertions, 0 failures, 0 errors, 1 skip`
+- RuboCop op de 10 gewijzigde Ruby-bestanden: 0 (baseline 0 op r25037), en op
+  de GEOxyz-branch ook 0 (baseline 0 op `origin/7.0-stable`) — met dezelfde
+  `Gemfile.lock` in de baseline-worktree, anders zwijgen de `Rails/*`-cops
+- `tools/check-patch-clean.sh revision-branches --submit`: PASS ·
+  `tools/check-geoxyz-branch.sh`: PASS
+- Elk patchbestand applyt los op een schone `origin/master` r25037, en samen
+  geven ze exact de boom van `patch/revision-branches`
+- Kosten gemeten met een `shellout`-teller op echte requests, drie keer,
+  ongecachet: issuetab met 29 revisies gaat van 0 processen / 189-194 ms naar
+  29 processen / 460-589 ms, en **boven de bovengrens weer naar 0 processen /
+  140-165 ms**. Revisiepagina 0 → 1, diffpagina 1 → 2, bladerpagina 5
+  (onaangeraakt).
+- Screenshots: 23 (10 before, 13 after), alle 24 assertions groen, gelezen: ja
 
 ## Wat Jan nog moet doen
 
@@ -150,6 +153,21 @@ blokkeert het indienen niet.
   uitsluitingsveld stond er als "Multiple values allowed (comma separated).
   Example: eg. ^[A-Z0-9]+$" — `text_regexp_info` begint zelf al met "eg.", dus
   `label_example` ervóór was dubbel. Alleen te zien door te kijken. Weggehaald.
+
+- **Wat ronde 2 opleverde en niet opnieuw uitgezocht hoeft te worden:**
+  - De vier instellingen misten de **validatie** die bij het gekopieerde
+    core-paar hoort. Dat zit één laag hoger dan waar je hem zoekt: niet in
+    `MailHandler`, maar in de tabel bovenaan `Setting.validate_all_from_params`.
+    Kopieer je zo'n paar, kopieer dan ook die rij.
+  - De bovengrens hergebruikt `repository_log_display_limit` en is
+    **alles-of-niets** per pagina, niet "de eerste N rijen wel". Half
+    gerenderd is een bugmelding; dit is in één zin uit te leggen in de note.
+  - De hintregel onder een uitsluitingsveld moet de **standaardstand** tonen.
+    `text_regexp_info` toont een reguliere expressie, en dat veld staat
+    standaard op glob. Core's mail handler doet het goed — kopieer dat.
+  - De screenshot van het geweigerde patroon (`settings-invalid-regex.png`) is
+    het overtuigendste bewijsstuk dat er nu ligt: dezelfde foutmelding als bij
+    de mail handler, woordelijk.
 
 ## Volgende stap voor een sessie
 

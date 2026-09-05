@@ -305,14 +305,17 @@ three monkey-patches, and has been carried by volunteers since 2015.
 | `RepositoriesGitControllerTest#test_diff_should_show_the_branches_containing_the_revision` | the row also appears on the diff page, which renders the same `repositories/_changeset` partial — the second of the two places the setting governs |
 | `SettingsControllerTest#test_post_revision_branches_excluded_should_not_save_an_invalid_regular_expression` | posting `Abc[` with the regex switch on comes back 200 with "is not a valid regular expression" and stores nothing, the same as the mail-handler pair |
 
-**Evidence (INV-8 — figures, not claims):**
+**Evidence (INV-8 — figures, not claims).** All of it re-run on 2026-09-05
+against trunk **r25037** (`bee32a926`), Ruby 3.3.6 / Rails 8.1.3 /
+PostgreSQL 16, RuboCop 1.90.0.
 
 - **full** suite, patch: `tools/test-env.sh /home/user/wt/patch-revision-branches bundle exec ruby bin/rails test:all`
-  → `5934 runs, 31502 assertions, 27 failures, 2 errors, 92 skips`
-- **full** suite, pristine trunk r24882 for comparison (`redmine_test_base`)
-  → `5920 runs, 31455 assertions, 27 failures, 2 errors, 92 skips`
-- the two failure lists are **byte-identical**: 29 names on each side, with no
-  name in one and not the other (`comm -13` and `comm -23` both empty)
+  → `5995 runs, 31785 assertions, 27 failures, 2 errors, 92 skips`
+- **full** suite, pristine trunk r25037 for comparison (`redmine_test_base`)
+  → `5977 runs, 31715 assertions, 27 failures, 2 errors, 92 skips`
+- the two failure lists are **identical**: 29 names on each side, with no name
+  in one and not the other (`comm -13` and `comm -23` both empty). The 18-run
+  difference is exactly the tests this patch adds.
 - the 29 failures on trunk are all Subversion-dependent and unrelated:
   `RepositoriesControllerTest` (14), `Redmine::ApiTest::RepositoriesTest` (8),
   `SysControllerTest` (5), `UserTest#test_destroy_should_nullify_changesets`,
@@ -320,27 +323,58 @@ three monkey-patches, and has been carried by volunteers since 2015.
   `svn` is not installed in this image. The patch's failure list is compared by
   **name**, not by count — two runs of the same tree give different assertion
   totals because Redmine randomises test order.
-- RuboCop on the 8 changed Ruby files: **0** offences
-  (baseline, same files at `origin/master`: **0**)
+- touched suites in one process (`git_adapter_test`, `repository_git_test`,
+  `changeset_test`, `repositories_git_controller_test`,
+  `issues_controller_test`, `settings_controller_test`)
+  → `672 runs, 4275 assertions, 0 failures, 0 errors, 16 skips`
+- RuboCop on the 10 changed Ruby files: **0** offences
+  (baseline, same files at `origin/master` r25037 with the same `Gemfile.lock`:
+  **0**)
 - each new test verified red on the old code, by reverting only the production
-  files and keeping the tests:
+  code and keeping the test:
   - `branches_containing` × 3 and `Changeset#branches` × 3 →
     `NoMethodError: undefined method 'branches_containing' for an instance of Redmine::Scm::Adapters::GitAdapter`
     and `NoMethodError: undefined method 'branches' for an instance of Changeset`
-  - the six tests that use `with_settings` →
+  - the settings-form test, with only the `validate_all_from_params` row
+    removed → `Expected response to be a <2XX: success>, but was a <302: Found>`
+    and the value stored
+  - the cap test, with only the limit arithmetic replaced by `true` →
+    `Expected exactly 0 elements matching "em", found 2`
+  - the conversion test, with only the `if name` guard removed →
+    `ArgumentError: comparison of NilClass with String failed` from `sort!`
+  - the four view tests, with the branch block deleted from the two partials →
+    all four red, including
+    `test_show_changesets_tab_should_not_display_branches_without_view_changesets_permission`,
+    which is the point of its rewrite
+  - the tests that use `with_settings` on a tree with no settings at all →
     `RuntimeError: There's no setting named …`. That is honest red but it is the
     setting missing, not the behaviour. The two **guard** tests exist for
     exactly this: `test_revision_should_not_show_branches_by_default` and
     `test_show_changesets_tab_should_not_display_branches_by_default` pass on
     trunk *and* on the patch, and they are what pins the unchanged default.
-    Measured: 522 runs of the touched functional files on reverted production
-    code gave 3 errors (all "no setting named") and **0 failures**.
-- patch applies to pristine `origin/master` r24882: **yes** — each of the two
-  files applies on its own, and applying both with `git am` in a throwaway
-  worktree reproduces the branch tree exactly
-- `tools/check-patch-clean.sh`: **PASS** (descends from trunk, only Redmine
-  paths, locales within en/nl/fr/de/es, no AI trace in the message or the
-  authorship, applies to a pristine checkout)
+- **Cost, measured**, by instrumenting `AbstractAdapter#shellout` and driving
+  real requests against the patch on r25037. Issue 1 given all 29 changesets of
+  the Git fixture repository; three runs, uncached and not warmed up, so the
+  millisecond figures are a range and the subprocess counts are exact and
+  identical across all three:
+
+  | Page | setting off | setting on |
+  |---|---|---|
+  | issue tab, 29 associated revisions | 0 subprocesses, 189–194 ms | 29 subprocesses, 460–589 ms |
+  | issue tab, same, above the cap | — | **0 subprocesses, 140–165 ms** |
+  | revision page | 0 subprocesses, 143–150 ms | 1 (`branch`), 109–217 ms |
+  | diff page | 1 (`show`), 109–163 ms | 2 (`show`, `branch`), 114–121 ms |
+  | repository browse page (untouched) | 5 (`branch`, `show-ref`, `ls-tree`, `log`, `tag`) | — |
+
+  That last row is what note 20's "three git commands" refers to. The revision
+  page runs none today and one with the setting on.
+- patch applies to pristine `origin/master` r25037: **yes** — each of the two
+  files applies on its own, and the two together reproduce the branch tree
+  exactly (`tools/check-patch-clean.sh` checks that as its fifth check)
+- `tools/check-patch-clean.sh revision-branches --submit`: **PASS** — only
+  Redmine paths (19 files), locales within en/nl/fr/de/es, no AI trace in the
+  header or the message, applies to a pristine r25037 checkout, and branch and
+  patch file are the same change
 
 # Live verification (G9)
 
