@@ -11,7 +11,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 |---|---|---|---|---|---|
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`9d28be94d`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`f117ea32e + 21c232ce1`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
-| [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
+| [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63 + 47eec6f1d`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
@@ -29,6 +29,10 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `mypage-query-blocks` — cse_01CmBf3QDXaHtEyVgB2YeiLj sinds 2026-09-05
 
 ## Openstaand voor Jan
 
@@ -205,14 +209,20 @@ staat, en dat overtuigt sneller dan de uitleg.
 
 ### `mypage-query-blocks`
 
-Hang `patches/mypage-query-blocks/2026-09-03-r24882-feature.patch` en
-`-locales.patch` als note aan het **bestaande** issue
-[#27313](https://www.redmine.org/issues/27313) — dus geen nieuw issue — en zeg
-in die note expliciet dat dit note-9 van Jean-Philippe Lang beantwoordt: de
-standaard blijft 3, er wordt voor niemand iets verhoogd, en het voor/na-paar
-`shots/{before-,}select-at-default-maximum.png` is dezelfde afbeelding. Neem
-ook de meettabel uit "What asynchronous loading would and would not fix" mee.
-De Engelse tekst staat in `dossier.md` vanaf "The problem".
+1. Hang `patches/mypage-query-blocks/2026-09-05-r25037-feature.patch` en
+   `-locales.patch` als note aan het **bestaande** issue
+   [#27313](https://www.redmine.org/issues/27313) — dus geen nieuw issue — en zeg
+   in die note expliciet dat dit note-9 van Jean-Philippe Lang beantwoordt: de
+   standaard blijft 3 en er wordt voor niemand iets verhoogd. Het voor/na-paar
+   `shots/{before-,}select-at-default-maximum.png` is nu **aantoonbaar** dezelfde
+   afbeelding: het verificatiescript vergelijkt ze met SHA-256 en faalt als ze
+   verschillen. Neem de meettabel uit "What asynchronous loading would and would
+   not fix" mee; die is nu op Redmine's eigen testfixtures gemeten, dus een
+   committer kan hem naspelen.
+2. **Eén keuze voor jou:** de bovengrens staat op **10**. Zie
+   `docs/DECISIONS.md`, K-10. Als je een ander getal wilt is het één constante.
+
+De Engelse tekst voor de note staat in `dossier.md` vanaf "The problem".
 
 ### `revision-branches`
 
