@@ -3,7 +3,7 @@ slug: revision-branches
 feature: Git-branches op de revisie- en de issuepagina
 commit_51: cf826e3fd
 geoxyz: live
-geoxyz_commit: 115230bc2 + 8c1fa23fb + cf30eedfa
+geoxyz_commit: 115230bc2 + 8c1fa23fb + 88d597548
 upstream: patch klaar
 patch: patches/revision-branches/2026-09-06-r25037-feature.patch
 issue: 5386
@@ -89,7 +89,17 @@ De cijfers hieronder zijn van **2026-09-06**, na de ronde-3-fix, tegen trunk
 uitgepakt — zonder die fixture bestaan 106 Git-tests niet eens (zie
 `docs/traps.md`).
 
-- Volledige suite met patch: **meting loopt nog op het moment van deze commit** — zie de volgende commit op dit bestand
+- Volledige suite met patch: `5996 runs, 31770 assertions, 27 failures,
+  5 errors, 92 skips`. Dat zijn **drie errors meer** dan de schone
+  trunk-r25037-basislijn van dezelfde dag, en alle drie zijn het
+  `Net::ReadTimeout` in systeemtests: `CopyToClipboardSystemTest` (twee) en
+  `IssuesImportTest` (één). **Niet als flake afgedaan maar nagemeten:** los
+  gedraaid, met niets anders bezig op de machine, geven die twee bestanden
+  `2 runs, 8 assertions, 0 failures` en `1 runs, 5 assertions, 0 failures`. De
+  oorzaak was mijn eigen schuld — de GEOxyz-worktree stond tegelijk te
+  `bundle install`-en en te migreren op vier cores, precies de contentie die in
+  `docs/traps.md` staat. De overige 29 faalnamen zijn **identiek** aan de
+  trunk-basislijn, `diff` leeg
 - Volledige suite op schone trunk r25037: `5977 runs, 31715 assertions, 27 failures, 2 errors, 92 skips` — de 29 faalnamen zijn **identiek** aan die van de patch-run (alle 29 SCM-afhankelijk, `svn`/`hg`/`bzr`/`cvs` staan niet in dit image). Het verschil van 18 runs is precies wat de patch aan tests toevoegt.
 - Aangeraakte suites in één proces: `672 runs, 4271 assertions, 0 failures, 0 errors, 16 skips` (ronde 2 mat hier 4275 assertions; dit image heeft geen ImageMagick, wat een assertietelling verschuift zonder een uitkomst te verschuiven)
 - De ronde-3-fix is **rood bewezen op de oude code**: met de groepering
