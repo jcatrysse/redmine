@@ -32,6 +32,32 @@ module RepositoriesHelper
     end
   end
 
+  # Returns true if the branches of the given changesets are to be displayed.
+  # One SCM command is run per changeset, so they are left out altogether above
+  # Setting.repository_log_display_limit revisions
+  def display_changeset_branches?(changesets)
+    return false unless Setting.display_associated_revision_branches?
+
+    limit = Setting.repository_log_display_limit.to_i
+    limit > 0 && changesets.size <= limit
+  end
+
+  def link_to_revision_branches(changeset)
+    repository = changeset.repository
+    safe_join(
+      changeset.branches.map do |branch|
+        link_to(
+          branch,
+          {:controller => 'repositories', :action => 'show',
+           :id => repository.project,
+           :repository_id => repository.identifier_param,
+           :path => nil, :rev => branch}
+        )
+      end,
+      ', '
+    )
+  end
+
   def render_pagination
     pagination_links_each @paginator do |text, parameters, options|
       if entry = @entries[parameters[:page] - 1]

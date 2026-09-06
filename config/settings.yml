@@ -162,6 +162,14 @@ commit_logtime_enabled:
 commit_logtime_activity_id:
   format: int
   default: 0
+display_revision_branches:
+  default: 0
+display_associated_revision_branches:
+  default: 0
+revision_branches_excluded:
+  default: ''
+revision_branches_enable_regex:
+  default: 0
 # autologin duration in days
 # 0 means autologin is disabled
 autologin:

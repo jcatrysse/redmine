@@ -547,6 +547,67 @@ class RepositoryGitTest < ActiveSupport::TestCase
       assert_equal 'abc7234cb2750b63f47bff735edc50a1c0a433c2', c.event_url[:rev]
     end
 
+    def test_changeset_branches
+      assert_equal(
+        ['master', 'master-20120212', 'test_branch'],
+        new_changeset('fba357b886984ee71185ad2065e65fc0417d9b92').branches
+      )
+    end
+
+    def test_changeset_branches_without_scmid_should_be_empty
+      c = Changeset.new(:repository => @repository,
+                        :committed_on => Time.now,
+                        :revision => 'fba357b886984ee71185ad2065e65fc0417d9b92',
+                        :comments => 'test')
+      assert_equal [], c.branches
+    end
+
+    def test_changeset_branches_should_exclude_names_matching_a_pattern
+      c = new_changeset('fba357b886984ee71185ad2065e65fc0417d9b92')
+      with_settings :revision_branches_excluded => 'master' do
+        assert_equal ['master-20120212', 'test_branch'], c.branches
+      end
+      with_settings :revision_branches_excluded => 'master*, test_branch' do
+        assert_equal [], c.branches
+      end
+    end
+
+    def test_changeset_branches_should_exclude_names_matching_a_regular_expression
+      c = new_changeset('fba357b886984ee71185ad2065e65fc0417d9b92')
+      with_settings :revision_branches_excluded => '.*-\d+',
+                    :revision_branches_enable_regex => '1' do
+        assert_equal ['master', 'test_branch'], c.branches
+      end
+      with_settings :revision_branches_excluded => '.*-\d+',
+                    :revision_branches_enable_regex => '0' do
+        assert_equal ['master', 'master-20120212', 'test_branch'], c.branches
+      end
+    end
+
+    def test_changeset_branches_should_anchor_a_regular_expression_containing_alternation
+      c = new_changeset('fba357b886984ee71185ad2065e65fc0417d9b92')
+      with_settings :revision_branches_excluded => 'master|test',
+                    :revision_branches_enable_regex => '1' do
+        assert_equal ['master-20120212', 'test_branch'], c.branches
+      end
+    end
+
+    def test_changeset_branches_should_ignore_an_invalid_regular_expression
+      c = new_changeset('fba357b886984ee71185ad2065e65fc0417d9b92')
+      with_settings :revision_branches_excluded => '[, master',
+                    :revision_branches_enable_regex => '1' do
+        assert_equal ['master-20120212', 'test_branch'], c.branches
+      end
+    end
+
+    def new_changeset(scmid)
+      Changeset.new(:repository => @repository,
+                    :committed_on => Time.now,
+                    :revision => scmid,
+                    :scmid => scmid,
+                    :comments => 'test')
+    end
+
     def test_log_utf8
       assert_equal 0, @repository.changesets.count
       @repository.fetch_changesets
