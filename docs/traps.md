@@ -1051,3 +1051,29 @@ toegevoegd.
   zien of er iets kapot is, maar niet om INV-8 mee te bewijzen. Een systeemtest
   die onder belasting omvalt is geen "flake die je mag negeren" — het is een
   meting die je opnieuw moet doen onder de juiste omstandigheden.
+
+
+- **Een browser kan de helft van een `Host`-headerbevinding niet reproduceren,
+  en dat merk je pas als je het probeert.** Bij `geoxyz-hosts` (F01/F02,
+  2026-09-06) ging het over hoofdletters in de `Host`-header en over prefixen
+  die geen DNS-label zijn. Chromium zet de authority in kleine letters vóór het
+  de header bouwt, en het weigert een naam met een schuine streep, een spatie of
+  een poort erín te versturen — `curl` schoont er ook een deel van op. Een
+  Playwright-run bewijst die twee dus niet, hoe groen hij ook is. Wat wél werkt
+  is een rauwe socket: `TCPSocket` + `GET /login HTTP/1.1\r\nHost: <letterlijk>`
+  stuurt precies wat je typt. Regel: gaat een bevinding over de *inhoud* van een
+  requestheader, meet hem dan op socketniveau en gebruik de browser alleen voor
+  wat de browser echt kan opleveren — en zeg in het statusbestand welke helft
+  waar vandaan komt.
+
+- **Een screenshot van een toegelaten host is niet te onderscheiden van een
+  screenshot van een andere toegelaten host.** Dezelfde sessie: drie van de vier
+  G9-paren waren de gewone Redmine-loginpagina, zonder adresbalk en dus zonder
+  enig spoor van de gevraagde hostnaam. Dat is precies de valkuil die hierboven
+  al voor paginanummers en URL's staat. Oplossing die hier gewerkt heeft, in
+  navolging van `mypage-query-blocks`: laat het verificatiescript elk paar met
+  **SHA-256 vergelijken** en de uitkomst afdrukken ("identiek" / "verschilt"),
+  zodat de claim "hier verandert niets" mechanisch gecontroleerd is in plaats
+  van uit het beeld afgelezen. De geweigerde kant is wél zelfaanwijzend: Rails'
+  eigen pagina zet "Blocked hosts: `<host>`" in de titel, en dat is dus het
+  screenshot dat je echt wilt hebben.
