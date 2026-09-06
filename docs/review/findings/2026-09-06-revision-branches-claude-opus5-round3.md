@@ -81,16 +81,29 @@ Run in `/home/user/wt/review-revision-branches`, patch tip `3e2c6b432`, own
 | What | Result |
 |---|---|
 | the six touched files in one process | `672 runs, 4271 assertions, 0 failures, 0 errors, 16 skips` |
-| `test:all` | **still running when this file was first committed — see the follow-up commit for the figure** |
+| `test:all` | `5995 runs, 31782 assertions, 27 failures, 2 errors, 92 skips` |
 | RuboCop on the ten changed `.rb` files | `10 files inspected, no offenses detected` |
 | `tools/check-patch-clean.sh revision-branches --submit` | PASS (19 files, locales exactly the five, no AI trace, applies to pristine r25037, patch files agree with the branch) |
 | locale key symmetry | 6 added keys in each of `en nl fr de es`, none of them a duplicate of an existing key |
 
-The dossier records `672 runs, 4275 assertions` for the touched files; I measure
-the same runs and skips with **4271** assertions. Four assertions of drift, no
-failures either way. This image has no ImageMagick (`sh: 1: convert: not found`
-appears mid-run), which is the kind of thing that changes an assertion count
-without changing an outcome. Worth knowing, not worth chasing.
+**The dossier's figures reproduce.** It records `5995 runs, 31785 assertions,
+27 failures, 2 errors, 92 skips` for the patch side; I measure `5995` runs and
+the same failures, errors and skips, with `31782` assertions — three apart. For
+the six touched files it records `672 runs, 4275 assertions` and I measure the
+same runs and skips with `4271`. Both drifts are assertion counts only, in the
+same direction, with no failure either way; this image has no ImageMagick
+(`sh: 1: convert: not found` appears mid-run), which moves an assertion count
+without moving an outcome.
+
+**The 29 failing names are the trunk baseline, checked against a run of my
+own.** Earlier today, reviewing `imap-oauth`, I ran `test:all` on a pristine
+`origin/master` r25037 worktree in this same container and kept the sorted list
+of failing test names. `diff` against this patch's list is **empty** — same 29
+names, same classes (14 `RepositoriesControllerTest`, 8
+`Redmine::ApiTest::RepositoriesTest`, 5 `SysControllerTest`, 1 `UserTest`,
+1 `Redmine::ApiTest::IssuesTest`), all needing `svn`, `hg`, `bzr` or `cvs`,
+none of which exist here. So the patch adds no failure, verified against a
+baseline I measured rather than one I was told.
 
 Hypotheses driven against the real fixture repository, all disproven:
 
