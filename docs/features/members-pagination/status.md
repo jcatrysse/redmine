@@ -136,6 +136,15 @@ derde laat zien wat de voorgestelde vier regels doen.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
 
+- **De note is een verbetervoorstel, geen defectmelding.** Beslist door Jan als
+  **g15** en uitgevoerd op 2026-09-06. Onbewerkt Redmine laat elke gepagineerde
+  lijst zo doodlopen; wat de paginatie toevoegt is dat je er op het ledentabblad
+  met een gewone klik in komt en er niet uit klikt. Niet opnieuw omdraaien: de
+  oude formulering gaf een committer een weerlegging van één regel
+  (`/issues?page=99`).
+- **Het commentaar in de clamp blijft, en F06 wordt benoemd en niet
+  gerepareerd.** Beide op 2026-09-06 vastgelegd in `decisions.md`, met de reden.
+  Niet opnieuw wegen.
 - **Geen eigen patch, en geen nieuw issue.** #43355 is Jans eigen issue en er
   ligt een rebase van een actieve bijdrager op. Een tweede patch op hetzelfde
   issue verkleint de kans op allebei.
