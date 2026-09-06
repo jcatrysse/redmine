@@ -84,16 +84,29 @@ Alle cijfers hieronder zijn van **2026-09-06**, op trunk **r25037**
 gedraaid; drie tegelijk op vier cores laat Selenium-systeemtests willekeurig
 omvallen (zie `docs/traps.md`).
 
-- Volledige suite (`test:all`) met patch: 6000 runs, 31792 assertions,
+- Volledige suite (`test:all`) met patch: 5904 runs, 30984 assertions,
   27 failures, 2 errors, 92 skips
-- Schone trunk r25037 (eigen database): 5977 runs, 31710 assertions,
+- Schone trunk r25037 (eigen database): 5877 runs, 30889 assertions,
   27 failures, 2 errors, 92 skips — **dezelfde 29 faalnamen, `diff` leeg**;
   alle 29 zijn repository-/changeset-/`SysController`-tests die `svn`, `hg`,
   `bzr` of `cvs` nodig hebben, en die staan niet in dit image.
-  6000 - 5977 = 23, precies het aantal nieuwe tests
+  5904 - 5877 = 27, precies het aantal nieuwe tests
+- **De absolute totalen zijn tussen ronde 2 en ronde 3 gezakt, en dat is niet
+  deze patch.** Ronde 2 mat 6000 en 5977 voor dezelfde twee kanten, ronde 3
+  meet 5904 en 5877, in een verse container op dezelfde trunk-revisie. Beide
+  kanten zakken ongeveer evenveel, allebei houden ze dezelfde 27 failures /
+  2 errors / 92 skips en dezelfde 29 faalnamen, en het verschil patch-min-trunk
+  is in elke ronde precies het aantal nieuwe tests (23 toen, 27 nu). Wat
+  varieert is hoeveel systeemtests het image draait. Lees dus het verschil en
+  de namendiff, niet het absolute getal; dat is alleen binnen één runpaar
+  vergelijkbaar
 - Volledige suite op `7.0-stable-GEOxyz`, op de branchtip van 2026-09-06 met de
-  fixes erop: 6123 runs, 32351 assertions, 0 failures, 0 errors, 39 skips
-- De twee nieuwe testbestanden samen in één proces: 23 runs, 81 assertions,
+  ronde-3-fixes erop: **meting loopt nog** (sessie van 2026-09-06). De twee nieuwe testbestanden
+  staan daar al groen: 27 runs, 96 assertions, 0 failures. Het ronde-2-cijfer
+  voor de hele suite was 6123 runs, 32351 assertions, 0 failures, 0 errors,
+  39 skips; zolang dit hier niet vervangen is, is de volledige suite op deze
+  branch in ronde 3 **niet** opnieuw bewezen
+- De twee nieuwe testbestanden samen in één proces: 27 runs, 96 assertions,
   0 failures, 0 errors, aan beide kanten
 - Rood bewezen voor de drie ronde-2-fixes, per hunk, door mutatie:
   het token weer ónder `Net::IMAP.new` zetten geeft
@@ -143,6 +156,38 @@ omvallen (zie `docs/traps.md`).
   `refresh_token:`-regel, die regel ging in het bestand, en `receive_imap`
   maakte daarmee issue #15 aan. Het log van de tokenendpoint laat beide grants
   in de juiste volgorde langskomen
+
+**Reviewronde 3 (2026-09-06), blind.** Een verse sessie las de patch koud,
+zonder de bevindingen van ronde 1 eerst te lezen, en vond acht dingen. Alle acht
+staan dicht in
+`docs/review/findings/2026-09-06-imap-oauth-claude-opus5-round3.md`:
+
+- **F01 (minor, code)** — een querystring die de beheerder al in `authorize_url`
+  had staan werd stil weggegooid, terwijl `token_url` de zijne wél behield. Een
+  Azure AD B2C-endpoint draagt zo'n parameter (`?p=<policy>`). Nu samengevoegd,
+  en de grant-parameters winnen nog steeds.
+- **F02, F03, F05 (minor/nit, dossier)** — de verouderde K-06-regel is weg, de
+  bewering "niets anders in Redmine leest van stdin" is omgedraaid naar het
+  sterkere antwoord (`redmine:load_default_data` doet het zelf), en er staat nu
+  bij waarom een access token wél via `ENV` mag en een refresh token niet.
+- **F04 (nit, code)** — een 200 met een body die wél JSON is maar geen object
+  (`[]`, `null`) gaf `TypeError`; nu dezelfde nette melding als elk ander
+  faalpad.
+- **F06 (nit, conventies)** — `write_timeout`, `::Net::HTTP` en `STDOUT.flush`,
+  conform `app/models/webhook.rb` en `lib/tasks/load_default_data.rake`.
+- **F07 (question)** — Jans keuze, optie B: zie hieronder.
+- **F08 (minor, test-kwaliteit)** — **de belangrijkste, en hij kwam pas boven
+  tijdens het fixen.** De drie timeout-assertions controleerden `Net::HTTP`'s
+  eigen standaardwaarden: die staan alle drie al op 60, dus de test bleef groen
+  met álle timeouts uit de productiecode gesloopt. Dit is INV-8 in het klein en
+  het overleefde ronde 1 én de blinde leesbeurt van ronde 3. De gestubde
+  verbinding wordt nu eerst op 1 gezet, zodat 60 alleen nog uit de code kan
+  komen.
+
+De patch is in dezelfde beweging opnieuw opgebouwd als één commit op trunk
+r25037 (`10efe8761`), en de oude tip staat bewaard als
+`archive/patch-imap-oauth-r25037-before-round3` zodat `fd712001c` uit de review
+oplosbaar blijft.
 
 ## Wat Jan nog moet doen
 

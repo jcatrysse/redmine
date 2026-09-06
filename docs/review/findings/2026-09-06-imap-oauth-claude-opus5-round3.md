@@ -121,7 +121,7 @@ mechanism-name call and nothing else, on the net-imap the `Gemfile` pins.
 
 ### F01 — `authorize_url` silently discards a query string that the configured authorize endpoint already carries, while `token_url` keeps its own
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed (the discard, and the asymmetry); speculative (how
   often a provider needs it)
@@ -179,13 +179,13 @@ outcome that should not survive. Whichever is chosen, one sentence in the
 `oauth2_authorize` `desc` saying where extra parameters go would carry most of
 the value on its own.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06 — `authorize_url` now seeds its parameters from the query the endpoint URL already carried (`URI.decode_www_form(uri.query.to_s).to_h`), so it behaves like `token_url`, and the grant's own values still overwrite anything the URL or `authorize_params` put there. Two new tests: `..._should_keep_the_parameters_already_in_the_authorize_url` is red on the old code (`1 failures` under the `params = {}` mutation), and `..._should_not_let_the_parameters_in_the_url_override_the_grant` is green on both sides by design — before the fix there was nothing to override, so it guards the new behaviour rather than proving it, and the dossier says so by name. Driven end to end in G9 against the real HTTPS endpoint: `p=B2C_1_signin` is absent from the provider's own log before and present after (`shots/round3-terminal-transcript.txt`)
 
 ---
 
 ### F02 — `status.md` and the dossier tell Jan that K-06 is still open; he closed it three days ago
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -232,13 +232,13 @@ at `DECISIONS.md:138` as closed where it stands, since that is the block a reade
 lands on first, though that file is appended to rather than edited and a
 framework session owns that call.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06 — all three sentences replaced. `status.md` now says no choice is open and names both decisions (K-06 optie A of 2026-09-03, F07 optie B of 2026-09-06); `dossier.md:21` and the `client_credentials` alternative no longer call it an open choice. `docs/REGISTER.md` regenerated from the corrected status file. The K-06 block at `DECISIONS.md:138` was left as it stands: that file is append-only through `tools/append-note.sh`, and the closing decision at `:197` and the new 2026-09-06 block are what a reader now finds
 
 ---
 
 ### F03 — the objections table concedes "nothing else in Redmine reads from stdin", which is not true, and the true answer is much stronger
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -282,13 +282,13 @@ Turn the concession into the answer: an interactive prompt in a rake task is an
 existing Redmine pattern, `redmine:load_default_data` is the precedent, and this
 task follows it. The necessity argument stays as the second half.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06 — the objections row now opens by disputing the premise, naming `redmine:load_default_data` (which prompts `Select language:` and blocks on `STDIN.gets`) plus `migrate_from_trac` and `migrate_from_mantis`, and keeps the necessity argument as the second half
 
 ---
 
 ### F04 — a token response whose body is valid JSON but not an object raises `NoMethodError` or `TypeError` instead of the patch's own message
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed (the behaviour); speculative (that a provider or
   proxy sends such a body)
@@ -341,13 +341,13 @@ Have `json_body` yield `{}` for anything that is not a `Hash`, so every
 non-conforming body — unparseable, or merely not an object — reaches the same
 two messages the patch already writes.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06 — `json_body` returns `{}` unless the parse yielded a `Hash`, so a body of `[]`, `null` or `123` reaches the same two messages every other malformed answer already produced. Two new tests, both red on the old code (`2 runs, 2 failures` under the mutation). Driven in G9 too: the same request that raised `TypeError: no implicit conversion of String into Integer` now raises `OAuth 2.0 token request returned no access token`
 
 ---
 
 ### F05 — the dossier rejects `ENV` for credentials on `ps` grounds, then ships `oauth2_token=` as an `ENV` credential without saying why that one is different
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -389,13 +389,13 @@ command line because an access token is short-lived and because it sits exactly
 where `password=` already sits; the refresh token and the client secret are not,
 because they are not.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06 — the rejected-alternative paragraph now draws the distinction: `oauth2_token=` is on the command line deliberately, because an access token expires within the hour, because it is the value an operator's own tooling already holds, and because it sits where `password=` has always sat; the refresh token and client secret are neither short-lived nor already there, so they stay in the file
 
 ---
 
 ### F06 — small departures from the two files the patch cites as its own precedent
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -437,13 +437,13 @@ written before `gets` blocked: `Then paste: ` — already flushed.
 
 Take all three or none; they are worth exactly one commit and no discussion.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06 — all three taken. `write_timeout: 60` added, `::Net::HTTP`, `::Net::HTTP::Post` and `::Net::HTTPSuccess` qualified as in `app/models/webhook.rb`, and `STDOUT.flush` added before `STDIN.gets` as in `lib/tasks/load_default_data.rake`. Point 3 remains consistency only, as the finding said: the pty check showed the prompt was already reaching the screen. The `write_timeout` half is what uncovered F08
 
 ---
 
 ### F07 — should the note offer to split the patch at the `oauth2_authorize` line before a committer asks?
 
-- **Status:** open
+- **Status:** question
 - **Severity:** question
 - **Confidence:** n/a — this is a question for Jan, not a defect
 - **Category:** scope
@@ -500,13 +500,13 @@ as recorded in `docs/features/webhook-tracker-filter/status.md` and
 Jan's call. If B, the sentence belongs next to the "replacement, not an
 addition" framing, not in the objections table.
 
-**Resolution:**
+- **Resolution:** decided by Jan 2026-09-06 — **optie B**. The note offers the split in one sentence; the attachment stays one patch file. Logged in `docs/DECISIONS.md` under "Beslist (Jan) — 2026-09-06, imap-oauth (reviewronde 3)", the ready-to-paste English wording is the "This is two changes" row of the objections table in `dossier.md`, and `status.md` carries the instruction under "Wat Jan nog moet doen". Jan's 2026-09-03 decision that the consent step belongs in the patch is untouched
 
 ---
 
 ### F08 — the three timeout assertions assert `Net::HTTP`'s own defaults, so they hold on code that passes no timeouts at all
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -554,4 +554,4 @@ mutation again after the fix (below) to confirm it now fails.
 Move the stubbed connection off the default before handing it over, so 60 can
 only come from the code under test.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06 — `expect_token_request` now sets the stubbed connection's three timeouts to 1 before handing it over, so 60 can only come from `post_to_token_endpoint`. Re-verified by the mutation that exposed it: with all three timeouts stripped from the production call the test is now `1 runs, 3 assertions, 1 failures`, and with only `write_timeout` dropped it is `1 runs, 5 assertions, 1 failures`, where both were green before
