@@ -1,0 +1,68 @@
+G9 re-verification of the round-2 fixes (2026-09-06), against the harness in
+docs/features/imap-oauth/verify-harness/: a real IMAP server that only accepts
+AUTHENTICATE XOAUTH2, and a real HTTPS token endpoint. Both runs used the same
+driver and the same credentials file; the only difference is the code.
+
+"connections accepted" is counted from the IMAP server's own log, so it says
+whether a socket was opened at all — which is the whole of finding F02.
+
+===== BEFORE — the code as round 1 reviewed it (d63cb35a5) =====
+
+--- A. happy path: real XOAUTH2 over a socket, token from the real HTTPS endpoint ---
+(no output above means the mail was fetched and MailHandler ran)
+IMAP server saw:
+  connections accepted: 1
+  imap server: connection closed (authenticated=true)
+
+--- B. F03: the token endpoint answers 200 with an HTML page (intercepting proxy) ---
+bin/rails aborted!
+JSON::ParserError: unexpected character: '<html>proxy' at line 1 column 1 (JSON::ParserError)
+/home/user/wt/before-imap-oauth/lib/redmine/oauth2_client.rb:131:in `token_from'
+IMAP server saw:
+  connections accepted: 1
+
+--- C. F02: the refresh token is revoked, endpoint answers 400 invalid_grant ---
+bin/rails aborted!
+OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)
+/home/user/wt/before-imap-oauth/lib/redmine/oauth2_client.rb:128:in `token_from'
+IMAP server saw:
+  connections accepted: 1
+
+
+===== AFTER — round-2 fixes applied =====
+
+--- A. happy path: real XOAUTH2 over a socket, token from the real HTTPS endpoint ---
+(no output above means the mail was fetched and MailHandler ran)
+IMAP server saw:
+  connections accepted: 1
+  imap server: connection closed (authenticated=true)
+
+--- B. F03: the token endpoint answers 200 with an HTML page (intercepting proxy) ---
+bin/rails aborted!
+OAuth 2.0 token request returned no access token
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:133:in `token_from'
+IMAP server saw:
+  connections accepted: 0
+
+--- C. F02: the refresh token is revoked, endpoint answers 400 invalid_grant ---
+bin/rails aborted!
+OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)
+/home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:128:in `token_from'
+IMAP server saw:
+  connections accepted: 0
+
+
+===== WHAT CHANGED =====
+
+A  unchanged, and that is the point: the feature still works. Both runs
+   authenticated with XOAUTH2 over a real socket and both created a real
+   issue (#12 from the pre-fix code, #11 from the fixed code), see
+   round2-issues-list.png.
+
+B  F03. Before: JSON::ParserError naming neither OAuth nor the endpoint, and
+   an IMAP connection opened and then abandoned. After: "OAuth 2.0 token
+   request returned no access token", and no connection at all.
+
+C  F02. The message was already correct before; the connection was not.
+   Before: 1 connection accepted, opened before the token was asked for and
+   never logged out, because check has no ensure. After: 0.

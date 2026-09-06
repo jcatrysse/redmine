@@ -86,7 +86,7 @@ credential), and trunk itself has same-shaped method comments, e.g.
 
 ### F01 — The dossier's "no credential in any string" claim is false as written, and it is the claim the note leads with
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -143,13 +143,23 @@ so the "Afterwards" section's `chmod 600` advice could say to clear it. Fix it i
 `dossier.md`, `status.md` and the regenerated register together — all three carry
 it.
 
-**Resolution:**
+- **Resolution:** fixed, 2026-09-06. The claim is now scoped to what is true and
+  the exception is stated in the same breath. `dossier.md` reads "No credential
+  appears in any log, any error message or any debug output", then names the one
+  place a credential *is* printed — the last line of `oauth2_authorize`, to the
+  terminal of the operator who has just consented — and says why that is the one
+  place it has to be. The operational consequence the finding asked for is in
+  "Afterwards" as its own bullet: clear the scrollback, the shell history and any
+  transcript of that session. `status.md` carries the same corrected wording, and
+  `docs/REGISTER.md` was regenerated from it, so all three places the old
+  sentence reached now say the same thing.
+
 
 ---
 
 ### F02 — The IMAP connection is opened, then held idle for up to two minutes while the token is fetched
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** probable — the ordering is confirmed by reading; the consequence I did not execute
 - **Category:** correctness
@@ -207,13 +217,24 @@ token is obtained needs to move above line 40. Keep it inside the same
 username-present condition so the no-username path still makes no HTTP request —
 there is already a test asserting that.
 
-**Resolution:**
+- **Resolution:** fixed, 2026-09-06, in `lib/redmine/imap.rb`. The token is now
+  obtained *before* `Net::IMAP.new`, on one line guarded by the same
+  `imap_options[:username].nil?` condition as before, so the no-username path
+  still makes no HTTP request. A failing or slow token endpoint therefore costs
+  no socket at all, and the second-order effect the finding named for free — the
+  connection leaked by the missing `ensure` when the token request raises — is
+  gone with it, because there is no connection yet. Pinned by a new test,
+  `test_check_should_not_open_a_connection_when_the_token_cannot_be_obtained`,
+  which sets `Net::IMAP.expects(:new).never` and makes
+  `Oauth2Client.access_token` raise. Proven red on the old ordering: reverting
+  just that hunk gives `1 runs, 1 assertions, 1 failures` on that test alone.
+
 
 ---
 
 ### F03 — A 200 response with a non-JSON body escapes as a raw JSON::ParserError, unlike every other failure in the class
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -262,13 +283,24 @@ naming the endpoint. The existing "returned no `<name>`" message already reads
 correctly for this case, so the cheapest honest fix routes into it rather than
 adding a fifth distinct message. It also wants the test the other paths all have.
 
-**Resolution:**
+- **Resolution:** fixed, 2026-09-06, in `lib/redmine/oauth2_client.rb`. Body
+  parsing moved into one private `json_body(response)` that returns `{}` on
+  `JSON::ParserError`; `token_from`'s success branch and `error_code` both go
+  through it, so the two branches now fail the same way. A 200 carrying an HTML
+  page therefore raises `OAuth 2.0 token request returned no access token`
+  instead of `JSON::ParserError`, which is the existing message the finding
+  suggested routing into rather than a fifth one. New test
+  `test_access_token_should_raise_when_a_successful_response_has_no_json_body`
+  uses the finding's own reproduction body, `<html>proxy interception page</html>`.
+  Proven red on the old code: reverting the one line back to
+  `JSON.parse(response.body)[name]` gives `1 failures` on that test.
+
 
 ---
 
 ### F04 — The happy-path test passes against production code that discards the HTTP response
 
-- **Status:** open
+- **Status:** resolved
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -323,4 +355,18 @@ link is covered by the harness run rather than by a unit test. What should not
 stand is the current position, where the test looks like it covers the return
 value and does not.
 
-**Resolution:**
+- **Resolution:** fixed, 2026-09-06, in
+  `test/unit/lib/redmine/oauth2_client_test.rb`. Mocha cannot make a stub return
+  its block's value, so `expect_token_request` no longer stubs `Net::HTTP.start`
+  at all: it builds a real `Net::HTTP`, stubs only `do_start`, `do_finish` and
+  `request` on it, and hands it back from `Net::HTTP.new`. The real
+  `Net::HTTP.start` then runs, and the return value the client depends on comes
+  from the real method rather than from `.returns`. No connection is opened —
+  `do_start` is the method that dials. The connection parameters the old
+  `.with(...)` asserted are not lost, they are asserted more directly: the helper
+  returns the connection and the happy-path test checks `use_ssl?`,
+  `open_timeout` and `read_timeout` on it. Proven by re-running the finding's own
+  mutation — `post_to_token_endpoint` calling `http.request` and then evaluating
+  to `nil` — which used to give `17 runs, 0 failures` and now gives
+  `18 runs, 5 failures, 3 errors`.
+

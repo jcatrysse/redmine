@@ -250,6 +250,7 @@ Neither `Redmine::IMAP` nor `Redmine::POP3` had a single test before this patch;
 | `ImapTest#test_check_should_login_with_the_password` | the unchanged path: with no OAuth option, `check` calls `imap.login` and never `imap.authenticate`. Green on trunk as well — this is the guard that the patch changes nothing for existing installations |
 | `ImapTest#test_check_should_authenticate_with_xoauth2_when_an_access_token_is_given` | `oauth2_token=` authenticates with `XOAUTH2` and the token, and `login` is not called even though a password is also present |
 | `ImapTest#test_check_should_authenticate_with_the_token_requested_from_the_credentials_file` | `oauth2_credentials=` asks `Redmine::Oauth2Client` for a token with that path, and authenticates with what it returns |
+| `ImapTest#test_check_should_not_open_a_connection_when_the_token_cannot_be_obtained` | the token is obtained **before** the IMAP connection is opened: when the token request raises, `Net::IMAP.new` is never called. Without that ordering the mail server holds an idle, unauthenticated connection for the whole of an outbound HTTPS round trip, and drops it on its own autologout timer, so a token-endpoint fault surfaces as an `EOFError` naming the *mail server* |
 | `ImapTest#test_check_should_login_with_the_password_when_the_oauth2_options_are_blank` | an empty `oauth2_token=` or `oauth2_credentials=` on the command line falls back to the password rather than authenticating with an empty token |
 | `Oauth2ClientTest#test_access_token_should_return_the_token_of_a_refresh_token_grant` | the request is a `refresh_token` grant carrying exactly `grant_type`, `client_id`, `client_secret` and `refresh_token`, POSTed to the path in `token_url`, and the `access_token` of the response is returned |
 | `Oauth2ClientTest#test_access_token_should_send_the_scope_when_given` | `scope` is sent when the file has one (Microsoft requires it; Google does not) |
@@ -258,6 +259,7 @@ Neither `Redmine::IMAP` nor `Redmine::POP3` had a single test before this patch;
 | `Oauth2ClientTest#test_access_token_should_raise_when_the_token_url_is_not_https` | an `http://` token endpoint is refused before the request, so a client secret is never sent in clear |
 | `Oauth2ClientTest#test_access_token_should_raise_with_the_error_code_of_a_failed_request` | a 400 response yields `OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)` — the provider's error code, which is the whole diagnosis, and nothing else from the body |
 | `Oauth2ClientTest#test_access_token_should_raise_when_a_failed_request_has_no_json_body` | a 502 with an HTML body still gives a clean message rather than a `JSON::ParserError` masking the real failure |
+| `Oauth2ClientTest#test_access_token_should_raise_when_a_successful_response_has_no_json_body` | a **200** carrying an HTML page — what an intercepting proxy or a captive portal answers — reads as a token request that returned no token, not as a `JSON::ParserError` about Redmine's JSON handling |
 | `Oauth2ClientTest#test_access_token_should_raise_when_the_response_holds_no_token` | a 200 without an `access_token` is an error, not a `nil` token handed to the IMAP server |
 | `Oauth2ClientTest#test_authorize_url_should_carry_the_authorization_code_grant_parameters` | the consent URL is the `authorize_url` from the file, with exactly `response_type=code`, the client id and the redirect URI |
 | `Oauth2ClientTest#test_authorize_url_should_use_the_configured_redirect_uri_and_extra_parameters` | a non-default `redirect_uri`, the scope, and `authorize_params` (Google's `access_type` and `prompt`) all reach the URL |
@@ -382,11 +384,21 @@ mistakes:
 | something pasted that is not an address at all | the same message, rather than `URI::InvalidURIError` |
 | the code already used or expired | `OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)` |
 
-**No credential appears in any message.** That was checked deliberately,
-because the patch on #43023 prints the full access token when `imap_debug=1` is
-set: it does `puts imap_options.inspect`, and `imap_options[:password]` is the
-token. This patch has no debug output and interpolates neither the token nor the
-client secret into any string.
+**No credential appears in any log, any error message or any debug output.**
+That was checked deliberately, because the patch on #43023 prints the full
+access token when `imap_debug=1` is set: it does `puts imap_options.inspect`,
+and `imap_options[:password]` is the token. This patch has no debug output at
+all, and no credential is interpolated into any message it raises: the failure
+messages above name the file, the key or the provider's `error` code, never a
+value.
+
+There is exactly one place where a credential is printed, and it is the one
+place it has to be: the last line of `oauth2_authorize` prints
+`refresh_token: <token>` to the terminal of the operator who has just consented
+in their own browser, because handing them that line to paste is the whole
+purpose of the task. Two things follow, and the "Afterwards" section says both:
+that line lands in shell scrollback and in any `script`/CI transcript of the
+session, so clear it; and the credentials file it goes into is `chmod 600`.
 
 Screenshots read, not just generated: yes — `before-issues-list.png` was
 checked for the *absence* of the three mail subjects, `issues-list.png` for all
@@ -503,6 +515,9 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
 
 - The file holds a client secret and a refresh token. Give it to the Redmine
   user only: `chown redmine: /etc/redmine/imap_oauth2.yml && chmod 600` it.
+- `oauth2_authorize` printed the refresh token to your terminal. Clear the
+  scrollback and the shell history of that session, and delete any transcript
+  of it, once the line is in the file.
 - A refresh token is long lived but not eternal. It stops working if it is
   revoked, if the account's password policy forces it, or in the Google
   *Testing* case above. Re-run `oauth2_authorize` and replace the line; nothing

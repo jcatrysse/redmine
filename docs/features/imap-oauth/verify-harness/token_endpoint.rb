@@ -7,6 +7,10 @@
 #
 # It also serves the authorization endpoint and the authorization_code grant,
 # so the one-off redmine:email:oauth2_authorize step can be driven for real.
+#
+# With INTERCEPT=1 it answers every token request with 200 and an HTML page
+# instead of JSON, the way an intercepting HTTPS proxy or a captive portal
+# does. That is the case round-1 finding F03 was about.
 
 require 'webrick'
 require 'webrick/https'
@@ -49,6 +53,14 @@ server.mount_proc '/oauth2/v2.0/token' do |request, response|
   params = CGI.parse(request.body.to_s)
   received = params.transform_values(&:first)
   warn "token endpoint: #{received.merge('client_secret' => '[redacted]', 'refresh_token' => '[redacted]')}"
+  if ENV['INTERCEPT'] == '1'
+    warn 'token endpoint: answering with an HTML page instead of JSON'
+    response.status = 200
+    response['Content-Type'] = 'text/html'
+    response.body = '<html>proxy interception page</html>'
+    next
+  end
+
   response['Content-Type'] = 'application/json'
   case received['grant_type']
   when 'refresh_token'

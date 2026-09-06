@@ -3,7 +3,7 @@ slug: imap-oauth
 feature: IMAP inbound mail via OAuth 2.0 (Gmail / O365)
 commit_51: bbf5c0eb3
 geoxyz: live
-geoxyz_commit: f117ea32e + 21c232ce1
+geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd
 upstream: patch klaar
 patch: patches/imap-oauth/2026-09-03-r24882-feature.patch
 issue: 43023
@@ -137,8 +137,16 @@ issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 - **Noem dit ook, het is een echt lek:** de patch die er nu hangt print het
   volledige access token bij `imap_debug=1`, via
   `puts "IMAP DEBUG: effective imap_options=#{imap_options.inspect}"`, waarin
-  `imap_options[:password]` het token is. Deze patch heeft geen debugoutput en
-  interpoleert token noch client secret in welke string dan ook.
+  `imap_options[:password]` het token is. Deze patch heeft geen debugoutput, en
+  er staat geen credential in welk log, welke foutmelding of welke debugregel
+  dan ook. **Zeg het precies zo en niet sterker** — er is één plek waar een
+  credential wél geprint wordt, en dat is de laatste regel van
+  `oauth2_authorize`, naar de terminal van de beheerder die net zelf toestemming
+  gaf, omdat hem die regel geven het hele doel van die taak is. Dat staat er in
+  `dossier.md` bij, met het gevolg erbij (scrollback en transcripts wissen).
+  De oudere, te sterke formulering ("interpoleert token noch client secret in
+  welke string dan ook") is op 2026-09-06 rechtgezet na reviewbevinding F01;
+  gebruik die niet meer.
 - `Redmine::IMAP` en `Redmine::POP3` hadden **geen enkele test**; deze
   patch levert de eerste (12 tests, 43 assertions).
 
