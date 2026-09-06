@@ -370,6 +370,17 @@ standalone to a clean `origin/master`, and INV-2 keeps such a file out of
   reports `"nodata" found in "$('#tab-content-members').html(... <p class=\"nodata\">No data to display</p> ...)"`.
   The clamp was removed from both helpers, the three tests were run, all three
   failed, and the clamp was restored.
+- every mechanism claim the note makes re-checked against **current trunk**
+  `bee32a926` = r25037 on 2026-09-06, because the note states them in the
+  present tense: `Redmine::Pagination::Paginator` still clamps only `page < 1`
+  up to 1 and never downward (`lib/redmine/pagination.rb`); the issue list
+  still renders `<span class="pagination">` inside the non-empty branch, with
+  `<p class="nodata">` as the other branch
+  (`app/views/issues/index.html.erb`); and the issue context menu still passes
+  `:back_url => @back` with `@back = back_url`
+  (`app/views/context_menus/issues.html.erb`,
+  `app/controllers/context_menus/issues_controller.rb:56`). So
+  `/issues?page=99` behaves today as the note says it does.
 - both patches apply cleanly to pristine `origin/master` r24882: yes, and
   re-checked 2026-09-06 against **current trunk r25037**: still yes. So the
   note will not be posted against a base the patches no longer fit.
