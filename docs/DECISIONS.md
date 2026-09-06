@@ -962,3 +962,88 @@ uitgeschreven; `docs/features/members-pagination/status.md` verwijst er sinds
 2026-09-06 alleen nog naar. Dat was de vraag van bevinding Q01 van de
 reviewronde: één keer beslissen in plaats van het bij elke feature opnieuw
 melden.
+
+
+## Uitgevoerd — K-13, optie B (2026-09-06)
+
+Jans keuze: **optie B**, één keer rechtzetten met een force-push. Uitgevoerd op
+een moment dat `tools/claim.sh --list` "no open claims" gaf, dus geen enkele
+parallelle sessie kon werk verliezen.
+
+**Wat er is herschreven.** Alle 33 eigen commits op `7.0-stable-GEOxyz` hebben
+nu `Jan Catrysse <jan.catrysse@geoxyz.eu>` als auteur én als committer. Oude tip
+`7e92b5596` → nieuwe tip `465d326aa`.
+
+**Twee dingen die in de vraag van K-13 niet stonden, en die er wel in horen.**
+
+1. Vier commits hadden `Claude` niet alleen als committer maar ook als
+   **auteur**: `113f32117`, `030aaf471`, `47eec6f1d` en `1b4a29a0b`. Dat is de
+   ernstiger helft, want `git format-patch` neemt de auteur mee en de committer
+   niet. Ze zijn in dezelfde herschrijving meegenomen; anders had B precies het
+   spoor laten staan waar hij over ging.
+2. Er is **niets naar redmine.org gelekt.** Alle dertien patchbestanden onder
+   `patches/` hadden al `From: Jan Catrysse <jan.catrysse@geoxyz.eu>`.
+
+**Wat er bewijsbaar niet is veranderd.** Het tree-object van de tip is
+`2966954c35fa39307656390e3fb8421d1a07bba9` vóór en na — de inhoud is dus byte
+voor byte gelijk. Commit-boodschappen letterlijk gelijk en in dezelfde volgorde,
+alle 33 auteur- en committerdatums ongewijzigd, de merge-commit nog steeds een
+merge met beide ouders, en `git log | grep -i 'claude\|anthropic'` geeft nul.
+
+**Waarom geen enkel ander featurebestand hoefde mee te veranderen** — Jans eis
+bij deze uitvoering. Elke oude SHA blijft oplosbaar, ook in een verse kloon,
+want de oude historie staat als volwaardige branch op de remote:
+
+    archive/7.0-stable-GEOxyz-identities-before-20260906   (7e92b5596)
+    backup/7.0-stable-GEOxyz-pre-identity-fix-20260906     (7e92b5596)
+
+**Verwijder die archive-ref nooit.** Doe je dat, dan wordt `geoxyz_commit` in
+achttien statusbestanden alsnog een verwijzing naar het niets.
+
+`docs/features/<slug>/status.md` van een andere feature is dus **niet**
+aangeraakt. Alleen `members-pagination` is bijgewerkt, want die is van deze
+sessie. Werk je aan een andere slug, zet dan zijn `geoxyz_commit` om met de
+tabel hieronder en draai daarna `tools/register.sh --write`. Tot dat gebeurt
+wijst de regel naar een commit die klopt maar niet meer op de branch staat.
+
+**Wat hiermee níét is opgelost:** de oorzaak. `tools/session-push.sh` zet bij
+een replay de committer nog steeds op wie hem draait, dus het groeit opnieuw
+zodra een sessie moet replayen. Dat was optie C, en die is niet gekozen.
+
+### De SHA-kaart, oud → nieuw
+
+| Oud | Nieuw | Commit |
+|---|---|---|
+| `28c618860` | `c077d96df` | Preserve the wiki page hierarchy and include page attachments in the ZIP export. |
+| `1c85728aa` | `6695461bd` | Text filters no longer ignore keywords after the fifth (#43701). |
+| `9d28be94d` | `349fe1860` | Assigned to issuelist filter: added <nobody> value (#5535). |
+| `20ed9e2d1` | `fd35bd2d1` | Target version filter offers the versions of the subprojects in the query (#43534). |
+| `d157934c0` | `157c171a5` | Assert the target version filter with subproject issues hidden (#43534). |
+| `198cbfb63` | `dc6dad120` | Make the maximum number of custom query blocks on My page configurable (#27313). |
+| `f117ea32e` | `1a6d462a8` | Authenticate IMAP inbound mail with an OAuth 2.0 access token (#43023). |
+| `f2242bd86` | `c6631e937` | Limit an outgoing webhook to the trackers selected on it. |
+| `115230bc2` | `ff0d23b62` | Show the Git branches that contain a revision (#5386). |
+| `21c232ce1` | `d92dff560` | Add the one-off task that obtains the IMAP OAuth 2.0 refresh token (#43023). |
+| `646008041` | `86647653e` | Translate the webhook tracker hint into Dutch, French and Spanish. |
+| `827e9e7d5` | `7d85538f3` | Add a separate issue.closed webhook event. |
+| `351fe9e54` | `148faafb6` | Paginate the project members list (#43355). |
+| `55ae9d1dd` | `02ca8b044` | Paginate the group users list (#43355). |
+| `885f04097` | `22a4244c0` | Keep the members and group users lists on a page that still exists (#43355). |
+| `e2c0447b6` | `af0af806d` | Ignore the Rails credentials files, so master.key can never be committed. |
+| `fe737441b` | `075c86e8a` | Allow development requests to the geoxyz.eu subdomains. |
+| `95bbb9750` | `8612a76f4` | Store sessions in the database instead of in the session cookie. |
+| `add935736` | `2ac1de3c6` | Add the task that mutes mail notifications for LDAP-only users. |
+| `113f32117` | `bc7314a62` | Replace the LDAP mail-muting task with a reversible one that sets the notification preferences of LDAP accounts. |
+| `030aaf471` | `ee236190a` | Merge upstream 7.0-stable into 7.0-stable-GEOxyz. |
+| `8bf6dce3e` | `bc745ce73` | Verify the database session store at deploy time, and refuse a plain-text session id. |
+| `7006c4f00` | `1fd3343ff` | Rename a wiki attachment that collides with the page source or a child page directory in the ZIP export. |
+| `47eec6f1d` | `dd063fa8b` | Bound the maximum number of custom query blocks on My page to a range (#27313). |
+| `1b4a29a0b` | `f5ed23c8e` | Raise the upper bound of the custom query blocks setting to 20 (#27313). |
+| `d8e0db501` | `9ad87a11b` | Keep the <nobody> filter condition self-contained (#5535). |
+| `0fbad7c17` | `72058fa43` | Drop a destroyed tracker from its webhooks, and ignore unknown tracker ids. |
+| `72a3a8e22` | `8ac09f4ff` | Deactivate a webhook when the only tracker it is limited to is deleted. |
+| `f260958c6` | `1cd7091fd` | Lift the token limit for the any_searchable filter too (#43701). |
+| `e2f060570` | `74f343d3d` | Send and consume only the filter parameters on the query filter endpoint (#43534). |
+| `8c1fa23fb` | `755d763a8` | Validate the branch exclusion pattern and cap the branches shown per issue (#5386). |
+| `3f5eb3be2` | `737b0a549` | Ignore the per-environment Rails credentials directory as well |
+| `7e92b5596` | `465d326aa` | Keep the issue.closed timestamp mapping with the rest of the issue webhook code. |
