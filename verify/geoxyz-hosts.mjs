@@ -7,6 +7,14 @@
 // port inside the name (F02). Those live in the raw-socket table in status.md
 // instead; what a browser can still prove is that the tightened pattern did not
 // cost the subdomains the feature exists for.
+//
+// The four hostnames have to resolve, so put them in /etc/hosts first:
+//
+//   127.0.0.1 redmine.geoxyz.eu a.b.geoxyz.eu geoxyz.eu _.geoxyz.eu
+//
+// Run it twice — once against the unpatched server with SHOT_PREFIX=before-,
+// once against the patched one without — and the table at the end compares the
+// two halves.
 // Playwright is a global CommonJS module: the named import does not resolve
 // even by absolute path, so import the default and destructure.
 import pw from '/opt/node22/lib/node_modules/playwright/index.js';
