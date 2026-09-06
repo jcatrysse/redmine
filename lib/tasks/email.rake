@@ -42,6 +42,19 @@ Available IMAP options:
   starttls=STARTTLS        Use STARTTLS? (default: false)
   username=USERNAME        IMAP account
   password=PASSWORD        IMAP password
+  oauth2_token=TOKEN       OAuth 2.0 access token to authenticate with instead
+                           of password, using the XOAUTH2 mechanism
+  oauth2_credentials=FILE  path to a YAML file holding the OAuth 2.0 client
+                           credentials and the refresh token used to request
+                           an access token on each run:
+                             token_url: https://...
+                             client_id: ...
+                             client_secret: ...
+                             refresh_token: ...
+                             scope: ...
+                           Run redmine:email:oauth2_authorize once to obtain
+                           the refresh token. See the guides at:
+                           http://www.redmine.org/projects/redmine/wiki/EmailConfiguration
   folder=FOLDER            IMAP folder to read (default: INBOX)
 
 Processed emails control options:
@@ -106,6 +119,16 @@ Examples:
     project=foo \\
     tracker=bug \\
     allow_override=tracker,priority
+
+
+  # Mailbox that does not accept a password, authenticated with an OAuth 2.0
+  # access token requested from the credentials file on each run:
+
+  rake redmine:email:receive_imap RAILS_ENV="production" \\
+    host=outlook.office365.com port=993 ssl=1 \\
+    username=redmine@example.net \\
+    oauth2_credentials=/etc/redmine/imap_oauth2.yml \\
+    project=foo
 END_DESC
 
     task :receive_imap => :environment do
@@ -115,6 +138,8 @@ END_DESC
                       :starttls => ENV['starttls'],
                       :username => ENV['username'],
                       :password => ENV['password'],
+                      :oauth2_token => ENV['oauth2_token'],
+                      :oauth2_credentials => ENV['oauth2_credentials'],
                       :folder => ENV['folder'],
                       :move_on_success => ENV['move_on_success'],
                       :move_on_failure => ENV['move_on_failure']}
@@ -122,6 +147,50 @@ END_DESC
       Mailer.with_synched_deliveries do
         Redmine::IMAP.check(imap_options, MailHandler.extract_options_from_env(ENV))
       end
+    end
+
+    desc <<-END_DESC
+Obtain the refresh token that receive_imap needs, once, for one mailbox.
+
+This is interactive on purpose: only the mailbox owner can consent, in a
+browser. The task prints a URL to open, and the browser is then redirected to
+redirect_uri. That address usually fails to load, which is expected - copy it
+out of the address bar and paste it back here.
+
+Available options:
+  oauth2_credentials=FILE  the YAML file described in receive_imap, with
+                           everything except refresh_token filled in, plus:
+                             authorize_url: https://...
+                             redirect_uri: http://localhost (the default; it
+                               must be registered with the provider)
+                             authorize_params:  extra query parameters the
+                               provider needs, as name: value pairs
+
+Provider specific values belong in that file rather than in Redmine. The
+guides for Gmail and Microsoft 365 are at:
+http://www.redmine.org/projects/redmine/wiki/EmailConfiguration
+
+Example:
+  rake redmine:email:oauth2_authorize RAILS_ENV="production" \\
+    oauth2_credentials=/etc/redmine/imap_oauth2.yml
+END_DESC
+
+    task :oauth2_authorize => :environment do
+      credentials_file = ENV['oauth2_credentials']
+      abort 'Missing oauth2_credentials=FILE' if credentials_file.blank?
+
+      puts "Open this URL in a browser and sign in as the mailbox owner:"
+      puts
+      puts Redmine::Oauth2Client.authorize_url(credentials_file)
+      puts
+      print "Then paste the whole address you were redirected to: "
+      redirect_url = STDIN.gets
+      refresh_token = Redmine::Oauth2Client.refresh_token(credentials_file, redirect_url)
+
+      puts
+      puts "Add this line to #{credentials_file}:"
+      puts
+      puts "refresh_token: #{refresh_token}"
     end
 
     desc <<-END_DESC
