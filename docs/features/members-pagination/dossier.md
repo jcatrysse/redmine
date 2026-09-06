@@ -28,10 +28,12 @@
   kant-en-klaar onder **"The note to post on #43355"** — bedankje, bevestiging
   dat `0002` dekt wat GEOxyz nodig had, het voorstel, de diff van vier regels
   en de afgewogen alternatieven. Kopieer die ene sectie van begin tot eind, en
-  niets erboven of eronder. Twee screenshots eraan hangen:
-  `shots/members-last-page.png` en `shots/defect-empty-page-after-delete.png`;
-  in allebei staat de adresbalk met `members_page=4`, en de eerste laat zien
-  dat het project zeven leden had.
+  niets erboven of eronder. Drie screenshots eraan hangen, in
+  deze volgorde: `shots/members-last-page.png`,
+  `shots/defect-empty-page-after-delete.png` en
+  `shots/members-page-clamped-after-delete.png`. In alle drie staat de
+  adresbalk met `members_page=4`; de eerste laat zien dat het project zeven
+  leden had, de derde wat de voorgestelde fix doet.
 
 ## Trunk check (G1)
 
@@ -165,13 +167,15 @@ exactly equal to the member count and `nil` beyond it; either way the partial
 takes its `else` branch and shows **"No data to display"** on a project that
 has six members, with no pagination links below it.
 
-The two attachments are that sequence, one screen each, and the address bar in
-both says which page is being shown:
+The attachments are that sequence, one screen each, and the address bar in each
+says which page is being shown:
 
 - `members-last-page.png` — step 2. Page 4 of 4, `(7-7/7)`, one member,
   `…/settings/members?members_page=4`.
 - `defect-empty-page-after-delete.png` — step 3. Same URL, same tab,
   "No data to display".
+- `members-page-clamped-after-delete.png` — the same step 3 with the fix below
+  applied, for comparison.
 
 The reason this is worth handling here rather than living with it as elsewhere:
 the project settings tabs are rendered server-side into hidden `div`s and
@@ -332,6 +336,13 @@ standalone to a clean `origin/master`, and INV-2 keeps such a file out of
 - affected suites, pristine trunk r24882: `169 runs, 803 assertions, 0 failures, 0 errors, 0 skips`
 - affected suites, + `0001` + `0002`: `180 runs, 844 assertions, 0 failures, 0 errors, 0 skips`
 - affected suites, + the clamp (on `7.0-stable-GEOxyz`): `183 runs, 855 assertions, 0 failures, 0 errors, 0 skips`
+- affected suites, re-run 2026-09-06 on the **current** `7.0-stable-GEOxyz`
+  tip: `184 runs, 857 assertions, 0 failures, 0 errors, 0 skips`. One run and
+  two assertions more than the line above, and the difference is not this
+  feature's: another session added a test to
+  `test/functional/projects_controller_test.rb` after `885f04097`. The ten
+  Ruby files this feature touches are otherwise byte-identical between
+  `885f04097` and the branch tip.
 - **full** suite on `patch/members-pagination`, all three commits:
   `tools/test-env.sh /home/user/wt/patch-members-pagination bundle exec ruby bin/rails test:all`
   → `5934 runs, 31506 assertions, 27 failures, 2 errors, 92 skips`

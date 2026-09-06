@@ -30,6 +30,10 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
 
+## Nu in behandeling
+
+- `members-pagination` — cse_015wUkfp89YJkByEHheEmK9u sinds 2026-09-06
+
 ## Openstaand voor Jan
 
 ### `ar-sessions`
@@ -188,23 +192,43 @@ Twee dingen, allebei eenmalig, en de tweede is niet dringend.
 ### `members-pagination`
 
 Eén note aan **https://www.redmine.org/issues/43355** — geen nieuw issue, en
-geen patchbestand van ons erbij. Bedank Takenori TAKAKI (user:takenory) voor de
-rebase en de splitsing, bevestig dat zijn `0002-groups-pagination.patch` de
-groepsledenlijst en de gescheiden `members_page`/`users_page`-parameters dekt
-(dat was precies wat GEOxyz bovenop het oorspronkelijke issue nodig had, dus er
-ontbreekt niets), en meld dan de ene bevinding:
+geen patchbestand van ons erbij.
 
-> Removing the last row of the last page leaves the tab on a page that no
-> longer exists — "No data to display" on a project that has members, with no
-> pagination links to get back with.
+De volledige Engelse tekst staat kant-en-klaar in `dossier.md` onder
+**"The note to post on #43355"**. Kopieer die ene sectie van de eerste tot de
+laatste regel; alles erboven en eronder is ons eigen dossier en hoort niet op
+redmine.org. Die sectie doet, in deze volgorde, de drie dingen die jouw keuze
+**g15** voorschrijft:
 
-De Engelse tekst staat kant-en-klaar in `dossier.md` onder **"The finding"** en
-**"Suggested fix"**: de reproductie in drie stappen, de diff van vier regels
-voor `members_helper.rb` en `groups_helper.rb`, en de drie tests die zonder die
-diff rood staan. Hang er
-`docs/features/members-pagination/shots/defect-empty-page-after-delete.png` bij
-— dat is een screenshot van een project met zes leden waar "No data to display"
-staat, en dat overtuigt sneller dan de uitleg.
+1. bedankt Takenori TAKAKI (user:takenory) voor de rebase en de splitsing;
+2. bevestigt dat zijn `0002-groups-pagination.patch` de groepsledenlijst en de
+   gescheiden `members_page`/`users_page`-parameters dekt — precies wat GEOxyz
+   bovenop het oorspronkelijke issue nodig had, dus er ontbreekt niets;
+3. brengt het punt als **verbetervoorstel** en niet als defectmelding.
+
+Dat laatste is de kern van g15 en het is ook gewoon waar: onbewerkt Redmine
+laat elke lijst zo doodlopen — `/issues?page=99` geeft net zo goed "No data to
+display" zonder links. Wat de paginatie er wél aan toevoegt is dat je op het
+ledentabblad met een gewone klik in die toestand komt, en dat je er daar niet
+uit klikt, omdat de instellingentabbladen vooraf gerenderde divs zijn die
+JavaScript omschakelt. Die asymmetrie is het argument; de beschuldiging was het
+niet, en zou binnen een dag met `/issues?page=99` beantwoord zijn.
+
+**Drie bijlagen, alle drie met de adresbalk erop** (opnieuw gemaakt op
+2026-09-06, `MODE=note-shots` in `verify/members-pagination.mjs`), in deze
+volgorde:
+
+1. `docs/features/members-pagination/shots/members-last-page.png` — pagina 4
+   van 4, `(7-7/7)`, één lid, URL `…/settings/members?members_page=4`. Dit
+   bewijst dat het project zeven leden hád.
+2. `docs/features/members-pagination/shots/defect-empty-page-after-delete.png`
+   — dezelfde URL, "No data to display".
+3. `docs/features/members-pagination/shots/members-page-clamped-after-delete.png`
+   — dezelfde stap mét de voorgestelde fix: pagina 3 van 3, `(5-6/6)`.
+
+Het eerste paar is nodig omdat één lege tab zonder adresbalk niet te
+onderscheiden is van een project zónder leden, en dat is nu juist de claim. De
+derde laat zien wat de voorgestelde vier regels doen.
 
 ### `mypage-query-blocks`
 

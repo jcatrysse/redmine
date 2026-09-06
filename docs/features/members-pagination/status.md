@@ -48,6 +48,11 @@ als je een lid toevoegt, bewerkt of verwijdert.
 - Geraakte suites op schone trunk r24882: `169 runs, 803 assertions, 0 failures, 0 errors, 0 skips`
 - Geraakte suites met `0001` + `0002`: `180 runs, 844 assertions, 0 failures, 0 errors, 0 skips`
 - Geraakte suites met de clamp erbij: `183 runs, 855 assertions, 0 failures, 0 errors, 0 skips`
+- Geraakte suites opnieuw gedraaid op 2026-09-06, op de **huidige** tip van
+  `7.0-stable-GEOxyz`: `184 runs, 857 assertions, 0 failures, 0 errors, 0 skips`.
+  Eén run en twee assertions meer, en dat verschil is niet van deze feature:
+  een andere sessie voegde na `885f04097` een test toe aan
+  `test/functional/projects_controller_test.rb`.
 - Volledige suite met patch (`patch/members-pagination`, alle drie de commits): `5934 runs, 31506 assertions, 27 failures, 2 errors, 92 skips`
 - Volledige suite op schone trunk r24882: `5920 runs, 31455 assertions, 27 failures, 2 errors, 92 skips`
 - Volledige suite op `7.0-stable-GEOxyz`: `6000 runs, 31988 assertions, 0 failures, 0 errors, 39 skips`
@@ -110,17 +115,21 @@ uit klikt, omdat de instellingentabbladen vooraf gerenderde divs zijn die
 JavaScript omschakelt. Die asymmetrie is het argument; de beschuldiging was het
 niet, en zou binnen een dag met `/issues?page=99` beantwoord zijn.
 
-**Twee bijlagen, allebei met de adresbalk erop** (opnieuw gemaakt op
-2026-09-06, `MODE=note-shots` in `verify/members-pagination.mjs`):
+**Drie bijlagen, alle drie met de adresbalk erop** (opnieuw gemaakt op
+2026-09-06, `MODE=note-shots` in `verify/members-pagination.mjs`), in deze
+volgorde:
 
-- `docs/features/members-pagination/shots/members-last-page.png` — pagina 4 van
-  4, `(7-7/7)`, één lid, URL `…/settings/members?members_page=4`. Dit bewijst
-  dat het project zeven leden hád.
-- `docs/features/members-pagination/shots/defect-empty-page-after-delete.png` —
-  dezelfde URL, "No data to display".
+1. `docs/features/members-pagination/shots/members-last-page.png` — pagina 4
+   van 4, `(7-7/7)`, één lid, URL `…/settings/members?members_page=4`. Dit
+   bewijst dat het project zeven leden hád.
+2. `docs/features/members-pagination/shots/defect-empty-page-after-delete.png`
+   — dezelfde URL, "No data to display".
+3. `docs/features/members-pagination/shots/members-page-clamped-after-delete.png`
+   — dezelfde stap mét de voorgestelde fix: pagina 3 van 3, `(5-6/6)`.
 
-Het paar is nodig omdat één lege tab zonder adresbalk niet te onderscheiden is
-van een project zónder leden, en dat is nu juist de claim.
+Het eerste paar is nodig omdat één lege tab zonder adresbalk niet te
+onderscheiden is van een project zónder leden, en dat is nu juist de claim. De
+derde laat zien wat de voorgestelde vier regels doen.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
 
