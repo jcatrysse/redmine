@@ -10,7 +10,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`9d28be94d + d8e0db501`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
-| [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`f117ea32e + 21c232ce1`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
+| [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`1a6d462a8 + d92dff560 + 5c937ddbd`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63 + 47eec6f1d + 1b4a29a0b`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2 + 8c1fa23fb`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa + f260958c6`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
@@ -29,6 +29,10 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `imap-oauth` — cse_012ua8VRNNcjcuNQ2mQZuKXQ sinds 2026-09-06
 
 ## Openstaand voor Jan
 
@@ -107,13 +111,13 @@ trunk intussen verder gelopen, dan ververst een sessie de patch eerst (g05).
 
 Twee dingen, en het eerste is het echte werk.
 
-**1. Hang `patches/imap-oauth/2026-09-03-r24882-feature.patch` als note aan je
+**1. Hang `patches/imap-oauth/2026-09-06-r25037-feature.patch` als note aan je
 eigen issue [#43023](https://www.redmine.org/issues/43023)** — geen nieuw
 issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 7.1.0. Zeg in die note dat dit een **vervanging** is van
 `..._version3.patch`, niet een aanvulling, en waarom hij zoveel kleiner is:
 
-- 581 regels in plaats van 1197, en **geen** nieuwe gem. `oauth2` en
+- 618 regels in plaats van 1197, en **geen** nieuwe gem. `oauth2` en
   `gmail_xoauth` zijn er beide uit. `gmail_xoauth` was overbodig:
   `Net::IMAP::SASL::XOAuth2Authenticator` zit in de `net-imap ~> 0.6.1` die
   Redmine al pint, en 0.4.x had hem onder de oude naam
@@ -135,8 +139,16 @@ issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 - **Noem dit ook, het is een echt lek:** de patch die er nu hangt print het
   volledige access token bij `imap_debug=1`, via
   `puts "IMAP DEBUG: effective imap_options=#{imap_options.inspect}"`, waarin
-  `imap_options[:password]` het token is. Deze patch heeft geen debugoutput en
-  interpoleert token noch client secret in welke string dan ook.
+  `imap_options[:password]` het token is. Deze patch heeft geen debugoutput, en
+  er staat geen credential in welk log, welke foutmelding of welke debugregel
+  dan ook. **Zeg het precies zo en niet sterker** — er is één plek waar een
+  credential wél geprint wordt, en dat is de laatste regel van
+  `oauth2_authorize`, naar de terminal van de beheerder die net zelf toestemming
+  gaf, omdat hem die regel geven het hele doel van die taak is. Dat staat er in
+  `dossier.md` bij, met het gevolg erbij (scrollback en transcripts wissen).
+  De oudere, te sterke formulering ("interpoleert token noch client secret in
+  welke string dan ook") is op 2026-09-06 rechtgezet na reviewbevinding F01;
+  gebruik die niet meer.
 - `Redmine::IMAP` en `Redmine::POP3` hadden **geen enkele test**; deze
   patch levert de eerste (12 tests, 43 assertions).
 
