@@ -1047,3 +1047,51 @@ zodra een sessie moet replayen. Dat was optie C, en die is niet gekozen.
 | `8c1fa23fb` | `755d763a8` | Validate the branch exclusion pattern and cap the branches shown per issue (#5386). |
 | `3f5eb3be2` | `737b0a549` | Ignore the per-environment Rails credentials directory as well |
 | `7e92b5596` | `465d326aa` | Keep the issue.closed timestamp mapping with the rest of the issue webhook code. |
+
+
+## Uitgevoerd — K-13, ook optie C (2026-09-06)
+
+Na optie B vroeg Jan ook om C, want B alleen laat de oorzaak staan.
+
+**De diagnose in K-13 was te smal.** Daar stond dat een replay in
+`tools/session-push.sh` de committer verzet. Dat klopt, maar het is niet de hele
+oorzaak: de **globale git-identiteit van een sessie is
+`Claude <noreply@anthropic.com>`**. Een commit die zonder expliciete override op
+`7.0-stable-GEOxyz` wordt gezet is dus al fout vóór er iets gereplayed is. De
+zeventien commits die het wél goed hadden kwamen van sessies die de identiteit
+per commit meegaven.
+
+**Wat er is veranderd in `tools/session-push.sh`.**
+
+1. De replay draait nu met `GIT_COMMITTER_NAME`/`GIT_COMMITTER_EMAIL` van de
+   commits die gereplayed worden, in plaats van die van wie het script draait.
+   Hebben die commits meer dan één committer, dan stopt het script in plaats van
+   er één overheen te stempelen.
+2. Een push naar `7.0-stable-GEOxyz` of `patch/*` wordt **geweigerd** zodra een
+   mee te sturen commit `anthropic` of `claude` in zijn auteur- of committerveld
+   heeft. De foutmelding bevat het `filter-branch`-commando dat het rechtzet en
+   de manier om het te voorkomen. `geoxyz/framework` is uitgezonderd — K-01 zet
+   de attributie daar juist bewust.
+
+Punt 2 is het belangrijkste. Punt 1 dicht één lek, punt 2 vangt ze allemaal,
+ook de commit die nooit gereplayed wordt.
+
+**Gemeten, in een wegwerprepo met een lokale remote, hetzelfde scenario twee
+keer** — een parallelle sessie pusht eerst, daarna moet mijn commit gereplayed
+worden. Committer vóór de replay in beide gevallen
+`Jan Catrysse <jan.catrysse@geoxyz.eu>`:
+
+| Versie | Committer na de replay | Gepusht? |
+|---|---|---|
+| oud | `Claude <noreply@anthropic.com>` | ja — zo zijn de zestien ontstaan |
+| nieuw | `Jan Catrysse <jan.catrysse@geoxyz.eu>` | ja |
+
+En de guard apart getest: een commit met de standaard sessie-identiteit op een
+`patch/*`-branch geeft `FAIL INV-4`, exit 1, en er gaat **niets** naar de
+remote. Het herstelcommando uit die foutmelding is letterlijk uitgevoerd en
+daarna slaagde de push wel. Een schone branch gaat er ongehinderd doorheen —
+ook `7.0-stable-GEOxyz` zelf, na de herschrijving van optie B.
+
+`CLAUDE.md` (INV-4) en `docs/STATE.md` (de gereedschapstabel) zeggen dit nu ook,
+want de oude formulering van INV-4 ging alleen over de commit-boodschap en dat
+is precies de helft die níét het probleem was.
