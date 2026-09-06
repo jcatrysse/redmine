@@ -40,7 +40,7 @@ module Redmine
       def authorize_url(credentials_file)
         credentials = read_credentials(credentials_file, %w(authorize_url client_id))
         uri = https_uri(credentials['authorize_url'], 'authorize_url')
-        params = {}
+        params = URI.decode_www_form(uri.query.to_s).to_h
         if credentials['authorize_params'].is_a?(Hash)
           params.merge!(credentials['authorize_params'].transform_keys(&:to_s))
         end
@@ -113,15 +113,18 @@ module Redmine
           'client_secret' => credentials['client_secret']
         }.merge(params)
         form['scope'] = credentials['scope'] if credentials['scope'].present?
-        request = Net::HTTP::Post.new(uri)
+        request = ::Net::HTTP::Post.new(uri)
         request.set_form_data(form)
-        Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 60, read_timeout: 60) do |http|
+        ::Net::HTTP.start(
+          uri.host, uri.port, use_ssl: true,
+          open_timeout: 60, read_timeout: 60, write_timeout: 60
+        ) do |http|
           http.request(request)
         end
       end
 
       def token_from(response, name)
-        unless response.is_a?(Net::HTTPSuccess)
+        unless response.is_a?(::Net::HTTPSuccess)
           message = "OAuth 2.0 token request failed with #{response.code} #{response.message}"
           error = error_code(response)
           message += " (#{error})" if error
@@ -152,11 +155,12 @@ module Redmine
         json_body(response)['error'].presence
       end
 
-      # The parsed response body, empty when the body is not JSON at all. An
+      # The parsed response body, empty unless it is a JSON object. An
       # intercepting proxy answers with an HTML page, and that has to read as a
       # token request that returned no token rather than as a JSON error.
       def json_body(response)
-        JSON.parse(response.body.to_s)
+        body = JSON.parse(response.body.to_s)
+        body.is_a?(Hash) ? body : {}
       rescue JSON::ParserError
         {}
       end

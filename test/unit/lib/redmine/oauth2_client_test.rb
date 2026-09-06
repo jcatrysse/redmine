@@ -39,6 +39,7 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
     assert http.use_ssl?
     assert_equal 60, http.open_timeout
     assert_equal 60, http.read_timeout
+    assert_equal 60, http.write_timeout
     assert_equal '/oauth2/v2.0/token', request.path
     assert_equal(
       {
@@ -103,6 +104,33 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
     credentials = CREDENTIALS.merge(
       'authorize_url' => 'https://login.example.net/oauth2/v2.0/authorize',
       'authorize_params' => {'response_type' => 'token', 'client_id' => 'someone-else'}
+    )
+    with_credentials(credentials) do |file|
+      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file)).query).to_h
+
+      assert_equal 'code', params['response_type']
+      assert_equal 'a-client-id', params['client_id']
+    end
+  end
+
+  def test_authorize_url_should_keep_the_parameters_already_in_the_authorize_url
+    credentials = CREDENTIALS.merge(
+      'authorize_url' => 'https://tenant.b2clogin.com/tenant.onmicrosoft.com/oauth2/v2.0/authorize?p=B2C_1_signin'
+    )
+    with_credentials(credentials) do |file|
+      url = URI.parse(Redmine::Oauth2Client.authorize_url(file))
+      params = URI.decode_www_form(url.query).to_h
+
+      assert_equal '/tenant.onmicrosoft.com/oauth2/v2.0/authorize', url.path
+      assert_equal 'B2C_1_signin', params['p']
+      assert_equal 'code', params['response_type']
+      assert_equal 'a-client-id', params['client_id']
+    end
+  end
+
+  def test_authorize_url_should_not_let_the_parameters_in_the_url_override_the_grant
+    credentials = CREDENTIALS.merge(
+      'authorize_url' => 'https://login.example.net/authorize?response_type=token&client_id=someone-else'
     )
     with_credentials(credentials) do |file|
       params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file)).query).to_h
@@ -244,6 +272,24 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
     end
   end
 
+  def test_access_token_should_raise_when_the_response_body_is_json_but_not_an_object
+    expect_token_request(response(Net::HTTPOK, '200', 'OK', '[]'))
+
+    with_credentials(CREDENTIALS) do |file|
+      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.access_token(file)}
+      assert_equal 'OAuth 2.0 token request returned no access token', error.message
+    end
+  end
+
+  def test_access_token_should_raise_when_a_failed_response_body_is_json_but_not_an_object
+    expect_token_request(response(Net::HTTPBadRequest, '400', 'Bad Request', 'null'))
+
+    with_credentials(CREDENTIALS) do |file|
+      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.access_token(file)}
+      assert_equal 'OAuth 2.0 token request failed with 400 Bad Request', error.message
+    end
+  end
+
   private
 
   def with_credentials(credentials)
@@ -266,6 +312,10 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
   # the connection is stubbed out. Returns the connection, to assert on.
   def expect_token_request(response, &capture)
     http = Net::HTTP.new('login.example.net', 443)
+    # Net::HTTP defaults all three timeouts to 60, so a test that asserts 60 on
+    # a fresh connection asserts nothing. Moved off the default first, they only
+    # come back to 60 if Net::HTTP.start was really given them.
+    http.open_timeout = http.read_timeout = http.write_timeout = 1
     http.stubs(:do_start)
     http.stubs(:do_finish)
     http.expects(:request).with {|request| capture&.call(request); true}.returns(response)

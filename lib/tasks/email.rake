@@ -184,6 +184,7 @@ END_DESC
       puts Redmine::Oauth2Client.authorize_url(credentials_file)
       puts
       print "Then paste the whole address you were redirected to: "
+      STDOUT.flush
       redirect_url = STDIN.gets
       refresh_token = Redmine::Oauth2Client.refresh_token(credentials_file, redirect_url)
 
