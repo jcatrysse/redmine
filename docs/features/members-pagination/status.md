@@ -23,12 +23,14 @@ gehaald die in Jans versie zat. Beide patches zijn hier nagelopen, ze applyen
 schoon op r24882, en de suites blijven groen. Er komt dus **geen eigen
 inzending** — dat zou alleen de kans op allebei verkleinen.
 
-Wat wél nog te doen is: bij het narekenen kwam er één echte fout uit Takenori's
-patches boven water. Verwijder je de laatste rij van de laatste pagina, dan
-blijft het tabblad op een paginanummer staan dat niet meer bestaat en toont het
-"No data to display" op een project dat gewoon leden heeft, zonder link om
-terug te navigeren. Dat is bereikbaar zonder aan de URL te komen. De fix is vier
-regels; GEOxyz draait hem al, en hij hoort als note aan #43355.
+Wat wél nog te doen is: bij het narekenen kwam één randgeval boven water.
+Verwijder je de laatste rij van de laatste pagina, dan blijft het tabblad op een
+paginanummer staan dat niet meer bestaat en toont het "No data to display" op
+een project dat gewoon leden heeft, zonder link om terug te navigeren. Dat is
+bereikbaar zonder aan de URL te komen. De fix is vier regels; GEOxyz draait hem
+al, en hij gaat als **verbetervoorstel** in een note aan #43355 — niet als
+defectmelding, want onbewerkt Redmine doet dit overal al (jouw keuze g15, en
+reviewbevinding F01 van 2026-09-03).
 
 De GEOxyz-branch draait alle drie de stukken: Takenori's twee patches
 één-op-één, plus de clamp als losse derde commit, zodat die apart kan
@@ -52,8 +54,14 @@ als je een lid toevoegt, bewerkt of verwijdert.
 - Faalnamen identiek met de schone run: ja — 29 namen, exact dezelfde verzameling. Alle betrokken tests zijn
   Subversion-repositorytests; `svn` zit niet in dit image (zie
   `docs/runbook.md`). Geen enkele raakt leden of groepen.
-- RuboCop op de 10 gewijzigde Ruby-bestanden: `0` (baseline op dezelfde 10
-  bestanden op r24882: `0`)
+- RuboCop op de 10 gewijzigde Ruby-bestanden, met de versie die de `Gemfile`
+  pint (**rubocop 1.88.2**, rubocop-rails 2.34.3): `0` op `885f04097`, `0` op
+  de r24882-baseline. Opnieuw gemeten op 2026-09-06 in twee losse worktrees.
+  Met een **niet-gepinde** nieuwere RuboCop (1.90.0) meldde de reviewronde 4
+  `Rails/StrongParametersExpect`-overtredingen op dezelfde bestanden; alle vier
+  staan op bestaande regels die deze wijziging niet aanraakt, dus het verschil
+  is 0 onder beide versies. Het absolute getal reproduceert alleen met de
+  gepinde versie — vandaar dat de versie er nu bij staat.
 - Elk van de drie nieuwe tests is rood gezien zonder de clamp: de twee
   helpertests melden `Expected: 2, Actual: 9`, de controllertest meldt
   `"nodata" found in ...`. De clamp is uit beide helpers gehaald, de tests zijn
@@ -61,37 +69,58 @@ als je een lid toevoegt, bewerkt of verwijdert.
 - `tools/check-patch-clean.sh patch/members-pagination`: PASS ·
   `tools/check-geoxyz-branch.sh`: PASS
 - Eén restpunt, gemeld en niet stilgehouden: de drie GEOxyz-commits hebben
-  `Jan Catrysse` als **auteur** maar `Claude` als **committer**. Ze waren met
-  de juiste identiteit gecommit; `tools/session-push.sh` moest ze replayen
-  (een andere sessie was net voor) en een rebase zet de committer op wie de
-  rebase draait. Rechtzetten kan alleen met een force-push op een branch waar
-  parallelle sessies op pushen, dus dat is niet gedaan. Elf van de veertien
-  eigen commits op die branch hadden dit al. Het raakt geen patch: `format-patch`
-  neemt de **auteur** mee, en `patch/members-pagination` wordt niet gepusht en
-  heeft beide velden op Jan staan (`check-patch-clean.sh` PASS). Zie
-  `docs/traps.md` voor hoe je het de volgende keer voorkomt.
-- Screenshots: 11, gelezen: ja
+  `Jan Catrysse` als **auteur** maar `Claude` als **committer**, doordat
+  `tools/session-push.sh` ze moest replayen en een replay de committer op wie
+  hem draait zet. Dat is **niet eigen aan deze feature** — op 2026-09-06 gold
+  het voor 16 van de 33 eigen commits op `7.0-stable-GEOxyz` — en het staat
+  sinds die datum als **K-13** in `docs/DECISIONS.md`, met drie opties en een
+  aanbeveling. Het wordt hier daarom niet meer per feature uitgeschreven. Het
+  raakt geen patch: `format-patch` neemt de **auteur** mee, en
+  `patch/members-pagination` heeft beide velden op Jan staan
+  (`check-patch-clean.sh` PASS).
+- Screenshots: 11, gelezen: ja. Drie ervan zijn op 2026-09-06 opnieuw gemaakt
+  mét de adresbalk van de browser erop (`MODE=note-shots`, headed Chromium op
+  een Xvfb-display, `xwd` grijpt het hele scherm): `members-last-page.png`,
+  `defect-empty-page-after-delete.png` en
+  `members-page-clamped-after-delete.png`. Reden: de oude lege-tabschermafdruk
+  was niet te onderscheiden van een project zónder leden.
 
 ## Wat Jan nog moet doen
 
 Eén note aan **https://www.redmine.org/issues/43355** — geen nieuw issue, en
-geen patchbestand van ons erbij. Bedank Takenori TAKAKI (user:takenory) voor de
-rebase en de splitsing, bevestig dat zijn `0002-groups-pagination.patch` de
-groepsledenlijst en de gescheiden `members_page`/`users_page`-parameters dekt
-(dat was precies wat GEOxyz bovenop het oorspronkelijke issue nodig had, dus er
-ontbreekt niets), en meld dan de ene bevinding:
+geen patchbestand van ons erbij.
 
-> Removing the last row of the last page leaves the tab on a page that no
-> longer exists — "No data to display" on a project that has members, with no
-> pagination links to get back with.
+De volledige Engelse tekst staat kant-en-klaar in `dossier.md` onder
+**"The note to post on #43355"**. Kopieer die ene sectie van de eerste tot de
+laatste regel; alles erboven en eronder is ons eigen dossier en hoort niet op
+redmine.org. Die sectie doet, in deze volgorde, de drie dingen die jouw keuze
+**g15** voorschrijft:
 
-De Engelse tekst staat kant-en-klaar in `dossier.md` onder **"The finding"** en
-**"Suggested fix"**: de reproductie in drie stappen, de diff van vier regels
-voor `members_helper.rb` en `groups_helper.rb`, en de drie tests die zonder die
-diff rood staan. Hang er
-`docs/features/members-pagination/shots/defect-empty-page-after-delete.png` bij
-— dat is een screenshot van een project met zes leden waar "No data to display"
-staat, en dat overtuigt sneller dan de uitleg.
+1. bedankt Takenori TAKAKI (user:takenory) voor de rebase en de splitsing;
+2. bevestigt dat zijn `0002-groups-pagination.patch` de groepsledenlijst en de
+   gescheiden `members_page`/`users_page`-parameters dekt — precies wat GEOxyz
+   bovenop het oorspronkelijke issue nodig had, dus er ontbreekt niets;
+3. brengt het punt als **verbetervoorstel** en niet als defectmelding.
+
+Dat laatste is de kern van g15 en het is ook gewoon waar: onbewerkt Redmine
+laat elke lijst zo doodlopen — `/issues?page=99` geeft net zo goed "No data to
+display" zonder links. Wat de paginatie er wél aan toevoegt is dat je op het
+ledentabblad met een gewone klik in die toestand komt, en dat je er daar niet
+uit klikt, omdat de instellingentabbladen vooraf gerenderde divs zijn die
+JavaScript omschakelt. Die asymmetrie is het argument; de beschuldiging was het
+niet, en zou binnen een dag met `/issues?page=99` beantwoord zijn.
+
+**Twee bijlagen, allebei met de adresbalk erop** (opnieuw gemaakt op
+2026-09-06, `MODE=note-shots` in `verify/members-pagination.mjs`):
+
+- `docs/features/members-pagination/shots/members-last-page.png` — pagina 4 van
+  4, `(7-7/7)`, één lid, URL `…/settings/members?members_page=4`. Dit bewijst
+  dat het project zeven leden hád.
+- `docs/features/members-pagination/shots/defect-empty-page-after-delete.png` —
+  dezelfde URL, "No data to display".
+
+Het paar is nodig omdat één lege tab zonder adresbalk niet te onderscheiden is
+van een project zónder leden, en dat is nu juist de claim.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
 
@@ -120,7 +149,9 @@ staat, en dat overtuigt sneller dan de uitleg.
 
 ## Volgende stap voor een sessie
 
-Af — niets te doen, behalve dat Jan de note plaatst. Komt er reactie van
+Af — niets te doen, behalve dat Jan de note plaatst. Alle tien
+reviewbevindingen van 2026-09-03 op deze feature hebben sinds 2026-09-06 een `Resolution:`-regel
+in `docs/review/findings/2026-09-03-members-pagination-claude-opus5.md`. Komt er reactie van
 Takenori of een committer op de bevinding, dan is de volgende stap die reactie
 verwerken in `dossier.md` en, als de clamp upstream landt, de derde
 GEOxyz-commit laten vervallen zodra GEOxyz naar die release gaat.

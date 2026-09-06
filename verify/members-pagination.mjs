@@ -19,6 +19,10 @@
 // per-page setting so a handful of rows is already two pages.
 import { execFileSync } from 'node:child_process';
 import { session, report } from '../tools/verify-lib.mjs';
+import pw from '/opt/node22/lib/node_modules/playwright/index.js';
+const { chromium } = pw;
+
+const MEMBERS = '/projects/geoxyz-verify/settings/members';
 
 const WORKTREE = process.env.WORKTREE || '/home/user/wt/patch-members-pagination';
 
@@ -62,11 +66,76 @@ const clamp = process.env.CLAMP === '1';
 const { groupId, members, users } = seed();
 console.log(`seeded: group ${groupId}, ${members} members, ${users} group users, per page 2`);
 
+// The two images the note on #43355 attaches have to show which page is being
+// displayed, and that lives in the address bar. Playwright captures the
+// viewport only, so this mode drives a headed browser on an Xvfb display and
+// grabs the X root window with xwd instead. Which shot it takes depends on the
+// code the server is running: CLAMP=0 gives the defect, CLAMP=1 the recovery.
+if (mode === 'note-shots') {
+  await noteShots(Number(members));
+  process.exit(0);
+}
+
+async function chromeShot(name, caption) {
+  const file = `${process.env.SHOT_DIR}/${name}.png`;
+  execFileSync('/bin/sh', ['-c', `xwd -root -display ${process.env.DISPLAY} -silent | convert xwd:- ${file}`]);
+  console.log(`  ${name}.png  ${caption}`);
+  return file;
+}
+
+async function noteShots(memberCount) {
+  if (!process.env.DISPLAY) throw new Error('note-shots needs DISPLAY — start Xvfb first');
+  const browser = await chromium.launch({
+    headless: false,
+    args: ['--window-position=0,0', '--window-size=1280,900'],
+  });
+  const page = await (await browser.newContext({ viewport: null })).newPage();
+  await page.goto('http://127.0.0.1:3000/login');
+  await page.fill('#username', 'admin');
+  await page.fill('#password', process.env.REDMINE_PASSWORD || 'GEOxyzDev123!');
+  await page.click('input[type=submit]');
+  await page.waitForLoadState('networkidle');
+
+  const lastPage = Math.ceil(memberCount / 2);
+  await page.goto(`http://127.0.0.1:3000${MEMBERS}?members_page=${lastPage}`);
+  await page.waitForLoadState('networkidle');
+  const before = await page.locator('#tab-content-members tr.member').count();
+  if (before !== 1) throw new Error(`page ${lastPage} holds ${before} rows, expected 1`);
+
+  if (!clamp) {
+    await chromeShot('members-last-page',
+      `Page ${lastPage} of ${lastPage}, the last one, holding the seventh of seven members`);
+  }
+
+  page.once('dialog', d => d.accept());
+  await page.locator('#tab-content-members a.icon-link-break').first().click({ noWaitAfter: true });
+  await page.waitForTimeout(2500);
+
+  const empty = await page.locator('#tab-content-members p.nodata').count();
+  const rowsNow = await page.locator('#tab-content-members tr.member').count();
+  const url = page.url();
+  if (!url.includes(`members_page=${lastPage}`)) {
+    throw new Error(`the address bar lost members_page=${lastPage}: ${url}`);
+  }
+
+  if (clamp) {
+    if (empty !== 0) throw new Error('the clamp did not prevent the empty page');
+    await chromeShot('members-page-clamped-after-delete',
+      'With the clamp, the same removal falls back to the new last page');
+    console.log(`PASS  clamped: ${rowsNow} rows at ${url}`);
+  } else {
+    if (empty !== 1) throw new Error('the unclamped code did not produce the empty page');
+    await chromeShot('defect-empty-page-after-delete',
+      'Without the clamp, the tab stays on members_page=4 and shows "No data to display"');
+    console.log(`PASS  defect: ${rowsNow} rows at ${url}`);
+  }
+  await browser.close();
+}
+
 const s = await session(process.env.SHOT_DIR);
 const failures = [];
 const check = (ok, what) => { if (!ok) failures.push(what); };
 
-const MEMBERS = '/projects/geoxyz-verify/settings/members';
 const rows = () => s.page.locator('#tab-content-members tr.member').count();
 const pager = () => s.page.locator('#tab-content-members span.pagination').count();
 const userRows = () => s.page.locator('#tab-content-users table.users tbody tr').count();

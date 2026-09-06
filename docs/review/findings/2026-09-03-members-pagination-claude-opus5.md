@@ -91,7 +91,7 @@ is required.
 
 ### F01 — The note attributes to Takenori's patch a behaviour unpatched Redmine already has everywhere
 
-- **Status:** open
+- **Status:** resolved 2026-09-06
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -165,13 +165,25 @@ on the page recovers it), and then offers the four-line clamp as the local fix
 being proposed for this issue and why. That is a contribution rather than a
 correction, and it removes the rebuttal.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06. Jan settled the direction himself as **g15**:
+  the note becomes an improvement proposal rather than a defect report. The
+  dossier's pasteable text now opens by saying that an out-of-range page renders
+  `No data to display` on every Redmine list, `/issues?page=99` included, and that
+  the pagination is not what introduces it. What it does introduce — reaching that
+  state on the members tab by an ordinary click — is stated as the reason to
+  handle it here, together with the asymmetry this review supplied: the settings
+  tabs are pre-rendered divs toggled by `showTab()`, so nothing on the page
+  recovers it, while the issue list has a sidebar, filters and a menu item that
+  all lead back to page 1. The `Paginator`-level fix is now named in the note's own
+  *Alternatives considered* as the wider fix that may well be the right one, with
+  the reason it belongs in its own issue, so the rebuttal is answered before it is
+  made. `status.md` carries the same framing.
 
 ---
 
 ### F02 — The English text prepared for the note has no thanks and no confirmation, only the defect
 
-- **Status:** open
+- **Status:** resolved 2026-09-06
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -219,13 +231,25 @@ core", "What the two patches on #43355 do" and "Anticipated objections" are
 written as if for a submission of our own and would explain his patch back to
 him if pasted by accident.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06. The pasteable text now opens with a section
+  *Confirmation, and thanks*: thanks for the rebase and the split, then the
+  confirmation that `0002-groups-pagination.patch` covers the group users tab and
+  the separated `members_page` / `users_page` parameters, that nothing is missing
+  from GEOxyz's side, and that the eleven added tests stay green. Only after that
+  does the proposal start. The finding's second point is fixed too: the dossier
+  now marks explicitly which section is for pasting. *The problem*, *Why this
+  belongs in core* and *What the two patches on #43355 do* carry a
+  "**Not for pasting**" block naming them, the note is one contiguous section
+  called *The note to post on #43355*, it ends with an explicit *End of the note*
+  marker, and the "our own competing patch" bullet — which was inside
+  *Alternatives considered* and would have been pasted — has been moved out into a
+  separate section below that marker.
 
 ---
 
 ### F03 — The screenshot attached as the note's evidence does not show what the note says it shows
 
-- **Status:** open
+- **Status:** resolved 2026-09-06
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -268,13 +292,24 @@ images and proves the project had seven members a moment earlier. Alternatively
 a single capture that includes the address bar with `members_page=4`. Either
 way, name both images in the note text so the reader knows what to compare.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06, along the line g15 asked for (member count
+  *and* address bar). Playwright captures the viewport only, so the shots have been
+  re-taken with a headed Chromium on an Xvfb display, grabbing the X root window
+  with `xwd` — a new `MODE=note-shots` in `verify/members-pagination.mjs`. Three
+  images were replaced, all against a real running Redmine:
+  `members-last-page.png` (`?members_page=4` in the address bar, page 4 of 4,
+  `(7-7/7)`, one member), `defect-empty-page-after-delete.png` (same URL, "No data
+  to display"), and `members-page-clamped-after-delete.png`. The note attaches the
+  first two as a pair and names both in its text, so the first proves the project
+  had seven members a moment earlier and the second proves which page is being
+  shown. The `xwd` route needed `x11-apps` and `imagemagick`, which were not in the
+  image; that is recorded in `docs/traps.md`.
 
 ---
 
 ### F04 — Two mechanism sentences in the note text are wrong
 
-- **Status:** open
+- **Status:** resolved 2026-09-06
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -337,13 +372,24 @@ to mention that `group_users_query`'s `users_page` branch never fires in the
 browser flow; my recommendation is not to, because it is a second, much smaller
 point and it dilutes the note.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06, both sentences.
+  1. The note now says `ordered_ids[offset, per_page]` returns `[]` at an offset
+     exactly equal to the member count and `nil` beyond it, and that the partial
+     takes its `else` branch either way — so it describes its own example instead
+     of contradicting it.
+  2. The referer sentence is gone. The note now says what actually happens:
+     removing a group user is a two-step confirmation, and the confirmation view
+     emits a `back_url` hidden field taken from the referer of the confirmation
+     request, which still carries `users_page`. The review's recommendation not to
+     mention that `group_users_query`'s `users_page` branch never fires in the
+     browser flow was followed — it is a second, smaller point and it would dilute
+     the note.
 
 ---
 
 ### F05 — "leaving the tab recovers it" is not true, which understates the finding
 
-- **Status:** open
+- **Status:** resolved 2026-09-06
 - **Severity:** minor
 - **Confidence:** probable (read, not driven in a browser)
 - **Category:** correctness
@@ -382,13 +428,19 @@ Say what is true: nothing on the page recovers it; the user has to reload or
 navigate away from the settings page. This is also the strongest single sentence
 available for F01's reframing.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06. "Only editing the URL or leaving the tab
+  recovers it" is gone. The note now says that nothing on the page recovers it,
+  because the settings tabs are rendered server-side into hidden divs and switched
+  by `showTab()` in JavaScript, so clicking another tab and coming back does not
+  re-render the members tab — the user has to reload. As the finding predicted,
+  the correction makes the report stronger, and it is now the sentence the whole
+  reframing of F01 rests on.
 
 ---
 
 ### F06 — The clamp corrects the paginator but not `params[:members_page]`, so the address bar and every row link keep the dead page
 
-- **Status:** open
+- **Status:** resolved 2026-09-06
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -438,13 +490,27 @@ use the paginator's effective page instead of the raw parameter. Naming the
 "redirect to a valid page" option in *Alternatives considered* would also close
 the obvious reviewer question.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06, by stating it rather than by changing the
+  clamp — the four-line change is what is being proposed to someone else's patch,
+  and widening it would work against that (INV-1). The note's *Suggested fix* now
+  carries a paragraph saying that the clamp is local to the paginator, so the row
+  links and the address bar keep the page number that was asked for while a
+  different page is rendered; that nothing breaks, because every request is
+  clamped again; and that a URL copied at that moment points at a page that does
+  not exist. The finding's second half is fixed as well: **redirect to a valid
+  page from the controller** is now the fourth entry in *Alternatives considered*,
+  with what it costs (an extra round trip, and touching the controllers instead of
+  two helpers) and why the clamp is proposed anyway. The re-taken
+  `members-page-clamped-after-delete.png` happens to show the whole mismatch in
+  one image — address bar on `members_page=4`, paginator on page 3 of 3
+  `(5-6/6)`, hovered row link on `/memberships/6?members_page=4` — and the dossier
+  points at it.
 
 ---
 
 ### F07 — The RuboCop evidence is not reproducible: 4 offences on those files, not 0
 
-- **Status:** open
+- **Status:** resolved 2026-09-06
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -494,13 +560,26 @@ Record the tool version alongside the count, and record the delta rather than an
 absolute zero when the baseline is not zero: "4 offences before, 4 after, same
 four lines, none on changed code, rubocop 1.90.0".
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06, and the finding's diagnosis was right — it was
+  the RuboCop version. Re-measured with the version the `Gemfile` pins, **rubocop
+  1.88.2** with rubocop-rails 2.34.3, in two detached worktrees, one at the r24882
+  baseline `2563fa6a5` and one at the feature tip `885f04097`:
+  `10 files inspected, no offenses detected` in both. So the dossier's `0` and
+  baseline `0` were correct; what was missing was the tool version that makes them
+  reproducible, and that is now recorded in both `dossier.md` and `status.md`.
+  The four `Rails/StrongParametersExpect` offences the review saw come from the
+  unpinned 1.90.0: the cop is `Enabled: pending` and Redmine sets
+  `NewCops: enable`, so it does run under 1.88.2, but rubocop-rails 2.34.3 does not
+  yet flag the plain `params[:id]` / `params[:project_id]` reads in
+  `find_optional_project`, `find_model_object` and `find_group` that a later
+  version does. All four are on pre-existing upstream lines, so the delta is `0`
+  under either version. Both facts are now in the dossier, next to each other.
 
 ---
 
 ### F08 — The committer-identity count in `status.md` does not match the branch
 
-- **Status:** open
+- **Status:** resolved 2026-09-06
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -536,13 +615,18 @@ Other sessions push to this branch in parallel, so the count can move; it was
 Recount, or state it without a number ("most of the own commits on this branch
 already have it").
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06 by removing the number rather than correcting
+  it, because it keeps moving — the review saw 8 of 15, and on 2026-09-06 the
+  branch carried 33 own commits of which 16 have `Claude` as committer. Counting it
+  per feature was the mistake. `status.md` now states the cause in one sentence,
+  gives the 2026-09-06 measurement as a snapshot, and points at **K-13** in
+  `docs/DECISIONS.md`, which is where the question now lives. See Q01.
 
 ---
 
 ### N01 — The clamp's comment and its arithmetic are duplicated verbatim in two helpers
 
-- **Status:** open
+- **Status:** resolved 2026-09-06
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** minimality
@@ -576,13 +660,24 @@ Read `git show 885f04097`.
 Leave it, or keep one sentence instead of two. Not worth a round trip on its
 own; mentioned so the fixing session can decide once.
 
-**Resolution:**
+- **Resolution:** decided 2026-09-06, and the decision is to leave it — which is
+  the first of the two options the finding offers, taken deliberately so the next
+  session does not weigh it again. Three reasons, in order of weight. The comment
+  states a *why* and not a *what*, which is exactly what INV-3 allows and what
+  Redmine's own measured density supports (29% of core methods carry a comment
+  line). The duplication is two helpers of four lines each, and the only way to
+  remove it is to extract the arithmetic into `Redmine::Pagination` — which is the
+  change the dossier has already settled on *not* making, and which the note now
+  names as an alternative belonging in its own issue. And the diff is a proposal
+  on someone else's patch: trimming it further to save two comment lines costs a
+  round trip and gains nothing a committer would ask for. Logged in
+  `docs/features/members-pagination/decisions.md`.
 
 ---
 
 ### Q01 — The three commits GEOxyz will run carry `Committer: Claude <noreply@anthropic.com>`
 
-- **Status:** question
+- **Status:** raised to Jan as K-13, 2026-09-06
 - **Severity:** question
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -622,7 +717,17 @@ it per feature, or schedule one force-push at a moment when no session is
 pushing. Either way it should be decided once in `docs/DECISIONS.md` rather than
 re-disclosed in every status file.
 
-**Resolution:**
+- **Resolution:** raised to Jan on 2026-09-06 as **K-13** in `docs/DECISIONS.md`,
+  which is what this question asked for — decided once, framework-wide, instead of
+  re-disclosed in every status file. The block states the cause (a
+  `tools/session-push.sh` replay rewrites the committer), the current measurement
+  (16 of 33 own commits on `7.0-stable-GEOxyz`), and three options: accept it
+  permanently; force-push once at a quiet moment; or fix the cause in
+  `session-push.sh` so it stops growing while leaving history intact. The
+  recommendation is the third, optionally followed by the second. It is explicitly
+  not urgent, because `git format-patch` carries the **author** and not the
+  committer, so no patch is affected. `status.md` no longer spells the issue out
+  per feature — it points at K-13.
 
 ---
 
