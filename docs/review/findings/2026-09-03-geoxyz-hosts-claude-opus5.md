@@ -53,6 +53,7 @@ stanza in the file.
 - **Category:** correctness
 - **Where:** `config/environments/development.rb:63`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-06 — the pattern carries its own `i` flag; the five case variants went from two passing / three blocked to five passing, measured through `Permissions#allows?` and against a running server
 
 **What is wrong**
 
@@ -135,6 +136,7 @@ The measured table is in `docs/features/geoxyz-hosts/status.md`.
 - **Category:** security
 - **Where:** `config/environments/development.rb:63`
 - **Invariant touched:** none
+- **Resolution:** fixed 2026-09-06 — the `.*` prefix became `[a-z0-9-]+(?:\.[a-z0-9-]+)*`, so all thirteen junk-prefixed strings are refused while `a.b.c.geoxyz.eu` still passes and the apex still does not
 
 **What is wrong**
 
@@ -238,6 +240,7 @@ copy-paste into `production.rb`) is closed for free rather than left standing.
 - **Category:** conventions
 - **Where:** `config/environments/development.rb:63`
 - **Invariant touched:** none
+- **Resolution:** wontfix 2026-09-06 — the line stays in `config/environments/development.rb`, per this finding's own first option; both alternatives are worse and the reasons are recorded in `docs/features/geoxyz-hosts/decisions.md`
 
 **What is wrong**
 
