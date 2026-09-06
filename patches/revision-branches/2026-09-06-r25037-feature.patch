@@ -1,6 +1,6 @@
-From 3e2c6b432cede0cb8207035e8a5020f29715b6e8 Mon Sep 17 00:00:00 2001
+From 53faa9a0fbf1518ddb326f23115ee1524c82fc3e Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Sat, 5 Sep 2026 17:46:42 +0000
+Date: Sun, 6 Sep 2026 16:33:01 +0000
 Subject: [PATCH] Show the Git branches that contain a revision (#5386).
 
 ---
@@ -18,8 +18,8 @@ Subject: [PATCH] Show the Git branches that contain a revision (#5386).
  test/functional/settings_controller_test.rb   | 15 ++++
  test/unit/changeset_test.rb                   |  6 ++
  .../redmine/scm/adapters/git_adapter_test.rb  | 38 ++++++++++
- test/unit/repository_git_test.rb              | 53 +++++++++++++
- 15 files changed, 369 insertions(+)
+ test/unit/repository_git_test.rb              | 61 +++++++++++++++
+ 15 files changed, 377 insertions(+)
 
 diff --git a/app/helpers/repositories_helper.rb b/app/helpers/repositories_helper.rb
 index 7cfbcdda0..736ce4333 100644
@@ -59,7 +59,7 @@ index 7cfbcdda0..736ce4333 100644
      pagination_links_each @paginator do |text, parameters, options|
        if entry = @entries[parameters[:page] - 1]
 diff --git a/app/models/changeset.rb b/app/models/changeset.rb
-index 49c323aca..4b6579ce2 100644
+index 49c323aca..65016c62d 100644
 --- a/app/models/changeset.rb
 +++ b/app/models/changeset.rb
 @@ -199,6 +199,18 @@ class Changeset < ApplicationRecord
@@ -92,7 +92,7 @@ index 49c323aca..4b6579ce2 100644
 +    Setting.revision_branches_excluded.to_s.split(',').map(&:strip).reject(&:blank?).filter_map do |pattern|
 +      if Setting.revision_branches_enable_regex?
 +        begin
-+          Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
++          Regexp.new("\\A(?:#{pattern})\\z", Regexp::IGNORECASE)
 +        rescue RegexpError
 +          nil
 +        end
@@ -515,10 +515,10 @@ index 3f0451601..20f488dc9 100644
        assert_equal 'master-20120212', @adapter.default_branch
  
 diff --git a/test/unit/repository_git_test.rb b/test/unit/repository_git_test.rb
-index fec241c7a..88105aa79 100644
+index fec241c7a..73e302f08 100644
 --- a/test/unit/repository_git_test.rb
 +++ b/test/unit/repository_git_test.rb
-@@ -547,6 +547,59 @@ class RepositoryGitTest < ActiveSupport::TestCase
+@@ -547,6 +547,67 @@ class RepositoryGitTest < ActiveSupport::TestCase
        assert_equal 'abc7234cb2750b63f47bff735edc50a1c0a433c2', c.event_url[:rev]
      end
  
@@ -556,6 +556,14 @@ index fec241c7a..88105aa79 100644
 +      with_settings :revision_branches_excluded => '.*-\d+',
 +                    :revision_branches_enable_regex => '0' do
 +        assert_equal ['master', 'master-20120212', 'test_branch'], c.branches
++      end
++    end
++
++    def test_changeset_branches_should_anchor_a_regular_expression_containing_alternation
++      c = new_changeset('fba357b886984ee71185ad2065e65fc0417d9b92')
++      with_settings :revision_branches_excluded => 'master|test',
++                    :revision_branches_enable_regex => '1' do
++        assert_equal ['master-20120212', 'test_branch'], c.branches
 +      end
 +    end
 +

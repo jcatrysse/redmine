@@ -123,7 +123,7 @@ nope                 valid_name?=false
 
 ### F01 — the exclusion patterns anchor only the first and last alternative of a regular expression
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -191,13 +191,13 @@ a separate question and explicitly not this patch's to answer (INV-1) — but if
 the answer here is "keep it consistent with core and leave it", that sentence
 belongs in the dossier so a reviewer sees it was a choice.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06 — the pattern is now interpolated as `\A(?:#{pattern})\z`, so both anchors apply to the whole of it. `test_changeset_branches_should_anchor_a_regular_expression_containing_alternation` pins it and is red on the old code: with the group reverted, `master|test` returns `["test_branch"]` where it should return `["master-20120212", "test_branch"]` — `master-20120212` was swallowed because the bare `\A` bound only to the first alternative. `MailHandler` is deliberately **not** changed (INV-1); the dossier now carries a paragraph saying the divergence from `mail_handler.rb:365` is a choice and that the same bug is worth a separate issue there.
 
 ---
 
 ### F02 — the only brake on the issue tab's fork count is a setting that also truncates the repository log
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** performance
@@ -247,13 +247,13 @@ fork count, what its default is, and that lowering it also shortens the
 repository log — so the committer weighs the trade-off the author already
 weighed instead of discovering it.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06, in the dossier — no code change. The finding was that the reuse of `repository_log_display_limit` was written up only as a saving. "Alternatives considered" now states the cost too: the default is 100, so a hundred associated revisions means a hundred `git branch --contains` on one XHR; the setting is read in exactly one other place (`RepositoriesController#show`); and lowering it to get cheaper issue tabs also truncates every repository log page. It closes by naming the fifth setting as the alternative and leaving that call to the committer rather than assuming it.
 
 ---
 
 ### F03 — a branch whose name is not UTF-8 is displayed, but its link leads to "not found"
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed (the mechanism, on the fixture repository)
 - **Category:** correctness
@@ -314,4 +314,4 @@ pre-existing, and it is a candidate for a separate trunk issue — the fix belon
 in whatever maps a displayed ref name back to its bytes, which is core's problem
 and not this feature's.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06, in the dossier — no code change, and none is right here. A new "What this does not fix" section states the defect, shows the measured output from Redmine's own Git fixture (the two latin-1 branch names give `valid_name?=false` and land on `show_error_not_found`), and establishes that it is pre-existing: `_navigation.html.erb`'s branch dropdown is built from `@repository.branches`, runs the identical `scm_iconv`, and fails in the same place on trunk today. It also says plainly what the patch *does* do — move a link that was broken in one dropdown onto three pages — so a reviewer meets it in the dossier rather than by tripping over it.

@@ -209,7 +209,21 @@ migration, no gem, no route, no permission. Justification per setting (INV-6):
 | `display_revision_branches` | `0` | The command must be opt-in, or every existing installation pays note 18's cost without asking. Off by default is what makes the patch safe to merge. |
 | `display_associated_revision_branches` | `0` | Separate from the first because the cost is different in kind: the issue tab renders N changesets, so N commands. An administrator who wants the cheap half must be able to take only the cheap half. |
 | `revision_branches_excluded` | `''` | A repository with `dependabot/*` branches produces a list nobody reads. Empty means exclude nothing, so this is inert until used. |
-| `revision_branches_enable_regex` | `0` | Direct precedent in core: `mail_handler_excluded_filenames` is paired with `mail_handler_enable_regex_excluded_filenames` in exactly this way, with the same glob-or-regex switch and the same shared label. `Changeset#excluded_branch_patterns` is `MailHandler#accept_attachment?` with the settings renamed. |
+| `revision_branches_enable_regex` | `0` | Direct precedent in core: `mail_handler_excluded_filenames` is paired with `mail_handler_enable_regex_excluded_filenames` in exactly this way, with the same glob-or-regex switch and the same shared label. `Changeset#excluded_branch_patterns` is `MailHandler#accept_attachment?` with the settings renamed — with **one deliberate difference**, below. |
+
+**Where this deliberately differs from `MailHandler`, and why.** The exclusion
+patterns are anchored as `\A(?:<pattern>)\z`, with the group.
+`app/models/mail_handler.rb:365` writes the same expression **without** it, as
+`%r{\A#{pattern}\z}i`, and that is a bug: alternation binds more loosely than
+concatenation, so `feature|hotfix` there means "starts with feature **or** ends
+with hotfix" and quietly matches `feature-123` and `my-hotfix`. The new code
+groups the pattern so both anchors apply to all of it, which is what an
+administrator typing an exact-match list expects, and
+`test_changeset_branches_should_anchor_a_regular_expression_containing_alternation`
+pins it. `MailHandler` is **not** changed here — that is a separate defect in a
+file this feature has no business touching — but it is worth a separate issue,
+and this paragraph exists so a reviewer sees the difference was a choice rather
+than an oversight.
 
 They go on the **Repositories** tab, with the other SCM settings.
 `autofetch_changesets` and `repository_log_display_limit` are its neighbours;
@@ -242,6 +256,32 @@ downgrading is only a code revert. Non-Git repositories are unaffected:
 `Changeset#branches` returns `[]` unless the adapter responds to
 `branches_containing`.
 
+# What this does not fix
+
+**A branch whose name is not UTF-8 is shown, but its link leads to "not
+found".** `branches_containing` converts each name from the repository's path
+encoding to UTF-8 for display, exactly as the existing `branches` and `tags` do.
+The link then carries the converted name as `:rev`, and on the way back in
+`valid_name?` runs `git show-ref -- <name>`, which looks the ref up by its raw
+bytes. The name that is safe to display is not the name that can be looked up.
+Measured on Redmine's own Git fixture, which has two latin-1 branch names:
+
+    latin-1-branch-Ü-01      valid_name?=false   -> show_error_not_found
+    latin-1-branch-Ü-02      valid_name?=false   -> show_error_not_found
+    latin-1-path-encoding    valid_name?=true
+    master                   valid_name?=true
+
+**This is not new and this patch does not cause it.** The branch dropdown in
+`app/views/repositories/_navigation.html.erb` is built from
+`@repository.branches`, runs the identical `scm_iconv`, and fails in the same
+place on trunk today. Fixing it means deciding how a displayed ref name maps
+back to its bytes, which is core's question and much larger than this feature.
+What the patch does do is take a link that was broken in one dropdown and put it
+on the revision page, the diff page and the issue tab, so it is worth naming
+rather than leaving for a reviewer to trip over. The patch's own encoding tests
+cover the conversion but deliberately not the round trip, since the round trip
+is the pre-existing part.
+
 # Alternatives considered
 
 **Cache branch membership in the database, refreshed on rescan.** This is what
@@ -261,6 +301,18 @@ issue tab is bounded rather than batched: above `repository_log_display_limit`
 revisions it shows no branches at all, which reuses the setting an
 administrator already tunes for "how many revisions a repository view shows"
 instead of adding a fifth.
+
+**Say plainly what that reuse costs, because it is not only a saving.** The
+default is 100, so an issue with a hundred associated revisions fires a hundred
+`git branch --contains` on one XHR — bounded, but not small, and each one walks
+the commit graph. `repository_log_display_limit` is read in exactly one other
+place, `RepositoriesController#show`, where it caps the repository log. So an
+administrator who wants branches only on small issues has one lever, and pulling
+it to ten also truncates every repository log page in the installation to ten
+revisions. The two cannot be tuned apart. That is the deliberate trade against a
+fifth setting (INV-6), and a reviewer who would rather have the fifth setting
+should say so — it is four lines and one locale key, and the answer is theirs to
+give rather than ours to assume.
 
 **Group branch names by a common prefix,** which the GEOxyz 5.1 code did with
 `name.downcase.gsub(/^\d+/, '#####').split(/[\-._]/).first`, collapsing a group
@@ -296,6 +348,7 @@ three monkey-patches, and has been carried by volunteers since 2015.
 | `RepositoryGitTest#test_changeset_branches` | `Changeset#branches` against a real repository |
 | `RepositoryGitTest#test_changeset_branches_without_scmid_should_be_empty` | no command is attempted without an scmid |
 | `RepositoryGitTest#test_changeset_branches_should_exclude_names_matching_a_pattern` | `master` excludes only `master`, `master*` also excludes `master-20120212` — the glob form, and that the exclusion is anchored |
+| `RepositoryGitTest#test_changeset_branches_should_anchor_a_regular_expression_containing_alternation` | `master\|test` excludes `master` and nothing else — not `master-20120212`, which an ungrouped `\A...\z` would have swallowed. This is the case that separates this code from `MailHandler`'s, and it is red without the group: `["master-20120212", "test_branch"]` becomes `["test_branch"]` |
 | `RepositoryGitTest#test_changeset_branches_should_exclude_names_matching_a_regular_expression` | `.*-\d+` excludes `master-20120212` with the regex setting on, and excludes nothing with it off — so the switch is what decides, not the pattern |
 | `RepositoryGitTest#test_changeset_branches_should_ignore_an_invalid_regular_expression` | `[, master` drops the invalid pattern, keeps applying `master`, and does not raise on the page |
 | `ChangesetTest#test_branches_should_be_empty_for_a_scm_without_branch_support` | Subversion is unaffected |

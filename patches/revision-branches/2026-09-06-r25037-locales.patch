@@ -1,6 +1,6 @@
-From 3e2c6b432cede0cb8207035e8a5020f29715b6e8 Mon Sep 17 00:00:00 2001
+From 53faa9a0fbf1518ddb326f23115ee1524c82fc3e Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Sat, 5 Sep 2026 17:46:42 +0000
+Date: Sun, 6 Sep 2026 16:33:01 +0000
 Subject: [PATCH] Show the Git branches that contain a revision (#5386).
 
 ---
