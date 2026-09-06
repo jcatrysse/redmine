@@ -1015,3 +1015,39 @@ toegevoegd.
   de tip (`git rev-parse HEAD^{tree}` voor en na moet gelijk zijn) in plaats van
   op `git diff` alleen, en op de datums — `filter-branch` bewaart ze, een
   gewone `rebase` niet.
+
+
+- **`tools/session-push.sh` kan een patchbranch die je tegen verse trunk hebt
+  herzet niet pushen, en de foutmelding wijst de verkeerde kant op.** Bij het
+  verversen van `patch/imap-oauth` naar r25037 (g05) zag hij 88 nieuwe commits
+  op `origin/patch/imap-oauth` staan — dat waren gewoon de trunk-commits waar
+  de oude tip nog niet op zat — en weigerde met "de commits to replay have 3
+  different committers: Go MAEDA, Jan Catrysse, Marius Balteanu". Die melding
+  leest als een INV-4-probleem terwijl er niets mis is: hij wil bovenop de
+  remote replayen, en dat is precies wat je bij een refresh **niet** wilt.
+  Doen wat de andere slugs op 2026-09-05 ook gedaan hebben: **eerst de oude tip
+  als eigen branch naar de remote duwen** (hier
+  `archive/patch-imap-oauth-r24882-before-round2`, zodat de SHA `d63cb35a5`
+  waar de reviewbevindingen naar verwijzen oplosbaar blijft, precies zoals bij
+  K-13), en dan `git push --force-with-lease=refs/heads/patch/<slug>:<oude sha>`.
+  Dat is geen overtreding van "nooit rebasen": die regel gaat over
+  `7.0-stable-GEOxyz`, waar een rebase elke checkout van GEOxyz ongeldig maakt.
+  Een patchbranch is een indieningsvehikel en wordt per definitie tegen trunk
+  ververst. Gevonden 2026-09-06 bij `imap-oauth`.
+
+- **Drie volledige `test:all`-suites tegelijk op vier cores maakt
+  Selenium-systeemtests willekeurig rood, en dat kost een uur uitzoeken.** Op
+  2026-09-06 liepen de patch-, de GEOxyz- en de trunk-suite gelijktijdig. De
+  GEOxyz-run gaf `1 failures` op
+  `StickyIssueHeaderSystemTest#test_sticky_issue_header_appears_on_scroll`, de
+  patch-run een extra `OauthProviderSystemTest#test_application_creation_and_authorization`
+  en de trunk-run een extra `IssuesSystemTest#test_update_issue_status` — drie
+  verschillende tests, geen enkele met iets te maken met de feature. Alle drie
+  groen zodra je ze los draait, en alle drie weg zodra de suites één voor één
+  draaien: GEOxyz ging van `1 failures` naar `6123 runs, 0 failures`, en de
+  faalnamenlijsten van patch en trunk werden identiek (`diff` leeg) in plaats
+  van elk één naam te verschillen. **Draai volledige suites dus serieel** als
+  het cijfer in een dossier terechtkomt; parallel draaien is prima om vroeg te
+  zien of er iets kapot is, maar niet om INV-8 mee te bewijzen. Een systeemtest
+  die onder belasting omvalt is geen "flake die je mag negeren" — het is een
+  meting die je opnieuw moet doen onder de juiste omstandigheden.
