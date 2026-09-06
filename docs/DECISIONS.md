@@ -1095,3 +1095,19 @@ ook `7.0-stable-GEOxyz` zelf, na de herschrijving van optie B.
 `CLAUDE.md` (INV-4) en `docs/STATE.md` (de gereedschapstabel) zeggen dit nu ook,
 want de oude formulering van INV-4 ging alleen over de commit-boodschap en dat
 is precies de helft die níét het probleem was.
+
+
+## Beslist (Jan) — 2026-09-06, imap-oauth (reviewronde 3)
+
+- **F07, de splitsing aanbieden in de note: optie B.** De note aan
+  [#43023](https://www.redmine.org/issues/43023) zegt in één zin dat de patch
+  netjes in tweeën valt — het ophaalgedeelte (`oauth2_token=`,
+  `oauth2_credentials=` en `Oauth2Client.access_token`) en de eenmalige
+  toestemmingsstap (`oauth2_authorize`, `Oauth2Client.authorize_url` en
+  `refresh_token`) — als de committer liever eerst alleen het eerste neemt.
+  **De bijlage blijft één patchbestand**; het aanbod staat in de tekst, niet in
+  de bestanden. Reden: op #29664 vroeg Holger Just (note 37) precies om zo'n
+  splitsing, dus de reflex is te verwachten, en hem vóór zijn met een zin die
+  Jan al beantwoord heeft kost niets. Wat níét verandert: de beslissing van
+  2026-09-03 dat de toestemmingsstap in de patch hoort en door iedereen te doen
+  moet zijn, staat en wordt hierdoor niet heropend.
