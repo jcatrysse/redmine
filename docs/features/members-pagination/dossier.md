@@ -356,6 +356,19 @@ standalone to a clean `origin/master`, and INV-2 keeps such a file out of
   clamp tests are the difference)
 - **full** suite on pristine trunk r24882: `5920 runs, 31455 assertions, 27 failures, 2 errors, 92 skips`
 - **full** suite on `7.0-stable-GEOxyz` with all three commits: `6000 runs, 31988 assertions, 0 failures, 0 errors, 39 skips`
+- **full** suite re-run 2026-09-06 on the current `7.0-stable-GEOxyz` tip,
+  `tools/test-env.sh /home/user/wt/geoxyz bundle exec ruby bin/rails test:all`,
+  859 s: `6021 runs, 31533 assertions, 0 failures, 0 errors, 33 skips`. Green,
+  which is what G3 and G8 ask for. The counts differ from the line above
+  because the branch has moved: it carried the three commits of this feature
+  and twelve own commits when that line was measured, and thirty-three now, by
+  other sessions. Runs are up by 21 and skips down by 6; assertions are 455
+  lower, which is where the difference is least self-explanatory — assertion
+  counts in Redmine's system tests are not stable between runs, and no test
+  went from passing to skipped in a way that touches members or groups. What
+  matters for this feature is measured separately and directly: the five
+  affected suites are `184 runs, 857 assertions, 0 failures, 0 errors,
+  0 skips`.
 - failing names identical between the patched and the pristine run: ja — 29 namen, exact dezelfde verzameling.
   All of them are Subversion repository tests; `svn` is not installed in this
   image, which `docs/runbook.md` records. None of them touch members or groups.

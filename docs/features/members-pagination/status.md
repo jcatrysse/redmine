@@ -56,6 +56,11 @@ als je een lid toevoegt, bewerkt of verwijdert.
 - Volledige suite met patch (`patch/members-pagination`, alle drie de commits): `5934 runs, 31506 assertions, 27 failures, 2 errors, 92 skips`
 - Volledige suite op schone trunk r24882: `5920 runs, 31455 assertions, 27 failures, 2 errors, 92 skips`
 - Volledige suite op `7.0-stable-GEOxyz`: `6000 runs, 31988 assertions, 0 failures, 0 errors, 39 skips`
+- Volledige suite opnieuw gedraaid op 2026-09-06 op de huidige tip van
+  `7.0-stable-GEOxyz` (859 s): `6021 runs, 31533 assertions, 0 failures,
+  0 errors, 33 skips`. **Groen.** De aantallen wijken af van de regel hierboven
+  omdat de branch intussen van vijftien naar drieëndertig eigen commits is
+  gegaan, door andere sessies.
 - Faalnamen identiek met de schone run: ja — 29 namen, exact dezelfde verzameling. Alle betrokken tests zijn
   Subversion-repositorytests; `svn` zit niet in dit image (zie
   `docs/runbook.md`). Geen enkele raakt leden of groepen.
