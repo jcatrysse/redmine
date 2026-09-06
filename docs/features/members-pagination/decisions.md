@@ -15,3 +15,21 @@
 - **2026-09-03 — Authorschap van de twee overgenomen commits staat op Takenori
   TAKAKI.** Het is zijn code; `git commit --author` legt dat vast en de
   commit-boodschap noemt #43355.
+- **2026-09-06 — Het commentaar in de clamp blijft staan, in beide helpers.**
+  Bevinding N01 van de review noemt de twee regels commentaar en de gedupliceerde
+  rekenregel; de gegeven keuze was "laten staan of één zin in plaats van twee".
+  Het wordt laten staan, en één keer vastgelegd zodat de volgende sessie het niet
+  opnieuw weegt. Het commentaar zegt een *waarom* en geen *wat*, wat INV-3
+  toestaat en wat past bij Redmine's gemeten dichtheid (29% van de kernmethodes
+  heeft een commentaarregel erboven). De duplicatie is alleen weg te halen door
+  de rekenregel naar `Redmine::Pagination` te tillen, en dat is precies het
+  alternatief dat het dossier bewust niet kiest. En het is een voorstel op
+  andermans patch: hem verder uitkleden om twee commentaarregels te sparen kost
+  een ronde en levert niets op waar een committer om vraagt.
+- **2026-09-06 — De mismatch tussen adresbalk en getoonde pagina (F06) wordt
+  benoemd, niet gerepareerd.** De clamp zit in de paginator, dus de rijlinks en
+  de adresbalk houden het gevraagde paginanummer terwijl een andere pagina
+  gerenderd wordt. Repareren zou de vier regels naar de controllers verbreden op
+  andermans patch, tegen INV-1 in. In plaats daarvan staat het gevolg in één
+  alinea in de note, en "redirect naar een geldige pagina" staat als vierde
+  alternatief in *Alternatives considered*, met wat het kost. De committer kiest.
