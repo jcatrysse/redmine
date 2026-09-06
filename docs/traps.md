@@ -981,3 +981,18 @@ toegevoegd.
   dat het goed staat. Het sjabloon en de tool horen gelijkgetrokken te worden,
   maar dat is een framework-wijziging en dus niet iets wat een feature-sessie
   zelf doet.
+
+
+- **Een schermafdruk van een lege lijst bewijst niets zonder de adresbalk.**
+  `defect-empty-page-after-delete.png` liet een leeg ledentabblad zien op een
+  project met zes leden — maar niets in dat beeld zei dat het project leden
+  hád, en niets zei op welke pagina je stond. Voor een lezer was het niet te
+  onderscheiden van een project zonder leden, wat precies de claim was.
+  Playwright fotografeert alleen de viewport, dus de browserchrome zit er nooit
+  op. Oplossing, gebruikt in `verify/members-pagination.mjs` (`MODE=note-shots`):
+  start Chromium **headed** op een Xvfb-display en grijp het hele scherm met
+  `xwd -root | convert xwd:- out.png`. `x11-apps` en `imagemagick` zitten niet
+  in het image en moeten eerst met `apt-get install` erbij; Playwrights eigen
+  ffmpeg-build heeft géén `x11grab`, dus die route loopt dood. Regel: als de
+  tekst bij een screenshot een paginanummer, een URL of een aantal noemt, moet
+  dat in het beeld zelf te zien zijn — anders een voor/na-paar maken.
