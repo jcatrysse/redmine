@@ -1,31 +1,39 @@
-From d63cb35a5bf3a15883b2ca53d8f2059cdb02e439 Mon Sep 17 00:00:00 2001
+From fd712001c09848e9bfbd05d72997ffc6c6d61cea Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Thu, 3 Sep 2026 11:51:09 +0000
+Date: Sun, 6 Sep 2026 10:19:07 +0000
 Subject: [PATCH] Authenticate IMAP inbound mail with an OAuth 2.0 access token
  (#43023).
 
 ---
- lib/redmine/imap.rb                         |  16 +-
- lib/redmine/oauth2_client.rb                | 158 ++++++++++++
- lib/tasks/email.rake                        |  69 ++++++
- test/unit/lib/redmine/imap_test.rb          |  78 ++++++
- test/unit/lib/redmine/oauth2_client_test.rb | 261 ++++++++++++++++++++
- 5 files changed, 581 insertions(+), 1 deletion(-)
+ lib/redmine/imap.rb                         |  20 +-
+ lib/redmine/oauth2_client.rb                | 165 ++++++++++++
+ lib/tasks/email.rake                        |  69 +++++
+ test/unit/lib/redmine/imap_test.rb          |  90 +++++++
+ test/unit/lib/redmine/oauth2_client_test.rb | 275 ++++++++++++++++++++
+ 5 files changed, 618 insertions(+), 1 deletion(-)
  create mode 100644 lib/redmine/oauth2_client.rb
  create mode 100644 test/unit/lib/redmine/imap_test.rb
  create mode 100644 test/unit/lib/redmine/oauth2_client_test.rb
 
 diff --git a/lib/redmine/imap.rb b/lib/redmine/imap.rb
-index 77b8da80f..b94d95694 100644
+index 77b8da80f..329ca7462 100644
 --- a/lib/redmine/imap.rb
 +++ b/lib/redmine/imap.rb
-@@ -41,7 +41,13 @@ module Redmine
+@@ -37,11 +37,21 @@ module Redmine
+         starttls = !imap_options[:starttls].nil?
+         folder = imap_options[:folder] || 'INBOX'
+ 
++        # Obtained before the connection is opened, so that a slow or failing
++        # token endpoint costs no idle unauthenticated IMAP connection.
++        access_token = oauth2_access_token(imap_options) unless imap_options[:username].nil?
++
+         imap = Net::IMAP.new(host, port: port, ssl: ssl)
          if starttls
            imap.starttls
          end
 -        imap.login(imap_options[:username], imap_options[:password]) unless imap_options[:username].nil?
 +        unless imap_options[:username].nil?
-+          if (access_token = oauth2_access_token(imap_options))
++          if access_token
 +            imap.authenticate('XOAUTH2', imap_options[:username], access_token)
 +          else
 +            imap.login(imap_options[:username], imap_options[:password])
@@ -34,7 +42,7 @@ index 77b8da80f..b94d95694 100644
          imap.select(folder)
          imap.uid_search(['NOT', 'SEEN']).each do |uid|
            msg = imap.uid_fetch(uid, 'RFC822')[0].attr['RFC822']
-@@ -68,6 +74,14 @@ module Redmine
+@@ -68,6 +78,14 @@ module Redmine
  
        private
  
@@ -51,10 +59,10 @@ index 77b8da80f..b94d95694 100644
        end
 diff --git a/lib/redmine/oauth2_client.rb b/lib/redmine/oauth2_client.rb
 new file mode 100644
-index 000000000..31e5db334
+index 000000000..c87129fff
 --- /dev/null
 +++ b/lib/redmine/oauth2_client.rb
-@@ -0,0 +1,158 @@
+@@ -0,0 +1,165 @@
 +# frozen_string_literal: true
 +
 +# Redmine - project management software
@@ -185,7 +193,7 @@ index 000000000..31e5db334
 +          raise message
 +        end
 +
-+        token = JSON.parse(response.body)[name]
++        token = json_body(response)[name]
 +        if token.blank?
 +          raise "OAuth 2.0 token request returned no #{name.tr('_', ' ')}"
 +        end
@@ -206,9 +214,16 @@ index 000000000..31e5db334
 +      # (invalid_grant for a revoked refresh token, invalid_client for a wrong
 +      # secret). It never carries a credential.
 +      def error_code(response)
-+        JSON.parse(response.body.to_s)['error'].presence
++        json_body(response)['error'].presence
++      end
++
++      # The parsed response body, empty when the body is not JSON at all. An
++      # intercepting proxy answers with an HTML page, and that has to read as a
++      # token request that returned no token rather than as a JSON error.
++      def json_body(response)
++        JSON.parse(response.body.to_s)
 +      rescue JSON::ParserError
-+        nil
++        {}
 +      end
 +    end
 +  end
@@ -316,10 +331,10 @@ index 4ba669510..9bf22d9f9 100644
  
 diff --git a/test/unit/lib/redmine/imap_test.rb b/test/unit/lib/redmine/imap_test.rb
 new file mode 100644
-index 000000000..2b09001da
+index 000000000..997fc5fb5
 --- /dev/null
 +++ b/test/unit/lib/redmine/imap_test.rb
-@@ -0,0 +1,78 @@
+@@ -0,0 +1,90 @@
 +# frozen_string_literal: true
 +
 +# Redmine - project management software
@@ -373,6 +388,18 @@ index 000000000..2b09001da
 +    )
 +  end
 +
++  def test_check_should_not_open_a_connection_when_the_token_cannot_be_obtained
++    Net::IMAP.expects(:new).never
++    Redmine::Oauth2Client.expects(:access_token).raises('OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)')
++
++    assert_raise(RuntimeError) do
++      Redmine::IMAP.check(
++        :host => 'imap.example.net', :username => 'redmine@example.net',
++        :oauth2_credentials => '/etc/redmine/imap_oauth2.yml'
++      )
++    end
++  end
++
 +  def test_check_should_login_with_the_password_when_the_oauth2_options_are_blank
 +    imap = connected_imap
 +    imap.expects(:authenticate).never
@@ -400,10 +427,10 @@ index 000000000..2b09001da
 +end
 diff --git a/test/unit/lib/redmine/oauth2_client_test.rb b/test/unit/lib/redmine/oauth2_client_test.rb
 new file mode 100644
-index 000000000..6b18bbd93
+index 000000000..8fd3b6d51
 --- /dev/null
 +++ b/test/unit/lib/redmine/oauth2_client_test.rb
-@@ -0,0 +1,261 @@
+@@ -0,0 +1,275 @@
 +# frozen_string_literal: true
 +
 +# Redmine - project management software
@@ -436,12 +463,15 @@ index 000000000..6b18bbd93
 +
 +  def test_access_token_should_return_the_token_of_a_refresh_token_grant
 +    request = nil
-+    expect_token_request(response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token'}.to_json)) {|req| request = req}
++    http = expect_token_request(response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token'}.to_json)) {|req| request = req}
 +
 +    with_credentials(CREDENTIALS) do |file|
 +      assert_equal 'an-access-token', Redmine::Oauth2Client.access_token(file)
 +    end
 +
++    assert http.use_ssl?
++    assert_equal 60, http.open_timeout
++    assert_equal 60, http.read_timeout
 +    assert_equal '/oauth2/v2.0/token', request.path
 +    assert_equal(
 +      {
@@ -638,6 +668,15 @@ index 000000000..6b18bbd93
 +    end
 +  end
 +
++  def test_access_token_should_raise_when_a_successful_response_has_no_json_body
++    expect_token_request(response(Net::HTTPOK, '200', 'OK', '<html>proxy interception page</html>'))
++
++    with_credentials(CREDENTIALS) do |file|
++      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.access_token(file)}
++      assert_equal 'OAuth 2.0 token request returned no access token', error.message
++    end
++  end
++
 +  private
 +
 +  def with_credentials(credentials)
@@ -655,14 +694,16 @@ index 000000000..6b18bbd93
 +    response
 +  end
 +
++  # Net::HTTP.start hands back what its block returns, and that return value is
++  # what the client relies on, so the method itself is left in place and only
++  # the connection is stubbed out. Returns the connection, to assert on.
 +  def expect_token_request(response, &capture)
-+    http = mock('http')
++    http = Net::HTTP.new('login.example.net', 443)
++    http.stubs(:do_start)
++    http.stubs(:do_finish)
 +    http.expects(:request).with {|request| capture&.call(request); true}.returns(response)
-+    Net::HTTP
-+      .expects(:start)
-+      .with('login.example.net', 443, :use_ssl => true, :open_timeout => 60, :read_timeout => 60)
-+      .yields(http)
-+      .returns(response)
++    Net::HTTP.expects(:new).with {|host, port, *| host == 'login.example.net' && port == 443}.returns(http)
++    http
 +  end
 +end
 -- 

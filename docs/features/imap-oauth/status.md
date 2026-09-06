@@ -5,7 +5,7 @@ commit_51: bbf5c0eb3
 geoxyz: live
 geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd
 upstream: patch klaar
-patch: patches/imap-oauth/2026-09-03-r24882-feature.patch
+patch: patches/imap-oauth/2026-09-06-r25037-feature.patch
 issue: 43023
 ---
 
@@ -13,15 +13,39 @@ issue: 43023
 
 ## Waar het staat
 
-Af, en herschreven. De patch die al een jaar aan Jans eigen issue
-[#43023](https://www.redmine.org/issues/43023) hangt is 1197 regels met twee
-nieuwe gems en vier nieuwe rake-taken; deze is 351 regels, nul nieuwe gems en
-nul nieuwe taakfamilies: twee opties op de bestaande `receive_imap`, plus één
-taak voor de eenmalige toestemmingsstap. Alles is bewezen: volledige suites aan
-beide kanten, RuboCop nul, de patch applyt op een schone trunk r24882, en de
-hele keten is end-to-end gedraaid tegen een échte IMAP-server en een échte
-HTTPS-tokenendpoint, met de issues die daaruit in Redmine aankwamen als bewijs.
-Twee commits staan op `7.0-stable-GEOxyz`.
+Af, herschreven, en op 2026-09-06 door reviewronde 2 heen. De patch die al een
+jaar aan Jans eigen issue [#43023](https://www.redmine.org/issues/43023) hangt
+is 1197 regels met twee nieuwe gems en vier nieuwe rake-taken; deze is 618
+regels wijziging, nul nieuwe gems en nul nieuwe taakfamilies: twee opties op de
+bestaande `receive_imap`, plus één taak voor de eenmalige toestemmingsstap.
+Alles is bewezen: volledige suites aan beide kanten, RuboCop nul, de patch
+applyt op een schone trunk **r25037**, en de hele keten is end-to-end gedraaid
+tegen een échte IMAP-server en een échte HTTPS-tokenendpoint, met de issues die
+daaruit in Redmine aankwamen als bewijs. Drie commits staan op
+`7.0-stable-GEOxyz`.
+
+**Reviewronde 2 (2026-09-06).** De vier bevindingen van ronde 1 staan alle vier
+dicht, met een `Resolution:`-regel in
+`docs/review/findings/2026-09-03-imap-oauth-claude-opus5.md`:
+
+- **F01 (major, dossier)** — de claim "interpoleert token noch client secret in
+  welke string dan ook" was te sterk: `oauth2_authorize` print het refresh token
+  wel degelijk. De claim is bijgesteld en de uitzondering staat er nu bij, met
+  het gevolg (scrollback wissen).
+- **F02 (minor, code)** — het token wordt nu opgehaald **vóór** de
+  IMAP-verbinding opengaat. Anders bleef een onge-authenticeerde verbinding tot
+  twee minuten open te wachten op een traag tokenendpoint.
+- **F03 (minor, code)** — een 200 met een niet-JSON body (een onderscheppende
+  proxy) geeft nu dezelfde nette melding als elk ander faalpad in plaats van een
+  kale `JSON::ParserError`.
+- **F04 (minor, test)** — de stub in de happy-path-test gaf de blokwaarde van
+  `Net::HTTP.start` niet terug, waardoor de test groen bleef op code die het
+  HTTP-antwoord weggooide. Nu draait de echte `Net::HTTP.start`.
+
+De patch is in dezelfde beweging op **huidige trunk r25037** herzet (g05), en
+alle cijfers zijn daar opnieuw gemeten. De oude tip staat bewaard als
+`archive/patch-imap-oauth-r24882-before-round2`, zodat `d63cb35a5` uit de
+review oplosbaar blijft.
 
 **Jan vroeg (2026-09-03) om stap 1 zelf ook doenbaar te maken**, en dat heeft
 het ontwerp op één punt veranderd. Eerst zat de toestemmingsstap er helemaal
@@ -55,23 +79,32 @@ regel die in het credentialsbestand moet.
 
 ## Bewijs
 
-- Volledige suite met patch: 5811 runs, 30751 assertions, 27 failures,
-  2 errors, 92 skips
-- Schone trunk (eigen database, zelfde revisie): 5790 runs, 30686 assertions,
-  27 failures, 2 errors, 92 skips — dezelfde 29 faalnamen, `diff` leeg; alle 29
-  zijn repository-/changeset-/`SysController`-tests die `svn`, `hg`, `bzr` of
-  `cvs` nodig hebben, en die staan niet in dit image. 5811 - 5790 = 21, precies
-  het aantal nieuwe tests
-- Volledige suite op `7.0-stable-GEOxyz` met alleen deze feature erop:
-  5836 runs, 31100 assertions, 0 failures, 0 errors, 39 skips.
-  En nog een keer op de **branchtip zoals hij na de push is**, dus met de twee
-  features die parallelle sessies er ondertussen op zetten
-  (`revision-branches`, `webhook-tracker-filter`): 5856 runs, 31168 assertions,
-  0 failures, 0 errors, 39 skips. Dat tweede aantal is de branch die GEOxyz
-  echt draait; het eerste is alleen deze feature
-- De twee nieuwe testbestanden samen in één proces: 21 runs, 71 assertions,
-  0 failures, 0 errors
-- Rood bewezen op de oude code: 20 van de 21 nieuwe tests vallen om in een
+Alle cijfers hieronder zijn van **2026-09-06**, op trunk **r25037**
+(`bee32a926`), na de vier reviewfixes. Elke volledige suite is **alleen**
+gedraaid; drie tegelijk op vier cores laat Selenium-systeemtests willekeurig
+omvallen (zie `docs/traps.md`).
+
+- Volledige suite (`test:all`) met patch: 6000 runs, 31792 assertions,
+  27 failures, 2 errors, 92 skips
+- Schone trunk r25037 (eigen database): 5977 runs, 31710 assertions,
+  27 failures, 2 errors, 92 skips — **dezelfde 29 faalnamen, `diff` leeg**;
+  alle 29 zijn repository-/changeset-/`SysController`-tests die `svn`, `hg`,
+  `bzr` of `cvs` nodig hebben, en die staan niet in dit image.
+  6000 - 5977 = 23, precies het aantal nieuwe tests
+- Volledige suite op `7.0-stable-GEOxyz`, op de branchtip van 2026-09-06 met de
+  fixes erop: 6123 runs, 32351 assertions, 0 failures, 0 errors, 39 skips
+- De twee nieuwe testbestanden samen in één proces: 23 runs, 81 assertions,
+  0 failures, 0 errors, aan beide kanten
+- Rood bewezen voor de drie ronde-2-fixes, per hunk, door mutatie:
+  het token weer ónder `Net::IMAP.new` zetten geeft
+  `1 runs, 1 assertions, 1 failures` op
+  `test_check_should_not_open_a_connection_when_the_token_cannot_be_obtained`;
+  `json_body` terugdraaien geeft `1 failures` op
+  `test_access_token_should_raise_when_a_successful_response_has_no_json_body`;
+  en de mutatie uit bevinding F04 (`post_to_token_endpoint` gooit het antwoord
+  weg) maakt `oauth2_client_test.rb` `18 runs, 5 failures, 3 errors` waar de
+  oude stub hem groen liet
+- Rood bewezen op de oude code (eerste ronde): 20 van de 21 nieuwe tests vallen om in een
   wegwerp-worktree op schone trunk (21 runs, 12 failures, 8 errors). De ene
   groene is de bewaker die aan beide kanten groen moet zijn, en dat is per
   **naam** vastgesteld en niet door te tellen: de lijst testmethodenamen minus
@@ -85,16 +118,22 @@ regel die in het credentialsbestand moet.
   de vangnet-tak voor een onparseerbaar geplakt adres gaf `{}` terug waar
   `CGI.parse` een hash met default `[]` geeft, dus de regel erna gaf
   `NoMethodError`. Nu `CGI.parse('')`
-- RuboCop op de gewijzigde bestanden: 0 (baseline 0). `lib/tasks/email.rake`
+- RuboCop op de vier gewijzigde bestanden: 0 (baseline 0). `lib/tasks/email.rake`
   wordt niet gelint (`lib/tasks/**/*` staat in Redmine's eigen `.rubocop.yml`
   onder Exclude), dus daar is menselijke review de enige controle
 - `bin/rails zeitwerk:check`: "All is good!" — het nieuwe `lib/redmine`-bestand
   laadt ook onder eager loading, wat productie doet
-- `tools/check-patch-clean.sh`: PASS · `tools/check-geoxyz-branch.sh`: PASS
-  (current met `origin/7.0-stable`, geen AI-sporen, 0 lint-offences op 29
-  gewijzigde Ruby-bestanden, locales binnen de vijf)
-- Patch applyt met `git am` op een verse `origin/master`-checkout: ja
-- Screenshots: drie (één before), gelezen: ja. Plus
+- `tools/check-patch-clean.sh imap-oauth --submit`: PASS · 
+  `tools/check-geoxyz-branch.sh`: PASS (current met `origin/7.0-stable`, geen
+  AI-sporen, 1 lint-offence op 66 gewijzigde Ruby-bestanden die al op een eigen
+  regel van upstream staat, baseline 1, locales binnen de vijf)
+- Patch applyt op een verse `origin/master`-checkout r25037: ja
+- Screenshots ronde 2: twee, gelezen: ja — `round2-issues-list.png` en
+  `round2-issue-from-xoauth2-mail.png`, plus `shots/round2-terminal-transcript.txt`
+  met de voor/na-paren van F02 en F03 tegen de echte harnas-servers: bij een
+  onderscheppende proxy en bij een ingetrokken refresh token opende de oude code
+  wél een IMAP-verbinding en de nieuwe geen enkele
+- Screenshots eerste ronde: drie (één before), gelezen: ja. Plus
   `shots/terminal-transcript.txt`: de before-run op schone trunk, de vier
   geslaagde runs, de vijf faalpaden van het ophalen en de zes faalpaden van de
   toestemmingsstap
@@ -109,13 +148,13 @@ regel die in het credentialsbestand moet.
 
 Twee dingen, en het eerste is het echte werk.
 
-**1. Hang `patches/imap-oauth/2026-09-03-r24882-feature.patch` als note aan je
+**1. Hang `patches/imap-oauth/2026-09-06-r25037-feature.patch` als note aan je
 eigen issue [#43023](https://www.redmine.org/issues/43023)** — geen nieuw
 issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 7.1.0. Zeg in die note dat dit een **vervanging** is van
 `..._version3.patch`, niet een aanvulling, en waarom hij zoveel kleiner is:
 
-- 581 regels in plaats van 1197, en **geen** nieuwe gem. `oauth2` en
+- 618 regels in plaats van 1197, en **geen** nieuwe gem. `oauth2` en
   `gmail_xoauth` zijn er beide uit. `gmail_xoauth` was overbodig:
   `Net::IMAP::SASL::XOAuth2Authenticator` zit in de `net-imap ~> 0.6.1` die
   Redmine al pint, en 0.4.x had hem onder de oude naam
@@ -244,3 +283,5 @@ servicemailbox). Er is geen haast: we bouwden verder zonder.
 ## Volgende stap voor een sessie
 
 Af — niets te doen, behalve de patch bijwerken als er feedback op #43023 komt.
+Ronde 2 is voor deze slug klaar; ronde 3 (blinde herreview) is een aparte
+sessie en leest deze regel liefst niet vooraf.

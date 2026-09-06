@@ -22,8 +22,11 @@
 
 ## Trunk check (G1)
 
-- **Trunk-revisie nagekeken:** `2563fa6a5` = r24882 van 2026-08-03. De mirror
-  liep 1 maand achter op het moment van schrijven (2026-09-03).
+- **Trunk-revisie nagekeken:** `2563fa6a5` = r24882 van 2026-08-03 bij het
+  schrijven (2026-09-03). Op 2026-09-06 opnieuw tegen `bee32a926` = **r25037**
+  gezet, 88 commits verder, en de patch is daarop herzet en opnieuw bewezen —
+  zie "Evidence". De conclusie hieronder is op r25037 opnieuw nagegaan en
+  ongewijzigd.
 - **Lost trunk dit al op?** Nee. `lib/redmine/imap.rb` doet onvoorwaardelijk
   `imap.login(username, password)` en kent geen enkel SASL-mechanisme.
   `lib/tasks/email.rake` biedt alleen `password=`. Er is geen OAuth-client in
@@ -271,40 +274,63 @@ Neither `Redmine::IMAP` nor `Redmine::POP3` had a single test before this patch;
 | `Oauth2ClientTest#test_refresh_token_should_raise_when_the_address_cannot_be_parsed` | pasting something that is not an address at all gives the same advice rather than a `URI::InvalidURIError`. This test found a real bug on its first run: the guard returned a plain `{}` where `CGI.parse` returns a hash defaulting to `[]`, so the next line raised `NoMethodError` |
 | `Oauth2ClientTest#test_refresh_token_should_raise_when_the_response_holds_no_refresh_token` | a provider that returns only an access token, which is what happens when `offline_access` or `access_type: offline` is missing, is reported as such |
 
-**Evidence (INV-8 — figures, not claims):**
+**Evidence (INV-8 — figures, not claims).** All figures below are from
+2026-09-06, on trunk **r25037** (`bee32a926`), after the patch was refreshed
+against current trunk and the four round-1 review findings were fixed. The
+r24882 figures they replace are in the branch history.
 
-- **full** suite with the patch: `RAILS_ENV=test bundle exec ruby bin/rails test`
-  → `5811 runs, 30751 assertions, 27 failures, 2 errors, 92 skips`
-- **full** suite on a pristine trunk worktree at the same revision, own
-  database → `5790 runs, 30686 assertions, 27 failures, 2 errors, 92 skips`
-- the failing test names are **identical** on both sides (`diff` empty):
-  29 names, and 5811 - 5790 = 21 is exactly the number of new
-  tests. All 29 are repository, changeset and `SysController` tests that
-  need `svn`, `hg`, `bzr` or `cvs`, none of which exist in this image.
-- the two new files run together in one process: `21 runs, 71 assertions,
+- **full** suite (`test:all`, so including the system tests) with the patch
+  → `6000 runs, 31792 assertions, 27 failures, 2 errors, 92 skips`
+- **full** suite on a pristine `origin/master` r25037 worktree, own database
+  → `5977 runs, 31710 assertions, 27 failures, 2 errors, 92 skips`
+- 6000 - 5977 = **23**, exactly the number of tests in the two new files.
+- the failing test **names** are **identical** on the two sides: 29 each,
+  `diff` empty. All 29 are repository, changeset and `SysController` tests that
+  need `svn`, `hg`, `bzr` or `cvs`, none of which exist in this image: 14
+  `RepositoriesControllerTest`, 8 `Redmine::ApiTest::RepositoriesTest`, 5
+  `SysControllerTest`, 1 `Redmine::ApiTest::IssuesTest`, 1 `UserTest`.
+- **Worth saying, because it nearly went in as a finding.** An earlier pass ran
+  all three suites at once on a four-core machine and each side picked up one
+  extra failure — `OauthProviderSystemTest#test_application_creation_and_authorization`
+  on the patched side, `IssuesSystemTest#test_update_issue_status` on the
+  pristine-trunk side. Both are Selenium system tests, both are green in
+  isolation (`OauthProviderSystemTest` alone: `1 runs, 16 assertions,
+  0 failures`), and both disappear when the suites are run one at a time, which
+  is where the figures above come from. Neither test touches IMAP or OAuth
+  client code; `OauthProviderSystemTest` is the Doorkeeper **provider** side,
+  which this patch does not go near. Nothing was skipped or disabled to get
+  here — the suites were simply not made to fight each other for cores.
+- the two new files run together in one process: `23 runs, 81 assertions,
   0 failures, 0 errors, 0 skips`
-- RuboCop on the changed files: `0` offences (baseline at the merge base on the
-  same files: `0`). `lib/tasks/email.rake` is not linted — `lib/tasks/**/*` is
-  excluded in Redmine's own `.rubocop.yml`, so that file had human review only.
-- each new test verified red on the old code: the two files were copied into a
-  throwaway pristine-trunk worktree with its own database and run there →
-  `21 runs, 15 assertions, 12 failures, 8 errors`. **20 of the 21 are red**,
-  and the single green one is `test_check_should_login_with_the_password` — the
-  guard, which must be green on both sides. That was established by name and
-  not by counting: the list of test method names in the two files, minus the
-  names that appear in the failure output, leaves exactly that one. Being
-  honest about *why* each is red: all seventeen `Oauth2ClientTest` cases and
-  two of the four `ImapTest` cases fail with
-  `NameError: uninitialized constant Redmine::Oauth2Client`, which is real but
-  is the class not existing rather than behaviour differing. The one test whose
-  red is purely behavioural is
-  `test_check_should_authenticate_with_xoauth2_when_an_access_token_is_given`,
-  which fails at `lib/redmine/imap.rb:44` — trunk calls `login` exactly where
-  the patch calls `authenticate`.
-- patch applies to pristine `origin/master` r24882: yes — `git am` on a fresh detached worktree at
-  `origin/master`, 5 files changed, 351 insertions
-- `tools/check-patch-clean.sh`: PASS (descends from trunk, only Redmine paths, no locales, no AI
-  trace in the message or the authorship, applies to a pristine checkout)
+- RuboCop on the four changed files: `0` offences (baseline on the same files at
+  the merge base: `0`). `lib/tasks/email.rake` is not linted — `lib/tasks/**/*`
+  is excluded in Redmine's own `.rubocop.yml`, so that file had human review
+  only.
+- each new test verified red on the old code, by mutation rather than by
+  assertion, one hunk at a time:
+  - reverting the token fetch back below `Net::IMAP.new` →
+    `test_check_should_not_open_a_connection_when_the_token_cannot_be_obtained`
+    gives `1 runs, 1 assertions, 1 failures`
+  - reverting `json_body` back to `JSON.parse(response.body)[name]` →
+    `test_access_token_should_raise_when_a_successful_response_has_no_json_body`
+    gives `1 failures`
+  - making `post_to_token_endpoint` call `http.request` and then evaluate to
+    `nil`, which is the mutation round-1 finding F04 used, turns
+    `oauth2_client_test.rb` from `18 runs, 0 failures` into
+    `18 runs, 5 failures, 3 errors`. Under the old stub the same mutation left
+    all seventeen tests green — that was the finding.
+  - and, from the original round: the 21 tests of the first version were
+    verified red on pristine trunk as `21 runs, 15 assertions, 12 failures,
+    8 errors`, with the single green one, `test_check_should_login_with_the_password`,
+    identified by **name** rather than by counting — it is the guard that must
+    be green on both sides.
+- `bin/rails zeitwerk:check`: `All is good!` — the new `lib/redmine` file also
+  loads under eager loading, which is what production does.
+- patch applies to pristine `origin/master` r25037: yes —
+  `tools/check-patch-clean.sh imap-oauth --submit` PASS, which checks the
+  **patch file** against a fresh trunk checkout, that it touches only Redmine
+  paths (5 files), that there is no AI trace in header or message, and that the
+  file and the `patch/imap-oauth` branch are the same change.
 
 # Live verification (G9)
 
@@ -351,6 +377,8 @@ Nothing left the machine and no real credentials were used. Screenshots in
 | Mail fetched with a token minted by Redmine, and with a token supplied on the command line | `issues-list.png` | issues #12 (`oauth2_credentials=`), #13 (`oauth2_token=`) and #14 (the unchanged `password=` path) |
 | The issue built from the fetched mail | `issue-from-xoauth2-mail.png` | Bug #12, author Dev Verify0 resolved from the `From:` header, description as sent |
 | Mail fetched with a refresh token that `oauth2_authorize` itself produced | `issues-list.png` | issue #15, the end of the three-step chain above |
+| The two behaviour changes of review round 2, before and after | `round2-issues-list.png` | issues #11 (fixed code) and #12 (the code as round 1 reviewed it) side by side: the happy path is byte-for-byte unaffected by the fixes |
+| The issue the fixed code built from the fetched mail | `round2-issue-from-xoauth2-mail.png` | Bug #11, author Dev Verify0 resolved from the `From:` header, so `MailHandler` really ran rather than IMAP merely connecting |
 
 The before/after pair is the point: on trunk the same command line fails,
 because `oauth2_credentials=` is not an option it knows and it falls back to
@@ -369,6 +397,18 @@ Failure paths verified, all five with the patch applied:
 | credentials file absent | says which path | `Errno::ENOENT: No such file or directory @ rb_sysopen - /etc/redmine/nope.yml` |
 | access token rejected by the mailbox | the server's own reason | `Net::IMAP::NoResponseError: Invalid credentials` |
 | no OAuth option at all | byte-identical to trunk | the IMAP server logged `LOGIN redmine@example.net a-mailbox-password`, and issue #14 was created |
+
+**Round 2 added two more, and they are before/after pairs rather than single
+observations, because both are about what the code does *differently* now.**
+Same harness, same driver, same credentials file; only the code differs. The
+IMAP server's own log is the witness for the second one — it says whether a
+socket was opened at all. Full transcript in `shots/round2-terminal-transcript.txt`.
+
+| Case | Before (`d63cb35a5`) | After |
+|---|---|---|
+| token endpoint answers 200 with an HTML page (an intercepting proxy) | `JSON::ParserError: unexpected character: '<html>proxy' at line 1 column 1`, and **1 IMAP connection** opened and then abandoned | `OAuth 2.0 token request returned no access token`, and **0 IMAP connections** |
+| refresh token revoked, endpoint answers 400 `invalid_grant` | correct message, but **1 IMAP connection** opened before the token was ever asked for, and never logged out — `check` has no `ensure` | same message, **0 IMAP connections** |
+| the happy path, for control | 1 connection, `authenticated=true`, issue #12 created | 1 connection, `authenticated=true`, issue #11 created |
 
 And the six failure paths of the one-off `oauth2_authorize` step, which is
 where an administrator setting this up for the first time will actually make
@@ -547,10 +587,13 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
 
 - **Issue:** [#43023](https://www.redmine.org/issues/43023) — bestaat al, Jans
   eigen issue, assignee Marius BĂLTEANU, doelversie 7.1.0. **Geen nieuw issue.**
-- **Patch attached:** `patches/imap-oauth/2026-09-03-r24882-feature.patch`
-  (16 kB, 433 regels patchbestand, 351 regels wijziging). Eén bestand — er zijn
-  geen locale-sleutels, dus geen `-locales.patch`.
-- **Made against:** `origin/master` r24882 (`2563fa6a5`, 2026-08-03)
+- **Patch attached:** `patches/imap-oauth/2026-09-06-r25037-feature.patch`
+  (711 regels patchbestand, 618 regels wijziging over 5 bestanden). Eén bestand
+  — er zijn geen locale-sleutels, dus geen `-locales.patch`.
+- **Made against:** `origin/master` r25037 (`bee32a926`, huidige trunk-tip op
+  2026-09-06). De eerdere versie stond op r24882; die is bewaard als
+  `archive/patch-imap-oauth-r24882-before-round2` zodat de SHA `d63cb35a5`
+  waar reviewronde 1 naar verwijst oplosbaar blijft.
 - **Status:** klaar om ingediend te worden; Jan hangt hem aan het issue
 - **Positioneren als vervanging van `..._version3.patch`,** niet als aanvulling.
   Zie `status.md`, "Wat Jan nog moet doen", voor de vijf punten die in die note
@@ -559,26 +602,32 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
 
 ## GEOxyz
 
-- **Commits op `7.0-stable-GEOxyz`:** `f117ea32e` (het ophalen) en `21c232ce1`
-  (de toestemmingsstap), samen exact de inhoud van de patchcommit, zonder één
-  aanpassing. Twee commits omdat de eerste al gepusht was toen de tweede erbij
-  kwam; op een gepubliceerde branch wordt niet geamendeerd. `lib/redmine/imap.rb`,
+- **Commits op `7.0-stable-GEOxyz`:** `1a6d462a8` (het ophalen), `d92dff560`
+  (de toestemmingsstap) en `5c937ddbd` (de twee codefixes uit reviewronde 2),
+  samen exact de inhoud van de patchcommit, zonder één aanpassing. Drie commits
+  omdat elke vorige al gepusht was toen de volgende erbij kwam; op een
+  gepubliceerde branch wordt niet geamendeerd. De eerste twee SHA's zijn die
+  van ná de identiteitsherschrijving van 2026-09-06 (K-13); ze heetten daarvóór
+  `f117ea32e` en `21c232ce1`. `lib/redmine/imap.rb`,
   `lib/tasks/email.rake`, `config/application.rb` en
   `config/initializers/zeitwerk.rb` zijn byte-identiek op trunk en op
   `7.0-stable-GEOxyz`, en de branch loopt niet achter op `origin/7.0-stable`.
-- **Suites daar groen:** met alleen deze feature erop `5836 runs, 31100
-  assertions, 0 failures, 0 errors, 39 skips`, en op de branchtip zoals hij na
-  de push is, dus met de twee features die parallelle sessies er ondertussen op
-  zetten, `5856 runs, 31168 assertions, 0 failures, 0 errors, 39 skips`. De
-  twee nieuwe testbestanden samen in één proces daar: `21 runs, 71 assertions,
-  0 failures, 0 errors`. RuboCop op de gewijzigde bestanden: 0.
+- **Suites daar groen:** de volledige `test:all` op de branchtip van
+  2026-09-06, dus inclusief de features die parallelle sessies er ondertussen
+  op zetten en inclusief de codefixes van ronde 2:
+  `6123 runs, 32351 assertions, 0 failures, 0 errors, 39 skips`. De twee nieuwe
+  testbestanden samen in één proces daar: `23 runs, 81 assertions, 0 failures,
+  0 errors`. RuboCop op de vier gewijzigde bestanden: 0.
+  De eerdere cijfers (`5836` met alleen deze feature, `5856` op de tip van
+  2026-09-03) staan in de branchhistorie.
 - **`nl.yml` toegevoegd:** n.v.t. — de patch voegt geen door een gebruiker
   geziene string toe, dus er is geen enkele locale-sleutel. Dat geldt aan beide
   kanten identiek (INV-10).
 - **Afwijking GEOxyz ↔ upstream:** geen. Dezelfde commit, dezelfde code.
-- **`tools/check-geoxyz-branch.sh`:** PASS — current met `origin/7.0-stable`,
-  7 eigen commits, geen AI-sporen, 0 lint-offences op 16 gewijzigde
-  Ruby-bestanden, locales binnen de vijf.
+- **`tools/check-geoxyz-branch.sh`:** PASS (2026-09-06) — current met
+  `origin/7.0-stable`, geen AI-sporen in de eigen commits, 1 lint-offence op 66
+  gewijzigde Ruby-bestanden en die staat al op een eigen regel van
+  `origin/7.0-stable` (baseline 1), locales binnen de vijf.
 - **Wanneer kan deze commit vervallen?** Een geaccepteerde trunk-patch komt in
   7.1 of later, nooit in 7.0-stable. Dus pas als GEOxyz zelf naar de release
   gaat die hem draagt — 7.1.0 als #43023 zijn huidige doelversie houdt.
