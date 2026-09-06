@@ -247,7 +247,7 @@ class Changeset < ApplicationRecord
     Setting.revision_branches_excluded.to_s.split(',').map(&:strip).reject(&:blank?).filter_map do |pattern|
       if Setting.revision_branches_enable_regex?
         begin
-          Regexp.new("\\A#{pattern}\\z", Regexp::IGNORECASE)
+          Regexp.new("\\A(?:#{pattern})\\z", Regexp::IGNORECASE)
         rescue RegexpError
           nil
         end

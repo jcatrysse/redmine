@@ -577,6 +577,14 @@ class RepositoryGitTest < ActiveSupport::TestCase
       end
     end
 
+    def test_changeset_branches_should_anchor_a_regular_expression_containing_alternation
+      c = new_changeset('fba357b886984ee71185ad2065e65fc0417d9b92')
+      with_settings :revision_branches_excluded => 'master|test',
+                    :revision_branches_enable_regex => '1' do
+        assert_equal ['master-20120212', 'test_branch'], c.branches
+      end
+    end
+
     def test_changeset_branches_should_ignore_an_invalid_regular_expression
       c = new_changeset('fba357b886984ee71185ad2065e65fc0417d9b92')
       with_settings :revision_branches_excluded => '[, master',
