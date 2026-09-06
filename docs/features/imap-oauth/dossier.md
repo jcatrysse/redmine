@@ -324,9 +324,17 @@ r24882 figures they replace are in the branch history.
   Both sides dropped by roughly the same hundred runs, both keep the identical
   27 failures / 2 errors / 92 skips and the same 29 failing names, and the
   patch-minus-trunk delta is exactly the number of new tests in each round (23
-  then, 27 now). What varies is how many system tests the image runs, not what
-  the patch does. The delta and the name diff are the figures to read; the
-  absolute totals are only comparable within one run pair.
+  then, 27 now). **What varies is the Git test repository, measured on
+  2026-09-06:** the round-3 worktrees had no `tmp/test/git_repository`
+  extracted, and without it the Git tests are not defined at all — the same
+  three files give `114 runs` with the fixture and `8 runs` without, so 106
+  tests disappear in silence. That accounts for almost the whole gap (96 and
+  100); the last few are unexplained. It also means the round-3 run did not
+  exercise the Git adapter tests, which changes nothing for this patch — it
+  touches no repository, changeset or adapter code — but is less coverage than
+  the number suggests. The delta and the name diff are the figures to read; the
+  absolute totals are comparable only within one run pair, and only when both
+  sides have the same fixtures.
 - RuboCop on the four changed files: `0` offences (baseline on the same files at
   the merge base: `0`). `lib/tasks/email.rake` is not linted — `lib/tasks/**/*`
   is excluded in Redmine's own `.rubocop.yml`, so that file had human review

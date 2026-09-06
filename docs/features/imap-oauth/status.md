@@ -96,10 +96,18 @@ omvallen (zie `docs/traps.md`).
   meet 5904 en 5877, in een verse container op dezelfde trunk-revisie. Beide
   kanten zakken ongeveer evenveel, allebei houden ze dezelfde 27 failures /
   2 errors / 92 skips en dezelfde 29 faalnamen, en het verschil patch-min-trunk
-  is in elke ronde precies het aantal nieuwe tests (23 toen, 27 nu). Wat
-  varieert is hoeveel systeemtests het image draait. Lees dus het verschil en
-  de namendiff, niet het absolute getal; dat is alleen binnen één runpaar
-  vergelijkbaar
+  is in elke ronde precies het aantal nieuwe tests (23 toen, 27 nu). **De
+  oorzaak is de Git-testrepository, en dat is op 2026-09-06 nagemeten** — in de
+  ronde-3-worktrees stond `tmp/test/git_repository` niet uitgepakt, en zonder
+  dat bestaan de Git-tests niet eens: dezelfde drie bestanden geven `114 runs`
+  mét de fixture en `8 runs` zonder, dus 106 tests verdwijnen geruisloos. Dat
+  dekt vrijwel het hele gat (96 en 100); de laatste paar zijn niet verklaard.
+  **Eerlijk erbij: dat betekent dat de ronde-3-suite de Git-adaptertests niet
+  heeft gedraaid.** Voor deze patch verandert dat de conclusie niet — hij raakt
+  geen repository-, changeset- of adaptercode — maar de dekking was kleiner dan
+  het getal suggereert. Lees dus het verschil en de namendiff, niet het
+  absolute getal; dat is alleen binnen één runpaar vergelijkbaar, en alleen als
+  beide kanten dezelfde fixtures hebben
 - Volledige suite op `7.0-stable-GEOxyz`, op de branchtip van 2026-09-06 met de
   ronde-3-fixes erop: 6014 runs, 31493 assertions,
   **0 failures, 0 errors**, 39 skips — helemaal groen, geen enkele faalnaam.
