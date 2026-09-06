@@ -1094,3 +1094,24 @@ toegevoegd.
   namendiff bleven kloppen zonder fixture, dus de conclusie hield stand — maar
   de dekking was 106 tests kleiner dan het getal suggereerde, en dat hoort er
   dan bij te staan.
+
+
+- **Kopieer nooit een heel bestand van de patchbranch naar `7.0-stable-GEOxyz`;
+  pas alleen jouw hunk toe.** Op 2026-09-06 ging dat mis bij `revision-branches`.
+  De fix was één token in `changeset.rb` plus één testmethode, en die zijn met
+  `git show <patch-sha>:<pad> > <geoxyz-pad>` overgezet — dus met de **hele
+  trunk-versie** van `test/unit/repository_git_test.rb` erbij. Trunk en
+  7.0-stable verschillen daar: trunk heeft `test_scm_available` verplaatst en
+  herschreven met `Redmine::Configuration.with`-controles. Gevolg: de
+  GEOxyz-commit bevatte een vreemde wijziging (INV-1) en `test_scm_available`
+  viel om met `Expected: false, Actual: true`. Op de ouder-commit slaagde hij,
+  dus de suite wees recht naar de eigen commit.
+- **En de controle die dit had moeten vangen, ving niets.** Diezelfde sessie
+  "verifieerde INV-10" door het GEOxyz-bestand te vergelijken met het
+  patchbranch-bestand — nadat ze het daarvandaan gekopieerd had. Dat is per
+  definitie identiek en bewijst niets. **Een gelijkheidscontrole tussen twee
+  kanten is alleen zinvol als de twee kanten onafhankelijk tot stand kwamen.**
+  Vergelijk in plaats daarvan de **diff tegen de eigen ouder** op beide takken:
+  `git diff <parent>..<commit>` hoort aan beide kanten dezelfde regels te tonen
+  (hier `2 files changed, 9 insertions(+), 1 deletion(-)`). Wijkt het aantal
+  regels af, dan heb je iets meegenomen.
