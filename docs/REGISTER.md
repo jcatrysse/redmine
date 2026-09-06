@@ -10,7 +10,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`9d28be94d + d8e0db501`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
-| [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`1a6d462a8 + d92dff560 + 5c937ddbd`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
+| [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63 + 47eec6f1d + 1b4a29a0b`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2 + 8c1fa23fb`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa + f260958c6`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
@@ -32,7 +32,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
-- `geoxyz-hosts` — cse_01NpXRd6GTAHbGbz2QVkXcDJ sinds 2026-09-06
+- `imap-oauth` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-06
 
 ## Openstaand voor Jan
 
@@ -151,6 +151,15 @@ issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
   gebruik die niet meer.
 - `Redmine::IMAP` en `Redmine::POP3` hadden **geen enkele test**; deze
   patch levert de eerste (12 tests, 43 assertions).
+- **Bied de splitsing aan, in één zin** (jouw keuze F07/optie B van 2026-09-06).
+  Zeg dat de patch netjes in tweeën valt — het ophaalgedeelte (`oauth2_token=`,
+  `oauth2_credentials=`, `Oauth2Client.access_token`) en de eenmalige
+  toestemmingsstap (`oauth2_authorize`) — en dat je hem graag als twee
+  indient als de committer liever eerst alleen het eerste neemt. **Hang wel
+  één patchbestand aan**; het aanbod staat in de tekst. Reden: op #29664 vroeg
+  Holger Just precies om zo'n splitsing, dus die vraag komt waarschijnlijk
+  toch. De kant-en-klare formulering staat in `dossier.md` in de tabel met
+  verwachte bezwaren, rij "This is two changes".
 
 De Engelse issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem",
 inclusief de tabel met verwachte bezwaren.
@@ -175,9 +184,12 @@ kan hier niet. Als een menu ergens anders staat of een stap ontbreekt, corrigeer
 het in `dossier.md` voordat de wikipagina de deur uit gaat. Wat wél getest is,
 is alles wat Redmine zelf doet.
 
-En er staat één keuze voor je open: **K-06** in `docs/DECISIONS.md`, over de
-`client_credentials`-grant (app-only, Microsofts aanbeveling voor een
-servicemailbox). Er is geen haast: we bouwden verder zonder.
+Er staat **geen keuze meer voor je open.** K-06 (de `client_credentials`-grant,
+app-only) besliste je op 2026-09-03 met optie A: alleen de refresh-token-grant
+gaat mee, en wie app-only wil mint het token zelf en geeft het met
+`oauth2_token=`. F07 uit reviewronde 3 besliste je op 2026-09-06 met optie B:
+de note biedt de splitsing aan, de bijlage blijft één bestand. Beide staan in
+`docs/DECISIONS.md`; niet opnieuw afwegen.
 
 ### `ldap-mail-prefs`
 

@@ -3,7 +3,7 @@ slug: imap-oauth
 feature: IMAP inbound mail via OAuth 2.0 (Gmail / O365)
 commit_51: bbf5c0eb3
 geoxyz: live
-geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd
+geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8
 upstream: patch klaar
 patch: patches/imap-oauth/2026-09-06-r25037-feature.patch
 issue: 43023
@@ -101,11 +101,18 @@ omvallen (zie `docs/traps.md`).
   de namendiff, niet het absolute getal; dat is alleen binnen één runpaar
   vergelijkbaar
 - Volledige suite op `7.0-stable-GEOxyz`, op de branchtip van 2026-09-06 met de
-  ronde-3-fixes erop: **meting loopt nog** (sessie van 2026-09-06). De twee nieuwe testbestanden
-  staan daar al groen: 27 runs, 96 assertions, 0 failures. Het ronde-2-cijfer
-  voor de hele suite was 6123 runs, 32351 assertions, 0 failures, 0 errors,
-  39 skips; zolang dit hier niet vervangen is, is de volledige suite op deze
-  branch in ronde 3 **niet** opnieuw bewezen
+  ronde-3-fixes erop: 6014 runs, 31493 assertions,
+  **0 failures, 0 errors**, 39 skips — helemaal groen, geen enkele faalnaam.
+  Dat die branch nul faalt waar trunk er 29 heeft ligt **niet** aan de
+  omgeving: geen van beide worktrees heeft SCM-fixtures en `svn`, `hg`, `bzr`
+  en `cvs` ontbreken alle vier in dit image. Het is een verschil tussen de
+  7.0-stable-code en de huidige trunk in wat een repositorytest doet als de
+  SCM-binary er niet is: trunk laat hem falen, 7.0 slaat hem over. Nagemeten
+  met hetzelfde bestand aan beide kanten —
+  `test/functional/repositories_controller_test.rb` geeft op
+  `7.0-stable-GEOxyz` `34 runs, 0 failures, 3 skips` en op trunk r25037
+  `34 runs, 14 failures, 10 skips`. De twee nieuwe testbestanden apart: 27
+  runs, 96 assertions, 0 failures
 - De twee nieuwe testbestanden samen in één proces: 27 runs, 96 assertions,
   0 failures, 0 errors, aan beide kanten
 - Rood bewezen voor de drie ronde-2-fixes, per hunk, door mutatie:
