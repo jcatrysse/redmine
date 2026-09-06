@@ -996,3 +996,22 @@ toegevoegd.
   ffmpeg-build heeft géén `x11grab`, dus die route loopt dood. Regel: als de
   tekst bij een screenshot een paginanummer, een URL of een aantal noemt, moet
   dat in het beeld zelf te zien zijn — anders een voor/na-paar maken.
+
+
+- **Een force-push op `7.0-stable-GEOxyz` verandert élke eigen SHA, en achttien
+  statusbestanden noemen die SHA's.** Bij K-13 (2026-09-06) werden alle 33
+  eigen commits herschreven om `Claude` uit het auteur- en committerveld te
+  halen. De inhoud bleef byte voor byte gelijk, maar `geoxyz_commit:` in elk
+  `docs/features/<slug>/status.md` en de kolom GEOxyz in `docs/REGISTER.md`
+  wezen daarna naar commits die niet meer op de branch stonden — bestanden die
+  één sessie elk bezit, dus niet iets wat de herschrijvende sessie mag
+  bijwerken. Twee dingen maken dat onschadelijk, doe ze allebei: **duw de oude
+  tip eerst als eigen branch naar de remote** (hier
+  `archive/7.0-stable-GEOxyz-identities-before-20260906`), zodat elke oude SHA
+  ook in een verse kloon oplosbaar blijft en niets dangling wordt; en **leg de
+  kaart oud naar nieuw in `docs/DECISIONS.md`**, zodat elke sessie zijn eigen
+  regel omzet wanneer hij die slug de volgende keer claimt. Verwijder zo'n
+  archive-ref nooit. Controleer een herschrijving verder op het tree-object van
+  de tip (`git rev-parse HEAD^{tree}` voor en na moet gelijk zijn) in plaats van
+  op `git diff` alleen, en op de datums — `filter-branch` bewaart ze, een
+  gewone `rebase` niet.
