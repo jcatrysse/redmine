@@ -966,3 +966,18 @@ Bijvangst uit dezelfde minuut: `tools/append-note.sh` weigert op een vuile
 werkboom (het rebaset eerst). Commit je wijziging dus vóór je een gedeeld
 bestand aanvult — anders lijkt de append te lukken terwijl er niets is
 toegevoegd.
+
+
+- **`tools/findings.sh` ziet een `Resolution:` alleen als die een
+  opsommingsteken heeft, en `docs/review/findings/TEMPLATE.md` zet hem zonder.**
+  De parser matcht `^-\s+\*\*Resolution:\*\*`, het sjabloon schrijft
+  `**Resolution:** <...>` als gewone alinea. Wie het sjabloon volgt, vult een
+  bevinding netjes in en ziet hem dáárna nog steeds in `--open` staan; de
+  volgende sessie doet het werk dan over. Gevonden op 2026-09-06 bij
+  `members-pagination`: tien ingevulde bevindingen bleven alle tien als
+  "zonder Resolution-regel" gerapporteerd. Schrijf hem tot dat rechtgezet is
+  als `- **Resolution:** ...` met de vervolgregels twee spaties ingesprongen,
+  en controleer het met `tools/findings.sh --open` in plaats van aan te nemen
+  dat het goed staat. Het sjabloon en de tool horen gelijkgetrokken te worden,
+  maar dat is een framework-wijziging en dus niet iets wat een feature-sessie
+  zelf doet.
