@@ -370,6 +370,15 @@ standalone to a clean `origin/master`, and INV-2 keeps such a file out of
   reports `"nodata" found in "$('#tab-content-members').html(... <p class=\"nodata\">No data to display</p> ...)"`.
   The clamp was removed from both helpers, the three tests were run, all three
   failed, and the clamp was restored.
+- `verify/members-pagination.mjs` re-run end to end on 2026-09-06 against a
+  real running instance after the `MODE=note-shots` addition, to prove the
+  addition did not break the existing modes: `MODE=after CLAMP=1` →
+  `PASS  every check held`, eight shots. One earlier run of it failed with
+  `the last members page holds 2 rows, expected 1`; that was the fixture, not
+  the code — the note-shots runs delete a member each, and the script assumes
+  the seeded seven. Restoring the project to seven members made it pass. Worth
+  knowing for the next session: run the note shots **after** the normal
+  verification, or re-seed in between.
 - every mechanism claim the note makes re-checked against **current trunk**
   `bee32a926` = r25037 on 2026-09-06, because the note states them in the
   present tense: `Redmine::Pagination::Paginator` still clamps only `page < 1`
