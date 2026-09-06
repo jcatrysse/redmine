@@ -924,3 +924,41 @@ Wat hier hoort omdat het buiten die ene feature betekenis heeft:
   argument vóór B of C dat er op r24882 niet was. **Het blokkeert het indienen
   nog steeds niet**, en de cijfers dragen voortaan hun revisie mee zodat ze
   niet nog een keer stil verlopen.
+
+
+## Open — keuze voor Jan (toegevoegd 2026-09-06, framework-breed)
+
+- **K-13 — Keuze:** zestien van de drieëndertig eigen commits op
+  `7.0-stable-GEOxyz` hebben `Jan Catrysse` als **auteur** maar
+  `Claude <noreply@anthropic.com>` als **committer**. INV-4 en jouw eigen K-01
+  verbieden een AI-spoor op die branch, dus de regel staat niet ter discussie —
+  alleen wat we eraan doen. De oorzaak is mechanisch: `tools/session-push.sh`
+  speelt eigen commits opnieuw af als een andere sessie eerder was, en een
+  replay zet de committer op wie hem draait. Gemeten op 2026-09-06 met
+  `git log --format='%cn' origin/7.0-stable..origin/7.0-stable-GEOxyz | sort | uniq -c`:
+  16 Claude, 17 Jan Catrysse.
+- **Opties:**
+  A) Accepteren als een permanente eigenschap van deze branch, het één keer
+     hier vastleggen en het niet meer per feature in elk statusbestand
+     herhalen. Kost niets, maar zestien commits houden een spoor dat de regel
+     verbiedt.
+  B) Eén keer rechtzetten met een force-push op een moment dat er geen enkele
+     sessie pusht. Schoon resultaat, maar een force-push op een branch waar
+     parallelle sessies op werken kan werk van een ander wegvagen, en elke
+     bestaande checkout van GEOxyz raakt van de historie los.
+  C) Het verleden laten staan, maar `tools/session-push.sh` aanpassen zodat een
+     replay voortaan de oorspronkelijke committer behoudt. Dan groeit het getal
+     niet verder en blijft de historie intact.
+- **Aanbeveling:** C, en pas daarna eventueel B als je die zestien oude commits
+  toch schoon wil hebben. C haalt de oorzaak weg zonder iets te riskeren; B is
+  het enige dat het verleden repareert en tegelijk het enige dat werk van een
+  parallelle sessie kan kosten.
+- **Haast?** Nee. Het raakt **geen enkele patch**: `git format-patch` neemt de
+  **auteur** mee en niet de committer, en de `patch/<slug>`-branches hebben
+  beide velden op Jan staan.
+
+Zolang K-13 openstaat wordt dit **niet** meer per feature in een statusbestand
+uitgeschreven; `docs/features/members-pagination/status.md` verwijst er sinds
+2026-09-06 alleen nog naar. Dat was de vraag van bevinding Q01 van de
+reviewronde: één keer beslissen in plaats van het bij elke feature opnieuw
+melden.
