@@ -79,9 +79,19 @@ Run in `/home/user/wt/review-version-subprojects`, patch tip `a6d7b7392`, own
 | What | Result |
 |---|---|
 | `query_test.rb` + `queries_controller_test.rb` in one process | `357 runs, 1173 assertions, 0 failures, 0 errors, 0 skips` |
-| `test:all` | **still running when this file was first committed — see the follow-up commit for the figure** |
+| `test:all` | `5986 runs, 31733 assertions, 27 failures, 2 errors, 92 skips` — **digit for digit the dossier's own figure** |
 | RuboCop on the four changed `.rb` files | `4 files inspected, no offenses detected` |
 | `tools/check-patch-clean.sh version-subprojects --submit` | PASS (5 files, no locale touched, no AI trace, applies to pristine r25037, patch file agrees with the branch) |
+
+**The full-suite figure reproduces exactly.** The dossier records
+`5986 runs, 31733 assertions, 27 failures, 2 errors, 92 skips` for the patch
+side and I measure the same five numbers, which is the cleanest reproduction of
+a dossier figure I have managed in this round. The 29 failing names are also
+identical to the pristine trunk r25037 baseline I measured myself earlier today
+(`diff` empty). One caveat on that comparison, stated so it is not read as more
+than it is: my trunk baseline run had no Git fixture repository extracted, so
+its *totals* are not comparable to this run's. The *names* are, because all 29
+need `svn`, `hg`, `bzr` or `cvs`, none of which this image has either way.
 
 **A process note against myself, because it affects how the first attempt at
 these figures should be read.** My first `test:all` run overlapped with probe
