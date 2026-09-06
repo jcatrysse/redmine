@@ -106,7 +106,18 @@ uitgepakt — zonder die fixture bestaan 106 Git-tests niet eens (zie
   teruggedraaid geeft `test_changeset_branches_should_anchor_a_regular_expression_containing_alternation`
   `["test_branch"]` waar `["master-20120212", "test_branch"]` hoort — precies de
   branch die de kale `\A` opslokte
-- Volledige suite op `7.0-stable-GEOxyz`: **meting loopt nog op het moment van deze commit** — zie de volgende commit op dit bestand
+- Volledige suite op `7.0-stable-GEOxyz` (commit `88d597548`, mét
+  `tmp/test/git_repository` uitgepakt): `6128 runs, 32369 assertions,
+  **0 failures, 0 errors**, 39 skips`. Dit is de **tweede** meting: de eerste
+  (`cf30eedfa`) gaf één failure, `RepositoryGitTest#test_scm_available`, en dat
+  was terecht — die commit had per ongeluk de hele trunk-versie van
+  `test/unit/repository_git_test.rb` meegenomen in plaats van alleen de nieuwe
+  testmethode, inclusief trunks herschreven `test_scm_available`. De commit is
+  opnieuw opgebouwd met alléén de twee bedoelde wijzigingen; zie `docs/traps.md`
+- **De GEOxyz-diff is even groot als de trunk-diff**, en dat is de controle die
+  de vorige (waardeloze) INV-10-check had moeten zijn:
+  `git diff <parent>..<commit>` geeft aan **beide** kanten
+  `2 files changed, 9 insertions(+), 1 deletion(-)`
 - Aangeraakte suites op `7.0-stable-GEOxyz`: `675 runs, 4331 assertions, 0 failures, 0 errors, 1 skip`
 - RuboCop op de 10 gewijzigde Ruby-bestanden: 0 (baseline 0 op r25037), en op
   de GEOxyz-branch ook 0 (baseline 0 op `origin/7.0-stable`) — met dezelfde
