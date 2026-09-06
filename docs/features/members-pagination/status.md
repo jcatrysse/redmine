@@ -3,7 +3,7 @@ slug: members-pagination
 feature: Paginatie op projectleden en groepsleden
 commit_51: 455f5753c
 geoxyz: live
-geoxyz_commit: 351fe9e54 + 55ae9d1dd + 885f04097
+geoxyz_commit: 148faafb6 + 02ca8b044 + 22a4244c0
 upstream: nooit
 patch:
 issue: 43355
@@ -50,6 +50,8 @@ als je een lid toevoegt, bewerkt of verwijdert.
 - Geraakte suites met de clamp erbij: `183 runs, 855 assertions, 0 failures, 0 errors, 0 skips`
 - Geraakte suites opnieuw gedraaid op 2026-09-06, op de **huidige** tip van
   `7.0-stable-GEOxyz`: `184 runs, 857 assertions, 0 failures, 0 errors, 0 skips`.
+  Gemeten vóór de herschrijving van K-13; die veranderde geen byte aan de
+  inhoud (hetzelfde tree-object), dus het cijfer geldt onverkort.
   Eén run en twee assertions meer, en dat verschil is niet van deze feature:
   een andere sessie voegde na `885f04097` een test toe aan
   `test/functional/projects_controller_test.rb`.
@@ -81,16 +83,17 @@ als je een lid toevoegt, bewerkt of verwijdert.
   `patch/members-pagination`-branch is om tegen af te zetten — die hebben we
   niet, en dat is de bedoeling. Beide bestanden applyen nog schoon op de
   huidige trunk **r25037**.
-- Eén restpunt, gemeld en niet stilgehouden: de drie GEOxyz-commits hebben
-  `Jan Catrysse` als **auteur** maar `Claude` als **committer**, doordat
-  `tools/session-push.sh` ze moest replayen en een replay de committer op wie
-  hem draait zet. Dat is **niet eigen aan deze feature** — op 2026-09-06 gold
-  het voor 16 van de 33 eigen commits op `7.0-stable-GEOxyz` — en het staat
-  sinds die datum als **K-13** in `docs/DECISIONS.md`, met drie opties en een
-  aanbeveling. Het wordt hier daarom niet meer per feature uitgeschreven. Het
-  raakt geen patch: `format-patch` neemt de **auteur** mee, en
-  `patch/members-pagination` heeft beide velden op Jan staan
-  (`check-patch-clean.sh` PASS).
+- **Opgelost op 2026-09-06.** De drie GEOxyz-commits hadden `Claude` als
+  committer, doordat `tools/session-push.sh` ze moest replayen. Jan koos bij
+  **K-13** optie B, en die is uitgevoerd: alle 33 eigen commits op
+  `7.0-stable-GEOxyz` zijn herschreven naar `Jan Catrysse` als auteur én
+  committer, met identieke inhoud (hetzelfde tree-object) en identieke
+  boodschappen en datums. Daardoor veranderden de SHA's van deze feature:
+  `351fe9e54 + 55ae9d1dd + 885f04097` → **`148faafb6 + 02ca8b044 + 22a4244c0`**.
+  De oude SHA's blijven oplosbaar via de branch
+  `archive/7.0-stable-GEOxyz-identities-before-20260906`. De volledige kaart en
+  wat er níét mee is opgelost staan in `docs/DECISIONS.md` onder
+  "Uitgevoerd — K-13, optie B".
 - Screenshots: 11, gelezen: ja. Drie ervan zijn op 2026-09-06 opnieuw gemaakt
   mét de adresbalk van de browser erop (`MODE=note-shots`, headed Chromium op
   een Xvfb-display, `xwd` grijpt het hele scherm): `members-last-page.png`,

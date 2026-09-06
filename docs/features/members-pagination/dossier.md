@@ -508,7 +508,13 @@ below the table disagrees with it in the clamped one.
 
 ## GEOxyz
 
-- **Commits op `7.0-stable-GEOxyz`:** `351fe9e54` (members) + `55ae9d1dd` (groups) + `885f04097` (clamp)
+- **Commits op `7.0-stable-GEOxyz`:** `148faafb6` (members) + `02ca8b044`
+  (groups) + `22a4244c0` (clamp). Dat waren `351fe9e54 + 55ae9d1dd + 885f04097`
+  tot 2026-09-06; de herschrijving van K-13 (optie B) zette de committer- en
+  auteurvelden recht en gaf elke commit daardoor een nieuwe SHA. De inhoud is
+  identiek — hetzelfde tree-object. De meetregels hierboven noemen bewust nog
+  de oude SHA's, want dát zijn de commits waarop gemeten is; ze blijven
+  oplosbaar via `archive/7.0-stable-GEOxyz-identities-before-20260906`.
 - **Suites daar groen:** volledige suite `6000 runs, 31988 assertions, 0 failures, 0 errors, 39 skips`; geraakte suites `183 runs, 855 assertions, 0 failures, 0 errors, 0 skips`
 - **`nl.yml` toegevoegd:** nee — de feature heeft geen nieuwe tekst
 - **`tools/check-geoxyz-branch.sh`:** PASS

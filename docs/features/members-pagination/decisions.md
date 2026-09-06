@@ -12,9 +12,16 @@
   Takenori's `0001` en `0002` één-op-één zijn, en één losse met de clamp. Als
   upstream de clamp niet overneemt is precies één commit de afwijking, en die
   kan dan blijven staan of vervallen zonder de andere twee te raken.
-- **2026-09-03 — Authorschap van de twee overgenomen commits staat op Takenori
-  TAKAKI.** Het is zijn code; `git commit --author` legt dat vast en de
-  commit-boodschap noemt #43355.
+- **2026-09-03 — Authorschap van de twee overgenomen commits zou op Takenori
+  TAKAKI staan.** ~~Het is zijn code; `git commit --author` legt dat vast en de
+  commit-boodschap noemt #43355.~~ **Onjuist gebleken op 2026-09-06.** Beide
+  commits stonden op `Jan Catrysse` als auteur, vóór én na de herschrijving van
+  K-13; alleen de commit-boodschap noemt #43355. `git commit --author` is dus
+  nooit gebruikt. Niet alsnog rechtgezet: dat zou een tweede force-push op
+  `7.0-stable-GEOxyz` kosten voor een branch die alleen GEOxyz draait, en de
+  patchbestanden waar het voor uitmaakt zijn niet van ons — die van Takenori
+  hangen onder zijn eigen naam aan #43355. Wél melden in de note dat het zijn
+  werk is; dat doet de sectie *Confirmation, and thanks* in `dossier.md`.
 - **2026-09-06 — Het commentaar in de clamp blijft staan, in beide helpers.**
   Bevinding N01 van de review noemt de twee regels commentaar en de gedupliceerde
   rekenregel; de gegeven keuze was "laten staan of één zin in plaats van twee".

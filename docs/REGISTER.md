@@ -24,15 +24,11 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | live (`fe737441b`) | nooit | — |
 | [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key, de credentials-map en credentials.yml.enc negeren | `8ec9951d3` | live (`e2c0447b6 + 3f5eb3be2`) | nooit | — |
 | [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: notificatievoorkeuren van LDAP-accounts zetten na een import | `9e2c38e2d` | live (`113f32117`) | nooit | — |
-| [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | live (`351fe9e54 + 55ae9d1dd + 885f04097`) | nooit | [#43355](https://www.redmine.org/issues/43355) |
+| [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | live (`148faafb6 + 02ca8b044 + 22a4244c0`) | nooit | [#43355](https://www.redmine.org/issues/43355) |
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
-
-## Nu in behandeling
-
-- `members-pagination` — cse_015wUkfp89YJkByEHheEmK9u sinds 2026-09-06
 
 ## Openstaand voor Jan
 
