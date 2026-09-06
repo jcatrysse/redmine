@@ -128,7 +128,7 @@ module Redmine
           raise message
         end
 
-        token = JSON.parse(response.body)[name]
+        token = json_body(response)[name]
         if token.blank?
           raise "OAuth 2.0 token request returned no #{name.tr('_', ' ')}"
         end
@@ -149,9 +149,16 @@ module Redmine
       # (invalid_grant for a revoked refresh token, invalid_client for a wrong
       # secret). It never carries a credential.
       def error_code(response)
-        JSON.parse(response.body.to_s)['error'].presence
+        json_body(response)['error'].presence
+      end
+
+      # The parsed response body, empty when the body is not JSON at all. An
+      # intercepting proxy answers with an HTML page, and that has to read as a
+      # token request that returned no token rather than as a JSON error.
+      def json_body(response)
+        JSON.parse(response.body.to_s)
       rescue JSON::ParserError
-        nil
+        {}
       end
     end
   end

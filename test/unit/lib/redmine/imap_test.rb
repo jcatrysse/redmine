@@ -51,6 +51,18 @@ class Redmine::ImapTest < ActiveSupport::TestCase
     )
   end
 
+  def test_check_should_not_open_a_connection_when_the_token_cannot_be_obtained
+    Net::IMAP.expects(:new).never
+    Redmine::Oauth2Client.expects(:access_token).raises('OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)')
+
+    assert_raise(RuntimeError) do
+      Redmine::IMAP.check(
+        :host => 'imap.example.net', :username => 'redmine@example.net',
+        :oauth2_credentials => '/etc/redmine/imap_oauth2.yml'
+      )
+    end
+  end
+
   def test_check_should_login_with_the_password_when_the_oauth2_options_are_blank
     imap = connected_imap
     imap.expects(:authenticate).never

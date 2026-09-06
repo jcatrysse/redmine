@@ -30,12 +30,15 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
 
   def test_access_token_should_return_the_token_of_a_refresh_token_grant
     request = nil
-    expect_token_request(response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token'}.to_json)) {|req| request = req}
+    http = expect_token_request(response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token'}.to_json)) {|req| request = req}
 
     with_credentials(CREDENTIALS) do |file|
       assert_equal 'an-access-token', Redmine::Oauth2Client.access_token(file)
     end
 
+    assert http.use_ssl?
+    assert_equal 60, http.open_timeout
+    assert_equal 60, http.read_timeout
     assert_equal '/oauth2/v2.0/token', request.path
     assert_equal(
       {
@@ -232,6 +235,15 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
     end
   end
 
+  def test_access_token_should_raise_when_a_successful_response_has_no_json_body
+    expect_token_request(response(Net::HTTPOK, '200', 'OK', '<html>proxy interception page</html>'))
+
+    with_credentials(CREDENTIALS) do |file|
+      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.access_token(file)}
+      assert_equal 'OAuth 2.0 token request returned no access token', error.message
+    end
+  end
+
   private
 
   def with_credentials(credentials)
@@ -249,13 +261,15 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
     response
   end
 
+  # Net::HTTP.start hands back what its block returns, and that return value is
+  # what the client relies on, so the method itself is left in place and only
+  # the connection is stubbed out. Returns the connection, to assert on.
   def expect_token_request(response, &capture)
-    http = mock('http')
+    http = Net::HTTP.new('login.example.net', 443)
+    http.stubs(:do_start)
+    http.stubs(:do_finish)
     http.expects(:request).with {|request| capture&.call(request); true}.returns(response)
-    Net::HTTP
-      .expects(:start)
-      .with('login.example.net', 443, :use_ssl => true, :open_timeout => 60, :read_timeout => 60)
-      .yields(http)
-      .returns(response)
+    Net::HTTP.expects(:new).with {|host, port, *| host == 'login.example.net' && port == 443}.returns(http)
+    http
   end
 end

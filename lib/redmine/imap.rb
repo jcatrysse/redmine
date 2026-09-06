@@ -37,12 +37,16 @@ module Redmine
         starttls = !imap_options[:starttls].nil?
         folder = imap_options[:folder] || 'INBOX'
 
+        # Obtained before the connection is opened, so that a slow or failing
+        # token endpoint costs no idle unauthenticated IMAP connection.
+        access_token = oauth2_access_token(imap_options) unless imap_options[:username].nil?
+
         imap = Net::IMAP.new(host, port: port, ssl: ssl)
         if starttls
           imap.starttls
         end
         unless imap_options[:username].nil?
-          if (access_token = oauth2_access_token(imap_options))
+          if access_token
             imap.authenticate('XOAUTH2', imap_options[:username], access_token)
           else
             imap.login(imap_options[:username], imap_options[:password])
