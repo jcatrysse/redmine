@@ -52,6 +52,11 @@
   gezocht op "members pagination": alleen #30981 (los onderwerp: selectie
   onthouden in de nieuw-lid-modal) en drie gesloten issues uit 2011/2017.
 - **Verandert iets in trunk het ontwerp?** Nee.
+- **Opnieuw gecontroleerd op 2026-09-06 tegen trunk `bee32a926` = r25037.** Nog
+  steeds niets van dit alles in trunk, beide patchbestanden applyen er nog
+  schoon op, en de drie mechanismen waar de note op leunt (de paginator clampt
+  alleen naar boven, de paginatieblokken staan in de niet-lege tak, het
+  contextmenu geeft `back_url` door) staan er onveranderd in. Zie *Evidence*.
 
 ---
 
