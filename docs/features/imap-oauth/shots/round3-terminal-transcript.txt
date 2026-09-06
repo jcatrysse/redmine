@@ -1,0 +1,83 @@
+G9 re-verification of the round-3 fixes (2026-09-06), against the harness in
+docs/features/imap-oauth/verify-harness/: a real IMAP server that only accepts
+AUTHENTICATE XOAUTH2, and a real HTTPS token endpoint with a self-signed
+certificate the client is pointed at with SSL_CERT_FILE, so TLS verification is
+genuinely exercised. Both runs used the same driver, the same credentials file
+and the same two servers; the only difference is the code.
+
+The driver is verify-harness/g9-round3.sh. login.example.net resolves to
+127.0.0.1 through /etc/hosts, because the client does a real DNS lookup and a
+real TLS handshake against that certificate's CN.
+
+The witness for F01 is the token endpoint's own log: it prints the full query
+string it received, so a parameter that never arrived is visible as absent
+rather than inferred from the URL Redmine printed.
+
+===== BEFORE — the code as round 3 reviewed it (fd712001c) =====
+
+--- F01: the consent URL is built by the real code, then really followed ---
+  consent URL: https://login.example.net:11443/oauth2/v2.0/authorize?response_type=code&client_id=a-client-id&redirect_uri=http%3A%2F%2Flocalhost&scope=https%3A%2F%2Foutlook.office.com%2FIMAP.AccessAsUser.All+offline_access
+  token endpoint logged:
+    authorize endpoint: full query=response_type=code&client_id=a-client-id&redirect_uri=http%3A%2F%2Flocalhost&scope=https%3A%2F%2Foutlook.office.com%2FIMAP.AccessAsUser.All+offline_access
+  -> policy parameter p=B2C_1_signin reached the provider: NO, it was dropped
+
+--- F04: the token endpoint answers 200 with a JSON array, not an object ---
+  TypeError: no implicit conversion of String into Integer
+
+--- control: the happy path, real XOAUTH2 over a real socket ---
+  check returned without raising
+  IMAP server saw:
+    imap server: C: RUBY0001 AUTHENTICATE XOAUTH2
+    imap server: connection closed (authenticated=true)
+  -> the mailbox accepted the XOAUTH2 credential: YES
+
+
+===== AFTER — round-3 fixes applied (10efe8761) =====
+
+--- F01: the consent URL is built by the real code, then really followed ---
+  consent URL: https://login.example.net:11443/oauth2/v2.0/authorize?p=B2C_1_signin&response_type=code&client_id=a-client-id&redirect_uri=http%3A%2F%2Flocalhost&scope=https%3A%2F%2Foutlook.office.com%2FIMAP.AccessAsUser.All+offline_access
+  token endpoint logged:
+    authorize endpoint: full query=p=B2C_1_signin&response_type=code&client_id=a-client-id&redirect_uri=http%3A%2F%2Flocalhost&scope=https%3A%2F%2Foutlook.office.com%2FIMAP.AccessAsUser.All+offline_access
+  -> policy parameter p=B2C_1_signin reached the provider: YES
+
+--- F04: the token endpoint answers 200 with a JSON array, not an object ---
+  RuntimeError: OAuth 2.0 token request returned no access token
+
+--- control: the happy path, real XOAUTH2 over a real socket ---
+  check returned without raising
+  IMAP server saw:
+    imap server: C: RUBY0001 AUTHENTICATE XOAUTH2
+    imap server: connection closed (authenticated=true)
+  -> the mailbox accepted the XOAUTH2 credential: YES
+
+
+===== WHAT CHANGED =====
+
+F01  The credentials file's authorize_url carries a policy parameter of its own
+     (?p=B2C_1_signin), the way an Azure AD B2C endpoint does. Before: the
+     consent URL Redmine built dropped it silently, and the provider's log
+     confirms it never arrived - so the provider would answer with its own
+     opaque error and nothing in Redmine's output would point at the cause.
+     After: p=B2C_1_signin is the first parameter of the consent URL and the
+     provider logged receiving it. The grant's own parameters still follow it
+     and still win, which is what the two new unit tests pin.
+
+F04  The token endpoint answers 200 with a body that is valid JSON but not an
+     object ([]), which is what BADJSON=1 in token_endpoint.rb now does.
+     Before: TypeError: no implicit conversion of String into Integer - the
+     JSON::ParserError rescue never fires, because the parse succeeded, and the
+     hash lookup under it is what breaks. The message names neither OAuth nor
+     the endpoint. After: "OAuth 2.0 token request returned no access token",
+     the same message every other malformed answer already produced.
+
+control  Unchanged on both sides, and that is the point: the mailbox accepted
+     the XOAUTH2 credential over a real socket in both runs, so neither fix
+     touched the path that actually fetches mail. The IMAP server logged the
+     AUTHENTICATE XOAUTH2 command and closed with authenticated=true either way.
+
+Not re-run here, because nothing in the round-3 diff goes near it: the full
+three-step consent chain (oauth2_authorize -> follow the URL -> paste the
+redirect back -> receive_imap fetches a message and MailHandler creates an
+issue) and its screenshots. That evidence is from round 2, in
+terminal-transcript.txt and round2-terminal-transcript.txt, and the round-3
+control above shows the fetch path still behaves identically.

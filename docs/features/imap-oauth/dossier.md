@@ -296,10 +296,10 @@ against current trunk and the four round-1 review findings were fixed. The
 r24882 figures they replace are in the branch history.
 
 - **full** suite (`test:all`, so including the system tests) with the patch
-  → `6000 runs, 31792 assertions, 27 failures, 2 errors, 92 skips`
+  → `5904 runs, 30984 assertions, 27 failures, 2 errors, 92 skips`
 - **full** suite on a pristine `origin/master` r25037 worktree, own database
-  → `5977 runs, 31710 assertions, 27 failures, 2 errors, 92 skips`
-- 6000 - 5977 = **23**, exactly the number of tests in the two new files.
+  → `5877 runs, 30889 assertions, 27 failures, 2 errors, 92 skips`
+- 5904 - 5877 = **27**, exactly the number of tests in the two new files.
 - the failing test **names** are **identical** on the two sides: 29 each,
   `diff` empty. All 29 are repository, changeset and `SysController` tests that
   need `svn`, `hg`, `bzr` or `cvs`, none of which exist in this image: 14
@@ -316,8 +316,17 @@ r24882 figures they replace are in the branch history.
   client code; `OauthProviderSystemTest` is the Doorkeeper **provider** side,
   which this patch does not go near. Nothing was skipped or disabled to get
   here — the suites were simply not made to fight each other for cores.
-- the two new files run together in one process: `23 runs, 81 assertions,
+- the two new files run together in one process: `27 runs, 96 assertions,
   0 failures, 0 errors, 0 skips`
+- **The absolute totals moved between review rounds and the difference is not
+  this patch.** Round 2 measured `6000` and `5977` for the same two sides; round
+  3 measures `5904` and `5877`, in a fresh container on the same trunk revision.
+  Both sides dropped by roughly the same hundred runs, both keep the identical
+  27 failures / 2 errors / 92 skips and the same 29 failing names, and the
+  patch-minus-trunk delta is exactly the number of new tests in each round (23
+  then, 27 now). What varies is how many system tests the image runs, not what
+  the patch does. The delta and the name diff are the figures to read; the
+  absolute totals are only comparable within one run pair.
 - RuboCop on the four changed files: `0` offences (baseline on the same files at
   the merge base: `0`). `lib/tasks/email.rake` is not linted — `lib/tasks/**/*`
   is excluded in Redmine's own `.rubocop.yml`, so that file had human review
