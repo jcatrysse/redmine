@@ -3,9 +3,9 @@ slug: revision-branches
 feature: Git-branches op de revisie- en de issuepagina
 commit_51: cf826e3fd
 geoxyz: live
-geoxyz_commit: 115230bc2 + 8c1fa23fb
+geoxyz_commit: 115230bc2 + 8c1fa23fb + cf30eedfa
 upstream: patch klaar
-patch: patches/revision-branches/2026-09-05-r25037-feature.patch
+patch: patches/revision-branches/2026-09-06-r25037-feature.patch
 issue: 5386
 ---
 
@@ -51,14 +51,52 @@ niet meer boven `repository_log_display_limit` revisies (standaard 100): één
 Git-proces per rij, dus dat aantal is nu begrensd door een getal dat de
 beheerder toch al instelt.
 
+## Reviewronde 3 (2026-09-06), blind
+
+Een verse sessie las de patch koud, zonder de bevindingen van ronde 1 te lezen,
+en vond er drie. Alle drie dicht, met een `Resolution:`-regel in
+`docs/review/findings/2026-09-06-revision-branches-claude-opus5-round3.md`.
+
+- **F01 (minor, code) — de enige echte fout.** Het uitsluitpatroon werd tussen
+  kale ankers gezet: `\A#{pattern}\z`. Alternatie bindt losser dan
+  aaneenschakeling, dus `feature|hotfix` betekende "begint met feature **of**
+  eindigt op hotfix" en gooide ook `feature-123` en `my-hotfix` weg, zonder
+  melding. Nu gegroepeerd als `\A(?:#{pattern})\z`. **Dit wijkt bewust af van
+  `app/models/mail_handler.rb:365`,** dat exact dezelfde fout heeft; die regel
+  is hier niet aangeraakt (INV-1) en het dossier legt de afwijking uit. Een
+  apart issue voor `MailHandler` is de moeite waard.
+- **F02 (minor, dossier)** — het hergebruik van `repository_log_display_limit`
+  stond alleen als besparing beschreven. De prijs staat er nu bij: standaard
+  100, dus honderd revisies is honderd `git branch --contains` op één XHR, en
+  die knop lager zetten kort ook élke repository-logpagina in. De vijfde
+  instelling is als alternatief benoemd en die keuze is aan de committer.
+- **F03 (nit, dossier)** — een branchnaam die geen UTF-8 is wordt getoond maar
+  zijn link loopt dood: de naam wordt voor de weergave geconverteerd, en
+  `git show-ref` zoekt hem op ruwe bytes op. **Niet de schuld van deze patch** —
+  de bestaande branch-dropdown breekt vandaag op precies dezelfde manier — maar
+  de patch zet die kapotte link wel op drie plaatsen in plaats van één. Staat nu
+  in het dossier onder "What this does not fix", met de meting erbij.
+
+De branch is opnieuw opgebouwd als **één** commit op trunk r25037
+(`53faa9a0f`), zoals INV-2 vraagt; de oude tip staat bewaard als
+`archive/patch-revision-branches-r25037-before-round3` zodat `3e2c6b432` uit de
+review oplosbaar blijft. De patchbestanden dragen daarom de datum 2026-09-06.
+
 ## Bewijs
 
-Alles opnieuw gedraaid op 2026-09-05 tegen trunk **r25037** (`bee32a926`).
+De cijfers hieronder zijn van **2026-09-06**, na de ronde-3-fix, tegen trunk
+**r25037** (`bee32a926`). Elke worktree heeft `tmp/test/git_repository`
+uitgepakt — zonder die fixture bestaan 106 Git-tests niet eens (zie
+`docs/traps.md`).
 
-- Volledige suite met patch: `5995 runs, 31785 assertions, 27 failures, 2 errors, 92 skips`
+- Volledige suite met patch: **meting loopt nog op het moment van deze commit** — zie de volgende commit op dit bestand
 - Volledige suite op schone trunk r25037: `5977 runs, 31715 assertions, 27 failures, 2 errors, 92 skips` — de 29 faalnamen zijn **identiek** aan die van de patch-run (alle 29 SCM-afhankelijk, `svn`/`hg`/`bzr`/`cvs` staan niet in dit image). Het verschil van 18 runs is precies wat de patch aan tests toevoegt.
-- Aangeraakte suites in één proces: `672 runs, 4275 assertions, 0 failures, 0 errors, 16 skips`
-- Volledige suite op `7.0-stable-GEOxyz`: `6119 runs, 32341 assertions, 0 failures, 0 errors, 39 skips` — echt 0/0, want de SCM-afhankelijke tests die op trunk falen bestaan daar niet in dezelfde vorm
+- Aangeraakte suites in één proces: `672 runs, 4271 assertions, 0 failures, 0 errors, 16 skips` (ronde 2 mat hier 4275 assertions; dit image heeft geen ImageMagick, wat een assertietelling verschuift zonder een uitkomst te verschuiven)
+- De ronde-3-fix is **rood bewezen op de oude code**: met de groepering
+  teruggedraaid geeft `test_changeset_branches_should_anchor_a_regular_expression_containing_alternation`
+  `["test_branch"]` waar `["master-20120212", "test_branch"]` hoort — precies de
+  branch die de kale `\A` opslokte
+- Volledige suite op `7.0-stable-GEOxyz`: **meting loopt nog op het moment van deze commit** — zie de volgende commit op dit bestand
 - Aangeraakte suites op `7.0-stable-GEOxyz`: `675 runs, 4331 assertions, 0 failures, 0 errors, 1 skip`
 - RuboCop op de 10 gewijzigde Ruby-bestanden: 0 (baseline 0 op r25037), en op
   de GEOxyz-branch ook 0 (baseline 0 op `origin/7.0-stable`) — met dezelfde
