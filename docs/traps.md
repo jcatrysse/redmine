@@ -1077,3 +1077,20 @@ toegevoegd.
   van uit het beeld afgelezen. De geweigerde kant is wél zelfaanwijzend: Rails'
   eigen pagina zet "Blocked hosts: `<host>`" in de titel, en dat is dus het
   screenshot dat je echt wilt hebben.
+
+
+- **De git-fixture-valkuil hierboven is op 2026-09-06 een tweede keer
+  toegeslagen, en kostte deze keer een verkeerde zin in een dossier.** De
+  ronde-3-reviewsessie van `imap-oauth` zette drie worktrees op zonder
+  `tmp/test/git_repository` uit te pakken, zag daardoor `5904` en `5877` runs
+  waar ronde 2 `6000` en `5977` had, en schreef als verklaring "wat varieert is
+  hoeveel systeemtests het image draait" in `status.md` én `dossier.md`. Dat was
+  geraden en fout. De echte oorzaak is deze trap, en hij is nu exact gemeten:
+  dezelfde drie Git-testbestanden geven `114 runs` mét de fixture en `8 runs`
+  zonder — **106 tests die niet bestaan in plaats van falen**. Twee lessen, en
+  de tweede is de belangrijkste: (1) pak de fixture uit in élke worktree, ook in
+  een wegwerp-reviewworktree, en (2) **een verschil in de cijfers is een meting
+  waard voordat het een verklaring krijgt.** Het verschil patch-min-trunk en de
+  namendiff bleven kloppen zonder fixture, dus de conclusie hield stand — maar
+  de dekking was 106 tests kleiner dan het getal suggereerde, en dat hoort er
+  dan bij te staan.
