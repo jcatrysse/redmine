@@ -47,7 +47,7 @@ stanza in the file.
 
 ### F01 — The regexp is case-sensitive, so an uppercase `Host` header is refused
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -112,13 +112,24 @@ working — exactly the trade-off `status.md` already warns about. This is the
 same conclusion from the opposite direction: the settled decision to keep a
 regexp is right, it just needs the flag.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-06, together with F02 in one line.
+`config/environments/development.rb:63` now reads
+`config.hosts << /[a-z0-9-]+(?:\.[a-z0-9-]+)*\.geoxyz\.eu/i`. The `/i` is on
+the pattern itself, as this finding requires — `sanitize_regexp` does not add
+it, and the string form was not used, for the reason the finding gives (it
+allows the apex and only one subdomain level). Measured against the real
+`ActionDispatch::HostAuthorization::Permissions` and against a running dev
+server: the five case variants of `redmine.geoxyz.eu` that this finding lists
+went from two passing / three blocked to five passing, and no host that was
+refused before is accepted now. The anchored form Rails stores is
+`/\A(?i-mx:[a-z0-9-]+(?:\.[a-z0-9-]+)*\.geoxyz\.eu)(?-mix::\d+)?\z/`.
+The measured table is in `docs/features/geoxyz-hosts/status.md`.
 
 ---
 
 ### F02 — The matched set is wider than "hostnames", but not in a way that re-opens DNS rebinding
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** security
@@ -199,13 +210,29 @@ it stands is a defensible call for a development-only file; if it is left, the
 matched set above is worth pasting into `status.md` so nobody has to re-derive
 it.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-06, in the same line as F01. The prefix is no
+longer `.*` but one or more DNS labels: `[a-z0-9-]+(?:\.[a-z0-9-]+)*`. All
+thirteen junk-prefixed strings this finding lists (`.geoxyz.eu`,
+`..geoxyz.eu`, `attacker.com/.geoxyz.eu`, `attacker.com@.geoxyz.eu`,
+`attacker.com#.geoxyz.eu`, `attacker.com:8080.geoxyz.eu`,
+`attacker.com\r.geoxyz.eu`, `%00.geoxyz.eu`, `_.geoxyz.eu`, `*.geoxyz.eu`,
+`[.geoxyz.eu`, and the space and tab forms) are now refused, measured — not
+reasoned — through `Permissions#allows?` as the finding asks, and four of them
+also against a running server over a raw socket. Multi-level subdomains
+(`a.b.geoxyz.eu`, `a.b.c.geoxyz.eu`) still pass and the apex `geoxyz.eu` is
+still refused, so the trade-off the finding warns about was not taken. Worth
+noting because it settles the "is this the right shape" question: Rails' own
+blocked-host page states the rule as "make sure they are valid hostnames
+(containing only numbers, letters, dashes and dots)", which is exactly the
+matched set now. The finding was filed as a nit and the fix was taken because
+the line had to be touched for F01 anyway, so the drift argument (a
+copy-paste into `production.rb`) is closed for free rather than left standing.
 
 ---
 
 ### F03 — The line lives in an upstream-tracked file, so it is a standing merge-conflict candidate
 
-- **Status:** open
+- **Status:** wontfix
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -263,4 +290,15 @@ is a third option Rails 8 reads, but it goes through `sanitize_string`, so it
 buys only one subdomain level and loses `a.b.geoxyz.eu`. Whoever picks should
 know all three before choosing.
 
-**Resolution:**
+**Resolution:** not fixed, deliberate, 2026-09-06 — the line stays in
+`config/environments/development.rb`. This follows the finding's own first
+option: it is one line, the conflict risk is small, and both alternatives are
+worse. `config/additional_environment.rb` is loaded in *every* environment, so
+appending there would make `config.hosts` non-empty in production and switch
+`HostAuthorization` on with only `*.geoxyz.eu` permitted — it would need an
+explicit `Rails.env.development?` guard and it would move the setting out of
+version control. `RAILS_DEVELOPMENT_HOSTS` goes through `sanitize_string`, so
+it buys one subdomain level and loses `a.b.geoxyz.eu`, which is the trade-off
+F01 and the feature's own decision record already refuse. Recorded as a Class A
+decision in `docs/features/geoxyz-hosts/decisions.md` so the next merge conflict
+in that file is resolved by keeping the line, not by re-opening the question.
