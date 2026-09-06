@@ -370,8 +370,16 @@ standalone to a clean `origin/master`, and INV-2 keeps such a file out of
   reports `"nodata" found in "$('#tab-content-members').html(... <p class=\"nodata\">No data to display</p> ...)"`.
   The clamp was removed from both helpers, the three tests were run, all three
   failed, and the clamp was restored.
-- both patches apply cleanly to pristine `origin/master` r24882: yes
-- `tools/check-patch-clean.sh patch/members-pagination`: PASS
+- both patches apply cleanly to pristine `origin/master` r24882: yes, and
+  re-checked 2026-09-06 against **current trunk r25037**: still yes. So the
+  note will not be posted against a base the patches no longer fit.
+- `tools/check-patch-clean.sh members-pagination`: PASS — it checks the two
+  **patch files** in `patches/members-pagination/`, which are Takenori's, and
+  reports `no patch/members-pagination branch to compare against`. That is
+  correct and not a gap: this feature has no patch branch of ours, by design.
+  An earlier version of this line named a `patch/members-pagination` branch;
+  that branch was local to one session, was never pushed, and no longer exists,
+  so the claim could not be reproduced.
 
 # Live verification (G9)
 
@@ -455,7 +463,8 @@ below the table disagrees with it in the clamped one.
 - **Patches attached:** none by us. `patches/members-pagination/` holds the two
   files that Takenori attached, committed unchanged so a later revision can be
   diffed against them.
-- **Made against:** `origin/master` r24882 (2026-08-03)
+- **Made against:** `origin/master` r24882 (2026-08-03); both patch files still
+  apply to r25037, checked 2026-09-06
 - **Status:** niet ingediend — er komt alleen een note met de bevinding
 - **Feedback en wat ermee gebeurde:** n.v.t.
 

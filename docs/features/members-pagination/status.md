@@ -71,8 +71,11 @@ als je een lid toevoegt, bewerkt of verwijdert.
   helpertests melden `Expected: 2, Actual: 9`, de controllertest meldt
   `"nodata" found in ...`. De clamp is uit beide helpers gehaald, de tests zijn
   gedraaid, alle drie faalden, daarna is de clamp teruggezet.
-- `tools/check-patch-clean.sh patch/members-pagination`: PASS ·
-  `tools/check-geoxyz-branch.sh`: PASS
+- `tools/check-patch-clean.sh members-pagination`: PASS (2026-09-06). Het
+  controleert Takenori's twee patchbestanden en meldt terecht dat er **geen**
+  `patch/members-pagination`-branch is om tegen af te zetten — die hebben we
+  niet, en dat is de bedoeling. Beide bestanden applyen nog schoon op de
+  huidige trunk **r25037**.
 - Eén restpunt, gemeld en niet stilgehouden: de drie GEOxyz-commits hebben
   `Jan Catrysse` als **auteur** maar `Claude` als **committer**, doordat
   `tools/session-push.sh` ze moest replayen en een replay de committer op wie
