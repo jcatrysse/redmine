@@ -188,6 +188,15 @@ issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
   gebruik die niet meer.
 - `Redmine::IMAP` en `Redmine::POP3` hadden **geen enkele test**; deze
   patch levert de eerste (12 tests, 43 assertions).
+- **Bied de splitsing aan, in één zin** (jouw keuze F07/optie B van 2026-09-06).
+  Zeg dat de patch netjes in tweeën valt — het ophaalgedeelte (`oauth2_token=`,
+  `oauth2_credentials=`, `Oauth2Client.access_token`) en de eenmalige
+  toestemmingsstap (`oauth2_authorize`) — en dat je hem graag als twee
+  indient als de committer liever eerst alleen het eerste neemt. **Hang wel
+  één patchbestand aan**; het aanbod staat in de tekst. Reden: op #29664 vroeg
+  Holger Just precies om zo'n splitsing, dus die vraag komt waarschijnlijk
+  toch. De kant-en-klare formulering staat in `dossier.md` in de tabel met
+  verwachte bezwaren, rij "This is two changes".
 
 De Engelse issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem",
 inclusief de tabel met verwachte bezwaren.
@@ -212,9 +221,12 @@ kan hier niet. Als een menu ergens anders staat of een stap ontbreekt, corrigeer
 het in `dossier.md` voordat de wikipagina de deur uit gaat. Wat wél getest is,
 is alles wat Redmine zelf doet.
 
-En er staat één keuze voor je open: **K-06** in `docs/DECISIONS.md`, over de
-`client_credentials`-grant (app-only, Microsofts aanbeveling voor een
-servicemailbox). Er is geen haast: we bouwden verder zonder.
+Er staat **geen keuze meer voor je open.** K-06 (de `client_credentials`-grant,
+app-only) besliste je op 2026-09-03 met optie A: alleen de refresh-token-grant
+gaat mee, en wie app-only wil mint het token zelf en geeft het met
+`oauth2_token=`. F07 uit reviewronde 3 besliste je op 2026-09-06 met optie B:
+de note biedt de splitsing aan, de bijlage blijft één bestand. Beide staan in
+`docs/DECISIONS.md`; niet opnieuw afwegen.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
 

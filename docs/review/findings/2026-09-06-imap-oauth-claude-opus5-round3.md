@@ -501,3 +501,57 @@ Jan's call. If B, the sentence belongs next to the "replacement, not an
 addition" framing, not in the objections table.
 
 **Resolution:**
+
+---
+
+### F08 — the three timeout assertions assert `Net::HTTP`'s own defaults, so they hold on code that passes no timeouts at all
+
+- **Status:** open
+- **Severity:** minor
+- **Confidence:** confirmed
+- **Category:** test-quality
+- **Where:** `test/unit/lib/redmine/oauth2_client_test.rb`, `test_access_token_should_return_the_token_of_a_refresh_token_grant`
+- **Invariant touched:** INV-8 — this is the "green does not mean proven" case,
+  in miniature
+- **Found:** not in the blind read. It surfaced while fixing F06, when the
+  mutation that was supposed to turn a new `write_timeout` assertion red left it
+  green. Recorded here rather than fixed silently, because the whole point of
+  the findings file is that it is the record.
+
+**What is wrong**
+
+The happy-path test asserts `assert_equal 60, http.open_timeout` and the same
+for `read_timeout`. `Net::HTTP` defaults **all three** timeouts to 60, and
+`expect_token_request` hands the test a freshly built `Net::HTTP.new(...)`. So
+the assertions describe the object the test itself constructed, not anything
+`Oauth2Client` did. They would hold if `post_to_token_endpoint` passed no
+timeouts whatsoever.
+
+**Why a committer would push back**
+
+They would not see it — this one is aimed at us. It matters because the dossier
+lists this test under "what it proves", and what it proves is less than it says.
+Verified by mutation: with every timeout removed from the production call, the
+test stays green.
+
+```
+$ bundle exec ruby -rnet/http -e 'h = Net::HTTP.new("x", 443)
+  puts "open=#{h.open_timeout} read=#{h.read_timeout} write=#{h.write_timeout}"'
+open=60 read=60 write=60
+
+# production call reduced to: ::Net::HTTP.start(uri.host, uri.port, use_ssl: true)
+$ ruby -Itest test/unit/.../oauth2_client_test.rb -n "/refresh_token_grant/"
+1 runs, 9 assertions, 0 failures, 0 errors, 0 skips
+```
+
+**How I verified it**
+
+The two commands above, in `/home/user/wt/patch-imap-oauth`, then the same
+mutation again after the fix (below) to confirm it now fails.
+
+**Suggested direction**
+
+Move the stubbed connection off the default before handing it over, so 60 can
+only come from the code under test.
+
+**Resolution:**

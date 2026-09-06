@@ -11,6 +11,11 @@
 # With INTERCEPT=1 it answers every token request with 200 and an HTML page
 # instead of JSON, the way an intercepting HTTPS proxy or a captive portal
 # does. That is the case round-1 finding F03 was about.
+#
+# With BADJSON=1 it answers 200 with a body that is valid JSON but not an
+# object (`[]`). That is round-3 finding F04: the parse succeeds, so the
+# JSON::ParserError rescue never fires and the hash lookup below it is what
+# breaks.
 
 require 'webrick'
 require 'webrick/https'
@@ -53,6 +58,13 @@ server.mount_proc '/oauth2/v2.0/token' do |request, response|
   params = CGI.parse(request.body.to_s)
   received = params.transform_values(&:first)
   warn "token endpoint: #{received.merge('client_secret' => '[redacted]', 'refresh_token' => '[redacted]')}"
+  if ENV['BADJSON'] == '1'
+    warn 'token endpoint: answering with a JSON array instead of an object'
+    response.status = 200
+    response['Content-Type'] = 'application/json'
+    response.body = '[]'
+    next
+  end
   if ENV['INTERCEPT'] == '1'
     warn 'token endpoint: answering with an HTML page instead of JSON'
     response.status = 200
@@ -93,6 +105,7 @@ end
 server.mount_proc '/oauth2/v2.0/authorize' do |request, response|
   redirect_uri = request.query['redirect_uri']
   warn "authorize endpoint: client_id=#{request.query['client_id']} scope=#{request.query['scope']} redirect_uri=#{redirect_uri}"
+  warn "authorize endpoint: full query=#{request.request_uri.query}"
   response.status = 302
   response['Location'] = "#{redirect_uri}?code=the-consent-code&session_state=fake"
 end

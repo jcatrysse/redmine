@@ -1,16 +1,16 @@
-From fd712001c09848e9bfbd05d72997ffc6c6d61cea Mon Sep 17 00:00:00 2001
+From 10efe8761e9efb7ec33f9c707c0be9e50c9c4c91 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Sun, 6 Sep 2026 10:19:07 +0000
+Date: Sun, 6 Sep 2026 12:55:09 +0000
 Subject: [PATCH] Authenticate IMAP inbound mail with an OAuth 2.0 access token
  (#43023).
 
 ---
  lib/redmine/imap.rb                         |  20 +-
- lib/redmine/oauth2_client.rb                | 165 ++++++++++++
- lib/tasks/email.rake                        |  69 +++++
- test/unit/lib/redmine/imap_test.rb          |  90 +++++++
- test/unit/lib/redmine/oauth2_client_test.rb | 275 ++++++++++++++++++++
- 5 files changed, 618 insertions(+), 1 deletion(-)
+ lib/redmine/oauth2_client.rb                | 169 ++++++++++
+ lib/tasks/email.rake                        |  70 +++++
+ test/unit/lib/redmine/imap_test.rb          |  90 ++++++
+ test/unit/lib/redmine/oauth2_client_test.rb | 325 ++++++++++++++++++++
+ 5 files changed, 673 insertions(+), 1 deletion(-)
  create mode 100644 lib/redmine/oauth2_client.rb
  create mode 100644 test/unit/lib/redmine/imap_test.rb
  create mode 100644 test/unit/lib/redmine/oauth2_client_test.rb
@@ -59,10 +59,10 @@ index 77b8da80f..329ca7462 100644
        end
 diff --git a/lib/redmine/oauth2_client.rb b/lib/redmine/oauth2_client.rb
 new file mode 100644
-index 000000000..c87129fff
+index 000000000..4e6ba63ab
 --- /dev/null
 +++ b/lib/redmine/oauth2_client.rb
-@@ -0,0 +1,165 @@
+@@ -0,0 +1,169 @@
 +# frozen_string_literal: true
 +
 +# Redmine - project management software
@@ -105,7 +105,7 @@ index 000000000..c87129fff
 +      def authorize_url(credentials_file)
 +        credentials = read_credentials(credentials_file, %w(authorize_url client_id))
 +        uri = https_uri(credentials['authorize_url'], 'authorize_url')
-+        params = {}
++        params = URI.decode_www_form(uri.query.to_s).to_h
 +        if credentials['authorize_params'].is_a?(Hash)
 +          params.merge!(credentials['authorize_params'].transform_keys(&:to_s))
 +        end
@@ -178,15 +178,18 @@ index 000000000..c87129fff
 +          'client_secret' => credentials['client_secret']
 +        }.merge(params)
 +        form['scope'] = credentials['scope'] if credentials['scope'].present?
-+        request = Net::HTTP::Post.new(uri)
++        request = ::Net::HTTP::Post.new(uri)
 +        request.set_form_data(form)
-+        Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 60, read_timeout: 60) do |http|
++        ::Net::HTTP.start(
++          uri.host, uri.port, use_ssl: true,
++          open_timeout: 60, read_timeout: 60, write_timeout: 60
++        ) do |http|
 +          http.request(request)
 +        end
 +      end
 +
 +      def token_from(response, name)
-+        unless response.is_a?(Net::HTTPSuccess)
++        unless response.is_a?(::Net::HTTPSuccess)
 +          message = "OAuth 2.0 token request failed with #{response.code} #{response.message}"
 +          error = error_code(response)
 +          message += " (#{error})" if error
@@ -217,11 +220,12 @@ index 000000000..c87129fff
 +        json_body(response)['error'].presence
 +      end
 +
-+      # The parsed response body, empty when the body is not JSON at all. An
++      # The parsed response body, empty unless it is a JSON object. An
 +      # intercepting proxy answers with an HTML page, and that has to read as a
 +      # token request that returned no token rather than as a JSON error.
 +      def json_body(response)
-+        JSON.parse(response.body.to_s)
++        body = JSON.parse(response.body.to_s)
++        body.is_a?(Hash) ? body : {}
 +      rescue JSON::ParserError
 +        {}
 +      end
@@ -229,7 +233,7 @@ index 000000000..c87129fff
 +  end
 +end
 diff --git a/lib/tasks/email.rake b/lib/tasks/email.rake
-index 4ba669510..9bf22d9f9 100644
+index 4ba669510..031ce5749 100644
 --- a/lib/tasks/email.rake
 +++ b/lib/tasks/email.rake
 @@ -42,6 +42,19 @@ Available IMAP options:
@@ -278,7 +282,7 @@ index 4ba669510..9bf22d9f9 100644
                        :folder => ENV['folder'],
                        :move_on_success => ENV['move_on_success'],
                        :move_on_failure => ENV['move_on_failure']}
-@@ -124,6 +149,50 @@ END_DESC
+@@ -124,6 +149,51 @@ END_DESC
        end
      end
  
@@ -317,6 +321,7 @@ index 4ba669510..9bf22d9f9 100644
 +      puts Redmine::Oauth2Client.authorize_url(credentials_file)
 +      puts
 +      print "Then paste the whole address you were redirected to: "
++      STDOUT.flush
 +      redirect_url = STDIN.gets
 +      refresh_token = Redmine::Oauth2Client.refresh_token(credentials_file, redirect_url)
 +
@@ -427,10 +432,10 @@ index 000000000..997fc5fb5
 +end
 diff --git a/test/unit/lib/redmine/oauth2_client_test.rb b/test/unit/lib/redmine/oauth2_client_test.rb
 new file mode 100644
-index 000000000..8fd3b6d51
+index 000000000..a10b1294f
 --- /dev/null
 +++ b/test/unit/lib/redmine/oauth2_client_test.rb
-@@ -0,0 +1,275 @@
+@@ -0,0 +1,325 @@
 +# frozen_string_literal: true
 +
 +# Redmine - project management software
@@ -472,6 +477,7 @@ index 000000000..8fd3b6d51
 +    assert http.use_ssl?
 +    assert_equal 60, http.open_timeout
 +    assert_equal 60, http.read_timeout
++    assert_equal 60, http.write_timeout
 +    assert_equal '/oauth2/v2.0/token', request.path
 +    assert_equal(
 +      {
@@ -536,6 +542,33 @@ index 000000000..8fd3b6d51
 +    credentials = CREDENTIALS.merge(
 +      'authorize_url' => 'https://login.example.net/oauth2/v2.0/authorize',
 +      'authorize_params' => {'response_type' => 'token', 'client_id' => 'someone-else'}
++    )
++    with_credentials(credentials) do |file|
++      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file)).query).to_h
++
++      assert_equal 'code', params['response_type']
++      assert_equal 'a-client-id', params['client_id']
++    end
++  end
++
++  def test_authorize_url_should_keep_the_parameters_already_in_the_authorize_url
++    credentials = CREDENTIALS.merge(
++      'authorize_url' => 'https://tenant.b2clogin.com/tenant.onmicrosoft.com/oauth2/v2.0/authorize?p=B2C_1_signin'
++    )
++    with_credentials(credentials) do |file|
++      url = URI.parse(Redmine::Oauth2Client.authorize_url(file))
++      params = URI.decode_www_form(url.query).to_h
++
++      assert_equal '/tenant.onmicrosoft.com/oauth2/v2.0/authorize', url.path
++      assert_equal 'B2C_1_signin', params['p']
++      assert_equal 'code', params['response_type']
++      assert_equal 'a-client-id', params['client_id']
++    end
++  end
++
++  def test_authorize_url_should_not_let_the_parameters_in_the_url_override_the_grant
++    credentials = CREDENTIALS.merge(
++      'authorize_url' => 'https://login.example.net/authorize?response_type=token&client_id=someone-else'
 +    )
 +    with_credentials(credentials) do |file|
 +      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file)).query).to_h
@@ -677,6 +710,24 @@ index 000000000..8fd3b6d51
 +    end
 +  end
 +
++  def test_access_token_should_raise_when_the_response_body_is_json_but_not_an_object
++    expect_token_request(response(Net::HTTPOK, '200', 'OK', '[]'))
++
++    with_credentials(CREDENTIALS) do |file|
++      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.access_token(file)}
++      assert_equal 'OAuth 2.0 token request returned no access token', error.message
++    end
++  end
++
++  def test_access_token_should_raise_when_a_failed_response_body_is_json_but_not_an_object
++    expect_token_request(response(Net::HTTPBadRequest, '400', 'Bad Request', 'null'))
++
++    with_credentials(CREDENTIALS) do |file|
++      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.access_token(file)}
++      assert_equal 'OAuth 2.0 token request failed with 400 Bad Request', error.message
++    end
++  end
++
 +  private
 +
 +  def with_credentials(credentials)
@@ -699,6 +750,10 @@ index 000000000..8fd3b6d51
 +  # the connection is stubbed out. Returns the connection, to assert on.
 +  def expect_token_request(response, &capture)
 +    http = Net::HTTP.new('login.example.net', 443)
++    # Net::HTTP defaults all three timeouts to 60, so a test that asserts 60 on
++    # a fresh connection asserts nothing. Moved off the default first, they only
++    # come back to 60 if Net::HTTP.start was really given them.
++    http.open_timeout = http.read_timeout = http.write_timeout = 1
 +    http.stubs(:do_start)
 +    http.stubs(:do_finish)
 +    http.expects(:request).with {|request| capture&.call(request); true}.returns(response)
