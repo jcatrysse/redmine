@@ -119,6 +119,15 @@ task description seems to ask for it.
   (2026-09-01, K-01 option A): attribution trailers belong on
   `geoxyz/framework` only. Commits on `patch/<slug>` and `7.0-stable-GEOxyz`
   carry none, whatever the execution environment prescribes for the session.
+  **This covers the author and committer fields, not just the message**, and
+  those are the half that bites: the session's own git identity is the AI's, so
+  a commit made without an explicit override already carries it. That is how
+  sixteen of thirty-three commits on `7.0-stable-GEOxyz` ended up with
+  `Claude <noreply@anthropic.com>` and had to be force-pushed away on
+  2026-09-06 (K-13). Commit to those two branches with the identity spelled
+  out — `git -c user.name="Jan Catrysse" -c user.email="jan.catrysse@geoxyz.eu"
+  commit …` — and let `tools/session-push.sh` catch it if you forget; it now
+  refuses such a push instead of carrying it.
 - **INV-5 Locales: `en`, `nl`, `fr`, `de`, `es` — nothing else, and every
   translation is derived, never invented.** Jan's decision (2026-09-01): these
   four languages ship with the work. The rule that makes that safe: for each

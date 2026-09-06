@@ -103,7 +103,7 @@ bestanden** aanraken, niet omdat ze het onthouden. `tools/check-ownership.sh
 | Tool | Waarvoor |
 |---|---|
 | `tools/claim.sh <slug>` | de feature claimen. `--list` toont wie wat heeft, `--release` geeft hem terug, `--force` neemt een dode claim over |
-| `tools/session-push.sh [branch]` | pushen als er parallelle sessies zijn: fetch, jouw commits erbovenop, vier keer opnieuw proberen. Gebruik dit in plaats van `git push`, ook op `7.0-stable-GEOxyz` |
+| `tools/session-push.sh [branch]` | pushen als er parallelle sessies zijn: fetch, jouw commits erbovenop, vier keer opnieuw proberen. Gebruik dit in plaats van `git push`, ook op `7.0-stable-GEOxyz`. Sinds K-13 behoudt de replay de committer, en weigert hij een push naar `7.0-stable-GEOxyz` of `patch/*` met een AI-identiteit in het auteur- of committerveld |
 | `tools/append-note.sh <bestand>` | een blok toevoegen aan een gedeeld bestand zonder ooit te conflicteren (blok op stdin) |
 | `tools/register.sh [--write]` | `docs/REGISTER.md` opnieuw opbouwen uit de statusbestanden |
 | `tools/check-ownership.sh <slug>` | weigert een push die bestanden van iemand anders aanraakt |
