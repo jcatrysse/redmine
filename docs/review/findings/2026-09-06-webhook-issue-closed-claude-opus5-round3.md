@@ -1,0 +1,187 @@
+# Review run — 2026-09-06 — claude-opus5-round3
+
+- **Reviewer:** Claude Code (Opus), round-3 blind re-review
+- **Reviewed:** `patch/webhook-issue-closed` at `f3234c1ec` against `origin/master` `bee32a926` (r25037). The branch is 0 commits behind trunk and `tools/check-patch-clean.sh --submit` confirms branch and patch file are the same change.
+- **Dossier read:** `docs/features/webhook-issue-closed/dossier.md` — yes
+- **Status read:** `docs/features/webhook-issue-closed/status.md` (the "already settled" section) — yes
+- **Round-1 findings read:** **no, deliberately.** This is the blind pass of
+  ronde 3 (`docs/STATE.md`): `docs/review/findings/2026-09-03-webhook-issue-closed-claude-opus5.md`
+  was not opened before or during the review.
+- **A conflict of interest worth declaring:** I reviewed
+  `webhook-tracker-filter` immediately before this one, so I came to this patch
+  already knowing `Webhook`, `hooks_for` and `acts_as_webhookable` well. That
+  made me a sharper reader here, and it is also why I could run the one check
+  nobody reviewing a single slug can run — whether the two webhook patches
+  co-apply (they do, in both orders).
+- **Ran the test suite:** yes, both sides, fresh worktrees, own PostgreSQL 16
+  databases, Git fixtures extracted, and **the same `Gemfile.lock` on both
+  sides**. See **Suite**.
+- **Scope covered:** minimality, feature scope, backward compatibility, the
+  trigger condition and every transition in the dossier's table, callback
+  ordering and whether a closing also fires `issue.updated`, the payload
+  timestamp mapping, i18n, tests as code, INV-10 against `7.0-stable-GEOxyz`,
+  patch hygiene, and co-application with the sibling patch.
+- **Scope NOT covered:**
+  - **No browser.** The G9 screenshots were read, not reproduced.
+  - **MySQL and SQLite.** PostgreSQL 16 only. The patch adds no query.
+  - **No mutation run** of the new tests against unpatched code; the dossier's
+    per-test red-on-old-code table was read, not re-executed. I did verify the
+    trigger condition against core by reading `update_closed_on` and
+    `Issue#closing?`.
+
+## Summary
+
+I could not find a defect in this change, and I looked hard, with the advantage
+of having just read the whole webhook model for the sibling patch. Every
+hypothesis I formed was already answered in the dossier, usually better than I
+would have put it.
+
+The trigger is the interesting part and it holds up. `saved_change_to_closed_on?`
+is a proxy for "this save closed the issue", and that is only sound because
+`closed_on` is written in exactly one place in core — `update_closed_on`, guarded
+by `if closing?`. I checked that in `app/models/issue.rb` rather than taking the
+dossier's word for it, and Redmine's own comment on that callback confirms the
+half that matters most: `closed_on` **is preserved when the issue is reopened**,
+so reopening cannot produce a spurious `issue.closed`.
+
+The payload timestamp looked arbitrary at first — `closed` is mapped onto
+`updated_on`, where `closed_on` would seem the obvious choice. It is not
+arbitrary: `update_closed_on` does `self.closed_on = updated_on`, so for the
+save that fires this event the two values are the same. Without the override the
+generic mapping falls through to `Time.now`, which would be the delivery time
+rather than the event time. The override is doing real work.
+
+The one thing measurable against the patch is that its own new test errors on a
+current environment (F01) — and that is a gem transition affecting a hundred
+core tests, not a defect in the change. I nearly wrote it up as "use
+`JSON.parse` instead" until I counted the convention, which is 20 core test
+files to 3 the other way. The recommendation is therefore to change nothing.
+
+**Counts:** blocker 0 · major 0 · minor 1 · nit 0 · question 0
+
+**Lines in the diff not strictly required by the feature:** 0. Five files,
+131 insertions, 2 deletions, and 118 of those insertions are tests.
+
+## Suite
+
+`/home/user/wt/wic` (patch tip) and `/home/user/wt/wic-trunk` (pristine r25037),
+same `Gemfile.lock` on both sides, PostgreSQL 16, Ruby 3.3.6.
+
+| What | Result |
+|---|---|
+| touched suites in one process (`webhook_test`, `webhook_payload_test`, `issue_test`) | `357 runs, 1095 assertions, 0 failures, 1 errors, 0 skips` — the one error is F01 |
+| `test:all` with the patch | `5988 runs, 31390 assertions, 48 failures, 83 errors, 92 skips` |
+| `test:all` on pristine trunk, same lock | `5977 runs, 31357 assertions, 48 failures, 82 errors, 92 skips` |
+| delta | **11 runs**, and **exactly one extra error** |
+| failing names | 131 against 130; `comm` shows the patch side adds exactly one name and removes none |
+| RuboCop on the four changed `.rb` files | `4 files inspected, no offenses detected` |
+| `tools/check-patch-clean.sh webhook-issue-closed --submit` | PASS, including the branch-versus-file comparison |
+
+**The 11-run delta is 10 + 1, and the 1 is worth knowing about.** The patch
+writes ten tests. The eleventh run is generated by core:
+`test/unit/webhook_payload_test.rb:31` loops over `WebhookPayload.events` and
+defines one test per `(type, action)` pair, so adding `closed` to Issue's event
+list creates `issue closed payload should be correct` for free. That is a small
+bonus the dossier does not claim — the new event's payload shape is checked by
+Redmine's own generic test without this patch writing anything for it.
+
+**Why the totals are 48/82 rather than the usual 27/2.** A fresh
+`bundle install` now resolves **json 3.0.0**, which breaks
+`ActiveSupport::JSON.decode` and with it about a hundred core tests. This is
+measured on pristine trunk (the second row), not assumed. `Gemfile.lock` is
+gitignored, so I copied the lock from the patch side to the trunk side before
+bundling; without that the two rows would not be comparable. See `docs/traps.md`.
+
+**The two webhook patches co-apply.** Jan submits `webhook-tracker-filter` and
+this one as two separate issues on redmine.org, so whether a committer can take
+both matters. Applied to a pristine r25037 checkout:
+
+```
+tracker-filter, then issue-closed   -> both apply
+issue-closed, then tracker-filter   -> both apply
+```
+
+They overlap in `test/unit/webhook_test.rb` and do not collide. Worth one
+sentence in whichever note goes second.
+
+**Hypotheses driven and cleared:**
+
+| Hypothesis | Outcome |
+|---|---|
+| reopening an issue clears `closed_on` and fires a spurious `issue.closed` | clean — `update_closed_on` only ever writes `closed_on` `if closing?`, and core's own comment says it is preserved on reopen |
+| an issue created directly in a closed status is missed | clean, and it fires — `Issue#closing?` returns `closed?` for a new record, `after_save_commit` covers creates, and the dossier's table has the row |
+| the payload timestamp should be `closed_on`, not `updated_on` | clean — `self.closed_on = updated_on`, so they are the same value for this save |
+| a closing now fires only `issue.closed` and no longer `issue.updated` | clean — both fire, `acts_as_webhookable`'s `after_update_commit` is untouched, and the dossier covers it including the ordering question |
+| INV-10: GEOxyz has drifted | clean — `webhookable.rb` and `issue.rb` are identical on `7.0-stable-GEOxyz` and the patch branch |
+| the branch and the patch file have drifted, as on `webhook-tracker-filter` | clean — branch is 0 behind trunk and the strengthened gate performs the comparison and passes |
+| the patch's new test should use `JSON.parse` to survive json 3.0.0 | **rejected after counting the convention** — `ActiveSupport::JSON.decode` is used in 20 core test files against 3 for `JSON.parse`. Deviating here to dodge a transient gem bug would leave an inconsistency that outlives the bug. See F01 |
+
+---
+
+### F01 — the patch's own new test errors under json 3.0.0, and it is the suite's only delta
+
+- **Status:** open
+- **Severity:** minor
+- **Confidence:** confirmed
+- **Category:** test-quality
+- **Where:** `test/unit/webhook_test.rb:250` — `payload = ActiveSupport::JSON.decode(json)`
+- **Invariant touched:** INV-8, in the narrow sense that "proven green" cannot currently be demonstrated for this patch's own test
+
+**What is wrong**
+
+Nothing, in the change. The measured fact is that this patch takes the suite
+from 82 errors to 83, and the one it adds is its own:
+
+```
+$ comm -13 <trunk failing names> <patch failing names>
+WebhookTest#test_should_enqueue_a_job_for_a_hook_subscribed_to_issue_closed_when_an_issue_is_closed
+
+ArgumentError: wrong number of arguments (given 2, expected 1)
+    test/unit/webhook_test.rb:250
+```
+
+The call is `ActiveSupport::JSON.decode(json)` with one argument, which is
+correct usage; the `ArgumentError` is raised inside Rails, which passes a second
+positional argument to `JSON.parse`, and json 3.0.0 no longer accepts it.
+
+**Why a committer would push back**
+
+Because of where it shows. `test/unit/webhook_test.rb` is exactly the file a
+reviewer runs when assessing this patch, and on pristine trunk that file is
+**green** — `28 runs, 111 assertions, 0 failures, 0 errors`. Apply the patch and
+it errors. The cause is external, but the appearance is that the patch broke it,
+and the reviewer has to dig to find out otherwise.
+
+**And the obvious fix is the wrong one.** `JSON.parse` works fine under json
+3.0.0 — I checked both in one process:
+
+```
+ActiveSupport::JSON.decode(s) -> ArgumentError: wrong number of arguments (given 2, expected 1)
+JSON.parse(s)                 -> {"type"=>"issue.closed", ...}
+```
+
+but `ActiveSupport::JSON.decode` is what **20** core test files use, against 3
+for `JSON.parse`, and line 250 is the only occurrence in `webhook_test.rb`.
+Rewriting it would make this patch the odd one out in order to route around a
+Rails/gem bug that will be fixed centrally, leaving an inconsistency behind once
+it is. That is why this is minor and not a defect: the patch is doing the
+conventional thing and the convention is what is broken.
+
+**How I verified it**
+
+Ran both full suites with the same `Gemfile.lock` and diffed the failing names
+in both directions. Ran `test/unit/webhook_test.rb` alone on a pristine trunk
+worktree with that same lock (`28 runs, 0 errors`) to establish that this file is
+green without the patch. Compared the two decoding APIs directly in one process.
+Counted the convention with `grep -rl` over `test/`.
+
+**Suggested direction**
+
+Change nothing in the patch. What is worth doing is knowing it: if the note goes
+out while json 3.0.0 is what a fresh bundle resolves, a committer's own run will
+show this error among roughly a hundred others on their trunk too, and one
+sentence in the submission saying so costs nothing and pre-empts a wrong
+conclusion. If Redmine pins `json` or Rails fixes `ActiveSupport::JSON.decode`
+before then, this disappears on its own and no action is needed.
+
+**Resolution:**
