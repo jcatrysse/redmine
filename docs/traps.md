@@ -1115,3 +1115,29 @@ toegevoegd.
   `git diff <parent>..<commit>` hoort aan beide kanten dezelfde regels te tonen
   (hier `2 files changed, 9 insertions(+), 1 deletion(-)`). Wijkt het aantal
   regels af, dan heb je iets meegenomen.
+
+
+- **`Gemfile.lock` staat in `.gitignore`, dus twee worktrees kunnen verschillende
+  gems krijgen — en sinds 2026-09-07 doen ze dat ook.** Een verse
+  `bundle install` haalt nu **json 3.0.0** binnen, en daarmee vallen op
+  **onbewerkte trunk r25037** ruim honderd tests om met
+  `ArgumentError: wrong number of arguments (given 2, expected 1)`: alles wat
+  door `ActiveSupport::JSON.decode` gaat, dus `Redmine::Views::Builders::JsonTest`,
+  vrijwel de hele `Redmine::ApiTest::*`-familie, `AutoCompletesControllerTest`
+  en de `QueriesControllerTest`-filtertests. De suite ging in deze worktree van
+  de gebruikelijke `27 failures, 2 errors` naar `48 failures, 82 errors`.
+  **Dat is niet de patch en het is geen regressie in Redmine** — het is een
+  gem-upgrade die in de ene worktree wel en in de andere niet zit, puur omdat
+  de lock niet in git staat.
+- **Gevolg, en dit is de regel:** een suitecijfer uit worktree A is alleen
+  vergelijkbaar met een cijfer uit worktree B als **beide dezelfde
+  `Gemfile.lock`** hebben. Kopieer daarom de lock van de patchkant naar de
+  trunkkant (`cp <patch-worktree>/Gemfile.lock <trunk-worktree>/`) vóór je
+  `bundle install` op de basislijn draait. Doe je dat niet, dan vergelijk je
+  twee verschillende Redmines en de namendiff is waardeloos. Een oudere
+  basislijn uit een eerdere sessie hergebruiken is om dezelfde reden niet
+  veilig; meet hem opnieuw naast de patch.
+- **Hoe je het herkent:** de faalnamen zijn bijna allemaal `*.json`-tests of
+  `JsonTest`, en de melding is altijd dezelfde `ArgumentError`. Controleer dan
+  `bundle list | grep " json "` aan beide kanten voordat je ook maar iets aan
+  de patch toeschrijft.
