@@ -1497,6 +1497,7 @@ fr:
   label_webhook_events: Événements
   webhook_url_info: Redmine enverra une requête POST à cette URL chaque fois qu'un des événements sélectionnés se produit dans un des projets sélectionnés.
   webhook_secret_info_html: S'il est renseigné, Redmine l'utilisera pour créer une signature envoyée avec chaque requête dans l'en-tête X-Redmine-Signature-256.
+  webhook_trackers_info: Les événements de demande ne sont envoyés que pour les trackers sélectionnés. Si aucun tracker n'est sélectionné, ils sont envoyés pour tous les trackers.
   setting_webhooks_enabled: Activer les webhooks
   label_integrations: Intégrations
   label_alert_note: Note
