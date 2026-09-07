@@ -158,7 +158,7 @@ reading):
 
 ### F01 — a scalar `f` with a matching `op` raises an unhandled `NoMethodError` on the filter endpoint
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -226,4 +226,4 @@ to say in the note that the endpoint inherits `add_filters`' existing behaviour
 on malformed input. Either is fine; silently leaving a documented hardening
 argument one field short is the part worth fixing.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06, in the dossier — **no code change, deliberately.** The finding was that the objections table claimed the `slice(:f, :op, :v)` stops a scalar from raising, when it only stops that for `c` and `t`. The `build_from_params` row now states the boundary exactly: the slice removes crash surface that would have been *new to this endpoint* (`c` and `t` are read nowhere else in `filter`, so a scalar `c=subject` would have raised here and nowhere else), and it changes nothing about `f` and `op`, which still reach `Query#add_filters` — where a scalar `f` with a matching `op` raises `NoMethodError`, exactly as `/issues?set_filter=1` does on unpatched trunk through the same method. Hardening `add_filters` is a one-line change to a core method this feature has no other reason to touch, so it is named as a separate trunk issue rather than folded in (INV-1). Recorded for Jan under "Wat Jan nog moet doen".

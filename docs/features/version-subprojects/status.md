@@ -53,6 +53,32 @@ statements in plaats van "één" (F04), de drie tests van Go MAEDA zijn als zoda
 gemarkeerd (F07), en de commitboodschap is één regel geworden zoals elke commit
 op trunk (F11).
 
+## Reviewronde 3 (2026-09-06), blind
+
+Een verse sessie las de patch koud, zonder de bevindingen van ronde 1 te lezen.
+**Eén bevinding, geen code-wijziging nodig**; ze staat dicht in
+`docs/review/findings/2026-09-06-version-subprojects-claude-opus5-round3.md`.
+
+- **F01 (minor, dossier)** — de bezwarentabel beweerde dat de `slice(:f, :op,
+  :v)` voorkomt dat een losse waarde in plaats van een lijst een fout geeft. Dat
+  klopt voor `c` en `t`, maar niet voor `f` zelf: `f=subproject_id` met een
+  bijpassende `op` geeft `NoMethodError` en dus een 500. **Niet nieuw** — exact
+  dezelfde aanvraag op `/issues?set_filter=1` geeft op onbewerkte trunk dezelfde
+  fout, want daar loopt hetzelfde `Query#add_filters`. De tekst zegt nu precies
+  waar de grens ligt: de slice haalt crashruimte weg die *nieuw* voor dit
+  eindpunt zou zijn geweest, en verandert niets aan hoe `f` en `op` zich
+  gedragen.
+
+Wat die ronde verder deed is vooral **bevestigen**. Zes aanvalspogingen op de
+patch: vijf kwamen schoon terug (geen SQL-injectie via de nieuw bereikbare
+parameters, geen lek van versies uit een privé-subproject, rechtencontrole op de
+goede plek, geen verbreding naar andere filters, geen verborgen N+1), en de
+zesde stond al in het dossier. De twee getallen waar een committer als eerste
+aan trekt zijn onafhankelijk nagemeten en kloppen: de volledige suite komt op
+`5986 runs, 31733 assertions, 27 failures, 2 errors, 92 skips` — vijf cijfers
+gelijk aan wat het dossier claimt — en per test klopt welke er rood staan op
+onbewerkte trunk: dezelfde zes rood, dezelfde drie met opzet groen.
+
 ## Bewijs
 
 Gemeten 2026-09-05, trunk r25037 = `bee32a926`, RuboCop 1.90.0, PostgreSQL 16,
@@ -72,6 +98,13 @@ Ruby 3.3.6.
   bij de eerste aanroep in een proces)
 - `tools/check-patch-clean.sh version-subprojects`: PASS ·
   `tools/check-geoxyz-branch.sh`: PASS
+- **Ronde 3 heeft de twee belangrijkste cijfers onafhankelijk overgedaan** in
+  een eigen worktree en ze kwamen exact uit: de volledige suite op de patch geeft
+  dezelfde vijf getallen, en per test klopt welke er rood staan op onbewerkte
+  code (zes rood, drie met opzet groen, precies de drie die het dossier bij naam
+  als bewaker noemt). Ook het verlies van het afgewezen alternatief is
+  nagemeten: zes items worden er vijf, en wat verdwijnt is
+  `OnlineStore - Systemwide visible version`
 - Screenshots: tien, vijf paren voor/na, gelezen: ja. De verificatie draait ook
   op de GEOxyz-branch en faalt aantoonbaar op het afgewezen ontwerp (ze
   controleert dat `authenticity_token` niet in de URL staat).
@@ -96,6 +129,14 @@ Neem er twee dingen bij op, allebei omdat Go MAEDA ze anders zelf vindt:
   zien, want `Project#shared_versions` kent geen rechtencontrole. Deze patch
   verandert dat niet; zijn vervanging verandert het als bijwerking. Dat is zijn
   sterkste tegenargument, dus het hoort in de note en niet in zijn antwoord.
+
+**En één los issue, als je zin hebt** — het hoort niet bij deze patch en het
+blokkeert niets. `Query#add_filters` crasht op een `f`-parameter die geen lijst
+is: `/issues?set_filter=1&f=subproject_id&op[subproject_id]==` geeft op
+onbewerkte trunk `NoMethodError: undefined method 'each' for an instance of
+String`, en dus een 500. De reparatie is één regel (accepteer alleen een Array),
+maar die regel zit in een kernmethode waar deze feature verder niets mee te
+maken heeft, dus hij is er bewust uit gehouden (INV-1). Gevonden in ronde 3.
 
 De Engelse tekst staat in `dossier.md` vanaf "The problem"; de voor/na-paren in
 `shots/`.

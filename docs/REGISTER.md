@@ -32,7 +32,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
-- `revision-branches` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-06
+- `version-subprojects` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-07
 
 ## Openstaand voor Jan
 
@@ -320,6 +320,14 @@ Neem er twee dingen bij op, allebei omdat Go MAEDA ze anders zelf vindt:
   zien, want `Project#shared_versions` kent geen rechtencontrole. Deze patch
   verandert dat niet; zijn vervanging verandert het als bijwerking. Dat is zijn
   sterkste tegenargument, dus het hoort in de note en niet in zijn antwoord.
+
+**En één los issue, als je zin hebt** — het hoort niet bij deze patch en het
+blokkeert niets. `Query#add_filters` crasht op een `f`-parameter die geen lijst
+is: `/issues?set_filter=1&f=subproject_id&op[subproject_id]==` geeft op
+onbewerkte trunk `NoMethodError: undefined method 'each' for an instance of
+String`, en dus een 500. De reparatie is één regel (accepteer alleen een Array),
+maar die regel zit in een kernmethode waar deze feature verder niets mee te
+maken heeft, dus hij is er bewust uit gehouden (INV-1). Gevonden in ronde 3.
 
 De Engelse tekst staat in `dossier.md` vanaf "The problem"; de voor/na-paren in
 `shots/`.
