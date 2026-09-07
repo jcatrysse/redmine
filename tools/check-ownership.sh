@@ -16,6 +16,7 @@
 #     docs/claims/<slug>--*
 #     docs/review/findings/*<slug>*
 #     docs/REGISTER.md               generated — regenerate, never merge
+#     docs/review/FINDINGS.md        generated — regenerate, never merge
 #
 # Shared, and only ever appended through tools/append-note.sh:
 #     docs/traps.md  docs/DECISIONS.md  docs/redmine-requirements.md
@@ -54,7 +55,7 @@ if [ -z "$changed" ]; then
   exit 0
 fi
 
-OWNED="^(docs/features/$SLUG/|patches/$SLUG/|verify/$SLUG\.mjs$|docs/claims/$SLUG--|docs/review/findings/[^/]*$SLUG[^/]*$|docs/REGISTER\.md$)"
+OWNED="^(docs/features/$SLUG/|patches/$SLUG/|verify/$SLUG\.mjs$|docs/claims/$SLUG--|docs/review/findings/[^/]*$SLUG[^/]*$|docs/REGISTER\.md$|docs/review/FINDINGS\.md$)"
 SHARED='^(docs/traps\.md|docs/DECISIONS\.md|docs/redmine-requirements\.md|docs/exceptions\.md)$'
 
 owned=$(printf '%s\n' "$changed" | grep -E "$OWNED" || true)
@@ -76,16 +77,23 @@ if [ -n "$foreign" ]; then
 fi
 
 # A generated file that was hand-edited is worse than a conflict, because it
-# looks authoritative and the next regeneration silently reverts it.
-if printf '%s\n' "$changed" | grep -qx 'docs/REGISTER\.md'; then
-  if tools/register.sh > /tmp/register-check.$$ 2>/dev/null &&
-     ! diff -q /tmp/register-check.$$ docs/REGISTER.md >/dev/null; then
-    fail "docs/REGISTER.md does not match tools/register.sh — run 'tools/register.sh --write'"
+# looks authoritative and the next regeneration silently reverts it. There are
+# two of them and both are owned by whoever pushes, so both are checked.
+check_generated() {
+  path="$1"; generator="$2"
+  printf '%s\n' "$changed" | grep -qxF "$path" || return 0
+
+  tmp="/tmp/generated-check.$$"
+  if "$generator" > "$tmp" 2>/dev/null && ! diff -q "$tmp" "$path" >/dev/null; then
+    fail "$path does not match $generator — run '$generator --write'"
   else
-    pass "docs/REGISTER.md matches its generator"
+    pass "$path matches its generator"
   fi
-  rm -f /tmp/register-check.$$
-fi
+  rm -f "$tmp"
+}
+
+check_generated 'docs/REGISTER.md'        tools/register.sh
+check_generated 'docs/review/FINDINGS.md' tools/findings.sh
 
 echo
 if [ "$fails" -eq 0 ]; then
