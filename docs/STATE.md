@@ -92,6 +92,7 @@ bestanden** aanraken, niet omdat ze het onthouden. `tools/check-ownership.sh
 | `docs/claims/<slug>--<sessie>` | het slot, één bestand per sessie | `tools/claim.sh` |
 | `docs/review/findings/<datum>-<slug>-<reviewer>.md` | één reviewronde | de reviewsessie |
 | `docs/REGISTER.md` | **gegenereerd** uit alle `status.md` | `tools/register.sh --write` |
+| `docs/review/FINDINGS.md` | **gegenereerd** uit alle bevindingenbestanden | `tools/findings.sh --write` |
 | `docs/traps.md` | gedeelde valkuilenlijst | iedereen, **alleen** via `tools/append-note.sh` |
 | `docs/DECISIONS.md` | Jans beslissingen en open keuzes (K-nn) | iedereen, **alleen** via `tools/append-note.sh` |
 | `docs/redmine-requirements.md` | wat Redmine echt eist, met bron | iedereen, **alleen** via `tools/append-note.sh` |
@@ -106,7 +107,8 @@ bestanden** aanraken, niet omdat ze het onthouden. `tools/check-ownership.sh
 | `tools/session-push.sh [branch]` | pushen als er parallelle sessies zijn: fetch, jouw commits erbovenop, vier keer opnieuw proberen. Gebruik dit in plaats van `git push`, ook op `7.0-stable-GEOxyz`. Sinds K-13 behoudt de replay de committer, en weigert hij een push naar `7.0-stable-GEOxyz` of `patch/*` met een AI-identiteit in het auteur- of committerveld |
 | `tools/append-note.sh <bestand>` | een blok toevoegen aan een gedeeld bestand zonder ooit te conflicteren (blok op stdin) |
 | `tools/register.sh [--write]` | `docs/REGISTER.md` opnieuw opbouwen uit de statusbestanden |
-| `tools/check-ownership.sh <slug>` | weigert een push die bestanden van iemand anders aanraakt |
+| `tools/findings.sh [--write] [--open]` | `docs/review/FINDINGS.md` opnieuw opbouwen uit de bevindingenbestanden; `--open` is de werklijst van wat nog geen `Resolution:`-regel heeft |
+| `tools/check-ownership.sh <slug>` | weigert een push die bestanden van iemand anders aanraakt. De twee **gegenereerde** bestanden (`docs/REGISTER.md`, `docs/review/FINDINGS.md`) mag je wél meesturen, maar ze moeten vers gegenereerd zijn — een met de hand bewerkt gegenereerd bestand faalt |
 | `tools/check-patch-clean.sh <slug>` | G6 — controleert het **patchbestand** en vergelijkt het met de branch; `--submit` maakt "applyt niet meer op trunk" fataal |
 | `tools/check-geoxyz-branch.sh` | G8 — lint gemeten tegen de baseline op `origin/7.0-stable`, alleen wat de branch toevoegt telt |
 | `tools/dev-server.sh`, `tools/dev-seed.rb`, `tools/verify-lib.mjs` | G9 |
