@@ -1128,3 +1128,17 @@ is precies de helft die níét het probleem was.
   its generator"), een met de hand bewerkte (FAIL), een wijziging in `tools/**`
   (FAIL) en een in `CLAUDE.md` (FAIL). De padvergelijking gebruikt nu
   `grep -qxF` in plaats van een met de hand ge-escapete regex.
+
+
+- **`docs/STATE.md` staat nu op ronde 3, en de voortgang staat er als commando
+  in plaats van als getal.** Jan gaf hier op 2026-09-06 opdracht toe ("ja"). De
+  fasesectie zei nog dat ronde 2 aan de beurt was terwijl die op 2026-09-06
+  afliep; drie sessies op rij moesten zelf uitvogelen dat ronde 3 liep. Dat is
+  dezelfde soort fout als de K-06-regel die in `imap-oauth/status.md` bleef
+  staan nadat de keuze al beslist was, en als de verklaring die geraden werd in
+  plaats van gemeten (zie `docs/traps.md`). De les die nu in het bestand zelf
+  verwerkt zit: **zet in `docs/STATE.md` geen stand die veroudert.** Hoever
+  ronde 3 is vraag je op met twee `ls`-commando's die in de fasesectie staan;
+  het verschil tussen die twee lijsten is wat er nog moet. Meegenomen: de
+  startstappen zeggen nu dat een openstaande bevinding fixen vóór een nieuwe
+  review gaat, en dat een reviewsessie de slug juist **niet** claimt.
