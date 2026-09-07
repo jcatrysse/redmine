@@ -1111,3 +1111,20 @@ is precies de helft die níét het probleem was.
   Jan al beantwoord heeft kost niets. Wat níét verandert: de beslissing van
   2026-09-03 dat de toestemmingsstap in de patch hoort en door iedereen te doen
   moet zijn, staat en wordt hierdoor niet heropend.
+
+
+## Beslist (Jan) — 2026-09-06, framework
+
+- **`docs/review/FINDINGS.md` is eigendom van wie hem regenereert, net als
+  `docs/REGISTER.md`.** Jan gaf hier op 2026-09-06 opdracht toe ("los op").
+  `tools/check-ownership.sh` rekende alleen `docs/REGISTER.md` tot de bestanden
+  die een sessie mag meesturen, terwijl allebei door een tool gegenereerd worden
+  en allebei "regenereren, nooit mergen" in hun kop hebben staan. Gevolg: elke
+  sessie die een bevinding sloot kreeg een FAIL op een bestand dat ze juist
+  hoorde te regenereren — op één dag drie keer. Beide staan nu in de
+  `OWNED`-verzameling, en de controle die een met de hand bewerkte
+  `REGISTER.md` tegenhoudt geldt nu ook voor `FINDINGS.md`. Nagemeten op vijf
+  gevallen: schone boom, een echt geregenereerde `FINDINGS.md` (PASS, "matches
+  its generator"), een met de hand bewerkte (FAIL), een wijziging in `tools/**`
+  (FAIL) en een in `CLAUDE.md` (FAIL). De padvergelijking gebruikt nu
+  `grep -qxF` in plaats van een met de hand ge-escapete regex.
