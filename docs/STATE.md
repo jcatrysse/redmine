@@ -8,44 +8,48 @@
 >
 > Verander dit bestand alleen als Jan om een framework-wijziging vraagt.
 
-## Huidige fase — ronde 2, fixen (sinds 2026-09-04)
+## Huidige fase — ronde 3, blinde herreview (sinds 2026-09-06)
 
-**Lees dit voordat je `docs/REGISTER.md` opent.** Het werk gaat nu niet over
-nieuwe features. Alle achttien staan in het register en negen patches zijn
-klaar; dat is de *uitkomst van ronde 1* en geen todo-lijst meer. Er staat dus
-geen `todo`-regel in het register, en dat betekent niet dat er niets te doen is.
+**Lees dit voordat je `docs/REGISTER.md` opent.** Het werk gaat niet over nieuwe
+features. Alle achttien staan in het register en negen patches zijn klaar; dat
+is de *uitkomst van ronde 1* en geen todo-lijst meer. Er staat dus geen
+`todo`-regel in het register, en dat betekent niet dat er niets te doen is.
 
 Jan sprak op 2026-09-04 een cyclus van drie rondes af:
 
 | Ronde | Wat | Waar het staat |
 |---|---|---|
 | 1, **af** | veertien onderdelen gereviewd, 129 bevindingen | `docs/review/findings/`, gebundeld in `docs/review/FINDINGS.md` |
-| 2, **nu** | elke bevinding krijgt een `Resolution:`-regel | `tools/findings.sh --open` is de werklijst |
-| 3, nog te doen | blinde herreview: een verse reviewer leest de gefixte patch koud, zonder ronde 1 eerst te lezen, en pas daarna vergelijken we | — |
+| 2, **af** (2026-09-06) | elke bevinding een `Resolution:`-regel — 127 stuks, geen enkele blijven liggen | `tools/findings.sh --open` was de werklijst en is leeg gedraaid |
+| 3, **nu** | blinde herreview: een verse sessie leest de gefixte patch koud, **zonder de bevindingen van ronde 1 eerst te lezen**, en pas daarna vergelijken we | `docs/review/findings/*-round3.md` |
 
-Jans twintig keuzes staan in `docs/DECISIONS.md` onder **"Beslist (Jan) —
-reviewronde 1, 2026-09-04"**, met een groepsnummer (g01..g18) per keuze.
-**Re-litigeer die niet**; ze zijn stuk voor stuk aan hem voorgelegd.
+**Hoever ronde 3 is, vraag je op — dat staat hier met opzet niet als getal**,
+want een getal in dit bestand veroudert en dat is vandaag al drie keer misgegaan:
 
-Volgorde van ronde 2, zoals die uit die keuzes volgt:
+```sh
+ls docs/review/findings/*round3*        # de onderdelen die al blind gedaan zijn
+ls docs/review/findings/ | grep -v round3 | grep -v TEMPLATE   # de veertien uit ronde 1
+```
 
-1. ~~**g13 eerst** — de vier achterlopende framework-regels bijwerken.~~
-   **Af, 2026-09-05.** INV-2 is aan het moment van indienen gekoppeld, INV-3
-   staat nu op Redmine's gemeten commentaardichtheid,
-   `tools/check-patch-clean.sh` controleert het patchbestand en vergelijkt het
-   met de branch, en `docs/exceptions.md` is de vaste plek voor een bewust
-   overtreden regel. Effect meteen zichtbaar: de oude regel gaf 9 van de 9
-   branches rood, de nieuwe geeft 7 schoon, 2 verouderd en 1 echte fout
-   (`wiki-export-attachments`, de drift tussen branch en patchbestand).
-2. de twee productieblockers: `ldap-mail-prefs` (g01) en `ar-sessions` (g02).
-   Die raken wat GEOxyz nu draait, de patches niet.
-3. de dossierteksten en de bewijscijfers, in één golf (g09 en g10) — los
-   tekstwerk zonder conflictrisico, dus goed parallel te doen.
-4. de codefixes per slug, met `tools/claim.sh`.
+Wat nog moet, is het verschil tussen die twee lijsten. Neem daaruit een onderdeel
+dat je zelf nog niet gelezen hebt.
 
-Geen enkele bevinding blijft op `open` zonder `Resolution:`-regel. "Geen tijd
-gehad" is een geldige reden, stilte niet. `tools/findings.sh --open` laat zien
-wat er nog zonder staat.
+**Wat een ronde-3-sessie doet, en wat ze juist niet doet.** Lezen: de patch, het
+dossier, `status.md` (inclusief "al bekend", zodat je niets heropent wat beslist
+is) en `docs/DECISIONS.md`. **Niet** lezen: het ronde-1-bevindingenbestand van
+diezelfde slug — dat is het hele punt van blind. Schrijven: één bestand,
+`docs/review/findings/<datum>-<slug>-<reviewer>-round3.md`. De skill is
+`patch-review`.
+
+Een bevinding uit ronde 3 wordt daarna gefixt zoals in ronde 2: **geen enkele
+bevinding blijft op `open` zonder `Resolution:`-regel.** "Geen tijd gehad" is een
+geldige reden, stilte niet. Dat fixen is gewoon werk voor een volgende sessie,
+met `tools/claim.sh` erbij als er code aan te pas komt.
+
+Jans twintig keuzes uit ronde 1 staan in `docs/DECISIONS.md` onder **"Beslist
+(Jan) — reviewronde 1, 2026-09-04"**, met een groepsnummer (g01..g18) per keuze,
+en zijn latere keuzes eronder per datum. **Re-litigeer die niet**; ze zijn stuk
+voor stuk aan hem voorgelegd.
 
 ## Begin hier, elke sessie
 
@@ -60,15 +64,17 @@ feature die al af was.
 
 Dan:
 
-1. `tools/findings.sh --open` — de openstaande bevindingen van ronde 2. Staat
-   daar werk, dan is dát de fase; zie "Huidige fase" hierboven. Lees er
-   `docs/DECISIONS.md` bij vanaf "Beslist (Jan) — reviewronde 1".
-2. Pas als die lijst leeg is: `cat docs/REGISTER.md` — alle achttien features,
-   hun status, en wat er voor Jan openstaat. Feature van Jan gekregen? Neem
-   die. Anders de bovenste `todo`-regel.
-3. **`tools/claim.sh <slug>`** — dit is verplicht, ook als je denkt dat je
-   alleen werkt. Het is het enige dat voorkomt dat twee sessies dezelfde feature
-   bouwen.
+1. `tools/findings.sh --open` — bevindingen die nog geen `Resolution:`-regel
+   hebben, uit welke ronde dan ook. **Staat daar werk, dan is dát je werk**:
+   fixen gaat voor nieuw reviewen. Lees er `docs/DECISIONS.md` bij vanaf
+   "Beslist (Jan) — reviewronde 1".
+2. Is die lijst leeg, dan is het de blinde herreview van ronde 3 — zie "Huidige
+   fase" hierboven voor de twee commando's die zeggen welke onderdelen al gedaan
+   zijn en welke niet. Feature van Jan gekregen? Neem die.
+3. **`tools/claim.sh <slug>`** — verplicht zodra je iets van een feature
+   verandert, ook als je denkt dat je alleen werkt; het is het enige dat
+   voorkomt dat twee sessies hetzelfde bouwen. **Een reviewsessie claimt juist
+   niet**: die schrijft één bevindingenbestand en raakt de feature niet aan.
 4. `cat docs/features/<slug>/status.md` — het geheugen van die feature: wat er
    al bekend is, en welke afwegingen je **niet** opnieuw hoort te maken.
 5. `cat docs/traps.md` — wat er hier al een keer misging, en
