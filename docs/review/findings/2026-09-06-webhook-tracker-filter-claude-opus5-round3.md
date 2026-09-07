@@ -75,7 +75,7 @@ and `/home/user/wt/wtf-trunk` (pristine r25037), PostgreSQL 16, Ruby 3.3.6.
 | delta | **12 runs — exactly the 12 new tests** (`grep -c '^+  test "'` on the feature patch gives 12) |
 | failing names | **130 on both sides, `comm` empty in both directions** |
 | RuboCop on the six changed `.rb` files | `6 files inspected, no offenses detected` |
-| `tools/check-patch-clean.sh webhook-tracker-filter --submit` | PASS — but see **F02**, it could not run its most important check |
+| `tools/check-patch-clean.sh webhook-tracker-filter --submit` | **at review time:** PASS — but see **F02**, it had silently skipped its most important check. **After F01 and F02 were fixed:** PASS with `origin/patch/webhook-tracker-filter and the patch file(s) are the same change`, i.e. the comparison actually ran |
 
 **Why those figures are 48/82 and not the usual 27/2, and why that is not the
 patch.** A fresh `bundle install` now resolves **json 3.0.0**, and everything
@@ -120,7 +120,7 @@ That is the message the dossier records, word for word.
 
 ### F01 — the branch holds an older design than the patch files: no K-11, no `tracker_ids=`
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** blocker
 - **Confidence:** confirmed
 - **Category:** conventions (patch hygiene)
@@ -177,13 +177,13 @@ design the patch files hold, exactly as round 2 did for
 keep the old tip under `archive/` so `90d3f6775` stays resolvable. The patch
 files are the chosen design and should not be regenerated from the branch.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06 — the branch was rebuilt from current `origin/master` r25037 as a single commit `cb4972a5c`, carrying the design the patch files hold (12 files, 148 insertions, 4 deletions), authored and committed as Jan Catrysse with no AI trace. The old tip is kept as `archive/patch-webhook-tracker-filter-r24882-before-round3`, so `90d3f6775` stays resolvable. `tools/check-patch-clean.sh webhook-tracker-filter --submit` now performs the comparison for real and reports `origin/patch/webhook-tracker-filter and the patch file(s) are the same change`. **How the drift arose is now visible in the artefact itself:** the patch file header names `aac8754e0`, which is neither the old branch tip nor the new one and is reachable from no branch at all — a throwaway worktree in which the r25037 version was built and exported on 2026-09-05, after which the branch was simply never updated. The patch files were left untouched; they were the correct side all along.
 
 ---
 
 ### F02 — `check-patch-clean.sh` reports PASS when it cannot perform the branch-versus-file comparison
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** conventions (tooling)
@@ -238,13 +238,13 @@ outright or a `--submit`-only failure is Jan's call, but the current behaviour
 means G6 can pass without ever checking G6's main claim. Fixing it needs Jan's
 authorisation for `tools/**`.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06, with Jan's authorisation for `tools/**` — an impossible drift comparison now calls `fail` instead of `warn`, in both branches (patch does not apply to the branch's base, and worktree could not be created). The message says what it means and what to do: the patch file was rebuilt against newer trunk while the branch stayed put, so rebuild the branch rather than regenerating the patch from it. The comparison applies the patch to the **branch's own base**, not to trunk, so a branch that is merely behind trunk still compares fine and this raises no false alarm. Verified both ways: before the branch rebuild `webhook-tracker-filter` failed with the new message, and `imap-oauth`, `revision-branches` and `version-subprojects` all still printed `PASS — safe to submit`.
 
 ---
 
 ### F03 — `status.md` claims an equivalence check that does not hold
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -283,4 +283,4 @@ Replace it with what is actually true once F01 is fixed — and state which of t
 three artefacts was compared with which, since "reproduces the branch" is only
 meaningful when the branch is the chosen design.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-06 — the sentence in `status.md` no longer claims what it could not have checked. It now states that both patch files apply to a pristine r25037 checkout, that the second half of the old claim was wrong, and that it became true only once the branch was rebuilt on 2026-09-06, with the check that confirms it named. A round-3 section above it records all three findings.

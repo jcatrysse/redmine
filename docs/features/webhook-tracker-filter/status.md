@@ -48,6 +48,40 @@ inmiddels in Redmine core** (#29664, 25 commits, sinds 2025-10-07). De
 trackerfilter over. Het feature-patchbestand is 8 bestanden, 144 toegevoegde en
 4 verwijderde regels, tests inbegrepen; de vier vertalingen staan apart.
 
+## Reviewronde 3 (2026-09-06), blind
+
+Een verse sessie las de patchbestanden koud. **De wijziging zelf kwam er zonder
+kleerscheuren doorheen** — geen enkele bevinding over de code, de migratie of de
+vertalingen. De drie bevindingen gingen alle drie over de administratie eromheen,
+en één ervan was een blocker. Ze staan dicht in
+`docs/review/findings/2026-09-06-webhook-tracker-filter-claude-opus5-round3.md`.
+
+- **F01 (blocker)** — de branch `patch/webhook-tracker-filter` stond nog op
+  r24882 en miste `app/models/tracker.rb` volledig: geen K-11-deactivering en
+  geen `Webhook#tracker_ids=`. De patchbestanden en `7.0-stable-GEOxyz` waren
+  byte-identiek aan elkaar; alleen de branch week af. Het gevaar zat in onze
+  eigen indieningsvolgorde: wie de patch vlak vóór indienen ververst (g05)
+  begint bij de branch en levert dan stil de versie zónder K-11. De branch is
+  opnieuw opgebouwd vanaf trunk r25037 als één commit `cb4972a5c`; de oude tip
+  staat als `archive/patch-webhook-tracker-filter-r24882-before-round3`.
+- **F02 (major, gereedschap)** — `tools/check-patch-clean.sh` zei PASS terwijl
+  hij de vergelijking branch-tegen-patchbestand helemaal niet had kunnen
+  uitvoeren: bij een mislukte apply viel hij terug op een notitie. Dat is de
+  controle die in ronde 2 juist voor dit soort drift is aangescherpt. Nu faalt
+  hij, met een melding die zegt wat er moet gebeuren. Jan gaf hier op
+  2026-09-06 opdracht toe.
+- **F03 (minor, dossier)** — het bewijsblok hieronder beweerde dat de
+  patchbestanden de branch exact reproduceerden. Dat was niet zo; de regel is
+  rechtgezet en zegt nu ook sinds wanneer hij wél klopt.
+
+**Wat ronde 3 verder deed is bevestigen.** De suite is aan beide kanten opnieuw
+gedraaid met dezelfde `Gemfile.lock`: `5989` runs met patch tegen `5977` op
+schone trunk, verschil **12** — precies de twaalf nieuwe tests — en de faalnamen
+zijn aan beide kanten identiek. De K-11-mutatie geeft woordelijk de foutmelding
+die het dossier claimt. Vier eigen aanvalspogingen (migratievorm,
+callbackvolgorde, INV-10 tegen GEOxyz, en of de suitefouten van de patch waren)
+kwamen alle vier schoon terug.
+
 ## Bewijs
 
 Alles hieronder is op 2026-09-05 gedraaid tegen trunk r25037 (`bee32a926`), met
@@ -56,6 +90,18 @@ systeemtests.
 
 - Volledige suite **met de patch**: **5989 runs, 31754 assertions, 27 failures, 2 errors, 92 skips**
 - Volledige suite op **schone trunk** r25037: **5977 runs, 31708 assertions, 27 failures, 2 errors, 92 skips**
+- **Ronde 3 heeft dit op 2026-09-06 overgedaan en de conclusie is dezelfde,
+  maar de absolute getallen zijn dat niet — en dat is de omgeving, niet de
+  patch.** Een verse `bundle install` haalt sinds die dag **json 3.0.0** binnen,
+  en daarmee valt alles om wat door `ActiveSupport::JSON.decode` gaat: ruim
+  honderd tests, **ook op onbewerkte trunk** (daar nagemeten, niet aangenomen).
+  Met dezelfde `Gemfile.lock` aan beide kanten geeft ronde 3
+  `5989 runs, 48 failures, 82 errors` met patch tegen
+  `5977 runs, 48 failures, 82 errors` op schone trunk: **verschil 12 runs = de
+  twaalf nieuwe tests**, en **130 faalnamen die aan beide kanten identiek zijn**,
+  `comm` leeg in beide richtingen. `Gemfile.lock` staat in `.gitignore`, dus
+  vergelijk nooit een cijfer uit de ene worktree met dat uit een andere zonder
+  dezelfde lock — zie `docs/traps.md`.
 - Faalnamen identiek aan beide kanten: **29 namen, byte-identieke lijst** — het zijn
   repository-, changeset- en `SysController`-tests die een SCM-binary nodig
   hebben die dit image niet heeft (alleen `git` staat erin); geen ervan wordt
@@ -103,9 +149,15 @@ systeemtests.
   iets te laden valt), en zonder preload is het er één per matchende hook. De
   laatste regel is het geval waarin de patch een query **kost**; die staat nu
   ook in de bezwarentabel van het dossier.
-- Beide patchbestanden appliceren met `git am` los op een verse
-  `origin/master`-checkout van r25037, en samen reproduceren ze de branch exact
-  (gecontroleerd in een wegwerp-worktree).
+- Beide patchbestanden appliceren los op een verse
+  `origin/master`-checkout van r25037. **De tweede helft van deze regel klopte
+  niet en is op 2026-09-06 rechtgezet** (ronde-3-bevinding F01): er stond dat ze
+  "de branch exact reproduceren", terwijl de branch toen nog op r24882 stond en
+  `app/models/tracker.rb` — de hele K-11-deactivering — helemaal niet had. De
+  branch is daarna opnieuw opgebouwd vanaf actuele trunk uit het ontwerp dat de
+  patchbestanden dragen (`cb4972a5c`), en pas sinds dat moment is de zin waar.
+  `tools/check-patch-clean.sh` bevestigt hem nu ook echt in plaats van de
+  vergelijking over te slaan.
 - `tools/check-patch-clean.sh webhook-tracker-filter --submit`: **PASS** ·
   `tools/check-geoxyz-branch.sh`: **PASS**
 - Screenshots: **19**, gelezen: **ja**. De hele G9-run is op 2026-09-05 opnieuw
