@@ -204,11 +204,23 @@ if [ -n "$BRANCH" ] && [ "$FILES" != "$tmp/branch.patch" ]; then
         printf '          One of the two is the design that was chosen; rebuild the other.\n'
       fi
     else
-      warn "cannot compare with $BRANCH: the patch does not apply to its own base ${base:0:9}"
-      sed 's/^/        /' "$tmp/drifterr" 2>/dev/null | head -3
+      # Not being able to run this comparison is a failure, not a note. The
+      # comparison applies the patch to the BRANCH's own base, so a branch that
+      # is merely behind trunk still compares fine; it only breaks when the
+      # patch file was rebuilt from a newer base than the branch — which is
+      # drift, and is exactly what this check exists to catch. Warning here is
+      # how webhook-tracker-filter kept a pre-K-11 branch while reporting PASS.
+      fail "cannot compare with $BRANCH: the patch does not apply to its own base ${base:0:9}"
+      sed 's/^/          /' "$tmp/drifterr" 2>/dev/null | head -3
+      printf '          The patch file was almost certainly rebuilt against newer trunk
+'
+      printf '          while the branch stayed put. Rebuild the branch from the design
+'
+      printf '          the patch file holds; do not regenerate the patch from the branch.
+'
     fi
   else
-    warn "could not create a worktree at ${base:0:9} to compare with $BRANCH"
+    fail "could not create a worktree at ${base:0:9} to compare with $BRANCH"
   fi
 elif [ -z "$BRANCH" ]; then
   warn "no patch/$SLUG branch to compare against"
