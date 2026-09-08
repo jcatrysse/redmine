@@ -491,6 +491,7 @@ de:
   label_copied_from: Kopiert von
   label_copied_to: Kopiert nach
   label_copy_attachments: Anhänge kopieren
+  label_include_attachments: Mit Anhängen
   label_copy_same_as_target: So wie das Ziel
   label_copy_source: Quelle
   label_copy_subtasks: Untergeordnetes Ticket kopieren

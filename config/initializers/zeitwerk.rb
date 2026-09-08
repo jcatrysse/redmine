@@ -22,7 +22,8 @@ Rails.autoloaders.each do |loader|
     'url' => 'URL',
     'pop3' => 'POP3',
     'imap' => 'IMAP',
-    'itcpdf' => 'ITCPDF'
+    'itcpdf' => 'ITCPDF',
+    'zip' => 'ZIP'
   )
   IGNORE_LIST.each do |mod|
     loader.ignore lib.join(mod)
