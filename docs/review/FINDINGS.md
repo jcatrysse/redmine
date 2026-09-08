@@ -3,7 +3,7 @@
 
 # FINDINGS — elke reviewbevinding, één regel elk
 
-157 bevindingen uit 24 reviews: 7 blocker, 29 major, 68 minor, 38 nit, 15 question. **8 zonder Resolution-regel.**
+159 bevindingen uit 25 reviews: 7 blocker, 29 major, 68 minor, 40 nit, 15 question. **10 zonder Resolution-regel.**
 
 | Sev | Slug | ID | Bevinding | Cat | Zekerheid | Waar | Resolution |
 |---|---|---|---|---|---|---|---|
@@ -124,6 +124,8 @@
 | nit | `ldap-mail-prefs` | F03 | the journal file lands in `log/` by default, where nothing protects it | conventions | confirmed (by reading) | `lib/redmine/ldap_notification_defaults.rb` — `self.default_journal_path`, `Rails.root.join('log', "ldap-notification-defaults-<timestamp>.json")` | **—** |
 | nit | `ldap-mail-prefs` | F09 | `find_by(:lastname => ...)` is case-sensitive; Redmine has a `Group.named` scope for exactly this lookup | conventions | confirmed | `lib/tasks/disable_mail_ldap_users.rake:21` | obsolete 2026-09-05 — there is no group lookup left after F02 |
 | nit | `ldap-mail-prefs` | F10 | Two different idioms for writing the same object's preferences, three lines apart | conventions | confirmed | `lib/tasks/disable_mail_ldap_users.rake:30-31` | fixed 2026-09-05 — both preferences go through the model writers in `LdapNotificationDefaults.assign` |
+| nit | `members-pagination` | F01 | every page view reads the id of every member in the project | performance | confirmed (by reading; not measured) | `app/helpers/members_helper.rb` — `paginate_members`, the `pluck("#{Member.table_name}.id").uniq` | **—** |
+| nit | `members-pagination` | F02 | the last-page test generates about 45 users to prove a four-line clamp | test-quality | confirmed | `test/functional/members_controller_test.rb` — `test_destroy_a_member_that_removes_the_last_page_should_render_the_new_last_page`, the line `(51 - project.memberships.count).times {member = User.add_to_project(User.generate!, project)}` | **—** |
 | nit | `members-pagination` | N01 | The clamp's comment and its arithmetic are duplicated verbatim in two helpers | minimality | confirmed | `app/helpers/members_helper.rb`, `app/helpers/groups_helper.rb` in | decided 2026-09-06, and the decision is to leave it — which is |
 | nit | `mypage-query-blocks` | F07 | The `config/settings.yml` comment restates the setting's own label | minimality | confirmed | `config/settings.yml:92` | fixed 2026-09-05 — the comment is dropped |
 | nit | `mypage-query-blocks` | F08 | One locale citation in the dossier is off by one line | i18n | confirmed | `dossier.md`, translations table, `en` row | fixed 2026-09-05 — the `en` row now cites `en.yml:500`; all fifteen citations re-read against r25037 |
@@ -192,4 +194,5 @@
 | [`geoxyz-hosts`](findings/2026-09-08-geoxyz-hosts-claude-opus5-round3.md) | 2026-09-08 | claude-opus5-round3 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | **no.** The change is one line in |
 | [`gitignore-credentials`](findings/2026-09-08-gitignore-credentials-claude-opus5-round3.md) | 2026-09-08 | claude-opus5-round3 | blocker 0 / major 1 / minor 1 / nit 0 / question 0 | **no, and it would prove nothing.** The change is |
 | [`ldap-mail-prefs`](findings/2026-09-08-ldap-mail-prefs-claude-opus5-round3.md) | 2026-09-08 | claude-opus5-round3 | blocker 0 / major 1 / minor 1 / nit 1 / question 0 | **no**, and this is the gap that matters most for how |
+| [`members-pagination`](findings/2026-09-08-members-pagination-claude-opus5-round3.md) | 2026-09-08 | claude-opus5-round3 | blocker 0 / major 0 / minor 0 / nit 2 / question 0 | **no.** `7.0-stable-GEOxyz` was not among the four |
 | [`wiki-export-attachments`](findings/2026-09-08-wiki-export-attachments-claude-opus5-round3.md) | 2026-09-08 | claude-opus5-round3 | blocker 0 / major 0 / minor 2 / nit 4 / question 0 | yes, both sides, fresh worktrees, own PostgreSQL 16 |
