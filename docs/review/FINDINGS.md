@@ -3,7 +3,7 @@
 
 # FINDINGS — elke reviewbevinding, één regel elk
 
-159 bevindingen uit 25 reviews: 7 blocker, 29 major, 68 minor, 40 nit, 15 question. **10 zonder Resolution-regel.**
+159 bevindingen uit 26 reviews: 7 blocker, 29 major, 68 minor, 40 nit, 15 question. **10 zonder Resolution-regel.**
 
 | Sev | Slug | ID | Bevinding | Cat | Zekerheid | Waar | Resolution |
 |---|---|---|---|---|---|---|---|
@@ -191,6 +191,7 @@
 | [`webhook-issue-closed`](findings/2026-09-06-webhook-issue-closed-claude-opus5-round3.md) | 2026-09-06 | claude-opus5-round3 | blocker 0 / major 0 / minor 1 / nit 0 / question 0 | yes, both sides, fresh worktrees, own PostgreSQL 16 |
 | [`webhook-tracker-filter`](findings/2026-09-06-webhook-tracker-filter-claude-opus5-round3.md) | 2026-09-06 | claude-opus5-round3 | blocker 1 / major 1 / minor 1 / nit 0 / question 0 | yes, both sides, in fresh worktrees with their own |
 | [`ar-sessions`](findings/2026-09-08-ar-sessions-claude-opus5-round3.md) | 2026-09-08 | claude-opus5-round3 | blocker 0 / major 1 / minor 1 / nit 1 / question 0 | **no**, and it matters here. The three worktrees I |
+| [`assignee-nobody`](findings/2026-09-08-assignee-nobody-claude-opus5-round3.md) | 2026-09-08 | claude-opus5-round3 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | yes, both sides, fresh worktrees, own PostgreSQL 16 |
 | [`geoxyz-hosts`](findings/2026-09-08-geoxyz-hosts-claude-opus5-round3.md) | 2026-09-08 | claude-opus5-round3 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | **no.** The change is one line in |
 | [`gitignore-credentials`](findings/2026-09-08-gitignore-credentials-claude-opus5-round3.md) | 2026-09-08 | claude-opus5-round3 | blocker 0 / major 1 / minor 1 / nit 0 / question 0 | **no, and it would prove nothing.** The change is |
 | [`ldap-mail-prefs`](findings/2026-09-08-ldap-mail-prefs-claude-opus5-round3.md) | 2026-09-08 | claude-opus5-round3 | blocker 0 / major 1 / minor 1 / nit 1 / question 0 | **no**, and this is the gap that matters most for how |
