@@ -1141,3 +1141,22 @@ toegevoegd.
   `JsonTest`, en de melding is altijd dezelfde `ArgumentError`. Controleer dan
   `bundle list | grep " json "` aan beide kanten voordat je ook maar iets aan
   de patch toeschrijft.
+
+
+- **`tools/dev-server.sh` op een gloednieuwe dev-database kan de seed halverwege
+  laten stranden, en zegt dat niet duidelijk.** Op 2026-09-08 meldde het script
+  `PASS http://127.0.0.1:3000` terwijl `geoxyz-verify` nul wikipagina's had; de
+  seedstap had een Ruby-fout uitgebraakt waarvan alleen een fragment
+  (`" OR (#{Project.table_name}.lft >= #{r.lft}"`) door de `tail -2` heen kwam.
+  Gevolg: de verificatie faalde met "no ZIP link on the wiki index", wat leest
+  als een defect in de feature terwijl er simpelweg geen pagina's waren. De seed
+  is idempotent, dus **draai `tools/dev-seed.rb` gewoon nog een keer** en lees de
+  regel die er dan uitkomt: `seeded: projects=4 users=4 issues=10 wiki_pages=3
+  wiki_attachments=3 versions=4 groups=1`. Die telling is de controle, niet de
+  `PASS` van de server. Tweede keer werkte meteen.
+- **De collision-attachments zitten *niet* in `tools/dev-seed.rb`.** De
+  commentaarregel in `verify/wiki-export-attachments.mjs` zegt "added by the
+  session's seed", maar de seed levert alleen `notes.txt` en twee keer
+  `diagram.txt`. `Wiki.txt` en `Child_one` op pagina `Wiki` zijn in ronde 2 met
+  de hand toegevoegd. Wie `MODE=collisions` draait op een verse database krijgt
+  dus een archief van zes regels in plaats van acht, en dat is geen regressie.
