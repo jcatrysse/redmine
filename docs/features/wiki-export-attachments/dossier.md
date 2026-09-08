@@ -387,7 +387,7 @@ through the interface**, not by calling the controller.
 | The export line after | `wiki-index.png` | unchanged — still one `ZIP` entry, which is the point of the dialog |
 | The dialog, opened by clicking ZIP | `zip-export-dialog.png` | "ZIP export options" with one checkbox, "Include attachments", plus Export and Cancel |
 | The dialog with the box ticked | `zip-export-dialog-checked.png` | the state the download with attachments was made from |
-| Same dialog in Dutch | `nl-zip-export-dialog.png` | "ZIP export opties", "Bijlagen meesturen", "Exporteren", "Annuleren" — three of the four from keys that already existed |
+| Same dialog in Dutch | `nl-zip-export-dialog.png` | "ZIP export opties", "Met bijlagen", "Exporteren", "Annuleren" — three of the four from keys that already existed, and the fourth derived from `label_cross_project_descendants` ("Met subprojecten"). Re-taken on 2026-09-08 after Jan's K-14 |
 | Same line on the date index | `wiki-date-index.png` | the dialog is on both index views |
 | The colliding attachments | `wiki-page-colliding-attachments.png` | page `Wiki` with its Files list open: `notes.txt`, `Wiki.txt` and `Child_one` |
 
