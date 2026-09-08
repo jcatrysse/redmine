@@ -30,10 +30,6 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
 
-## Nu in behandeling
-
-- `wiki-export-attachments` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
-
 ## Openstaand voor Jan
 
 ### `ar-sessions`
@@ -420,7 +416,7 @@ hook wordt gedeactiveerd als zijn laatste tracker verdwijnt.
 
 Maak een nieuw issue op redmine.org als follow-up van
 [#43978](https://www.redmine.org/issues/43978) en hang er
-`patches/wiki-export-attachments/2026-09-05-r25037-feature.patch` en
+`patches/wiki-export-attachments/2026-09-08-r25037-feature.patch` en
 `-locales.patch` aan. Draai vlak daarvoor
 `tools/check-patch-clean.sh wiki-export-attachments --submit`; als trunk
 intussen verder is, ververst een sessie de patch eerst (g05). De Engelse
