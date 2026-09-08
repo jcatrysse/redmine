@@ -3,7 +3,7 @@
 
 # FINDINGS — elke reviewbevinding, één regel elk
 
-151 bevindingen uit 21 reviews: 7 blocker, 27 major, 66 minor, 36 nit, 15 question. **2 zonder Resolution-regel.**
+151 bevindingen uit 22 reviews: 7 blocker, 27 major, 66 minor, 36 nit, 15 question. **2 zonder Resolution-regel.**
 
 | Sev | Slug | ID | Bevinding | Cat | Zekerheid | Waar | Resolution |
 |---|---|---|---|---|---|---|---|
@@ -182,5 +182,6 @@
 | [`version-subprojects`](findings/2026-09-06-version-subprojects-claude-opus5-round3.md) | 2026-09-06 | claude-opus5-round3 | blocker 0 / major 0 / minor 1 / nit 0 / question 0 | yes, in a fresh worktree of the patch tip with its own |
 | [`webhook-issue-closed`](findings/2026-09-06-webhook-issue-closed-claude-opus5-round3.md) | 2026-09-06 | claude-opus5-round3 | blocker 0 / major 0 / minor 1 / nit 0 / question 0 | yes, both sides, fresh worktrees, own PostgreSQL 16 |
 | [`webhook-tracker-filter`](findings/2026-09-06-webhook-tracker-filter-claude-opus5-round3.md) | 2026-09-06 | claude-opus5-round3 | blocker 1 / major 1 / minor 1 / nit 0 / question 0 | yes, both sides, in fresh worktrees with their own |
+| [`geoxyz-hosts`](findings/2026-09-08-geoxyz-hosts-claude-opus5-round3.md) | 2026-09-08 | claude-opus5-round3 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | **no.** The change is one line in |
 | [`gitignore-credentials`](findings/2026-09-08-gitignore-credentials-claude-opus5-round3.md) | 2026-09-08 | claude-opus5-round3 | blocker 0 / major 1 / minor 1 / nit 0 / question 0 | **no, and it would prove nothing.** The change is |
 | [`wiki-export-attachments`](findings/2026-09-08-wiki-export-attachments-claude-opus5-round3.md) | 2026-09-08 | claude-opus5-round3 | blocker 0 / major 0 / minor 2 / nit 4 / question 0 | yes, both sides, fresh worktrees, own PostgreSQL 16 |
