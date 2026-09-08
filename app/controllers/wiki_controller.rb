@@ -46,7 +46,6 @@ class WikiController < ApplicationController
   helper :watchers
   include Redmine::Export::PDF
   include Redmine::Export::ZIP::WikiZipHelper
-  include ActionView::Helpers::NumberHelper
 
   # List of pages, sorted alphabetically and by parent (hierarchy)
   def index

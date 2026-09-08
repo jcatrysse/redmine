@@ -21,6 +21,8 @@ module Redmine
   module Export
     module ZIP
       module WikiZipHelper
+        private
+
         # Returns a ZIP string of a set of wiki pages, one directory per page
         # mirroring the wiki hierarchy, with the attachments given per page id
         # written into the directory of their page
