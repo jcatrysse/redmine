@@ -421,6 +421,31 @@ is the 33-byte attachment and the page's own source is gone, and
 and the same for both `diagram*.txt`; four of the seven entries reach the disk.
 That pair of archives is the collision answer made visible.
 
+**Re-driven in the browser on 2026-09-08, after the round-3 changes.** Deleting
+the `NumberHelper` include and marking the helper's methods `private` are the
+kind of change a green suite can pass while the page stops working, so the
+collision case was clicked through again on a freshly seeded instance rather
+than trusted to the tests. The two colliding attachments were added through the
+application, the dialog was opened by clicking the `ZIP` link, the box was
+ticked and Export pressed, and the archive was extracted with Info-ZIP:
+
+    Wiki/Wiki.txt                 37 bytes — the page source, not the attachment
+    Wiki/notes.txt                38
+    Wiki/Wiki(1).txt              42 — the attachment named after the page
+    Wiki/Child_one(1)             65 — the one named after the child directory
+    Wiki/Child_one/Child_one.txt  43
+    Wiki/Child_one/diagram.txt    15
+    Wiki/Child_one/diagram(1).txt 31
+    Wiki/Child_two/Child_two.txt  43
+
+Eight entries, all eight on disk after `unzip -o`, and the **entry names are
+identical to `zip-with-attachments.zip`**. Only three byte counts differ, and
+only because the re-seeded attachment bodies are not the ones round 2 uploaded;
+the committed archives stay as they are, since they are the pair the before/after
+argument rests on. The same run took the Dutch dialog screenshot, so
+`shots/nl-zip-export-dialog.png` shows "Met bijlagen" from the running
+application and not from a locale file.
+
 Failure paths verified:
 
 | Case | Evidence | Expected | Observed |
