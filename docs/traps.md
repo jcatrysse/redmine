@@ -1160,3 +1160,27 @@ toegevoegd.
   `diagram.txt`. `Wiki.txt` en `Child_one` op pagina `Wiki` zijn in ronde 2 met
   de hand toegevoegd. Wie `MODE=collisions` draait op een verse database krijgt
   dus een archief van zes regels in plaats van acht, en dat is geen regressie.
+
+
+- **Een controle waarvan het patroon wegvalt, meldt `ok` in plaats van te
+  klappen.** Bij het bewerken van `tools/check-geoxyz-branch.sh` op 2026-09-08
+  verwijderde een verkeerde `sed` de regel `AI_IDENTITY_RE=...`. Het script
+  draait met `set -u`, dus de subshell stierf — maar de aanroep staat als
+  `$(git log ... | grep -iE "$PATROON" || true)`, en die `|| true` slikte het
+  op. Uitkomst: `ok  no AI identity in the author or committer of 128 own
+  commit(s)`, op een branch die er wél een draagt. Precies de faalvorm waar de
+  bevinding over ging die ik aan het oplossen was. **Regel:** een gate die je
+  toevoegt, drijf je eerst rood — met echte data, niet met een gedachte-
+  experiment — en een leeg of ontbrekend patroon hoort te aborteren, niet te
+  slagen. Er staat nu een expliciete guard voor in het script.
+- **Een SHA in de documentatie herschrijven op basis van een gelijke commit-
+  titel is onveilig.** Bij het repareren van de 21 dode `geoxyz_commit`-waarden
+  stelde een eerste, brede ronde 41 vervangingen voor. De meeste waren fout:
+  patchbranchtips (`cb4972a5c`, `f434bff64`, `8121846be`, `53faa9a0f`), de
+  trunkrevisie `bee32a926` (r25037), gearchiveerde tips die als gearchiveerd
+  benoemd staan (`fd712001c`, `3e2c6b432`), en één SHA die in het bestand zelf
+  als historisch is gedocumenteerd (`fe737441b` bij `geoxyz-hosts`). Dezelfde
+  titel betekent niet dezelfde commit: een feature staat vaak met identieke
+  onderwerpregel op zowel `patch/<slug>` als `7.0-stable-GEOxyz`. **Regel:**
+  vervang alleen wat je per stuk gelezen hebt, en beperk automatisch vervangen
+  tot het veld dat het register voedt.
