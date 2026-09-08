@@ -1,6 +1,6 @@
-From f434bff6446bdf374a75409c943cb8cae2640166 Mon Sep 17 00:00:00 2001
+From 8121846bebb3ad34421513b01d827a5a95b6fbd9 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Sat, 5 Sep 2026 08:34:47 +0000
+Date: Tue, 8 Sep 2026 11:00:45 +0000
 Subject: [PATCH] Preserve the wiki page hierarchy and include page attachments
  in the ZIP export.
 
@@ -76,14 +76,14 @@ index 79d42af5d..afc8ee15e 100644
    label_item_position: "%{position} sur %{count}"
    label_completed_versions: Versions passées
 diff --git a/config/locales/nl.yml b/config/locales/nl.yml
-index 1abe4573e..f0d783d01 100644
+index 1abe4573e..2b2f8a48a 100644
 --- a/config/locales/nl.yml
 +++ b/config/locales/nl.yml
 @@ -949,6 +949,7 @@ nl:
    label_repository_new: Nieuwe repository
    field_repository_is_default: Hoofdrepository
    label_copy_attachments: Kopieer bijlage(n)
-+  label_include_attachments: Bijlagen meesturen
++  label_include_attachments: Met bijlagen
    label_item_position: "%{position}/%{count}"
    label_completed_versions: Afgeronde versies
    field_multiple: Meerdere waarden

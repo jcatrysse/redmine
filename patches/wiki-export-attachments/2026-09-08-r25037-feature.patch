@@ -1,6 +1,6 @@
-From f434bff6446bdf374a75409c943cb8cae2640166 Mon Sep 17 00:00:00 2001
+From 8121846bebb3ad34421513b01d827a5a95b6fbd9 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Sat, 5 Sep 2026 08:34:47 +0000
+Date: Tue, 8 Sep 2026 11:00:45 +0000
 Subject: [PATCH] Preserve the wiki page hierarchy and include page attachments
  in the ZIP export.
 
@@ -33,36 +33,35 @@ archived_wiki_page_filename move there unchanged.
 test_export_to_zip and test_export_to_zip_should_sanitize_non_portable_entry_name_characters
 are updated for the new entry paths.
 ---
- app/controllers/wiki_controller.rb            |  66 ++----
+ app/controllers/wiki_controller.rb            |  65 ++----
  app/models/attachment.rb                      |  28 ++-
  app/views/wiki/_export_options.html.erb       |  15 ++
  app/views/wiki/date_index.html.erb            |   7 +-
  app/views/wiki/index.html.erb                 |   7 +-
  config/initializers/zeitwerk.rb               |   3 +-
  config/locales/en.yml                         |   1 +
- lib/redmine/export/zip/wiki_zip_helper.rb     |  99 ++++++++
+ lib/redmine/export/zip/wiki_zip_helper.rb     | 101 ++++++++
  test/functional/wiki_controller_test.rb       | 216 +++++++++++++++++-
  test/unit/attachment_test.rb                  |   7 +
  .../export/zip/wiki_zip_helper_test.rb        |  43 ++++
- 11 files changed, 429 insertions(+), 63 deletions(-)
+ 11 files changed, 430 insertions(+), 63 deletions(-)
  create mode 100644 app/views/wiki/_export_options.html.erb
  create mode 100644 lib/redmine/export/zip/wiki_zip_helper.rb
  create mode 100644 test/unit/lib/redmine/export/zip/wiki_zip_helper_test.rb
 
 diff --git a/app/controllers/wiki_controller.rb b/app/controllers/wiki_controller.rb
-index 3bc196064..c9380a74d 100644
+index 3bc196064..357279fe2 100644
 --- a/app/controllers/wiki_controller.rb
 +++ b/app/controllers/wiki_controller.rb
-@@ -45,6 +45,8 @@ class WikiController < ApplicationController
+@@ -45,6 +45,7 @@ class WikiController < ApplicationController
    include AttachmentsHelper
    helper :watchers
    include Redmine::Export::PDF
 +  include Redmine::Export::ZIP::WikiZipHelper
-+  include ActionView::Helpers::NumberHelper
  
    # List of pages, sorted alphabetically and by parent (hierarchy)
    def index
-@@ -323,12 +325,19 @@ class WikiController < ApplicationController
+@@ -323,12 +324,19 @@ class WikiController < ApplicationController
          send_file_headers! :type => 'application/pdf', :filename => "#{@project.identifier}.pdf"
        end
        format.zip do
@@ -88,7 +87,7 @@ index 3bc196064..c9380a74d 100644
        end
      end
    end
-@@ -411,46 +420,15 @@ class WikiController < ApplicationController
+@@ -411,46 +419,15 @@ class WikiController < ApplicationController
                  to_a
    end
  
@@ -286,10 +285,10 @@ index bdbad19a0..662840ee1 100644
    label_completed_versions: Completed versions
 diff --git a/lib/redmine/export/zip/wiki_zip_helper.rb b/lib/redmine/export/zip/wiki_zip_helper.rb
 new file mode 100644
-index 000000000..45df54508
+index 000000000..10e55568b
 --- /dev/null
 +++ b/lib/redmine/export/zip/wiki_zip_helper.rb
-@@ -0,0 +1,99 @@
+@@ -0,0 +1,101 @@
 +# frozen_string_literal: true
 +
 +# Redmine - project management software
@@ -313,6 +312,8 @@ index 000000000..45df54508
 +  module Export
 +    module ZIP
 +      module WikiZipHelper
++        private
++
 +        # Returns a ZIP string of a set of wiki pages, one directory per page
 +        # mirroring the wiki hierarchy, with the attachments given per page id
 +        # written into the directory of their page

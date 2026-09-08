@@ -155,7 +155,8 @@ marked):
 
 ### F01 — `include ActionView::Helpers::NumberHelper` in `WikiController` does nothing
 
-- **Status:** open
+
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** minimality
@@ -206,11 +207,14 @@ Delete the line. `number_to_human_size(...)` on line 331 keeps working. One
 sentence in the dossier's file table can note that the helper arrives via
 `Redmine::I18n`, which pre-empts the reviewer asking where it comes from.
 
+- **Resolution:** fixed 2026-09-08 — the line is deleted from `app/controllers/wiki_controller.rb`. Proven rather than assumed: with the include gone, `WikiController.new.respond_to?(:number_to_human_size, true)` is still `true`, and the size-limit path still renders the humanised value (`with_settings :bulk_download_max_size => 0` produces the flash "… exceeds the maximum allowed size (0 Bytes)", not a `NoMethodError` and not a bare integer). The dossier's file table now says where the helper comes from instead of listing an include. `attachments_controller.rb:21` carries the same redundancy and is left alone (INV-1), and is no longer cited as a reason to keep this one.
+
 ---
 
 ### F02 — the Dutch string uses a verb that appears nowhere in `nl.yml`, and an attested one was available
 
-- **Status:** open
+
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** i18n
@@ -270,11 +274,14 @@ as well as with the file. If Jan prefers a verb form, `label_edit_attachments`
 supports "Bijlagen toevoegen"; "meesturen" is the one option nothing in the
 file supports. This is a Class B call in miniature and it is his.
 
+- **Resolution:** fixed 2026-09-08 — **Jan chose option A** (2026-09-08, K-14): `label_include_attachments` in `nl.yml` is now `Met bijlagen`, derived from `label_cross_project_descendants` ("Met subprojecten"), the same key the German value already follows, so the two rows now come from one pattern. The dossier's locale table cites that key instead of `label_edit_attachments`. `I18n.t(:label_include_attachments, locale: :nl)` returns `"Met bijlagen"`, the other four locales are untouched, and Redmine's own `i18n_test.rb` is green on both branches. The Dutch screenshot `shots/nl-zip-export-dialog.png` was re-taken so the evidence matches the string.
+
 ---
 
 ### F03 — nesting makes the entry path unbounded by depth, and the dossier does not say so
 
-- **Status:** open
+
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** portability
@@ -326,11 +333,14 @@ flat layout could not; that is inherent to preserving the hierarchy (Jan's K-02)
 and truncating names to avoid it would break the collision guarantees the same
 section relies on. No code change.
 
+- **Resolution:** fixed 2026-09-08, in the dossier — **no code change.** A row is added to "Anticipated objections" carrying the finding's own measurements: the fixture wiki goes from 37 to 78 characters, a fifty-deep chain of five-character titles reaches 363, three levels of 251-character titles reach 1011, against Windows' `MAX_PATH` of 260 including the extraction directory. The row says plainly that this is inherent to mirroring the tree, and that truncating names to stay under the limit would break the collision guarantees the next row depends on, so the hierarchy wins. Jan's K-02 (always nested) is not reopened.
+
 ---
 
 ### F04 — the four helper methods become `WikiController` actions; two of them were private on trunk
 
-- **Status:** open
+
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -396,11 +406,14 @@ the "Why move code out of `WikiController`?" row should not lean on
 `Redmine::Export::PDF`, since that include behaves differently in exactly this
 respect.
 
+- **Resolution:** fixed 2026-09-08 — a single `private` at the top of the `WikiZipHelper` module body. Measured after the change: the module has **0** public instance methods and 4 private ones, the intersection with `WikiController.action_methods` is empty, and `action_methods` is back to **171**, trunk's own number. Nothing else moved — the touched suites are still `173 runs, 814 assertions, 0 failures, 0 errors, 4 skips` — because both callers use an implicit receiver: the controller's `wiki_pages_to_zip(@pages, attachments_by_page)` and the unit test's `wiki_pages_to_zip(pages)`. `wiki_pages_to_zip` and `archived_wiki_page_filename` therefore keep exactly the visibility they had in `WikiController` before they moved, which also removes the mismatch with the two precedents the dossier cites.
+
 ---
 
 ### F05 — the dossier says Info-ZIP skips a `..` entry; it renames it
 
-- **Status:** open
+
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -444,11 +457,14 @@ component to `__` and extracts the file there. Two words. While the bullet is
 open, it is worth saying that Python's `zipfile.extract` sanitises the same way,
 since between them those two cover most of what people unpack with.
 
+- **Resolution:** fixed 2026-09-08, in the dossier — the bullet no longer says Info-ZIP skips the entry. It now states what was measured: neither extractor tested refuses it, Info-ZIP rewrites the component and writes the file as `__` (`<Page>/__` through this export, `./__` through core's `download_all`), and Python's `zipfile.extract` sanitises the same way, so a file lands in both cases and what differs is where. The conclusion is unchanged and slightly stronger: `<Page>/..` normalises to the archive root and cannot escape, while core's bare `..` at the root can, so the nesting is the safer of the two paths.
+
 ---
 
 ### F06 — a stray `SHORT` token in the evidence line of `status.md`
 
-- **Status:** open
+
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -479,3 +495,4 @@ reproduced the ten-red-on-trunk figure it refers to.
 Delete the token. Feature-owned file, so the fixing session for this slug does
 it.
 
+- **Resolution:** fixed 2026-09-08 — the token is deleted from `docs/features/wiki-export-attachments/status.md`. The arithmetic around it was correct and stays: 12 new functional tests plus 2 new unit tests is the 14-run delta, re-measured this session against a matched trunk baseline.

@@ -176,7 +176,9 @@ timestamp, the same way page entries carry `updated_on`.
 `Redmine::Export::ZIP::WikiZipHelper` under `lib/redmine/export/zip/`, the
 place and the shape of `Redmine::Export::PDF::WikiPdfHelper` and
 `Redmine::Export::Text::VersionsTextHelper`; the controller includes it next to
-`Redmine::Export::PDF`. Two pieces of existing code move there, unchanged:
+`Redmine::Export::PDF`. Its methods are `private`, so the include leaves
+`WikiController.action_methods` at trunk's 171 and `wiki_pages_to_zip` and
+`archived_wiki_page_filename` keep the visibility they had before they moved. Two pieces of existing code move there, unchanged:
 `wiki_pages_to_zip` and `archived_wiki_page_filename` from #43978. Two more are
 extracted so that page and attachment entries share them: the DOS/UT timestamp
 code becomes `zip_entry`, and the `(n)` rename loop in
@@ -191,7 +193,7 @@ selecting readable attachments and applying the size limit, as
 | File | Change |
 |---|---|
 | `lib/redmine/export/zip/wiki_zip_helper.rb` | new: `wiki_pages_to_zip` (nested, with attachments), `wiki_page_directories`, `zip_entry`, and `archived_wiki_page_filename` moved from the controller |
-| `app/controllers/wiki_controller.rb` | include the helper and `ActionView::Helpers::NumberHelper`; `format.zip` honours `with_attachments` and checks the bulk-download size; new private `wiki_page_attachments` and `wiki_attachments_too_big?`; the two archive methods move out |
+| `app/controllers/wiki_controller.rb` | include the helper; `format.zip` honours `with_attachments` and checks the bulk-download size; new private `wiki_page_attachments` and `wiki_attachments_too_big?`; the two archive methods move out. `number_to_human_size` needs no include of its own — `ApplicationController` includes `Redmine::I18n`, which includes `ActionView::Helpers::NumberHelper` |
 | `app/models/attachment.rb` | `archived_filename` extracted from `archive_attachments`, which now calls it |
 | `config/initializers/zeitwerk.rb` | `'zip' => 'ZIP'` |
 | `app/views/wiki/_export_options.html.erb` | new: the export-options dialog, shared by both index views |
@@ -214,7 +216,7 @@ is already a dependency, used by the export this builds on.
 
 | Key | en | nl | fr | de | es | Patterned on |
 |---|---|---|---|---|---|---|
-| `label_include_attachments` | Include attachments | Bijlagen meesturen | Inclure les pièces jointes | Mit Anhängen | Incluir los adjuntos | en: `error_bulk_download_size_too_big` ("These attachments…"); nl: `label_edit_attachments` ("Bijlagen bewerken") for the noun and the noun-verb order; fr: verb from `setting_show_status_changes_in_mail_subject` ("Inclure les…"), noun from `error_bulk_download_size_too_big` ("Ces pièces jointes"); de: form from `label_cross_project_descendants` ("Mit Unterprojekten"), noun from `label_copy_attachments` ("Anhänge kopieren"); es: verb from `field_searchable` ("Incluir en las búsquedas"), noun from `label_copy_attachments` ("Copiar adjuntos") |
+| `label_include_attachments` | Include attachments | Met bijlagen | Inclure les pièces jointes | Mit Anhängen | Incluir los adjuntos | en: `error_bulk_download_size_too_big` ("These attachments…"); nl: `label_cross_project_descendants` ("Met subprojecten") — the same key the German value follows, so both rows derive from one pattern; fr: verb from `setting_show_status_changes_in_mail_subject` ("Inclure les…"), noun from `error_bulk_download_size_too_big` ("Ces pièces jointes"); de: form from `label_cross_project_descendants` ("Mit Unterprojekten"), noun from `label_copy_attachments` ("Anhänge kopieren"); es: verb from `field_searchable` ("Incluir en las búsquedas"), noun from `label_copy_attachments` ("Copiar adjuntos") |
 
 That is the **only** new string. The dialog's title comes from the existing
 `label_export_options`, which is already parameterised by format
@@ -459,9 +461,12 @@ Reported, not touched — INV-1.
   characters, which turns `../../etc/passwd` into `passwd` but leaves a bare
   `..` intact, and `AttachmentsController#upload` assigns `params[:filename]`
   directly. Through this export the entry is `<Page>/..`, which cannot escape
-  the archive and which Info-ZIP skips; through core's existing per-page
-  "Download all files" the same attachment reaches the archive root as a bare
-  `..`, which is the version that could. The gap is upstream of this patch and
+  the archive; through core's existing per-page "Download all files" the same
+  attachment reaches the archive root as a bare `..`, which is the version that
+  could. Neither extractor tested refuses the entry — Info-ZIP rewrites the
+  component and writes the file as `__` (`<Page>/__` here, `./__` there) and
+  Python's `zipfile.extract` sanitises the same way — so a file does land in
+  both cases; what differs is where. The gap is upstream of this patch and
   worth its own report; the nesting here makes the wiki export the safer of the
   two paths.
 - **A `parent_id` cycle would recurse without end** in the tree walk, as it
@@ -483,6 +488,7 @@ Reported, not touched — INV-1.
 
 | Objection | Answer |
 |---|---|
+| "A deep wiki with long titles produces paths Windows cannot extract." | True, and it is inherent to mirroring the tree. The flat layout had a hard ceiling of one component, at most 255 characters plus `.txt`, because `WikiPage` caps the title at 255; the nested one is the sum of every ancestor title. Measured: Redmine's own fixture wiki goes from 37 to 78 characters, a fifty-deep chain of five-character titles reaches 363, and three levels of 251-character titles reach 1011. Windows' `MAX_PATH` is 260 including the extraction directory, and Explorer's built-in ZIP handling still enforces it. Truncating names to stay under it would break the collision guarantees in the row below, which is why the hierarchy wins: the alternative is an archive that unpacks everywhere and tells you nothing about the wiki. |
 | "This changes the ZIP layout that shipped in 7.0.0." | It does, deliberately, and that is the decision being asked for. The flat layout discards the page tree, which Redmine has and the archive cannot reconstruct. The feature is two months old in a stable release, and trunk targets a feature release. If the answer is no, the same work fits behind a second link instead, at the cost of two shapes for one format. |
 | "Two existing tests had to change." | Yes: `test_export_to_zip` and `test_export_to_zip_should_sanitize_non_portable_entry_name_characters` assert the flat entry paths. They are updated to the new paths, not relaxed — the first still asserts the complete set of entry paths as literals, the content, the DOS timestamp and the UT timestamp, and the second still asserts that `Foo*` is sanitised and that the unsanitised name is absent. |
 | "Attachments were left out of #43978 on purpose." | Because of three named design questions, not because they are unwanted; the same comment calls the source-only export useful "even without attachments". Archive structure: the wiki hierarchy. Filename collisions: the next row. Attachment references in content: the row after. |

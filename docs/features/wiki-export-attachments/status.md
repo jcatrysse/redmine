@@ -37,7 +37,7 @@ Een bijlage die heet als de pagina zelf of als een kindpagina krijgt een
 - Geraakte suites samen, op de patch: 173 runs, 814 assertions, 0 failures,
   0 errors, 4 skips (ImageMagick en pandoc ontbreken in het image)
 - Volledige suite met patch (`test:all`): 5991 runs, 31764 assertions, 27 failures, 2 errors, 92 skips in 875 s
-- Volledige suite op schone trunk r25037: 5977 runs, 31710 assertions, 27 failures, 2 errors, 92 skips in 855 s, faalnamen identiek: The 29 failing test names are identical on both runs (`diff` of the sorted lists is empty): all of them are the `Repository::Subversion` validation failures of an image without `svn`, `hg`, `bzr` or `cvs` (see "Found but not fixed"). The 14 extra runs on the patch are the 12 new functional tests and the 2 new unit tests.SHORT
+- Volledige suite op schone trunk r25037: 5977 runs, 31710 assertions, 27 failures, 2 errors, 92 skips in 855 s, faalnamen identiek: The 29 failing test names are identical on both runs (`diff` of the sorted lists is empty): all of them are the `Repository::Subversion` validation failures of an image without `svn`, `hg`, `bzr` or `cvs` (see "Found but not fixed"). The 14 extra runs on the patch are the 12 new functional tests and the 2 new unit tests.
 - Volledige suite op `7.0-stable-GEOxyz`: 6088 runs, 32244 assertions, 0 failures, 0 errors, 39 skips in 889 s — volledig groen, gemeten op de gepushte tip
 - RuboCop op de 7 gewijzigde Ruby-bestanden: 0 (baseline 0). Op de
   GEOxyz-branch: 1, baseline 1 — `Rails/StrongParametersExpect` op
