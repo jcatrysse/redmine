@@ -466,8 +466,8 @@ un-localised class name. The result is a German page whose fieldset legend reads
 ## GEOxyz
 
 - **Commit op `7.0-stable-GEOxyz`:** zie `status.md` — sinds ronde 2 zijn dat er
-  vier: `f2242bd86` (de feature), `646008041` (de drie vertalingen),
-  `0fbad7c17` (de ronde-2-fixes) en `72a3a8e22` (K-11, de deactivering).
+  vier: `c6631e937` (de feature), `86647653e` (de drie vertalingen),
+  `72058fa43` (de ronde-2-fixes) en `8ac09f4ff` (K-11, de deactivering).
 - **Suites daar groen:** zie `status.md`
 - **Locales toegevoegd:** `en`, `nl`, `fr`, `de` en `es` — letterlijk dezelfde strings
   als de patch (per locale gecontroleerd, regel voor regel identiek)

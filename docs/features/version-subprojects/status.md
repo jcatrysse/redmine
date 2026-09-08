@@ -3,7 +3,7 @@ slug: version-subprojects
 feature: Doelversiefilter biedt ook de versies van de subprojecten in de query
 commit_51: 89752a599
 geoxyz: live
-geoxyz_commit: 20ed9e2d1 + d157934c0 + e2f060570
+geoxyz_commit: fd35bd2d1 + 157c171a5 + 74f343d3d
 upstream: patch klaar
 patch: patches/version-subprojects/2026-09-05-r25037-feature.patch
 issue: "43534"

@@ -3,7 +3,7 @@ slug: assignee-nobody
 feature: Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter
 commit_51: 9b03b74b2
 geoxyz: live
-geoxyz_commit: 9d28be94d + d8e0db501
+geoxyz_commit: 349fe1860 + 9ad87a11b
 upstream: patch klaar
 patch: patches/assignee-nobody/2026-09-05-r25037-feature.patch
 issue: "5535"

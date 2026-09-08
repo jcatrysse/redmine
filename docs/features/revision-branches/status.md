@@ -3,7 +3,7 @@ slug: revision-branches
 feature: Git-branches op de revisie- en de issuepagina
 commit_51: cf826e3fd
 geoxyz: live
-geoxyz_commit: 115230bc2 + 8c1fa23fb + 88d597548
+geoxyz_commit: ff0d23b62 + 755d763a8 + 88d597548
 upstream: patch klaar
 patch: patches/revision-branches/2026-09-06-r25037-feature.patch
 issue: 5386
@@ -22,7 +22,7 @@ opnieuw gedraaid (g10).
 Af en klaar om in te dienen. De patch is opnieuw ontworpen, niet geport: van de
 5.1-commit `cf826e3fd` is de bedoeling overgenomen en verder niets. Hij ligt in
 twee bestanden onder `patches/revision-branches/`, gemaakt tegen trunk r25037,
-en dezelfde wijziging staat als de commits `115230bc2` + `8c1fa23fb` op
+en dezelfde wijziging staat als de commits `ff0d23b62` + `755d763a8` op
 `7.0-stable-GEOxyz`. De volledige suite is aan beide kanten gedraaid, RuboCop
 is schoon, en de functie is in een echte browser nagelopen.
 

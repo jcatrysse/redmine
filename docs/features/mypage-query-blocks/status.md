@@ -3,7 +3,7 @@ slug: mypage-query-blocks
 feature: Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3
 commit_51: 0214f3ecc
 geoxyz: live
-geoxyz_commit: 198cbfb63 + 47eec6f1d + 1b4a29a0b
+geoxyz_commit: dc6dad120 + dd063fa8b + f5ed23c8e
 upstream: patch klaar
 patch: patches/mypage-query-blocks/2026-09-05-r25037-{feature,locales}.patch
 issue: "27313"
@@ -16,7 +16,7 @@ issue: "27313"
 Af, en door ronde 2 heen. Alle tien reviewbevindingen van 2026-09-03 hebben een
 `Resolution:`-regel en zijn gerepareerd — geen enkele "wont-fix". Twee
 patchbestanden tegen trunk **r25037** (`bee32a926`), dezelfde wijziging als
-commits `198cbfb63` + `47eec6f1d` + `1b4a29a0b` op `7.0-stable-GEOxyz`, dossier bijgewerkt,
+commits `dc6dad120` + `dd063fa8b` + `f5ed23c8e` op `7.0-stable-GEOxyz`, dossier bijgewerkt,
 vijftien screenshots. Het issue bestaat sinds 2017 en is door de projectleider
 geparkeerd: [#27313](https://www.redmine.org/issues/27313).
 

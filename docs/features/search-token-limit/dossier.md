@@ -377,8 +377,8 @@ Three things the images show that the numbers do not:
 
 ## GEOxyz
 
-- **Commits op `7.0-stable-GEOxyz`:** `1c85728aa` (het oorspronkelijke ontwerp)
-  + `f260958c6` (de herziening van ronde 2: de optie op `Fetcher`, het
+- **Commits op `7.0-stable-GEOxyz`:** `6695461bd` (het oorspronkelijke ontwerp)
+  + `1cd7091fd` (de herziening van ronde 2: de optie op `Fetcher`, het
   filter `any_searchable`, en de knop)
 - **Suites daar groen:** 6112 runs, 32304 assertions, 0 failures, 0 errors, 39 skips — helemaal groen
 - **`nl.yml` toegevoegd:** n.v.t. — geen nieuwe strings

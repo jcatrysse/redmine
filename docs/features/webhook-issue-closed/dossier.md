@@ -561,7 +561,7 @@ report.
 ## GEOxyz
 
 - **Commits op `7.0-stable-GEOxyz`:** `827e9e7d5` (2026-09-03, de feature) en
-  `7e92b5596` (2026-09-05, het ronde-2 ontwerp: de tijdstempelmapping terug uit
+  `465d326aa` (2026-09-05, het ronde-2 ontwerp: de tijdstempelmapping terug uit
   `lib/redmine/acts/webhookable.rb` naar `Issue::Webhookable`, de regel waarom
   boven de bewaking, en de twee testwijzigingen). **Twee** commits en geen
   herschreven historie: een force push op de branch die GEOxyz draait maakt elke
@@ -574,7 +574,7 @@ report.
   `en.yml` en `webhook_test.rb` verschillen, maar alleen doordat de GEOxyz-tak
   ook andere features draagt; de hunks van deze feature zijn regel voor regel
   dezelfde.
-- **Suites daar groen:** ja — volledige suite op de branchtip `7e92b5596`:
+- **Suites daar groen:** ja — volledige suite op de branchtip `465d326aa`:
   **6121 runs, 32338 assertions, 0 failures, 0 errors, 39 skips**, in één run,
   zonder gelijktijdige andere suite en dus zonder flake om weg te redeneren.
   Dat is de boom die GEOxyz draait. Webhooksuites plus Redmine's eigen

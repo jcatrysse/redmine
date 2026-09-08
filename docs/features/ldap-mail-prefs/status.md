@@ -3,7 +3,7 @@ slug: ldap-mail-prefs
 feature: "Rake: notificatievoorkeuren van LDAP-accounts zetten na een import"
 commit_51: 9e2c38e2d
 geoxyz: live
-geoxyz_commit: 113f32117
+geoxyz_commit: bc7314a62
 upstream: nooit
 patch:
 issue: 
@@ -21,10 +21,10 @@ notificatie-instellingen van de LDAP-accounts op de gewenste waarde zetten**,
 eenmalig, geen cron. Gaat nooit naar upstream, dus geen dossier en geen patch.
 
 Op `7.0-stable-GEOxyz` staan er voor deze feature **twee** commits:
-`add935736` (de oorspronkelijke taak, 2026-09-03) en `113f32117` (de
+`add935736` (de oorspronkelijke taak, 2026-09-03) en `bc7314a62` (de
 herbouw van vandaag). Dat is met opzet: `add935736` was al gepusht en
 geschiedenis op die branch wordt niet herschreven, want dat maakt elke checkout
-van GEOxyz ongeldig. Het registerveld wijst naar `113f32117`, de commit die
+van GEOxyz ongeldig. Het registerveld wijst naar `bc7314a62`, de commit die
 telt.
 
 De oude taak `user:disable_mail_ldap_users` is weg. Wie hem gewend was, moet de

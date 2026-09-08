@@ -3,7 +3,7 @@ slug: webhook-tracker-filter
 feature: Webhook beperken tot gekozen trackers
 commit_51: 25220b45d (deel)
 geoxyz: live
-geoxyz_commit: f2242bd86 + 646008041 + 0fbad7c17 + 72a3a8e22
+geoxyz_commit: c6631e937 + 86647653e + 72058fa43 + 8ac09f4ff
 upstream: patch klaar
 patch: patches/webhook-tracker-filter/2026-09-05-r25037-feature.patch
 issue:

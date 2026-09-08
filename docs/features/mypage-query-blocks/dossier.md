@@ -464,8 +464,8 @@ anybody who does not set it.
 
 ## GEOxyz
 
-- **Commits op `7.0-stable-GEOxyz`:** `198cbfb63` (ronde 1), `47eec6f1d`
-  (ronde 2 — het bereik op de instelling) en `1b4a29a0b` (de bovengrens op 20,
+- **Commits op `7.0-stable-GEOxyz`:** `dc6dad120` (ronde 1), `dd063fa8b`
+  (ronde 2 — het bereik op de instelling) en `f5ed23c8e` (de bovengrens op 20,
   Jans keuze K-10). Drie commits in plaats van één, omdat elk van de vorige al
   gepusht was: een branch die GEOxyz uitcheckt wordt niet herschreven.
 - **Suites daar groen:** volledige suite (`test:all`), database

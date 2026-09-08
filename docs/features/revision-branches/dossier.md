@@ -535,7 +535,7 @@ confirmed:
 
 ## GEOxyz
 
-- **Commits op `7.0-stable-GEOxyz`:** `115230bc2` (de feature) en `8c1fa23fb`
+- **Commits op `7.0-stable-GEOxyz`:** `ff0d23b62` (de feature) en `755d763a8`
   (ronde 2: de formuliervalidatie, de bovengrens, de hints en de labels)
 - **Suites daar groen:** ja — volledige suite met systeemtests op 2026-09-05:
   `6119 runs, 32341 assertions, 0 failures, 0 errors, 39 skips`. Dat is echt

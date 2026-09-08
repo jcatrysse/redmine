@@ -3,7 +3,7 @@ slug: ar-sessions
 feature: Sessies in de database
 commit_51: ea61e37e8 + c2fefd51c
 geoxyz: live
-geoxyz_commit: 8bf6dce3e
+geoxyz_commit: bc745ce73
 upstream: nooit
 patch:
 issue: 
@@ -19,7 +19,7 @@ de nit is gecorrigeerd en de vraag is beantwoord. Gaat nooit naar upstream, dus
 geen dossier en geen patch.
 
 Op `7.0-stable-GEOxyz` staan er voor deze feature twee commits: `95bbb9750`
-(2026-09-03, de omschakeling zelf) en `8bf6dce3e` (de ronde-2 fix). Het
+(2026-09-03, de omschakeling zelf) en `bc745ce73` (de ronde-2 fix). Het
 registerveld wijst naar de laatste. Geschiedenis wordt op deze branch niet
 herschreven, want dat maakt elke checkout van GEOxyz ongeldig.
 

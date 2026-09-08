@@ -3,7 +3,7 @@ slug: gitignore-credentials
 feature: master.key, de credentials-map en credentials.yml.enc negeren
 commit_51: 8ec9951d3
 geoxyz: live
-geoxyz_commit: e2c0447b6 + 3f5eb3be2
+geoxyz_commit: af0af806d + 737b0a549
 upstream: nooit
 patch:
 issue: 
@@ -14,7 +14,7 @@ issue:
 ## Waar het staat
 
 Af, ronde 2 verwerkt. Staat op `7.0-stable-GEOxyz` als twee commits:
-`e2c0447b6` (de twee oorspronkelijke regels) en `3f5eb3be2` (de derde regel uit
+`af0af806d` (de twee oorspronkelijke regels) en `737b0a549` (de derde regel uit
 ronde 2, keuze g11). Gaat nooit naar upstream, dus geen dossier en geen patch.
 
 ## Wat het doet
@@ -42,7 +42,7 @@ credentials-bestand op de server. De regels staan er voor de dag dat iemand
 ## Bewijs
 
 - Volledige suite: n.v.t., met reden — de commit wijzigt één regel in
-  `.gitignore` en niets anders (`git show --stat 3f5eb3be2`: 1 bestand,
+  `.gitignore` en niets anders (`git show --stat 737b0a549`: 1 bestand,
   1 regel). Geen enkele test leest `.gitignore`, en er is geen code- of
   configuratiepad dat naar `config/credentials/` schrijft
   (`grep -rn "config/credentials\|Rails.application.credentials" app lib config
@@ -51,7 +51,7 @@ credentials-bestand op de server. De regels staan er voor de dag dat iemand
 - RuboCop: n.v.t. — geen Ruby gewijzigd.
 - `tools/check-geoxyz-branch.sh` (2026-09-05, `REF=7.0-stable-GEOxyz`): **PASS**
   — gelijk met upstream `7.0-stable`, geen AI-sporen, locales binnen de vijf.
-- **Gemeten met de bestanden echt op schijf** (2026-09-05, commit `3f5eb3be2`),
+- **Gemeten met de bestanden echt op schijf** (2026-09-05, commit `737b0a549`),
   `git check-ignore -v`:
 
   | Pad | Regel die hem pakt |

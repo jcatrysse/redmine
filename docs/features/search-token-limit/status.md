@@ -3,7 +3,7 @@ slug: search-token-limit
 feature: Tekstfilters negeren geen zoekwoorden meer na het vijfde
 commit_51: 17528437d
 geoxyz: live
-geoxyz_commit: 1c85728aa + f260958c6
+geoxyz_commit: 6695461bd + 1cd7091fd
 upstream: patch klaar
 patch: patches/search-token-limit/2026-09-05-r25037-feature.patch
 issue: "43701"

@@ -357,8 +357,8 @@ screenshot.
 
 ## GEOxyz
 
-- **Commits op `7.0-stable-GEOxyz`:** `20ed9e2d1` + `d157934c0` (de aangescherpte
-  test) + `e2f060570` (ronde 2: alleen de filterparameters, plus de drie extra
+- **Commits op `7.0-stable-GEOxyz`:** `fd35bd2d1` + `157c171a5` (de aangescherpte
+  test) + `74f343d3d` (ronde 2: alleen de filterparameters, plus de drie extra
   tests) — samen **letterlijk dezelfde wijziging** als de patch; de trunk-diff
   gaat er ongewijzigd op, 7.0-stable en trunk zijn identiek in deze drie
   bestanden

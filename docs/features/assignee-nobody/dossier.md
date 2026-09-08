@@ -335,7 +335,7 @@ form, so they are evidence that those five URLs raise and of nothing else.
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** `9d28be94d`, plus `d8e0db501` voor de
+- **Commit op `7.0-stable-GEOxyz`:** `349fe1860`, plus `9ad87a11b` voor de
   review-fix van ronde 2. De ronde-2-delta is **letterlijk gelijk** aan die van
   de trunkpatch (gecontroleerd door de twee diffs met elkaar te vergelijken),
   dus INV-10 blijft staan.

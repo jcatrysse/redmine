@@ -3,7 +3,7 @@ slug: webhook-issue-closed
 feature: Apart issue.closed-event op de webhook
 commit_51: 25220b45d (deel)
 geoxyz: live
-geoxyz_commit: 7e92b5596
+geoxyz_commit: 465d326aa
 upstream: patch klaar
 patch: patches/webhook-issue-closed/2026-09-05-r25037-feature.patch
 issue:
@@ -25,7 +25,7 @@ na, met dezelfde zeven wijzigingen aan hetzelfde issue.
 een `Resolution:`-regel. Drie ervan wijzigden code, zeven de begeleidende
 tekst. De patch is opnieuw op **r25037** (`bee32a926`) gezet, 88 commits verder
 dan de eerste versie, zonder conflict — en op `7.0-stable-GEOxyz` staat het
-ontwerp nu in een tweede commit, `7e92b5596`, naast de oorspronkelijke
+ontwerp nu in een tweede commit, `465d326aa`, naast de oorspronkelijke
 `827e9e7d5`. (Twee commits omdat de branch die GEOxyz draait nooit herschreven
 wordt; het registerveld wijst naar de laatste.)
 
@@ -111,7 +111,7 @@ Alles opnieuw gemeten op **2026-09-05**, tegen trunk **r25037** (`bee32a926`).
   behouden" → `issue.closed` + `issue.created`; sluiten met één duplicaat →
   twee keer beide; direct gesloten aangemaakt → `issue.closed` staat vóór
   `issue.created` in de wachtrij.
-- Volledige suite op de tip van `7.0-stable-GEOxyz` (`7e92b5596`, met de
+- Volledige suite op de tip van `7.0-stable-GEOxyz` (`465d326aa`, met de
   eerdere features eronder): **6121 runs, 32338 assertions, 0 failures,
   0 errors, 39 skips** — in één run, zonder gelijktijdige andere suite, dus
   geen flake om weg te redeneren.
@@ -232,7 +232,7 @@ verder met `en.yml` alleen.
   GEOxyz-tak ook andere features draagt; de hunks van deze feature zijn regel
   voor regel dezelfde. Geen INV-10-afwijking.
 - **Op `7.0-stable-GEOxyz` staat deze feature in twee commits**, `827e9e7d5`
-  (de feature) en `7e92b5596` (het ronde-2 ontwerp). Dat is met opzet: de
+  (de feature) en `465d326aa` (het ronde-2 ontwerp). Dat is met opzet: de
   branch die GEOxyz draait wordt nooit herschreven, want een force push maakt
   elke checkout daar ongeldig. Zelfde afweging als bij `ldap-mail-prefs`.
 - **De end-to-end test leest niet de eerste `WebhookJob` in de wachtrij.**

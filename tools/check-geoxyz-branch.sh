@@ -89,17 +89,73 @@ else
   git -C "$wt" merge --abort >/dev/null 2>&1
 fi
 
-# --- 3. AI traces in own commit messages -----------------------------------
-# INV-4 applies here too: these commits are the source of a future patch.
+# --- 3. AI traces in own commits -------------------------------------------
+# INV-4 applies here too: these commits are the source of a future patch. It
+# covers the author and committer fields as well as the message, and those are
+# the half that bites — a commit made without an explicit identity override
+# carries the session's own, which is the AI's. Checking only the message is
+# what let sixteen such commits reach this branch before K-13 (2026-09-06), and
+# what let patch/mypage-query-blocks keep one until 2026-09-08: `git
+# format-patch` writes the author into the .patch file but not the committer,
+# so neither this check nor check-patch-clean.sh saw it.
+AI_TRACE_RE='co-authored-by:.*(cursor|claude|copilot|codex|chatgpt)|generated (with|by)|claude-(opus|sonnet|haiku|fable)|(claude|chatgpt|cursor)[-.]?session|claude\.ai/code'
+# Deliberately narrow: the tool names only. A broad pattern such as \bai\b
+# would fire on a contributor genuinely named Ai, and a gate with false
+# positives on real names is a gate somebody switches off.
+AI_IDENTITY_RE='claude|anthropic|copilot|codex|chatgpt|cursor\.(sh|com)'
 if [ "$own" -gt 0 ]; then
-  traces=$(git log --format='%B' "$UPSTREAM..$ref" |
-           grep -inE 'co-authored-by:.*(cursor|claude|copilot|codex|chatgpt)|generated (with|by)|claude-(opus|sonnet|haiku|fable)|(claude|chatgpt|cursor)[-.]?session|claude\.ai/code' || true)
+  traces=$(git log --format='%B' "$UPSTREAM..$ref" | grep -inE "$AI_TRACE_RE" || true)
   if [ -n "$traces" ]; then
     fail "own commit messages contain AI traces (INV-4):"
     printf '%s\n' "$traces" | sed 's/^/          /'
   else
     pass "no AI traces in own commit messages"
   fi
+
+  [ -n "${AI_TRACE_RE:-}" ] && [ -n "${AI_IDENTITY_RE:-}" ] ||
+    { echo "FAIL  AI pattern is empty — this check would pass without testing anything" >&2; exit 2; }
+  identities=$(git log --format='%h  author=%an <%ae>  committer=%cn <%ce>' "$UPSTREAM..$ref" |
+               grep -iE "$AI_IDENTITY_RE" || true)
+  if [ -n "$identities" ]; then
+    fail "own commits carry an AI identity in author or committer (INV-4):"
+    printf '%s\n' "$identities" | sed 's/^/          /'
+    printf '          %s\n' "commit with the identity spelled out:" \
+      "  git -c user.name=\"Jan Catrysse\" -c user.email=\"jan.catrysse@geoxyz.eu\" commit ..."
+  else
+    pass "no AI identity in the author or committer of $own own commit(s)"
+  fi
+fi
+
+# --- 3b. the register points at commits that are actually on this branch ----
+# G8 says "own commits match the register" and nothing implemented it. The
+# K-13 rewrite of 2026-09-06 gave every commit a new sha and the status files
+# were not updated, so 21 of 32 recorded shas pointed at commits reachable from
+# no branch. The objects survive in a clone that has them, so `git show <old>`
+# succeeds and prints a plausible commit — the failure is silent here and only
+# becomes `fatal: bad object` in a fresh clone. Hence: resolve the field, do
+# not trust it.
+recorded=0; dead=''
+for f in docs/features/*/status.md; do
+  [ -f "$f" ] || continue
+  gc=$(sed -n 's/^geoxyz_commit: *//p' "$f" | head -1)
+  [ -z "$gc" ] && continue
+  for c in $(printf '%s' "$gc" | tr -d ' ' | tr '+' ' '); do
+    recorded=$((recorded + 1))
+    if ! git rev-parse -q --verify "$c^{commit}" >/dev/null 2>&1; then
+      dead="$dead$(printf '\n          %-11s %s  (unknown object)' "$c" "$f")"
+    elif ! git merge-base --is-ancestor "$c" "$ref" 2>/dev/null; then
+      subj=$(git log -1 --format=%s "$c" 2>/dev/null)
+      dead="$dead$(printf '\n          %-11s %s  not on the branch: %s' "$c" "$f" "${subj:0:52}")"
+    fi
+  done
+done
+if [ "$recorded" -eq 0 ]; then
+  warn "no geoxyz_commit recorded in any status.md — nothing to verify"
+elif [ -n "$dead" ]; then
+  fail "geoxyz_commit in the register does not resolve on $ref:$dead"
+  printf '          %s\n' "match each subject against 'git log $UPSTREAM..$ref' and update status.md, then tools/register.sh --write"
+else
+  pass "all $recorded recorded geoxyz_commit sha(s) are on $ref"
 fi
 
 # --- 4. lint on what the branch changes -----------------------------------

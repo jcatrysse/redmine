@@ -9,26 +9,39 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
-| [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`9d28be94d + d8e0db501`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
+| [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`349fe1860 + 9ad87a11b`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
-| [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`198cbfb63 + 47eec6f1d + 1b4a29a0b`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
-| [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`115230bc2 + 8c1fa23fb + 88d597548`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
-| [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`1c85728aa + f260958c6`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
-| [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0 + e2f060570`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
-| [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`7e92b5596`) | patch klaar | — |
-| [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041 + 0fbad7c17 + 72a3a8e22`) | patch klaar | — |
+| [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`dc6dad120 + dd063fa8b + f5ed23c8e`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
+| [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`ff0d23b62 + 755d763a8 + 88d597548`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
+| [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`6695461bd + 1cd7091fd`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
+| [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`fd35bd2d1 + 157c171a5 + 74f343d3d`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
+| [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`465d326aa`) | patch klaar | — |
+| [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`c6631e937 + 86647653e + 72058fa43 + 8ac09f4ff`) | patch klaar | — |
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`6078281ff`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
-| [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`8bf6dce3e`) | nooit | — |
+| [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`bc745ce73`) | nooit | — |
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | live (`075c86e8a + 363686456`) | nooit | — |
-| [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key, de credentials-map en credentials.yml.enc negeren | `8ec9951d3` | live (`e2c0447b6 + 3f5eb3be2`) | nooit | — |
-| [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: notificatievoorkeuren van LDAP-accounts zetten na een import | `9e2c38e2d` | live (`113f32117`) | nooit | — |
+| [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key, de credentials-map en credentials.yml.enc negeren | `8ec9951d3` | live (`af0af806d + 737b0a549`) | nooit | — |
+| [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: notificatievoorkeuren van LDAP-accounts zetten na een import | `9e2c38e2d` | live (`bc7314a62`) | nooit | — |
 | [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | live (`148faafb6 + 02ca8b044 + 22a4244c0`) | nooit | [#43355](https://www.redmine.org/issues/43355) |
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `ar-sessions` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
+- `assignee-nobody` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
+- `gitignore-credentials` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
+- `ldap-mail-prefs` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
+- `mypage-query-blocks` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
+- `revision-branches` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
+- `search-token-limit` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
+- `version-subprojects` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
+- `webhook-issue-closed` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
+- `webhook-tracker-filter` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
 
 ## Openstaand voor Jan
 
