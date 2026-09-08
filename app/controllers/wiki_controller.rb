@@ -45,6 +45,7 @@ class WikiController < ApplicationController
   include AttachmentsHelper
   helper :watchers
   include Redmine::Export::PDF
+  include Redmine::Export::ZIP::WikiZipHelper
 
   # List of pages, sorted alphabetically and by parent (hierarchy)
   def index
@@ -323,12 +324,19 @@ class WikiController < ApplicationController
         send_file_headers! :type => 'application/pdf', :filename => "#{@project.identifier}.pdf"
       end
       format.zip do
-        file_name = "#{@project.identifier}-wiki.zip"
-        send_data(
-          wiki_pages_to_zip(@pages),
-          :type => Redmine::MimeType.of(file_name),
-          :filename => filename_for_content_disposition(file_name)
-        )
+        attachments_by_page = params[:with_attachments] == '1' ? wiki_page_attachments(@pages) : {}
+        if wiki_attachments_too_big?(attachments_by_page)
+          flash[:error] = l(:error_bulk_download_size_too_big,
+                            :max_size => number_to_human_size(Setting.bulk_download_max_size.to_i.kilobytes))
+          redirect_to project_wiki_index_path(@project)
+        else
+          file_name = "#{@project.identifier}-wiki.zip"
+          send_data(
+            wiki_pages_to_zip(@pages, attachments_by_page),
+            :type => Redmine::MimeType.of(file_name),
+            :filename => filename_for_content_disposition(file_name)
+          )
+        end
       end
     end
   end
@@ -411,46 +419,15 @@ class WikiController < ApplicationController
                 to_a
   end
 
-  def wiki_pages_to_zip(pages)
-    Zip.unicode_names = true
-    archived_file_names = []
-    buffer = Zip::OutputStream.write_buffer do |zos|
-      pages.each do |page|
-        filename = archived_wiki_page_filename(page, archived_file_names)
-        entry = Zip::Entry.new('', filename)
-        if page.updated_on.present?
-          local_time = User.current.convert_time_to_user_timezone(page.updated_on)
-          # DOS timestamp stores user's displayed local time
-          entry.time = Zip::DOSTime.new(
-            local_time.year, local_time.month, local_time.day,
-            local_time.hour, local_time.min, local_time.sec
-          )
-          # UT extra field stores time in UTC
-          entry.extra[:universaltime].mtime = local_time.utc
-        end
-        zos.put_next_entry(entry)
-        zos << page.content.text.to_s
-      end
+  def wiki_page_attachments(pages)
+    pages.each_with_object({}) do |page, attachments_by_page|
+      attachments = page.attachments.select(&:readable?)
+      attachments_by_page[page.id] = attachments if attachments.any?
     end
-    buffer.string
-  ensure
-    buffer&.close
   end
 
-  def archived_wiki_page_filename(page, archived_file_names)
-    extension = '.txt'
-    # Keep this character set aligned with Attachment#sanitize_filename.
-    # Unlike attachments, do not drop path-like components from wiki titles.
-    sanitized_title = page.title.tr('\\', '_').gsub(/[\/?%*:|"'<>\n\r\x00]+/, '_')
-    filename = "#{sanitized_title}#{extension}"
-    dup_count = 0
-
-    while archived_file_names.include?(filename)
-      dup_count += 1
-      filename = "#{sanitized_title}(#{dup_count})#{extension}"
-    end
-
-    archived_file_names << filename
-    filename
+  def wiki_attachments_too_big?(attachments_by_page)
+    total_size = attachments_by_page.values.sum {|attachments| attachments.sum(&:filesize)}
+    total_size > Setting.bulk_download_max_size.to_i.kilobytes
   end
 end

@@ -1008,6 +1008,7 @@ es:
   label_repository_new: Nuevo repositorio
   field_repository_is_default: Repositorio principal
   label_copy_attachments: Copiar adjuntos
+  label_include_attachments: Incluir los adjuntos
   label_item_position: "%{position}/%{count}"
   label_completed_versions: Versiones completadas
   text_project_identifier_info: Solo se permiten letras en minúscula (a-z), números, guiones y barras bajas.<br />Una vez guardado, el identificador no se puede cambiar.

@@ -1162,11 +1162,19 @@ class WikiControllerTest < Redmine::ControllerTest
       pages = Project.find(1).wiki.pages.includes(:content).to_a.index_by(&:title)
       zip_entries = zip_entries_from_response
 
-      assert_equal pages.keys.sort.map {|title| "#{title}.txt"}, zip_entries.keys.sort
+      assert_equal [
+        'Another_page/Another_page.txt',
+        'Another_page/Child_1/Child_1.txt',
+        'Another_page/Child_1/Child_1_1/Child_1_1.txt',
+        'Another_page/Child_2/Child_2.txt',
+        'CookBook_documentation/CookBook_documentation.txt',
+        'CookBook_documentation/Page_with_an_inline_image/Page_with_an_inline_image.txt',
+        'Page_with_sections/Page_with_sections.txt',
+        'Этика_менеджмента/Этика_менеджмента.txt'
+      ], zip_entries.keys.sort
 
       zip_entries.each do |name, entry|
-        title = name.delete_suffix('.txt')
-        page = pages.fetch(title)
+        page = pages.fetch(File.basename(name, '.txt'))
         local_time = user.convert_time_to_user_timezone(page.updated_on)
 
         assert_equal page.content.text, entry[:content]
@@ -1192,9 +1200,207 @@ class WikiControllerTest < Redmine::ControllerTest
       assert_response :success
 
       zip_entries = zip_entries_from_response
-      assert_equal 'sanitized', zip_entries['Foo_.txt'][:content]
-      assert_not_includes zip_entries.keys, 'Foo*.txt'
+      assert_equal 'sanitized', zip_entries['Foo_/Foo_.txt'][:content]
+      assert_not_includes zip_entries.keys, 'Foo*/Foo*.txt'
     end
+  end
+
+  def test_export_to_zip_should_nest_pages_by_hierarchy
+    @request.session[:user_id] = 2
+    get :export, :params => {:project_id => 'ecookbook', :format => 'zip'}
+
+    assert_response :success
+
+    child = WikiPage.find_by(:title => 'Child_1_1')
+    assert_equal 'Child_1', child.parent.title
+    assert_equal 'Another_page', child.parent.parent.title
+    assert_includes zip_entries_from_response.keys,
+                    'Another_page/Child_1/Child_1_1/Child_1_1.txt'
+  end
+
+  def test_export_to_zip_with_attachments
+    set_tmp_attachments_directory
+    page = Project.find(1).wiki.find_page('Child_1_1')
+    attachment = Attachment.create!(
+      :container => page,
+      :file => uploaded_test_file('testfile.txt', 'text/plain'),
+      :author_id => 2
+    )
+
+    @request.session[:user_id] = 2
+    get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '1'}
+
+    assert_response :success
+
+    zip_entries = zip_entries_from_response
+    entry = zip_entries['Another_page/Child_1/Child_1_1/testfile.txt']
+    assert_not_nil entry
+    assert_equal File.binread(attachment.diskfile), entry[:content]
+    local_time = User.find(2).convert_time_to_user_timezone(attachment.created_on)
+    assert_equal local_time.utc.to_i, entry[:utc_time].utc.to_i
+
+    # The page source sits in the same directory, so a reference such as
+    # !testfile.txt! resolves once the archive is unpacked.
+    assert_equal page.content.text, zip_entries['Another_page/Child_1/Child_1_1/Child_1_1.txt'][:content]
+  end
+
+  def test_export_to_zip_should_not_include_attachments_by_default
+    set_tmp_attachments_directory
+    page = Project.find(1).wiki.find_page('CookBook_documentation')
+    Attachment.create!(
+      :container => page,
+      :file => uploaded_test_file('testfile.txt', 'text/plain'),
+      :author_id => 2
+    )
+
+    @request.session[:user_id] = 2
+    get :export, :params => {:project_id => 'ecookbook', :format => 'zip'}
+
+    assert_response :success
+    assert_not_includes zip_entries_from_response.keys, "#{page.title}/testfile.txt"
+  end
+
+  def test_export_to_zip_with_attachments_set_to_zero_should_not_include_attachments
+    set_tmp_attachments_directory
+    page = Project.find(1).wiki.find_page('CookBook_documentation')
+    Attachment.create!(
+      :container => page,
+      :file => uploaded_test_file('testfile.txt', 'text/plain'),
+      :author_id => 2
+    )
+
+    @request.session[:user_id] = 2
+    get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '0'}
+
+    assert_response :success
+    assert_not_includes zip_entries_from_response.keys, "#{page.title}/testfile.txt"
+  end
+
+  def test_export_to_zip_with_attachments_should_rename_duplicate_attachment_filenames
+    set_tmp_attachments_directory
+    page = Project.find(1).wiki.find_page('CookBook_documentation')
+    2.times do
+      Attachment.create!(
+        :container => page,
+        :file => uploaded_test_file('testfile.txt', 'text/plain'),
+        :author_id => 2
+      )
+    end
+
+    @request.session[:user_id] = 2
+    get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '1'}
+
+    assert_response :success
+
+    entry_names = zip_entries_from_response.keys
+    assert_includes entry_names, "#{page.title}/testfile.txt"
+    assert_includes entry_names, "#{page.title}/testfile(1).txt"
+  end
+
+  def test_export_to_zip_with_attachments_should_rename_an_attachment_named_after_the_page
+    set_tmp_attachments_directory
+    page = Project.find(1).wiki.find_page('CookBook_documentation')
+    attachment = Attachment.create!(
+      :container => page,
+      :file => uploaded_test_file('testfile.txt', 'text/plain'),
+      :filename => 'CookBook_documentation.txt',
+      :author_id => 2
+    )
+
+    @request.session[:user_id] = 2
+    get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '1'}
+
+    assert_response :success
+
+    zip_entries = zip_entries_from_response
+    assert_equal page.content.text, zip_entries['CookBook_documentation/CookBook_documentation.txt'][:content]
+    assert_equal File.binread(attachment.diskfile), zip_entries['CookBook_documentation/CookBook_documentation(1).txt'][:content]
+  end
+
+  def test_export_to_zip_with_attachments_should_rename_an_attachment_named_after_a_child_page
+    set_tmp_attachments_directory
+    page = Project.find(1).wiki.find_page('CookBook_documentation')
+    attachment = Attachment.create!(
+      :container => page,
+      :file => uploaded_test_file('testfile.txt', 'text/plain'),
+      :filename => 'Page_with_an_inline_image',
+      :author_id => 2
+    )
+
+    @request.session[:user_id] = 2
+    get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '1'}
+
+    assert_response :success
+
+    zip_entries = zip_entries_from_response
+    assert_not_includes zip_entries.keys, 'CookBook_documentation/Page_with_an_inline_image'
+    assert_equal File.binread(attachment.diskfile), zip_entries['CookBook_documentation/Page_with_an_inline_image(1)'][:content]
+    assert_equal WikiPage.find_by(:title => 'Page_with_an_inline_image').content.text,
+                 zip_entries['CookBook_documentation/Page_with_an_inline_image/Page_with_an_inline_image.txt'][:content]
+  end
+
+  def test_export_to_zip_with_attachments_should_be_denied_when_total_size_exceeds_maximum
+    set_tmp_attachments_directory
+    Attachment.create!(
+      :container => Project.find(1).wiki.find_page('CookBook_documentation'),
+      :file => uploaded_test_file('testfile.txt', 'text/plain'),
+      :author_id => 2
+    )
+
+    @request.session[:user_id] = 2
+    with_settings :bulk_download_max_size => 0 do
+      get :export, :params => {:project_id => 'ecookbook', :format => 'zip', :with_attachments => '1'}
+    end
+
+    assert_redirected_to '/projects/ecookbook/wiki/index'
+    assert_equal 'These attachments cannot be bulk downloaded because the total file size exceeds the maximum allowed size (0 Bytes)',
+                 flash[:error]
+  end
+
+  def test_export_to_zip_should_be_allowed_when_bulk_download_max_size_is_exceeded
+    set_tmp_attachments_directory
+    Attachment.create!(
+      :container => Project.find(1).wiki.find_page('CookBook_documentation'),
+      :file => uploaded_test_file('testfile.txt', 'text/plain'),
+      :author_id => 2
+    )
+
+    @request.session[:user_id] = 2
+    with_settings :bulk_download_max_size => 0 do
+      get :export, :params => {:project_id => 'ecookbook', :format => 'zip'}
+    end
+
+    assert_response :success
+    assert_not_empty zip_entries_from_response
+  end
+
+  def test_index_should_show_zip_export_options
+    @request.session[:user_id] = 2
+    get :index, :params => {:project_id => 'ecookbook'}
+
+    assert_response :success
+    assert_select 'p.other-formats a.zip[onclick*=?]', 'zip-export-options'
+    assert_select 'div#zip-export-options' do
+      assert_select 'form[action=?][method=?]', '/projects/ecookbook/wiki/export.zip', 'get'
+      assert_select 'input[type=checkbox][name=?][value=?]', 'with_attachments', '1'
+    end
+  end
+
+  def test_date_index_should_show_zip_export_options
+    @request.session[:user_id] = 2
+    get :date_index, :params => {:project_id => 'ecookbook'}
+
+    assert_response :success
+    assert_select 'div#zip-export-options form[action=?]', '/projects/ecookbook/wiki/export.zip'
+  end
+
+  def test_index_should_not_show_zip_export_options_without_permission
+    Role.find_by_name('Manager').remove_permission! :export_wiki_pages
+    @request.session[:user_id] = 2
+    get :index, :params => {:project_id => 'ecookbook'}
+
+    assert_response :success
+    assert_select 'div#zip-export-options', 0
   end
 
   def test_export_without_permission_should_be_denied
