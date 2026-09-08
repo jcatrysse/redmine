@@ -84,9 +84,9 @@ concurrent, same `Gemfile.lock` on both sides, PostgreSQL 16, Ruby 3.3.6.
 |---|---|
 | touched suites in one process (`wiki_controller_test`, `attachment_test`, `wiki_zip_helper_test`) | `173 runs, 814 assertions, 0 failures, 0 errors, 4 skips` — **digit for digit the dossier's own figure** |
 | `test:all` with the patch | `5991 runs, 31411 assertions, 48 failures, 82 errors, 92 skips` |
-| `test:all` on pristine trunk, same lock | **still running at the time of this commit** — filled in by the follow-up commit, together with the two rows below |
-| delta | pending the row above |
-| failing names | pending the row above |
+| `test:all` on pristine trunk, same lock | `5977 runs, 31357 assertions, 48 failures, 82 errors, 92 skips` |
+| delta | **14 runs, 54 assertions, and zero extra failures and zero extra errors** |
+| failing names | **87 on each side, and the two sets are identical** — `comm` is empty in both directions |
 | RuboCop 1.90.0 on the 7 changed Ruby files | `7 files inspected, no offenses detected`; baseline on the 5 that exist at the merge base: `5 files inspected, no offenses detected` |
 | `tools/check-patch-clean.sh wiki-export-attachments --submit` | PASS — 15 files, locales `de,en,es,fr,nl` only, no AI trace, applies to a pristine r25037 checkout, and the two patch files agree with the branch |
 
@@ -98,6 +98,12 @@ measured on pristine trunk, not assumed, and it is the same effect recorded for
 the patch side's lock was copied to the trunk side before bundling; without
 that the two rows would not be comparable. **The dossier's own figures are not
 wrong** — they were taken on 2026-09-05, before that gem moved.
+
+**The 14-run delta is exactly what the dossier claims it is:** the twelve new
+functional tests plus the two new unit tests. The two *changed* tests
+(`test_export_to_zip` and the sanitising one) add no run because they already
+existed. And the patch introduces no failure — 48/82 on both sides, the same
+87 names.
 
 **Red on old code, re-executed rather than read.** The three test files were
 copied onto the pristine trunk worktree and run there:
