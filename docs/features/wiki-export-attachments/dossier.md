@@ -343,7 +343,38 @@ the child-page case fails with `CookBook_documentation/Page_with_an_inline_image
 present as a file. That is the pair of defects the review found, reproduced by
 the tests before they were fixed.
 
-**Evidence (INV-8 — figures, not claims):**
+**Evidence (INV-8 — figures, not claims).** Everything below was re-measured on
+**2026-09-08**, after the round-3 changes (the `NumberHelper` include removed,
+the helper's methods `private`, the Dutch string), against trunk **r25037**
+(`bee32a926`) on a matched `Gemfile.lock`.
+
+- **full** suite on `patch/wiki-export-attachments` (commit `8121846be`):
+  **5991 runs, 31410 assertions, 48 failures, 82 errors, 92 skips**
+- **full** suite on pristine `origin/master` r25037, **same `Gemfile.lock`**:
+  **5977 runs, 31357 assertions, 48 failures, 82 errors, 92 skips**
+- delta **14 runs**, and **zero extra failures and zero extra errors**. The 87
+  failing names are identical on both sides — `comm` of the two sorted sets is
+  empty in both directions. The 14 extra runs are the 12 new functional tests
+  plus the 2 new unit tests.
+- **why 48/82 and not the 27/2 recorded below.** A fresh `bundle install` now
+  resolves **json 3.0.1**, which breaks `ActiveSupport::JSON.decode` and with it
+  about a hundred core tests. That is measured on **pristine trunk**, not
+  assumed, and it affects both sides equally, which is why the comparison still
+  holds. `Gemfile.lock` is gitignored, so the patch side's lock was copied to
+  the trunk side before bundling; without that the two rows would not be
+  comparable. See `docs/traps.md`.
+- touched suites in one process, after the change:
+  **173 runs, 814 assertions, 0 failures, 0 errors, 4 skips** — unchanged.
+- RuboCop 1.90.0 on the 7 changed Ruby files: **0**; baseline on the 5 that
+  exist at the merge base: **0**.
+- `WikiController.action_methods` is back to **171**, trunk's own number: the
+  helper module contributes 0 public methods after the `private`.
+- `tools/check-patch-clean.sh wiki-export-attachments --submit`: **PASS**,
+  including the comparison between the branch and the two patch files.
+
+The figures below are the round-2 measurement of 2026-09-05, kept because the
+per-test red-on-old-code table and the GEOxyz numbers were taken with it.
+
 
 - touched suites together on `patch/wiki-export-attachments`
   (`test/functional/wiki_controller_test.rb`, `test/unit/attachment_test.rb`,
