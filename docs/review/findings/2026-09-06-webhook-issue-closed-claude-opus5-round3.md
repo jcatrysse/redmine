@@ -120,7 +120,7 @@ sentence in whichever note goes second.
 
 ### F01 — the patch's own new test errors under json 3.0.0, and it is the suite's only delta
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -184,4 +184,4 @@ sentence in the submission saying so costs nothing and pre-empts a wrong
 conclusion. If Redmine pins `json` or Rails fixes `ActiveSupport::JSON.decode`
 before then, this disappears on its own and no action is needed.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-08, in the dossier — **no code change, deliberately.** The finding's own recommendation was to change nothing, and counting the convention is why: `ActiveSupport::JSON.decode` is used in 20 core test files against 3 for `JSON.parse`, so rewriting line 250 would make this patch the odd one out in order to route around a Rails/gem bug that will be fixed centrally. What was missing was the knowing, so the *Submission* section of `docs/features/webhook-issue-closed/dossier.md` now carries the sentence to put in the redmine.org note: `json` 3.0.0 breaks `ActiveSupport::JSON.decode` on **pristine** trunk r25037 too, across roughly a hundred core tests, and `webhook_test.rb:250` is one of them — measured, not assumed. The sentence is explicitly conditional: if `json` is pinned or Rails fixes `ActiveSupport::JSON.decode` before the issue goes out, it lapses on its own. The same edit also records that this patch and `webhook-tracker-filter` co-apply to a pristine r25037 in both orders, which is the other thing a committer taking both issues wants to know.

@@ -540,6 +540,23 @@ report.
 - **Made against:** `origin/master` r`25037` (2026-09-03)
 - **Status:** nog niet ingediend
 - **Feedback en wat ermee gebeurde:** —
+- **Twee losse issues, en ze bijten elkaar niet.** Deze patch en die van
+  `webhook-tracker-filter` gaan als twee aparte redmine.org-issues de deur uit.
+  Ze raken elkaar alleen in `test/unit/webhook_test.rb` en zijn op een schoon
+  r25037-checkout **in beide volgordes** achter elkaar toegepast zonder
+  conflict. Eén zin daarover in het issue dat als tweede binnenkomt bespaart de
+  committer het uitzoekwerk.
+- **Eén zin over `json` 3.0.0, zolang die gem is wat een verse `bundle install`
+  oplevert.** `json` 3.0.0 breekt `ActiveSupport::JSON.decode` met
+  `ArgumentError: wrong number of arguments (given 2, expected 1)` — dat is een
+  Rails/gem-probleem, niet van deze patch, en het is gemeten op **kaal** trunk
+  r25037, waar het ongeveer honderd kerntests raakt. Eén daarvan is de nieuwe
+  test op `webhook_test.rb:250`, en dat is precies het bestand dat een reviewer
+  van deze patch draait. De patch zelf blijft ongewijzigd: `ActiveSupport::JSON.decode`
+  is wat **20** kerntestbestanden gebruiken tegen 3 voor `JSON.parse`, dus hier
+  afwijken om een tijdelijke gembug te ontwijken laat een inconsistentie achter
+  die de bug overleeft. Is `json` gepind of de Rails-kant gerepareerd tegen de
+  tijd dat het issue de deur uit gaat, dan vervalt deze zin vanzelf.
 
 ## GEOxyz
 

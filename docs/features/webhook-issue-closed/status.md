@@ -35,6 +35,19 @@ afvuren, dus de generieke laag leert de naam niet meer kennen —
 `Issue::Webhookable` overschrijft `webhook_payload_timestamp`. **De patch raakt
 daarmee geen enkel bestand onder `lib/redmine/`.**
 
+**Ronde 3 is af (2026-09-06/08).** De blinde herreview
+(`docs/review/findings/2026-09-06-webhook-issue-closed-claude-opus5-round3.md`)
+vond **geen defect in de wijziging**: nul blockers, nul majors, één minor. Die
+ene, F01, gaat niet over de patch maar over de gem `json` 3.0.0, die
+`ActiveSupport::JSON.decode` breekt — gemeten op **kaal** trunk r25037, waar het
+ongeveer honderd kerntests raakt, waaronder de nieuwe test van deze patch. De
+resolutie is bewust **geen codewijziging** (20 kerntestbestanden gebruiken
+`ActiveSupport::JSON.decode` tegen 3 `JSON.parse`); in plaats daarvan staat er
+nu een zin over in de *Submission*-sectie van het dossier, zodat een committer
+die het op zijn eigen trunk ziet niet de verkeerde conclusie trekt. In dezelfde
+sectie staat nu ook dat deze patch en die van `webhook-tracker-filter` op een
+schoon r25037 **in beide volgordes** naast elkaar toepasbaar zijn.
+
 Buiten de tests is de patch dertien toegevoegde en twee verwijderde regels over
 drie bestanden, waarvan twee toevoegingen commentaar zijn. Dat het zo klein is,
 komt doordat trunk sinds `acts_as_webhookable` (2026-02-22) al een generieke
