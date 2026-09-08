@@ -371,6 +371,20 @@ the helper's methods `private`, the Dutch string), against trunk **r25037**
   helper module contributes 0 public methods after the `private`.
 - `tools/check-patch-clean.sh wiki-export-attachments --submit`: **PASS**,
   including the comparison between the branch and the two patch files.
+- **full** suite on `7.0-stable-GEOxyz`, on the pushed tip `6078281ff`:
+  **6128 runs, 32368 assertions, 0 failures, 0 errors, 39 skips** — completely
+  green, with the same three changes applied there.
+- `tools/check-geoxyz-branch.sh`: **PASS** — already current with upstream
+  `7.0-stable`, no AI traces in the 34 own commit messages, locales within the
+  five, and lint 1 offence on the 66 changed Ruby files against a baseline of 1
+  on `origin/7.0-stable`'s own lines. **That baseline was re-established the
+  hard way this session:** measuring it in a bare trunk worktree gave 0, which
+  would have made the offence the branch's, but that worktree had no
+  `Gemfile.lock`, so RuboCop could not infer the Rails version and skipped
+  `Rails/StrongParametersExpect` entirely. Putting the *unmodified upstream
+  file* into the GEOxyz worktree reproduces the offence at its own line 360, so
+  it is upstream's line. A lint baseline is only a baseline when the two sides
+  run the same cops.
 
 The figures below are the round-2 measurement of 2026-09-05, kept because the
 per-test red-on-old-code table and the GEOxyz numbers were taken with it.
@@ -566,7 +580,7 @@ Reported, not touched — INV-1.
 
 - **Issue:** nog aan te maken door Jan — follow-up van
   [#43978](https://www.redmine.org/issues/43978)
-- **Patches attached:** `patches/wiki-export-attachments/2026-09-05-r25037-feature.patch` (code + `en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`)
+- **Patches attached:** `patches/wiki-export-attachments/2026-09-08-r25037-feature.patch` (code + `en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`)
 - **Made against:** `origin/master` r25037 (`bee32a926`, 2026-09-03)
 - **Status:** nog niet ingediend — wacht op Jan. Vóór het indienen:
   `tools/check-patch-clean.sh wiki-export-attachments --submit` (g05).
@@ -577,11 +591,20 @@ Reported, not touched — INV-1.
 
 ## GEOxyz
 
-- **Commits op `7.0-stable-GEOxyz`:** `28c618860` (2026-09-02, het ontwerp) en
-  `7006c4f00` (2026-09-05, de ronde-2 fix). Twee commits, omdat de branch die
-  GEOxyz draait nooit herschreven wordt; het registerveld wijst naar de
-  laatste.
-- **Suites daar groen:** 6088 runs, 32244 assertions, 0 failures, 0 errors, 39 skips in 889 s — volledig groen, gemeten op de gepushte tip.
+- **Commits op `7.0-stable-GEOxyz`:** `28c618860` (2026-09-02, het ontwerp),
+  `7006c4f00` (2026-09-05, de ronde-2 fix) en `6078281ff` (2026-09-08, de
+  ronde-3 fix: de overbodige include weg, de helper `private`, en `Met
+  bijlagen`). Drie commits, omdat de branch die GEOxyz draait nooit herschreven
+  wordt; het registerveld wijst naar de laatste.
+- **Suites daar groen:** **6128 runs, 32368 assertions, 0 failures, 0 errors,
+  39 skips**, gemeten op de gepushte tip `6078281ff` na de ronde-3 wijziging.
+  (Ronde 2 mat daar 6088 runs, 32244 assertions, eveneens volledig groen.)
+- **Identiek aan de patch (INV-10), en dit keer per hunk nagegaan:** de drie
+  wijzigingen zijn op beide branches `3 files changed, 3 insertions(+),
+  2 deletions(-)` en de toegevoegde en verwijderde regels zijn regel voor regel
+  gelijk (`diff` van de twee `git diff -U0`-uitvoeren is leeg). Dat is de
+  controle die telt — een bestand vergelijken met het bestand waar je het net
+  van gekopieerd hebt, bewijst niets (`docs/traps.md`).
 - **`nl.yml` toegevoegd:** ja, en `fr`, `de`, `es` — identiek aan de patch
   (INV-10).
 - **`tools/check-geoxyz-branch.sh`:** PASS (1 lint-melding op een regel van

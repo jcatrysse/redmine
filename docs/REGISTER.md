@@ -17,7 +17,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`20ed9e2d1 + d157934c0 + e2f060570`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
 | [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`7e92b5596`) | patch klaar | — |
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`f2242bd86 + 646008041 + 0fbad7c17 + 72a3a8e22`) | patch klaar | — |
-| [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`7006c4f00`) | patch klaar | — |
+| [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`6078281ff`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
 | [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`8bf6dce3e`) | nooit | — |
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
@@ -29,6 +29,10 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
 18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+
+## Nu in behandeling
+
+- `wiki-export-attachments` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
 
 ## Openstaand voor Jan
 

@@ -3,9 +3,9 @@ slug: wiki-export-attachments
 feature: Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie
 commit_51: 3c3e9368e
 geoxyz: live
-geoxyz_commit: 7006c4f00
+geoxyz_commit: 6078281ff
 upstream: patch klaar
-patch: patches/wiki-export-attachments/2026-09-05-r25037-{feature,locales}.patch
+patch: patches/wiki-export-attachments/2026-09-08-r25037-{feature,locales}.patch
 issue:
 ---
 
@@ -23,6 +23,34 @@ patchbranch is opnieuw opgebouwd uit het gekozen ontwerp op trunk r25037
 van [#43978](https://www.redmine.org/issues/43978), en dat issue moet Jan
 aanmaken. Ronde 3 (blinde herreview) is nog niet gedaan.
 
+**Ronde 3 is af (2026-09-08).** De blinde herreview
+(`docs/review/findings/2026-09-08-wiki-export-attachments-claude-opus5-round3.md`)
+vond **geen defect in wat de patch doet**: nul blockers, nul majors, twee minors
+en vier nits. Alle zes hebben een `Resolution:`-regel en drie ervan wijzigden
+code:
+
+- de overbodige `include ActionView::Helpers::NumberHelper` is weg —
+  `ApplicationController` heeft `Redmine::I18n`, en dat brengt `NumberHelper`
+  al mee, gemeten op **kale** trunk
+- de methodes van `WikiZipHelper` staan op `private`, zodat
+  `WikiController.action_methods` weer op trunks eigen **171** staat en
+  `wiki_pages_to_zip` en `archived_wiki_page_filename` de zichtbaarheid houden
+  die ze in de controller hadden
+- de Nederlandse string is **`Met bijlagen`** (Jans keuze K-14, optie A),
+  afgeleid uit `label_cross_project_descendants` ("Met subprojecten") — dezelfde
+  sleutel waar het Duits al op gebaseerd was
+
+De andere drie waren tekst: een rij over padlengte onder Windows in de
+objectietabel, de correctie dat Info-ZIP een `..`-component **hernoemt** naar
+`__` in plaats van hem over te slaan, en een blijven staan `SHORT`-token in dit
+bestand.
+
+De branch is één commit, opnieuw geëxporteerd naar
+`2026-09-08-r25037-{feature,locales}.patch`, en de G9-verificatie is na de
+codewijzigingen opnieuw door de browser gereden — inclusief het botsingsgeval,
+dat nog steeds de paginatekst op `Wiki/Wiki.txt` zet en de bijlage naar
+`Wiki/Wiki(1).txt` hernoemt.
+
 ## Wat het doet
 
 De ZIP-export van een wiki volgt nu de wikiboom — één map per pagina, genest
@@ -33,6 +61,32 @@ Een bijlage die heet als de pagina zelf of als een kindpagina krijgt een
 `(1)`-suffix in plaats van de paginatekst of de kindmap te verdringen.
 
 ## Bewijs
+
+**Opnieuw gemeten op 2026-09-08, na de ronde-3 wijzigingen**, tegen trunk
+r25037 met een gelijke `Gemfile.lock` aan beide kanten:
+
+- Volledige suite met patch (`8121846be`): **5991 runs, 31410 assertions,
+  48 failures, 82 errors, 92 skips**
+- Volledige suite op schone trunk r25037: **5977 runs, 31357 assertions,
+  48 failures, 82 errors, 92 skips**
+- Verschil **14 runs**, **nul extra failures en nul extra errors**, en de 87
+  faalnamen zijn aan beide kanten identiek (`comm` leeg in beide richtingen)
+- De hoge aantallen komen van **json 3.0.1**, dat
+  `ActiveSupport::JSON.decode` breekt en ongeveer honderd kerntests raakt. Dat
+  is gemeten op **kale** trunk, dus het treft beide kanten gelijk en de
+  vergelijking blijft geldig. `Gemfile.lock` staat in `.gitignore`, dus de lock
+  van de patchkant is naar de trunkkant gekopieerd voor het bundelen — zonder
+  dat zijn de twee regels niet vergelijkbaar.
+- Volledige suite op `7.0-stable-GEOxyz` (`6078281ff`): **6128 runs,
+  32368 assertions, 0 failures, 0 errors, 39 skips** — volledig groen
+- Geraakte suites samen: **173 runs, 814 assertions, 0 failures, 0 errors,
+  4 skips** — onveranderd door de fixes
+- RuboCop 1.90.0 op de 7 gewijzigde bestanden: **0**, baseline **0**
+- `tools/check-patch-clean.sh --submit`: **PASS** ·
+  `tools/check-geoxyz-branch.sh`: **PASS**
+
+De cijfers hieronder zijn de ronde-2 meting van 2026-09-05.
+
 
 - Geraakte suites samen, op de patch: 173 runs, 814 assertions, 0 failures,
   0 errors, 4 skips (ImageMagick en pandoc ontbreken in het image)
@@ -61,7 +115,7 @@ Een bijlage die heet als de pagina zelf of als een kindpagina krijgt een
 
 Maak een nieuw issue op redmine.org als follow-up van
 [#43978](https://www.redmine.org/issues/43978) en hang er
-`patches/wiki-export-attachments/2026-09-05-r25037-feature.patch` en
+`patches/wiki-export-attachments/2026-09-08-r25037-feature.patch` en
 `-locales.patch` aan. Draai vlak daarvoor
 `tools/check-patch-clean.sh wiki-export-attachments --submit`; als trunk
 intussen verder is, ververst een sessie de patch eerst (g05). De Engelse
