@@ -1161,3 +1161,28 @@ is precies de helft die níét het probleem was.
   `7.0-stable-GEOxyz` (`6078281ff`), identiek aan beide kanten (INV-10), en de
   Nederlandse schermafbeelding is opnieuw genomen zodat het bewijs bij de string
   klopt.
+
+
+## Beslist (Jan) — K-15, 2026-09-08
+
+- **K-15: de 21 dode commit-SHA's in het register worden hersteld **en** het
+  gereedschap gaat het voortaan bewaken. Optie B.**
+  De ronde-3 review vond dat 21 van de 32 vastgelegde `geoxyz_commit`-waarden
+  naar commits wezen die na de identiteitsherschrijving van K-13 (2026-09-06)
+  van geen enkele branch meer bereikbaar zijn. In deze checkout bestaan die
+  objecten nog, dus `git show <oude sha>` slaagt en toont een geloofwaardige
+  commit — de fout is hier stil en wordt pas luid (`fatal: bad object`) in een
+  verse kloon.
+  **Wat er gebeurd is:** de tien statusbestanden zijn bijgewerkt uit een
+  opnieuw berekende afbeelding, `docs/REGISTER.md` is opnieuw gegenereerd, en
+  `tools/check-geoxyz-branch.sh` heeft er twee controles bij: het register
+  tegen de branch, en de AI-identiteit in het auteur- én committerveld (dat is
+  wat INV-4 vraagt en wat er niet in stond). Beide zijn eerst rood gedreven
+  tegen echte data voordat ze zijn aanvaard.
+  **Waarom dit Jans keuze was:** `tools/**` is framework en wijzigt alleen als
+  hij erom vraagt; optie A (alleen de data repareren) liet dezelfde fout over
+  een half jaar opnieuw ontstaan.
+  **Wat bewust níét is aangeraakt:** alle andere oude SHA's in die bestanden.
+  Patchbranchtips, de trunkrevisie `bee32a926`, gearchiveerde tips en één
+  expliciet als historisch gedocumenteerde SHA zijn correct oud; zie
+  `docs/traps.md` voor waarom titelgebaseerd vervangen daar misgaat.
