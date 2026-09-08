@@ -1142,3 +1142,22 @@ is precies de helft die níét het probleem was.
   het verschil tussen die twee lijsten is wat er nog moet. Meegenomen: de
   startstappen zeggen nu dat een openstaande bevinding fixen vóór een nieuwe
   review gaat, en dat een reviewsessie de slug juist **niet** claimt.
+
+
+## Beslist (Jan) — K-14, 2026-09-08
+
+- **K-14 `wiki-export-attachments`: de Nederlandse vertaling van
+  "Include attachments" wordt optie A, `Met bijlagen`.**
+  De ronde-3 review vond dat `Bijlagen meesturen` een werkwoord gebruikt dat
+  nul keer in `nl.yml` voorkomt, en dat het bovendien posttaal is voor iets dat
+  niets verstuurt. Optie A is afgeleid uit een sleutel die er al staat,
+  `label_cross_project_descendants` ("Met subprojecten") — precies de sleutel
+  waar de Duitse waarde ("Mit Anhängen") al op gebaseerd was, dus de twee regels
+  volgen nu één patroon in plaats van twee.
+  **Waarom dit een keuze van Jan was en geen klasse A:** INV-5 schrijft voor dat
+  een vertaling afgeleid wordt, maar niet wélke van twee verdedigbare afleidingen
+  wint, en de string is zichtbaar voor GEOxyz-gebruikers.
+  Doorgevoerd op `patch/wiki-export-attachments` (`8121846be`) en op
+  `7.0-stable-GEOxyz` (`6078281ff`), identiek aan beide kanten (INV-10), en de
+  Nederlandse schermafbeelding is opnieuw genomen zodat het bewijs bij de string
+  klopt.
