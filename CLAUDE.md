@@ -158,7 +158,17 @@ task description seems to ask for it.
   design Jan rejected while the `.patch` files carried the one he chose, and a
   branch-only check called that clean (g13, point 3).
 - **INV-10 GEOxyz and upstream behave identically** unless the dossier records
-  the divergence, its reason, and that it is a permanent private patch.
+  the divergence, its reason, and that it is a permanent private patch. **The
+  claim is not evidence — `tools/check-symmetry.sh <slug>` is**, and the
+  divergences it is allowed to find live in
+  `docs/features/<slug>/symmetry-allow.txt` with a reason each. A fix applied to
+  one side only is the failure mode that actually happens, because the fix and
+  the sentence saying both sides carry it are written by the same session in the
+  same breath: on 2026-09-09 `patch/version-subprojects` got a scope narrowing
+  that `7.0-stable-GEOxyz` did not, `status.md` said "letterlijk dezelfde
+  wijziging", and `tools/check-geoxyz-branch.sh` reported PASS throughout,
+  because it keeps the branch healthy rather than the two sides equal (Codex
+  round 2).
 
 **Breaking one of these on purpose has one address: `docs/exceptions.md`.** One
 block per exception, appended with `tools/append-note.sh`, naming the single
@@ -239,7 +249,7 @@ both sides (INV-10).
 | **G5 Minimality** | you re-read the diff adversarially and every line is defensible; no scope creep |
 | **G6 Patch hygiene** | `tools/check-patch-clean.sh <slug>` passes: the patch file touches no framework path, no locale outside the five, no AI trace, and does not disagree with its branch — and the branch's own commits carry no AI identity in their author or committer (Jan's K-16). Applying to current trunk is checked with `--submit`, as the last step before submitting (g05) |
 | **G7 Dossier** | complete, including anticipated objections with answers |
-| **G8 GEOxyz branch** | `tools/check-geoxyz-branch.sh` passes: merges cleanly with upstream `7.0-stable`, lint adds nothing beyond upstream's own offences on the same files, own commits match the register. Suites green there too — a green trunk patch can still fail on 7.0-stable. |
+| **G8 GEOxyz branch** | `tools/check-geoxyz-branch.sh` passes: merges cleanly with upstream `7.0-stable`, lint adds nothing beyond upstream's own offences on the same files, own commits match the register. Suites green there too — a green trunk patch can still fail on 7.0-stable. **And `tools/check-symmetry.sh <slug>` passes**, which is a different question: the branch check keeps saying PASS while a fix sits on one side only. That is how `patch/version-subprojects` carried a scope narrowing for a day that GEOxyz did not, with `status.md` claiming both sides were the same change (Codex round 2). Run it after every code change to a patch, not only at the end. |
 | **G9 Live verification** | the feature exercised by hand in a **real running Redmine**, in a real browser, with a screenshot per function committed as evidence. A green suite is not proof the feature works: the 2026 port shipped a link that was in the DOM, passed `assert_select`, and did nothing when clicked because its JavaScript was never loaded on that page. |
 
 A red suite, a lint offence or an invariant hit is a blocker: fix it and re-run
