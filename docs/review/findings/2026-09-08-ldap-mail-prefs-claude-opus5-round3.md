@@ -84,7 +84,7 @@ which object these findings point at.
 
 ### F01 — `apply=0` applies the change
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -154,13 +154,13 @@ loudly instead of writing. A test for `apply=0` on both `run` and `undo` is what
 would have caught this; a test that `apply=nonsense` raises is what keeps it
 caught.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-09 on `7.0-stable-GEOxyz` in `5b4943570` — `apply` now goes through the same frozen `BOOLEANS` table as `no_self_notified`, exactly as the suggested direction says, and a non-empty value in neither column raises `Error` instead of writing. Both call sites are changed: `initialize` and `self.undo`. **One deliberate departure from a literal reading of the suggestion:** an *absent* `apply`, and `apply=` with an empty value, still mean "report only" rather than raising. Routing those through `BOOLEANS` too would raise on the documented safe invocation — the one in the task's own example and in `status.md` — which is a regression in the most-used path to fix a bug in a rare one; `parse_apply` therefore returns `false` on blank and only validates a non-empty value. **Driven red first:** the five new tests covering this fail on the old code (`apply=0/false/no` must not write, in `run` and in `undo`; `apply=maybe` must raise, in `run` and in `undo`), part of a run that was `35 runs, 63 assertions, 7 failures, 0 errors` before the change and `35 runs, 72 assertions, 0 failures, 0 errors, 0 skips` after. The uppercase forms `FALSE` and `No` are in the test data, so the `downcase` is pinned too. **Exercised for real against a running Redmine**, not only in tests: `apply=0` printed `Reporting only. Add apply=1 to write.` plus two `WOULD UPDATE` lines and wrote nothing — and the `/users/5/edit` screenshot before and after that run is **byte-identical** (md5 `ee23599d…`), while the same screenshot after `apply=1` differs (`a550441d…`), which is what proves the comparison measures something. `apply=maybe` exited 1 with `apply must be one of 1, true, yes, 0, false, no, got "maybe".` `undo … apply=0` reported two `WOULD RESTORE` lines and left the accounts on `none`. Full suite on the branch after the change: **6138 runs, 32390 assertions, 0 failures, 0 errors, 39 skips**.
 
 ---
 
 ### F02 — the journal that makes the run reversible is written after the transaction commits
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed (by reading; not reproduced)
 - **Category:** correctness
@@ -210,13 +210,13 @@ two states cannot disagree. The early `write_journal([])` still earns its place
 as the writability probe. Whatever the fix, the property to pin in a test is
 "the file on disk lists every account the run changed", not "a file exists".
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-09 in the same commit `5b4943570` — the populated `write_journal(journal)` moved inside the `transaction(apply?)` block, after the loop, which is precisely the suggested direction. A journal that cannot be written now takes the accounts back with it. The early `write_journal([])` stays where it was, for the reason its comment already gave. **The test pins the property the finding asked for, not the weaker one:** `test_run_should_not_change_an_account_when_the_journal_cannot_be_written` stubs `write_journal` to succeed once and then raise `Errno::ENOSPC`, and asserts both accounts still hold their old values; it fails on the old code, where the raise landed after the commit. `test_run_should_list_every_changed_account_in_the_journal_on_disk` sits next to it as the "the file lists every account the run changed" guard — that one passes on both sides and is labelled a guard, not proof. **One residual window, deliberately left and now recorded in `status.md`:** if the *commit itself* fails after the journal is written, a journal survives describing changes that did not happen. That is the benign direction — an undo against it restores values that are already in place and reports `already set` — whereas the direction this finding closed left changed accounts with no record at all.
 
 ---
 
 ### F03 — the journal file lands in `log/` by default, where nothing protects it
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed (by reading)
 - **Category:** conventions
@@ -254,4 +254,4 @@ ignored wholesale by `/tmp/*`), or keep `log/` and say in the task description
 that the journal is the undo record and should be copied somewhere durable
 before the next deploy. One line either way.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-09 in the same commit `5b4943570`, taking the first of the two options offered and adding the second's documentation as well. The default journal path moves from `log/` to `tmp/`. **Both halves demonstrated in one checkout:** `git check-ignore -v tmp/ldap-notification-defaults-20260909-060909.json` reports `.gitignore:36:/tmp/*`, while the same filename under `log/` is not ignored and appears as `?? log/ldap-notification-defaults-20260909-060909.json` in `git status` — so the concrete risk the finding named, a file full of logins that `git add -A` would stage, is gone. **What `tmp/` does not fix, said plainly rather than papered over:** durability. `tmp/` survives a deploy no better than `log/` does, and no directory inside the checkout is the right home for a record that has to outlive one. That is not a code problem, so it is documentation: the task description now says the journal is the only record of the previous values and has to be copied somewhere durable before the next deploy. `test_default_journal_path_should_be_under_tmp` pins the directory; it is named for what it asserts rather than for the ignore rule, which it does not read.

@@ -3,7 +3,7 @@ slug: ldap-mail-prefs
 feature: "Rake: notificatievoorkeuren van LDAP-accounts zetten na een import"
 commit_51: 9e2c38e2d
 geoxyz: live
-geoxyz_commit: bc7314a62
+geoxyz_commit: bc7314a62 + 5b4943570
 upstream: nooit
 patch:
 issue: 
@@ -13,6 +13,14 @@ issue:
 
 ## Waar het staat
 
+Ronde 3 (blinde herreview, 2026-09-08) is gedaan en haar drie bevindingen zijn
+op 2026-09-09 opgelost, één major en twee kleinere. De major was een echte:
+**`apply=0` schreef.** De veiligheidsklep van deze taak is "schrijf niets tenzij
+ik het zeg", en die stond op `options['apply'].present?` — en `"0".present?` is
+`true`, dus `apply=0`, `apply=false` en `apply=no` schreven alle drie. Dat is nu
+dicht, aan de `run`- én de `undo`-kant, en er zijn zeven tests die het rood
+maken op de oude code. Zie "Bewijs — ronde 3".
+
 Ronde-2 fix is af. Alle elf reviewbevindingen van 2026-09-03 hebben een
 `Resolution:`-regel; twee blockers en drie majors zijn opgelost, één nit is
 vervallen omdat het onderdeel dat hij aanwees niet meer bestaat. De taak is
@@ -20,12 +28,12 @@ herbouwd op Jans gecorrigeerde doel (g01): **na een LDAP-import de
 notificatie-instellingen van de LDAP-accounts op de gewenste waarde zetten**,
 eenmalig, geen cron. Gaat nooit naar upstream, dus geen dossier en geen patch.
 
-Op `7.0-stable-GEOxyz` staan er voor deze feature **twee** commits:
-`add935736` (de oorspronkelijke taak, 2026-09-03) en `bc7314a62` (de
-herbouw van vandaag). Dat is met opzet: `add935736` was al gepusht en
-geschiedenis op die branch wordt niet herschreven, want dat maakt elke checkout
-van GEOxyz ongeldig. Het registerveld wijst naar `bc7314a62`, de commit die
-telt.
+Op `7.0-stable-GEOxyz` staan er voor deze feature **drie** commits:
+`add935736` (de oorspronkelijke taak, 2026-09-03), `bc7314a62` (de herbouw na
+ronde 2) en `5b4943570` (de drie ronde-3-fixes, 2026-09-09). Dat is met opzet:
+elke vorige was al gepusht en geschiedenis op die branch wordt niet
+herschreven, want dat maakt elke checkout van GEOxyz ongeldig. Het registerveld
+noemt de twee die nog iets toevoegen, `bc7314a62 + 5b4943570`.
 
 De oude taak `user:disable_mail_ldap_users` is weg. Wie hem gewend was, moet de
 nieuwe naam gebruiken; er stond geen cron-regel op (dat is precies wat g01
@@ -117,6 +125,76 @@ en worden dus nooit geraakt.
   already set` / `SKIP:   tester already set`, en `0 of 2 accounts changed,
   2 already set` — geen enkele schrijfactie.
 
+## Bewijs — ronde 3 (2026-09-09)
+
+**Wat er veranderd is, in drie stukken:**
+
+1. **F01 (major) — `apply` gaat door `BOOLEANS`.** Dezelfde frozen tabel die
+   `no_self_notified` al gebruikt: `1/true/yes` schrijft, `0/false/no`
+   rapporteert, en iets anders (`apply=maybe`) breekt af met een melding in
+   plaats van te schrijven. `apply` weglaten of `apply=` leeglaten blijft
+   "alleen rapporteren", dus de gedocumenteerde veilige aanroep verandert niet.
+2. **F02 (minor) — het gevulde journaal wordt binnen de transactie geschreven.**
+   Stond erbuiten, dus tussen de commit en die schrijfactie was er een venster
+   waarin de accounts gewijzigd waren en het bestand op schijf nog `"users": []`
+   zei — precies het bestand waarmee je terugdraait.
+3. **F03 (nit) — het journaal gaat naar `tmp/` in plaats van `log/`.**
+
+**Cijfers:**
+
+- **Zeven nieuwe tests, alle zeven eerst rood gedraaid op de oude code**, in één
+  run: `35 runs, 63 assertions, 7 failures, 0 errors`. Met de fix erin:
+  **`35 runs, 72 assertions, 0 failures, 0 errors, 0 skips`**. De verdeling van
+  die zeven: vijf op F01 (`apply=0/false/no` mag niet schrijven, in `run` en in
+  `undo`; `apply=maybe` moet werpen, in `run` en in `undo`), één op F02
+  (journaal onschrijfbaar → geen enkel account gewijzigd), één op F03 (het
+  standaardpad staat in `tmp/`).
+- RuboCop 1.88.2: **0 offences** op de twee bestanden die Redmine's eigen
+  `.rubocop.yml` inspecteert (baseline: 0). Het `.rake`-bestand staat in de
+  `Exclude`; forceer je het er toch door, dan zijn het **5 offences vóór en 5
+  ná** — allemaal de `<<-DESC`-heredoc die er al stond, dus niet van deze
+  wijziging (INV-1).
+
+**G9, echt gedraaid tegen een draaiende Redmine** (dev-instance op de fix,
+gebruikers `dev` en `tester` met authenticatiebron "GEOxyz LDAP", `admin`
+lokaal als controle). De vier schermafbeeldingen zijn één keten, en de md5's
+zijn het bewijs:
+
+| Stap | Screenshot | md5 | Wat het aantoont |
+|---|---|---|---|
+| beginstand | `before-apply-zero-ldap-account.png` | `ee23599d…` | "For any event on all my projects", zelfmelding uit, drie vinkjes aan |
+| ná `apply=0` | `apply-zero-ldap-account.png` | `ee23599d…` | **byte-identiek** aan de beginstand — de run die vóór de fix alles schreef, schrijft nu niets |
+| ná `apply=1` | `applied-ldap-account.png` | `a550441d…` | "No events", zelfmelding aan, drie vinkjes uit — **wél anders**, dus de vergelijking hierboven meet echt iets |
+| ná `undo … apply=1` | `undone-after-fix-ldap-account.png` | `ee23599d…` | byte-identiek aan de beginstand |
+| lokaal account, hele keten | `apply-zero-local-account.png` | `e97bef10…` | onveranderd, authenticatiemodus "Internal" |
+
+En de opdrachtregel zelf, elk pad echt aangeroepen:
+
+| Aanroep | Uitkomst |
+|---|---|
+| `apply=0` | `Reporting only. Add apply=1 to write.` + twee `WOULD UPDATE`-regels, exit 0, nul schrijfacties |
+| `apply=false`, `apply=no` | idem — nul `UPDATE:`-regels |
+| `apply=maybe` | `apply must be one of 1, true, yes, 0, false, no, got "maybe".`, **exit 1** |
+| `apply=1` | twee `UPDATE:`-regels, `2 of 2 accounts changed` |
+| `undo … apply=0` | `Reporting only.` + twee `WOULD RESTORE`-regels, en de accounts stonden erna nog steeds op `none` |
+| `undo … apply=1` | twee `RESTORE:`-regels, beginstand terug |
+
+**F03 met beide kanten aangetoond**, in dezelfde checkout:
+
+```
+$ git check-ignore -v tmp/ldap-notification-defaults-20260909-060909.json
+.gitignore:36:/tmp/*    tmp/ldap-notification-defaults-20260909-060909.json
+$ git check-ignore -v log/ldap-notification-defaults-20260909-060909.json
+(niets — het bestand stond als `?? log/…json` in `git status`)
+```
+
+Dus het oude pad zette een bestand met alle logins erin als untracked in de
+checkout, en `git add -A` had het gestaged. Het nieuwe pad niet.
+**Wat `tmp/` níét oplost:** duurzaamheid. `tmp/` overleeft een deploy net zo min
+als `log/`, en dat is geen codeprobleem — de taakbeschrijving zegt nu dat het
+journaal het enige undo-bewijs is en vóór de volgende deploy ergens duurzaam
+gekopieerd moet worden.
+
 ## Wat Jan nog moet doen
 
 Twee dingen, allebei eenmalig, en de tweede is niet dringend.
@@ -155,7 +233,22 @@ Twee dingen, allebei eenmalig, en de tweede is niet dringend.
   `app/models/user.rb` staat niet op `:autosave => true`.
 - **Het journaal wordt twee keer geschreven**, leeg vóór de lus en gevuld erna.
   Dat is geen slordigheid: een journaalpad waar niet naartoe geschreven kan
-  worden moet falen vóórdat het eerste account verandert, niet erna.
+  worden moet falen vóórdat het eerste account verandert, niet erna. **Sinds
+  ronde 3 staat die tweede schrijfactie binnen de transactie** (F02), zodat een
+  journaal dat niet weggeschreven kan worden de accounts meeneemt in de
+  rollback. De omgekeerde restfout blijft mogelijk en is met opzet de
+  goedaardige kant: als de commit zelf faalt ná die schrijfactie, ligt er een
+  journaal dat wijzigingen beschrijft die niet gebeurd zijn — een undo daarop
+  zet dezelfde waarden terug die er al staan en meldt "already set".
+- **`apply` is een booleaan uit `BOOLEANS`, niet `present?`** (ronde 3, F01).
+  Niet terugdraaien naar `present?` of naar `== '1'`: het eerste maakte
+  `apply=0` destructief, het tweede zou `apply=true` stil laten rapporteren.
+  Weglaten en `apply=` leeg blijven "rapporteren"; alleen een niet-lege
+  niet-booleaan werpt.
+- **Het standaard journaalpad is `tmp/`, niet `log/`** (ronde 3, F03). Reden:
+  `.gitignore` dekt `/tmp/*` volledig en van `log/` alleen `*.log*`. Niet
+  terugzetten. Duurzaamheid is een deploy-afspraak, geen codekeuze — dat staat
+  in de taakbeschrijving.
 - **Een account zonder opgeslagen voorkeurenrij** krijgt bij het lezen de
   waarden die `UserPreference#initialize` uit de Redmine-instellingen afleidt.
   Het journaal legt dus de *effectieve* vorige waarden vast, en een undo maakt
@@ -166,4 +259,5 @@ Twee dingen, allebei eenmalig, en de tweede is niet dringend.
 
 ## Volgende stap voor een sessie
 
-af — niets te doen. Jan heeft twee handelingen openstaan, zie hierboven.
+af — niets te doen. Ronde 3 is gedaan en alle drie haar bevindingen zijn
+gesloten. Jan heeft twee handelingen openstaan, zie hierboven.

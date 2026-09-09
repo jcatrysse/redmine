@@ -1,5 +1,32 @@
 # ldap-mail-prefs — Class A-beslissingen
 
+## Ronde 3, 2026-09-09 — de drie bevindingen van de blinde herreview
+
+- **Beslist (autonoom, 2026-09-09):** `apply` gaat door dezelfde `BOOLEANS`-
+  tabel als `no_self_notified`, en een waarde die in geen van beide kolommen
+  staat werpt `Error`. Was `options['apply'].present?`, en `"0".present?` is
+  `true`, dus `apply=0` schreef. Er is geen keuze te maken: de tabel staat al
+  in het bestand en dit is de destructieve optie.
+- **Beslist (autonoom, 2026-09-09):** `apply` **weglaten** en `apply=` (leeg)
+  blijven "alleen rapporteren", ze werpen dus niets. Alleen een niet-lege
+  waarde die geen booleaan is (`apply=maybe`) is een fout. Anders zou de
+  gedocumenteerde veilige aanroep — zonder `apply` — plots afbreken, en dat is
+  een regressie in precies het pad dat het meest gebruikt wordt.
+- **Beslist (autonoom, 2026-09-09):** het gevulde journaal wordt **binnen** de
+  transactie geschreven, na de lus. Zo draait een journaal dat niet geschreven
+  kan worden de accounts mee terug, in plaats van gewijzigde accounts achter te
+  laten met een bestand dat zegt dat er niets is aangeraakt. De lege
+  proefschrijfactie ervóór blijft staan — die moet juist falen vóór het eerste
+  account verandert.
+- **Beslist (autonoom, 2026-09-09):** het standaard journaalpad verhuist van
+  `log/` naar `tmp/`. `.gitignore` dekt `/tmp/*` volledig maar van `log/`
+  alleen `*.log*`, dus een journaal in een checkout stond als untracked
+  bestand in `git status` — met alle logins erin — en `git add -A` had het
+  gestaged. De **duurzaamheid** is daarmee niet opgelost (`tmp/` overleeft een
+  deploy net zo min als `log/`) en is ook geen codeprobleem: de taakbeschrijving
+  zegt nu dat het journaal het enige undo-bewijs is en vóór de volgende deploy
+  ergens duurzaam gekopieerd moet worden.
+
 ## Ronde 2, 2026-09-05 — na Jans keuzes g01, g01a t/m g01d
 
 De taak is herbouwd op Jans gecorrigeerde doel: **na een LDAP-import de
