@@ -1422,3 +1422,80 @@ maakt dezelfde fout die deze patch juist repareert.
 **Haast?** Nee, en er is niets stuk: `patch/search-token-limit` staat nu op A
 (er is niets toegevoegd) en dat is ook de staat waarin hij ingediend kan
 worden. De keuze gaat over of je het bezwaar vóór wil zijn of afwachten.
+
+## Beslist (Jan) — K-18, 2026-09-09
+
+- **K-18 `search-token-limit`: inzenden zoals hij is. Optie A.**
+  De patch haalt de grens van vijf zoekwoorden uit de tokenizer — dat is de fout
+  die hij repareert — en legt zelf geen nieuwe grens op het aantal filtertokens.
+  De meettabel gaat mee in de note, met het argument dat een grens op
+  gebruikersinvoer thuishoort in `Query#validate_query_filters`, waar hij élke
+  operator en élk filter dekt en de vraag *weigert* in plaats van hem stil af te
+  kappen — en dus een eigen issue is.
+  **Wat dit betekent als een committer er toch op gaat staan:** dan is het
+  antwoord optie B (de controle in de validatie, met een getal van Jan), niet
+  optie C. C begrenst alleen de `OR`-tak van `tokenized_like_conditions` en kapt
+  daarmee stil af, wat precies het defect is dat deze patch weghaalt.
+  Er is niets aan de code veranderd; `patch/search-token-limit` stond al in de
+  vorm die optie A inzendt.
+
+
+## Open — keuze voor Jan (toegevoegd 2026-09-09, framework)
+
+### K-19 — `origin/master` is een mirror die niemand bijwerkt, en de submit-gate meet daartegen
+
+**Wat er aan de hand is.** `tools/check-patch-clean.sh --submit` beantwoordt de
+vraag "applyt deze patch nog op de huidige trunk?" met een `git fetch origin
+master` — en `origin` is `jcatrysse/redmine`, niet Redmine. In de branchtabel van
+`CLAUDE.md` staat bij `origin/master` letterlijk "nobody" als schrijver, dus die
+mirror wordt door niemand bijgewerkt. Vandaag stond hij op `bee32a926` van
+**2026-09-03**, terwijl de echte trunk op `8de368193` van vandaag 07:47 staat:
+**18 commits verschil**. De gate meldde voor alle negen patches "applies to a
+pristine origin/master (r25037)" en dat was waar — alleen niet over de trunk waar
+Jan ze op indient.
+
+**Wat dat vandaag concreet kost.** Tegen de echte trunk gemeten applyen acht van
+de negen nog schoon. Eén niet:
+
+```
+wiki-export-attachments   config/initializers/zeitwerk.rb: patch does not apply
+```
+
+Dat is precies de vorm van verval die INV-2 beschrijft — geen defect, wel stale —
+maar de gate kon het niet zien. Drie van de negen raken een bestand dat die 18
+commits ook aanraken: `revision-branches`
+(`test/functional/issues_controller_test.rb`), `webhook-issue-closed`
+(`app/models/issue.rb`) en `wiki-export-attachments`
+(`config/initializers/zeitwerk.rb`).
+
+**En twee van die 18 commits zijn inhoudelijk relevant, niet alleen mechanisch:**
+
+- `9a74cdf20 Pin JSON gem to versions below 3.0 …(#44428)` — dat is exact de
+  gem-fout uit `docs/traps.md` die de suitecijfers van `48 failures, 82 errors`
+  veroorzaakte. Upstream heeft hem gepind, dus na een sync horen die cijfers
+  terug te vallen naar de oude `27 failures, 2 errors`. Dat maakt het bewijs
+  beter leesbaar, en het is een reden om te syncen vóór je hermeet.
+- `a41077d2a Update Rubyzip to 3.6 (#44388)` — en `wiki-export-attachments`
+  ís de ZIP-export. Die patch moet dus niet alleen opnieuw applyen, maar ook
+  opnieuw *werken* op Rubyzip 3.6.
+
+**Opties, elk in één zin:**
+
+- **A) De mirror met de hand syncen vóór elke inzendronde**, en `CLAUDE.md`
+  aanpassen zodat "refresh tegen trunk" begint met die sync.
+- **B) De gate rechtstreeks tegen Redmine laten meten**, dus
+  `check-patch-clean.sh` haalt `https://github.com/redmine/redmine.git master`
+  op in plaats van `origin master` — dan kan de mirror niet meer stil verouderen.
+- **C) Beide:** B voor de meting, en de mirror blijft bestaan als de basis
+  waarvan patchbranches gemaakt worden, maar dan met een sync-stap die de gate
+  afdwingt.
+
+**Aanbeveling: C.** B alleen lost het meten op, maar `patch/<slug>` wordt volgens
+CLAUDE.md van `origin/master` afgetakt — als de gate tegen echte trunk meet en de
+branches van een oude mirror komen, dan meet je iets anders dan je bouwt. Met C
+klopt beide, en de sync wordt afdwingbaar in plaats van een gewoonte.
+
+**Haast?** Ja, in deze zin: dit blokkeert de inzending niet, maar het is de reden
+dat één van de negen patches nú stale is zonder dat een gate het zei. Zolang dit
+niet geregeld is, is "PASS — safe to submit" een uitspraak over de mirror en niet
+over trunk.
