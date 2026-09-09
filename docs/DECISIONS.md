@@ -1499,3 +1499,32 @@ klopt beide, en de sync wordt afdwingbaar in plaats van een gewoonte.
 dat één van de negen patches nú stale is zonder dat een gate het zei. Zolang dit
 niet geregeld is, is "PASS — safe to submit" een uitspraak over de mirror en niet
 over trunk.
+
+## Feitencorrectie — de Marshal-regel van 2026-09-05 (2026-09-09)
+
+Dit bestand is append-only, dus de oude regel blijft staan en wordt hier
+gecorrigeerd in plaats van herschreven.
+
+**Wat er hierboven staat, bij "Autonoom besloten — ar-sessions, ronde 2
+(2026-09-05)":** *"De serializer blijft Marshal. `:json`/`:hybrid` zou
+`session[:issue_query]` breken…"*
+
+**Dat is achterhaald én de redenering was onjuist.** Achterhaald door **K-17**
+(Jan, 2026-09-09, optie A): de serializer ís JSON. En de onderbouwing klopte
+niet: het argument was dat `app/helpers/queries_helper.rb` de queryhash met
+symboolsleutels bewaart en terugleest, en dat een JSON-rondgang stringsleutels
+teruggeeft. `HashWithIndifferentAccess` converteert echter ook **geneste**
+hashes, dus `session[session_key][:filters]` werkt na de rondgang gewoon. Er
+staat nu een integratietest die de issuelijst zonder enige URL-parameter
+opvraagt en filters, kolommen, groepering én sortering uit de sessierij
+terugvindt. Er was dus niets te breken; de ruil die de regel beschreef bestond
+niet.
+
+**Waarom dit als losse correctie staat en niet als stille bewerking:** de
+onafhankelijke Codex-review van 2026-09-09 vond (F02) dat deze regel in
+`docs/features/ar-sessions/status.md` en `docs/features/ar-sessions/decisions.md`
+nog stond terwijl de code al om was. Dat is een reëel defect in het
+deployment-dossier: die "wat is al beslist"-secties zijn juist bedoeld om
+gevolgd te worden, dus een achterhaalde regel daarin stuurt een latere
+onderhoudswijziging terug naar Marshal. Beide plekken zijn nu doorgehaald met de
+reden erbij; deze regel hierboven is de derde en laatste plek.
