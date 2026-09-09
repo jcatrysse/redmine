@@ -382,6 +382,18 @@ niets aan te doen en het gebeurt precies één keer.
 
 ## Volgende stap voor een sessie
 
+**Openstaand: Codex F01.** Een sessierij met geldige JSON van de verkeerde
+*vorm* — `[]`, `"tekst"`, `1` — komt door de serializer heen en geeft dan een
+**500** in plaats van een uitlog, omdat Rails `stringify_keys` op het resultaat
+doet. `Redmine::SessionDataSerializer` vangt alleen `JSON::ParserError` op, en
+de JSON-serializer van de gem geeft elke geldige niet-object-waarde
+onveranderd terug. De reparatie is klein — `{}` teruggeven tenzij de gedecodeerde
+waarde de hashvorm heeft die Rails nodig heeft — en hoort met een
+integratietest voor minstens één geldige niet-object-waarde, plus de volledige
+suite op deze branch. Zie de `Resolution:`-regel bij F01 in
+`docs/review/findings/2026-09-09-ar-sessions-codex.md`.
+
+
 af — niets te doen. Ronde 3 is gedaan, alle drie haar bevindingen zijn gesloten
 en K-17 is beslist (optie A). Jan heeft alleen de vier deploystappen hierboven
 nog openstaan.

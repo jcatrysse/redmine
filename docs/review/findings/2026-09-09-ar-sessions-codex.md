@@ -45,13 +45,13 @@ I ran an ephemeral integration test from `ruby -e` without changing the codebase
 
 Define the serializer's accepted post-parse shape explicitly. Any decoded payload that cannot produce the hash Rails expects should follow the same empty-session path as malformed JSON, with integration coverage for at least one syntactically valid non-object value. Keep the fixing session responsible for deciding whether that check belongs in this subclass or in a narrower wrapper around the gem serializer.
 
-**Resolution:**
+- **Resolution:** **open — not fixed, and it is a real bug in code written the same day.** Confirmed by reading, not yet by running: the gem's `JsonSerializer.load` does `hash.is_a?(Hash) ? hash.with_indifferent_access[:value] : hash`, so a top-level `[]`, `"text"` or `1` is returned as-is, and `Redmine::SessionDataSerializer` only rescues `JSON::ParserError` — so those values reach `ActionDispatch::Request::Session#load!` and `stringify_keys` raises `NoMethodError`. The finding's own reproduction (through the real middleware, 500 with that exact error) is more evidence than this session has produced for it, and its point lands: an unreadable row becoming a clean logout is the entire reason that subclass exists, and a syntactically valid but wrongly shaped row is exactly the case it was written for. It also correctly narrows the round-3 resolution's wording, which said "a row it cannot parse" when what was implemented was "a row that does not parse as JSON". **Why it is left open rather than patched in the same breath:** the fix is small — return `{}` unless the decoded payload responds to the hash contract Rails needs — but it belongs with an integration test for at least one valid non-object value, on the branch's own full suite, and this session stopped after the blocker and the major rather than half-finish a third. Nothing about it is blocked or undecided: the direction the finding gives is the right one, the choice of where the check lives (this subclass, per the finding's own note) is a Class A call, and the next session can take it straight from here. **Ranking honestly:** minor is right. It needs an already-corrupt or hand-edited row to trigger, and the same row on the old Marshal serializer was a code-execution primitive rather than a 500 — so this is a gap in the new safety net, not a regression against what it replaced.
 
 ---
 
 ### F02 — The settled section still says the serializer remains Marshal
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -74,7 +74,7 @@ Read the full status file before reading previous reviews and compared the contr
 
 Remove or replace the obsolete settled bullet so the section records the actual settled design: JSON, the custom empty-session compatibility behaviour, and the tested query round trip. Do not reopen K-17.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-09 — **confirmed and it was still there, in three places rather than the two the finding names.** Worth recording how nearly this was missed a second time: a first `grep -n "blijft Marshal\|Marshal"` piped through `head -10` returned only hits from the narrative sections, and on that truncated output the conclusion was "already gone". It was on line 368. `git log -S` on the phrase settled it. Corrected in `docs/features/ar-sessions/status.md` and `docs/features/ar-sessions/decisions.md`, and the third place is `docs/DECISIONS.md`, which the finding did not reach: the same claim sits under "Autonoom besloten — ar-sessions, ronde 2 (2026-09-05)". **Struck through with the reason rather than deleted**, in all three, because a later reader of a "what is already settled" section is better served by a crossed-out line saying why it is wrong than by a gap where a decision used to be; `docs/DECISIONS.md` is append-only by convention, so there the correction is a separate dated block added with `tools/append-note.sh`. **And the finding is right about more than the staleness: the reasoning in that bullet was wrong when it was written.** It claimed `:json` would break `session[:issue_query]` because `queries_helper.rb` stores and reads that hash with symbol keys. `HashWithIndifferentAccess` converts nested hashes too, so `session[session_key][:filters]` survives the round trip — which the integration test added on the same day demonstrates by fetching the issue list with no URL parameters at all and finding the filters, columns, grouping and sort all restored from the row. So the trade-off the bullet described ("breaking a feature every user uses") did not exist; the real cost of JSON is the one-off logout, and that is what K-17 weighed. All three corrections say that explicitly, so the next reader does not re-derive a false constraint. K-17 is not reopened.
 
 ---
 
