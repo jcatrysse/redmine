@@ -249,6 +249,8 @@ zichzelf misleidend.
   staat in de journaalschrijver sinds de eerste commit van het bestand
   (`bc7314a62`), dus er is geen ouder formaat om mild voor te zijn.
 - RuboCop op de gewijzigde bestanden: **0**, baseline 0.
+- **Volledige suite op de gemergde GEOxyz-tree** (`32659b6f7`): **6164 runs,
+  32519 assertions, 0 failures, 0 errors, 39 skips** in 857 s.
 
 ## Wat Jan nog moet doen
 

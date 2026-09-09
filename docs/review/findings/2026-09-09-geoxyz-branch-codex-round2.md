@@ -43,7 +43,7 @@ Ran `tools/check-geoxyz-branch.sh /workspace/redmine`. It reported `FAIL 5 commi
 
 Merge—not rebase—the fetched `origin/7.0-stable`, then rerun G8 including the full suite on the resulting tree.
 
-- **Resolution:** Merged, not rebased: `git merge origin/7.0-stable` into `7.0-stable-GEOxyz` gave `32659b6f7`, a clean 'ort' merge touching six upstream files (`icons_helper.rb`, `themes.rb`, `ja.yml`, `doc/INSTALL` and two tests) with no conflict. The branch is now 0 commits behind. The full `test:all` was then run on the merged tree, so the recorded evidence is the deploy candidate and not a tree that no longer exists — that was the substance of the finding and it was right. Note for the record that G8 had flagged the same thing and I had put the merge to Jan rather than doing it; the framework prescribes the merge as routine maintenance before feature work, so waiting was the wrong call.
+- **Resolution:** Merged, not rebased: `git merge origin/7.0-stable` into `7.0-stable-GEOxyz` gave `32659b6f7`, a clean 'ort' merge touching six upstream files (`icons_helper.rb`, `themes.rb`, `ja.yml`, `doc/INSTALL` and two tests) with no conflict. The branch is now 0 commits behind. The full `test:all` was then run on the merged tree — **6164 runs, 32519 assertions, 0 failures, 0 errors, 39 skips** in 857 s — so the recorded evidence is the deploy candidate and not a tree that no longer exists — that was the substance of the finding and it was right. Note for the record that G8 had flagged the same thing and I had put the merge to Jan rather than doing it; the framework prescribes the merge as routine maintenance before feature work, so waiting was the wrong call.
 
 ---
 

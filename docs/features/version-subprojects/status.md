@@ -192,6 +192,13 @@ voor alle negen patches.
 - RuboCop op de vier gewijzigde bestanden op GEOxyz: **1**, baseline **1** —
   de bestaande `Style/DirectiveScope` op regel 1546, die van `assignee-nobody`
   is en van 7.0-stable's oudere RuboCop-vorm.
+- **Volledige suite op de gemergde GEOxyz-tree** (`32659b6f7`, dus mét de vijf
+  upstream-commits van `origin/7.0-stable` erin): **6164 runs, 32519 assertions,
+  0 failures, 0 errors, 39 skips** in 857 s. Dat is met opzet na de merge
+  gemeten en niet ervoor: het bewijs hoort bij de tree die gedeployt wordt.
+- `tools/check-symmetry.sh version-subprojects`: **ok** ·
+  `tools/check-geoxyz-branch.sh`: **PASS**, 0 commits achter ·
+  `tools/check-patch-clean.sh version-subprojects`: **PASS**
 
 ## Wat Jan nog moet doen
 
