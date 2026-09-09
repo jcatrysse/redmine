@@ -4,6 +4,15 @@
 //   STEP=missing-table node verify/ar-sessions.mjs   (run with the table dropped)
 //   STEP=working       node verify/ar-sessions.mjs   (run with the table restored)
 //   STEP=revoked       node verify/ar-sessions.mjs   (deletes the row itself)
+//   STEP=serializer    node verify/ar-sessions.mjs   (round 3: the serializer)
+//
+// The serializer step is a pair too, and it has to be run twice: once with the
+// branch as it was (Marshal) and once with Redmine::SessionDataSerializer
+// wired up, restarting the server in between. It writes a marshalled object of
+// a class the server does not define, which only Marshal.load would try to
+// build — so the Internal error on the first run is proof that the column was
+// deserialised, and the login page on the second is proof that it no longer
+// is. SHOT_PREFIX names which of the two this is.
 //
 // The point of the first two is that they are a pair: the same URL, once with
 // the sessions table missing and once with it there. A screenshot of the store
@@ -40,7 +49,39 @@ if (step === 'missing-table') {
   console.log('database session_id=%s', stored);
   console.log('cookie value stored verbatim? %s', stored === cookie.value ? 'YES' : 'no');
 
-  if (step === 'working') {
+  if (step === 'serializer') {
+    const prefix = process.env.SHOT_PREFIX || 'after';
+    await s.go('/my/account');
+    await s.shot('json-signed-in', 'Signed in, with the session stored as JSON in the sessions table');
+
+    await s.go('/projects/geoxyz-verify/issues?set_filter=1&f[]=status_id&op[status_id]=o' +
+               '&f[]=assigned_to_id&op[assigned_to_id]=*&c[]=tracker&c[]=subject&c[]=assigned_to' +
+               '&group_by=tracker&sort=priority:desc');
+    await s.shot('json-filter-applied',
+                 'An issue filter applied, so the query is written to the session row');
+    await s.go('/projects/geoxyz-verify/issues');
+    await s.shot('json-filter-from-session',
+                 'The same page with no parameters: the query came back out of the JSON session row');
+
+    // A class the server does not define, so Marshal.load fails loudly and
+    // names itself in the log. Nothing is executed: the point is only whether
+    // the bytes are interpreted at all.
+    execSync(
+      "bundle exec ruby bin/rails runner \"module Redmine; class OnlyMarshalWouldBuildThis; end; end; " +
+      "ActiveRecord::SessionStore::Session.update_all(:data => ::Base64.encode64(" +
+      "Marshal.dump(Redmine::OnlyMarshalWouldBuildThis.new)))\"",
+      {cwd: process.env.WORKTREE || '.', env: {...process.env, RAILS_ENV: 'development'}}
+    );
+
+    const after = await s.page.goto(`${BASE}/my/account`);
+    console.log('%s  GET /my/account -> HTTP %d  %s', prefix, after.status(), s.page.url());
+    await s.shot(
+      prefix === 'before' ? 'before-marshal-load-runs-on-the-column' : 'after-marshal-load-is-gone',
+      prefix === 'before'
+        ? 'Before the fix: the request deserialises sessions.data, so bytes in that column are built into an object graph'
+        : 'After the fix: the same bytes in sessions.data are a logout, because nothing deserialises them'
+    );
+  } else if (step === 'working') {
     await s.go('/my/account');
     await s.shot('after-login-with-the-sessions-table',
                  'The same /login now works and the account page renders, with the session in the table');

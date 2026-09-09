@@ -86,7 +86,7 @@ reviewed. Written up once, for all ten affected features, as F01 of
 
 ### F01 — session data is Marshal, loaded from the database with no integrity check
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** major
 - **Confidence:** confirmed (the mechanism; the precondition — that someone can write the table — is a deployment question I cannot answer from here)
 - **Category:** security
@@ -165,13 +165,13 @@ which a reviewer should decide:
   tests under `:json`, not by reasoning about it. That is exactly the kind of
   thing the existing integration test file is the right home for.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-09 on `7.0-stable-GEOxyz` — `Marshal.load` is out of the request path. The serializer is JSON, wired in `config/application.rb` next to the `session_store` call. **Two departures from the suggested direction, both deliberate.** (1) It is not the bare `:json` the finding proposes but `Redmine::SessionDataSerializer`, five lines subclassing the gem's `JsonSerializer` so that a row it cannot parse is an empty session instead of an exception. That is not polish: on bare `:json` a pre-existing Marshal row produces `JSON::ParserError` inside the request, which is a **500** — measured, not reasoned about, in the first run of the new integration test. Every signed-in user would get that 500 until their row aged out, which turns a security fix into an outage and into a reason to revert it. With the subclass the same row is a redirect to `/login`, which is exactly what the cookie store does with a cookie it cannot verify. `db:sessions:clear` at deploy is then tidiness rather than a requirement. (2) The hook is `config.after_initialize`, not `ActiveSupport.on_load(:active_record)`: the latter was tried first and raises `uninitialized constant Redmine::SessionDataSerializer`, because `ActiveRecord::Base` loads before the autoload paths are set up. `:hybrid` was not used, for the reason the finding gives — it still calls `Marshal.load` on anything starting with `BAh`. **The second question the finding raised was settled by running it, as it asked.** Four new integration tests; the query round-trip one sets a filter with all four shapes the session hash holds and then re-fetches the page **with no parameters at all**, so the query can only come from the row, and each shape has its own marker in the output: `addFilter("assigned_to_id", "=", ["3"]);` for the symbol-keyed nested `filters` hash, a `selected` option for `group_by`, the table headers for `column_names` (symbols before JSON, strings after — `Query#column_names=` coerces them back), and `priority%3Adesc` in a sort link for `sort`. It passes, so `HashWithIndifferentAccess` does carry the nesting; `assigns()` was not used because it needs `rails-controller-testing` and INV-6 is not worth a gem for one test. **Driven red first:** on the old code `session_store_test.rb` gives `8 runs, 2 failures, 1 error`, and the sharpest of the three is `test_a_marshalled_session_row_should_log_the_user_out_rather_than_raise` returning **`200 OK`** — the row this test wrote itself was accepted, which is the finding in one line. With the fix: `8 runs, 51 assertions, 0 failures, 0 errors`. Two of the four new tests pass on both sides and are labelled guards, not proof. **G9, in a browser, as a before/after pair on the same bytes** with a server restart between them, and with no exploit built: `sessions.data` holds a marshalled instance of a class the server does not define, which only `Marshal.load` would try to build. Before: HTTP **500** and `ArgumentError (undefined class/module Redmine::OnlyMarshalWouldBuildThis)` in the log — an error that can come from nowhere else, so the column was deserialised. After: HTTP **200** on `/login`. Screenshots `before-marshal-load-runs-on-the-column.png` and `after-marshal-load-is-gone.png`, reproducible with `verify/ar-sessions.mjs STEP=serializer`. **One correction to the finding's threat model, found by trying it:** a forged session carrying only a `user_id` does not sign anybody in, because `ApplicationController#session_expired?` also checks `User.verify_session_token(session[:user_id], session[:tk])` — that redirect to `/login` was observed. It narrows the login scenario; it does not touch the one the finding is actually about, since deserialisation happens before any of that is consulted. **This is a Class B choice and it is logged, not decided:** switching serializers logs every signed-in user out once, which is user-visible, so it is **K-17** in `docs/DECISIONS.md` with options A (what is built), B (bare `:json`, `db:sessions:clear` mandatory) and C (stay on Marshal), and A recommended.
 
 ---
 
 ### F02 — the trim retention is written down twice and nothing keeps the two in step
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed (by reading)
 - **Category:** correctness
@@ -221,13 +221,13 @@ next to the count, so the output says what it measured. The constant can stay as
 the recommended value that the deploy note quotes. Then the two cannot drift,
 and the printed number describes whatever cron will actually do.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-09 in the same commit, as the suggested direction says: the check reads `(ENV['SESSION_DAYS_TRIM_THRESHOLD'] || 30).to_i`, which is the gem's only cutoff source, so the printed count now describes what cron will actually delete. `TRIM_DAYS` is renamed **`RECOMMENDED_TRIM_DAYS`** — the name was half the problem, since it read as "what the trim does" rather than "what the deploy note recommends". **One addition beyond the suggestion:** rather than lengthening the count's label (which broke the output's column alignment — tried and discarded), the period is its own fact, `trim period  7 days`, and it says `30 days (recommended: 7)` when the two differ, with a `note` line telling the operator to set the variable on the cron line. Both forms were run for real: with no variable set the output is `trim period  30 days (recommended: 7)` plus the note; with `SESSION_DAYS_TRIM_THRESHOLD=7` it is `trim period  7 days` and no note. **Driven red first:** three of the four unit tests fail on the old code (`14 runs, 3 failures`) — the count-over-the-trim-period one, the modified existing one, and the note one. The fourth, "no note when the period is the recommended one", passes on both sides because the old code never printed a note at all; it is a guard against noisy output and labelled as such. With the fix: `14 runs, 25 assertions, 0 failures`. The sample output in `status.md`'s deploy note is updated to the real thing.
 
 ---
 
 ### F03 — the check reports the size limit but nothing enforces it
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed (by reading)
 - **Category:** portability
@@ -267,4 +267,4 @@ One sentence in `status.md` under "wat er al bekend is": the column is `text`
 because PostgreSQL makes that unbounded, and a MySQL deployment would want
 `limit: 16.megabytes`. No code change while GEOxyz is on PostgreSQL.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-09 — **documentation only, exactly as the suggested direction says**, and deliberately no code. `docs/features/ar-sessions/status.md` now records under "wat er al bekend is" that `data` is `text` because PostgreSQL makes that unbounded, that MySQL would cap the same migration at 65 535 bytes and wants `t.text :data, limit: 16.megabytes` (mediumtext, which is what the gem itself suggests), and that `redmine:sessions:check` prints which of the two you are on before traffic arrives. No migration change while GEOxyz is on PostgreSQL: it would be a branch that never runs, and INV-1 is against carrying one. Nothing was executed on MySQL here either — there is none in this image — so this closes the finding's "the reason is not written down anywhere" half and leaves its portability half as a documented, deliberate limitation rather than a fixed one.
