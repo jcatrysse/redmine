@@ -32,7 +32,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
-- `members-pagination` — cse_01VUeLQwkYYqqVPhKzx3M4qu sinds 2026-09-09
+- `search-token-limit` — cse_01VUeLQwkYYqqVPhKzx3M4qu sinds 2026-09-09
 
 ## Openstaand voor Jan
 

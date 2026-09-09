@@ -13,6 +13,12 @@ issue: "43701"
 
 ## Waar het staat
 
+Ronde 3 (blinde herreview, 2026-09-08) is gedaan: **nul bevindingen over de
+code**, en één vraag die van Jan is. Die staat nu als **K-18** in
+`docs/DECISIONS.md`: moet de patch zelf een grens op het aantal filtertokens
+leggen, of niet? Er is niets aan de code veranderd — de patch staat in de vorm
+waarin optie A hem inzendt — dus alle bewijscijfers hieronder gelden onverkort.
+
 Af, en in ronde 2 herzien. Eén patchbestand tegen trunk r25037, dezelfde
 wijziging op `7.0-stable-GEOxyz`, dossier compleet, alle negen reviewbevindingen
 van 2026-09-03 afgehandeld. Het issue bestaat al:
@@ -59,6 +65,14 @@ woorden (jouw keuze K-04, optie A). Vermeld de oude bijlage als achterhaald.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
 
+- **Waar een grens op filtertokens hoort is beargumenteerd, niet vergeten**
+  (ronde 3, Q01 → K-18). In `Query#validate_query_filters`, waar hij élke
+  operator en élk filter dekt en de vraag **weigert** in plaats van hem stil af
+  te kappen. Niet oplossen door de grens terug in de tokenizer te zetten, en ook
+  niet door alleen de `OR`-tak van `tokenized_like_conditions` te begrenzen:
+  beide kappen stil af, en dat is precies het defect dat deze patch repareert.
+  De keuze of de grens *in deze patch* mee moet, is K-18 en ligt bij Jan.
+
 - De trunk-check was hier beslissend op de *herkomst* van de constante, niet op
   het bestaan van de feature: r21238 was een refactor die het blok woordelijk
   verplaatste. Dat maakte er een fix van in plaats van een instelling.
@@ -73,5 +87,8 @@ woorden (jouw keuze K-04, optie A). Vermeld de oude bijlage als achterhaald.
 
 ## Volgende stap voor een sessie
 
-Af — niets te doen. Alleen Jans handeling hierboven. Ronde 3 (blinde
-herreview) kan hierop.
+Af — niets te doen aan de code. Ronde 3 is gedaan en vond geen enkele
+bevinding; wat openstaat is Jans handeling hierboven plus **K-18**. Kiest hij
+daar optie B, dan is de volgende stap een controle op de filterwaarde in
+`Query#validate_query_filters` mét een getal van hem, en dan moeten de
+suitecijfers en de patchexport opnieuw.

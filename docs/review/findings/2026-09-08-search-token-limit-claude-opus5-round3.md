@@ -100,7 +100,7 @@ both sides equally. See `docs/traps.md`.
 
 ### Q01 — the patch removes the only bound on filter token count, and the dossier says the replacement belongs elsewhere
 
-- **Status:** open
+- **Status:** answered — Jan's call, logged as K-18
 - **Severity:** question
 - **Confidence:** confirmed (the code path; the timings are the dossier's, not re-run by me)
 - **Category:** performance
@@ -179,4 +179,4 @@ database or re-run the timing table.
   other reason to touch, and needs its own number chosen (which is a second
   Class B decision).
 
-**Resolution:**
+- **Resolution:** answered 2026-09-09 — **not decided here, because it is not this session's to decide.** The review is right that this is the class CLAUDE.md reserves for Jan: how much to widen a patch to pre-empt an objection. It is logged as **K-18** in `docs/DECISIONS.md` with the measured table, both options the review names, and a third the review did not: capping only the `OR`-joined branch inside `tokenized_like_conditions` (`starts_with`, `ends_with`, `all_words == false`), which is where the cost is tokens × rows. **Option C is named and argued against**, not offered neutrally: it truncates silently, which is the exact objection the dossier raises against the `.first 5` this patch removes, so taking it would reintroduce the defect one method further along. **Recommendation is A, submit as it is**, for three reasons: the patch's subject is the tokenizer and option B pulls it into `validate_query_filters`, a method the feature otherwise has no reason to touch (INV-1); B needs a number chosen, which is a second Class B decision; and the dossier is already right that a bound belongs in validation where it covers every operator and every filter, which is a better change as its own issue than as a passenger here. **The risk in A is stated rather than minimised:** 10.9 s of database work per request, reachable by anyone who may view the issue list, is precisely what a committer may stand on before accepting, and that costs one round trip — if Jan would rather not have that round trip, B is the right answer and C is not. **Nothing was changed in the code or the patch**, so `patch/search-token-limit` is still in the state option A submits, and no evidence figure in `status.md` or the dossier moves. Two claims from the finding were re-checked rather than taken on trust: `Query.tokenized_like_conditions` does take its tokens from `Redmine::Search::Tokenizer` (`query.rb:1541`) and builds one `LIKE` per token joined by `OR` for `starts_with`/`ends_with`/`all_words == false` and `AND` otherwise, and `Principal.like` does still cap nothing. The timing table was **not** re-run — no 50 000-issue database was rebuilt — and it stays attributed to the dossier, as the finding itself flagged.
