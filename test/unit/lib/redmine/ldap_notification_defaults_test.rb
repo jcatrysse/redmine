@@ -255,6 +255,54 @@ class Redmine::LdapNotificationDefaultsTest < ActiveSupport::TestCase
     assert_equal 'none', User.find(2).mail_notification
   end
 
+  # The bulk run set none; the user then chose only_assigned on purpose. That
+  # choice is not the run's to take back.
+  def test_undo_should_leave_an_account_that_was_changed_after_the_run
+    set_defaults('mail_notification' => 'none', 'apply' => '1')
+    User.find(2).update_column(:mail_notification, 'only_assigned')
+
+    output = StringIO.new
+    assert_equal 1, Redmine::LdapNotificationDefaults.undo(
+      {'journal' => @journal, 'apply' => '1'}, output
+    )
+    assert_include 'SKIP:    jsmith changed after the run, left alone', output.string
+    assert_equal 'only_assigned', User.find(2).mail_notification
+    # dlopper did not change, so it is still restored.
+    assert_equal 'all', User.find(3).mail_notification
+  end
+
+  def test_undo_should_count_the_accounts_it_left_alone
+    set_defaults('mail_notification' => 'none', 'apply' => '1')
+    User.find(2).update_column(:mail_notification, 'only_assigned')
+
+    output = StringIO.new
+    Redmine::LdapNotificationDefaults.undo({'journal' => @journal}, output)
+    assert_include '1 of 2 accounts would be restored, 1 changed after the run', output.string
+  end
+
+  def test_undo_should_compare_every_field_the_run_wrote
+    set_defaults('mail_notification' => 'none', 'no_self_notified' => '1', 'apply' => '1')
+    # Only one of the two fields was changed afterwards; that is still a change.
+    User.find(2).pref.update!(:no_self_notified => false)
+
+    output = StringIO.new
+    Redmine::LdapNotificationDefaults.undo({'journal' => @journal, 'apply' => '1'}, output)
+    assert_include 'SKIP:    jsmith changed after the run', output.string
+    assert_equal 'none', User.find(2).mail_notification
+  end
+
+  def test_undo_should_raise_on_a_journal_that_records_no_values
+    set_defaults('mail_notification' => 'none', 'apply' => '1')
+    journal = JSON.parse(File.read(@journal))
+    journal.delete('values')
+    File.write(@journal, JSON.pretty_generate(journal))
+
+    error = assert_raise(Redmine::LdapNotificationDefaults::Error) do
+      Redmine::LdapNotificationDefaults.undo({'journal' => @journal, 'apply' => '1'}, StringIO.new)
+    end
+    assert_include 'records no values', error.message
+  end
+
   def test_undo_should_skip_an_account_that_no_longer_exists
     set_defaults('mail_notification' => 'none', 'apply' => '1')
     User.find(3).destroy

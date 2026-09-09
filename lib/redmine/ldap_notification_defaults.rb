@@ -152,8 +152,9 @@ module Redmine
       user.save!(:validate => false)
     end
 
-    # Restores the previous values recorded in a journal file. Reports what it
-    # would do unless options['apply'] is given.
+    # Restores the previous values recorded in a journal file, for the accounts
+    # that still hold what the run wrote. Reports what it would do unless
+    # options['apply'] is given.
     def self.undo(options={}, io=$stdout)
       path = options['journal'].presence
       raise Error, 'Give journal=<path of the journal file to undo>.' if path.nil?
@@ -161,16 +162,31 @@ module Redmine
 
       journal = JSON.parse(File.read(path))
       entries = journal['users'] || []
+      applied = (journal['values'] || {}).slice(*FIELDS)
+      if entries.any? && applied.empty?
+        raise Error, "#{path} records no values, so an undo cannot tell a changed account from an untouched one."
+      end
+
       apply = parse_apply(options['apply'].to_s)
       io.puts "Undoing #{path} of #{journal['run_at']}: #{entries.size} accounts."
       io.puts 'Reporting only. Add apply=1 to write.' unless apply
 
       restored = 0
+      changed_since = 0
       transaction(apply) do
         entries.each do |entry|
           user = User.find_by(:id => entry['id'])
           if user.nil?
             io.puts "SKIP:    #{entry['login']} no longer exists"
+            next
+          end
+
+          # Somebody chose these values after the run, so they are not the
+          # run's to take back. Restoring them would quietly undo that choice.
+          unless already_set?(current_values(user, applied.keys), applied)
+            io.puts "SKIP:    #{user.login} changed after the run, left alone " \
+                    "(now #{describe(current_values(user, applied.keys))})"
+            changed_since += 1
             next
           end
 
@@ -185,6 +201,8 @@ module Redmine
           end
         end
       end
+      io.puts "#{restored} of #{entries.size} accounts #{apply ? 'restored' : 'would be restored'}, " \
+              "#{changed_since} changed after the run and left alone."
       restored
     end
 
