@@ -1235,3 +1235,66 @@ aanleiding.
 **Haast?** Nee. Alle negen patchbranches zijn op 2026-09-09 nagekeken en zijn
 schoon in auteur én committer, dus er staat niets fout klaar om ingediend te
 worden. De gate voorkomt de volgende keer, niet deze keer.
+
+## Open — keuze voor Jan (toegevoegd 2026-09-09, ar-sessions)
+
+### K-17 — de sessiedata staat als Marshal in de database; de reparatie logt iedereen één keer uit
+
+**Waar dit uit komt.** De ronde-3 review van `ar-sessions` vond een echte
+major: `activerecord-session_store` serialiseert standaard met **Marshal**, en
+`config/application.rb` zette daar niets tegenover. Elke request deed dus
+`Marshal.load` over de kolom `sessions.data`, en op die kolom staat geen
+signature. Bij de cookiestore die Redmine hiervoor had, was dat onmogelijk: die
+cookie was met `secret_key_base` gesigneerd en werd geweigerd vóórdat er iets
+gedeserialiseerd werd.
+
+**Waarom het erger is dan het lijkt, en waarom niet catastrofaal.** Wie in de
+database kan schrijven, kan zichzelf ook gewoon beheerder maken via `users`. De
+winst voor een aanvaller is dus niet "geen toegang → beheerder" maar
+**"beheerder → shell"**: één `UPDATE sessions SET data = …` en de volgende
+request voert zijn objectgraaf uit in het Redmine-proces. Het pad dat het echt
+waard maakt: een SQL-injectie ergens in Redmine of een plugin die schrijven
+toestaat maar geen commando's, is hiermee remote code execution. Daarvoor niet.
+
+**Wat er nu staat** (gebouwd, groen, en met tests die rood staan op de oude
+code): de serializer is JSON in plaats van Marshal. `Marshal.load` komt niet
+meer in het requestpad voor. De optie `:hybrid` van de gem is **geen** oplossing
+en is niet gebruikt: die valt terug op `Marshal.load` voor elke waarde die met
+`BAh` begint, dus het gat blijft dan open.
+
+**En dit is waarom het jouw keuze is.** JSON kan een rij die Marshal schreef
+niet lezen. Elke bestaande sessie is na de deploy dus onleesbaar:
+
+- **Iedereen die ingelogd is, wordt één keer uitgelogd.** Eenmalig, en daarna
+  nooit meer.
+- Om dat een schone uitlog te laten zijn in plaats van een 500-storm, is er een
+  klein klasje `Redmine::SessionDataSerializer` bijgekomen: een onleesbare rij
+  wordt een lege sessie in plaats van een uitzondering. Dat is precies wat de
+  cookiestore doet met een cookie die hij niet kan verifiëren. **Zonder dat
+  klasje** krijgt elke ingelogde gebruiker een 500 tot zijn rij weg is, en dat
+  is nu getest: op de kale `:json`-variant gaf een Marshal-rij
+  `JSON::ParserError` → 500, met het klasje een redirect naar `/login`.
+
+**Opties, elk in één zin:**
+
+- **A) Zo laten (gebouwd, aanbevolen).** JSON plus het klasje: `Marshal.load`
+  weg uit het requestpad, en de bestaande sessies verdwijnen als een nette
+  uitlog.
+- **B) Alleen `:json`, zonder het klasje.** Eén regel minder code, maar dan is
+  `bundle exec rake db:sessions:clear` vóór de eerste request **verplicht** en
+  vergeten kost je een 500 voor elke ingelogde gebruiker.
+- **C) Niets doen en bij Marshal blijven.** Geen uitlog, en het gat blijft; de
+  reviewer noemt het terecht een verandering in soort ten opzichte van de
+  cookiestore.
+
+**Aanbeveling: A.** Het sluit het gat en de prijs is één uitlog, en met het
+klasje kan die prijs niet per ongeluk een storing worden.
+
+**Haast?** Nee, maar niet lang laten liggen: zolang C geldt, is elke
+schrijfprimitief in de database een uitvoeringsprimitief. Er is niets aan
+gebruikers te communiceren behalve "je moet één keer opnieuw inloggen na de
+volgende deploy".
+
+**Als je A of B kiest, hoort dit in de deploy-notitie:** draai
+`bundle exec rake db:sessions:clear RAILS_ENV=production` bij de deploy. Bij A
+is dat netheid (het ruimt dode rijen op); bij B is het verplicht.
