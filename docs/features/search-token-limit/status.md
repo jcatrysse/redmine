@@ -14,10 +14,12 @@ issue: "43701"
 ## Waar het staat
 
 Ronde 3 (blinde herreview, 2026-09-08) is gedaan: **nul bevindingen over de
-code**, en één vraag die van Jan is. Die staat nu als **K-18** in
-`docs/DECISIONS.md`: moet de patch zelf een grens op het aantal filtertokens
-leggen, of niet? Er is niets aan de code veranderd — de patch staat in de vorm
-waarin optie A hem inzendt — dus alle bewijscijfers hieronder gelden onverkort.
+code**, en één vraag die van Jan was. **Jan koos op 2026-09-09 optie A** (K-18):
+inzenden zoals hij is, met de meettabel in de note en het argument dat een grens
+op gebruikersinvoer in `Query#validate_query_filters` hoort en dus een eigen
+issue is. Er is dus niets aan de code veranderd en alle bewijscijfers hieronder
+gelden onverkort. Gaat een committer er toch op staan, dan is het antwoord optie
+B (de controle in de validatie) en niet C — zie K-18.
 
 Af, en in ronde 2 herzien. Eén patchbestand tegen trunk r25037, dezelfde
 wijziging op `7.0-stable-GEOxyz`, dossier compleet, alle negen reviewbevindingen
@@ -71,7 +73,8 @@ woorden (jouw keuze K-04, optie A). Vermeld de oude bijlage als achterhaald.
   te kappen. Niet oplossen door de grens terug in de tokenizer te zetten, en ook
   niet door alleen de `OR`-tak van `tokenized_like_conditions` te begrenzen:
   beide kappen stil af, en dat is precies het defect dat deze patch repareert.
-  De keuze of de grens *in deze patch* mee moet, is K-18 en ligt bij Jan.
+  De keuze of de grens *in deze patch* mee moet, is K-18 en is beslist: nee,
+  optie A, inzenden zoals hij is.
 
 - De trunk-check was hier beslissend op de *herkomst* van de constante, niet op
   het bestaan van de feature: r21238 was een refactor die het blok woordelijk
@@ -87,8 +90,6 @@ woorden (jouw keuze K-04, optie A). Vermeld de oude bijlage als achterhaald.
 
 ## Volgende stap voor een sessie
 
-Af — niets te doen aan de code. Ronde 3 is gedaan en vond geen enkele
-bevinding; wat openstaat is Jans handeling hierboven plus **K-18**. Kiest hij
-daar optie B, dan is de volgende stap een controle op de filterwaarde in
-`Query#validate_query_filters` mét een getal van hem, en dan moeten de
-suitecijfers en de patchexport opnieuw.
+Af — niets te doen aan de code, en K-18 is beslist (optie A). Wat openstaat is
+Jans handeling hierboven. Deze patch applyt nog schoon op de **echte** trunk
+`8de368193` (2026-09-09), niet alleen op de mirror — zie K-19.
