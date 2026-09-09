@@ -1186,3 +1186,52 @@ is precies de helft die níét het probleem was.
   Patchbranchtips, de trunkrevisie `bee32a926`, gearchiveerde tips en één
   expliciet als historisch gedocumenteerde SHA zijn correct oud; zie
   `docs/traps.md` voor waarom titelgebaseerd vervangen daar misgaat.
+
+## Open — keuze voor Jan (toegevoegd 2026-09-09, mypage-query-blocks)
+
+### K-16 — welke gate gaat de commit-identiteit op `patch/*` bewaken?
+
+**Waar dit uit komt.** De ronde-3 bevinding van `mypage-query-blocks` was een
+blocker: de commit op die patchbranch had `Claude <noreply@anthropic.com>` als
+committer. Die is op 2026-09-09 opgelost (nieuwe tip `3fc86ca5b`, boom
+byte-identiek). Bij het rood drijven van de controle bleek iets dat de
+bevinding zelf niet zag: **na K-15 dekt nog steeds geen enkele gate deze
+eigenschap op de negen patchbranches.**
+
+- `check-patch-clean.sh` leest het patch*bestand*, en `git format-patch` zet
+  alleen de auteur in dat bestand, niet de committer. Structureel blind.
+- `check-geoxyz-branch.sh` kreeg in K-15 wél de identiteitscontrole, maar
+  **kan niet op een patchbranch gericht worden**: het rekent "eigen commits"
+  als `origin/7.0-stable..ref`, en dat is voor een trunkbranch duizenden
+  commits. `REF=patch/<slug>` levert dus onzin, geen controle.
+- `session-push.sh` controleert het wél en weigert zo'n push sinds K-13 — maar
+  alleen bij een gewone push. Deze reparatie moest force-pushen (een
+  amend), en dat doet dat script principieel nooit, dus is de check met de
+  hand gedraaid. Precies het pad waarlangs het één keer misging, is het pad dat
+  ongedekt blijft.
+
+**Waarom dit jouw keuze is en geen klasse A:** `tools/**` is framework en
+wijzigt alleen als je erom vraagt. K-15 was dezelfde soort keuze.
+
+**Opties, elk in één zin:**
+
+- **A) Niets doen.** De negen branches zijn nu alle negen schoon, en het is
+  eenmalig misgegaan; wie een patchbranch aanmaakt hoort de identiteit gewoon
+  expliciet mee te geven.
+- **B) `check-patch-clean.sh` de branchidentiteit laten lezen.** Dat script
+  kent de branch al (het vergelijkt hem met het bestand voor check 5), dus het
+  is een handvol regels: `git log --format='%an <%ae> / %cn <%ce>'` over
+  `merge-base..branch` met hetzelfde nauwe patroon als in K-15, en falen als
+  het raakt. Kost: één plek erbij die dezelfde regex onderhoudt.
+- **C) Het patroon in één plek zetten en beide scripts eruit laten lezen.**
+  Zelfde dekking als B, maar zonder de derde kopie van de regex; kost een
+  extra bestand in `tools/` en dus iets meer bewegende delen.
+
+**Aanbeveling: B.** De dekking is wat ontbreekt en die krijg je met B; C is
+netter maar lost een probleem op dat er nog niet is (drie kopieën van een
+regex die sinds K-15 niet veranderd is), en dat is optimaliseren zonder
+aanleiding.
+
+**Haast?** Nee. Alle negen patchbranches zijn op 2026-09-09 nagekeken en zijn
+schoon in auteur én committer, dus er staat niets fout klaar om ingediend te
+worden. De gate voorkomt de volgende keer, niet deze keer.
