@@ -20,7 +20,7 @@ The ordinary UI flow is well designed: only filter parameters are sent, the serv
 
 ### F01 — A forged subproject filter can pull versions from an unrelated project
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -43,7 +43,7 @@ Traced `QueriesController#filter` into `Query#build_from_params`, `fixed_version
 
 Constrain submitted subproject ids to the current project plus its actual, non-archived descendants before using them in the version query. Add a controller regression test with two visible but unrelated projects and assert the unrelated version is absent.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-09 — **the finding is right, and it is right about something three previous rounds probed for and missed.** Their round-3 SQL-injection probe used a malformed value that `to_i` turns into `3`, a real subproject; this uses a *valid* id of a project outside the tree, which is a different question and gets a different answer. Reproduced before fixing: a controller test creating an unshared version on project 2 and requesting project 1's filter endpoint with `v[subproject_id][]=2` fails on the unfixed branch with that version in the JSON. **Fixed on this patch's own call site rather than in `project_statement`, and that is the substantive choice here.** `project_statement` is untouched upstream code — checked, our diff to `query.rb` is only the three lines in `fixed_version_values` — so changing it would alter every issue query that carries a subproject filter, which is a separate change with its own tests and its own risk. INV-1 is explicit that an upstream line's own looseness is upstream's, to be named rather than folded into an unrelated patch. So `fixed_version_values` now narrows to `project.self_and_descendants` excluding archived projects *in addition to* `project_statement`, which makes this patch's endpoint correct whatever `project_statement` accepts. `self_and_descendants` is used this way elsewhere in core (`app/models/project.rb`, `app/models/issue.rb`), and the narrowing is a subselect rather than a second round trip. **What is reported rather than fixed:** that `project_statement`'s `=` branch builds `[project.id] + values_for('subproject_id').map(&:to_i)` without intersecting the submitted ids with the descendants it computed one line earlier. That is now a row in the dossier's objections table, phrased so a committer can decide whether they want the same narrowing inside `project_statement` — where it would also cover the issue query, which is their call and not ours. **Tests:** the unrelated-project one is red without the fix and green with it. A second test asserts an archived subproject's version is never offered; it passes on **both** sides — `project_statement` already excludes archived projects from `subprojects_ids`, so it is a guard documenting existing behaviour, not evidence, and it is labelled that way. The 17 filter tests pass together, RuboCop is 0 on the four changed files, and the full-suite figures are in `status.md`. **Agreed on severity and on scope:** minor, and not a confidentiality issue — `Version.visible` was and is in force, so this was a wrong answer rather than a leak.
 
 ---
 

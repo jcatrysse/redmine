@@ -5,7 +5,7 @@ commit_51: 89752a599
 geoxyz: live
 geoxyz_commit: fd35bd2d1 + 157c171a5 + 74f343d3d
 upstream: patch klaar
-patch: patches/version-subprojects/2026-09-05-r25037-feature.patch
+patch: patches/version-subprojects/2026-09-09-r25037-feature.patch
 issue: "43534"
 ---
 
@@ -109,9 +109,54 @@ Ruby 3.3.6.
   op de GEOxyz-branch en faalt aantoonbaar op het afgewezen ontwerp (ze
   controleert dat `authenticity_token` niet in de URL staat).
 
+## Bewijs — Codex-ronde (2026-09-09)
+
+**Wat de onafhankelijke review vond, en het is echt.** Het filter komt bij
+`QueriesController#filter` rechtstreeks uit het verzoek, en `project_statement`
+bouwt zijn `=`-tak als `[project.id] + values_for('subproject_id').map(&:to_i)`
+zónder die ingestuurde ids te snijden met de subprojecten die hij één regel
+eerder heeft uitgerekend. Een handgemaakt verzoek met het id van een
+**ongerelateerd** project levert dus de versies van dat project. Geen datalek —
+`Version.visible` blijft gelden — maar wel een fout antwoord.
+
+**Waar de fix zit, en dat is de inhoudelijke keuze.** `project_statement` is
+**onaangeraakte upstream-code**: onze diff op `query.rb` is alleen de drie
+regels in `fixed_version_values`. Die methode wijzigen zou élke issuequery met
+een subprojectfilter raken, en dat is een aparte wijziging met eigen tests en
+eigen risico — INV-1 zegt dat de losheid van een upstream-regel van upstream is
+en benoemd hoort te worden, niet meegenomen in een patch die er niet over gaat.
+Dus is de **onze** aanroep vernauwd: `fixed_version_values` beperkt nu tot
+`project.self_and_descendants` zonder gearchiveerde projecten, *naast*
+`project_statement`. Daarmee is dit eindpunt correct los van wat
+`project_statement` accepteert. `self_and_descendants` wordt in core al zo
+gebruikt, en het is een subselect, geen tweede databaseronde.
+
+**Wat er gemeld en niet gerepareerd is:** de losheid in `project_statement`
+zelf. Die staat nu als objectie in het dossier, zo geformuleerd dat een
+committer kan beslissen of hij dezelfde vernauwing daar ook wil — waar hij dan
+ook de issuequery raakt, en dat is hun keuze.
+
+**Cijfers:**
+
+- **De test is rood zonder de fix**: een niet-gedeelde versie op project 2, en
+  project 1's filtereindpunt opgevraagd met `v[subproject_id][]=2`, geeft die
+  versie terug op de onaangepaste branch.
+- Een tweede test eist dat de versie van een **gearchiveerd** subproject nooit
+  aangeboden wordt. Die staat groen op **beide** kanten — `project_statement`
+  sluit gearchiveerde projecten al uit — dus dat is een bewaker die bestaand
+  gedrag vastlegt, geen bewijs.
+- De 17 filtertests samen: **0 failures**. RuboCop op de vier gewijzigde
+  bestanden: **0**.
+- **Volledige suite met de patch**: **5988 runs, 31739 assertions, 27 failures,
+  2 errors, 92 skips**. De 29 faalnamen zijn **exact dezelfde verzameling** als
+  op de schone trunk-basislijn die vandaag gemeten is (`diff` leeg): de
+  repository- en `sys`-tests van een image zonder `svn`, `hg`, `bzr` en `cvs`.
+- `tools/check-patch-clean.sh version-subprojects --submit`: **PASS**, applyt op
+  de huidige trunk r25063.
+
 ## Wat Jan nog moet doen
 
-Hang `patches/version-subprojects/2026-09-05-r25037-feature.patch` als note aan
+Hang `patches/version-subprojects/2026-09-09-r25037-feature.patch` als note aan
 je eigen issue [#43534](https://www.redmine.org/issues/43534). Volgens jouw
 keuze **g16g** begint die note direct met de regressie: `43534-v2.patch` van
 **Go MAEDA** vervangt `project.shared_versions` in plaats van er een vereniging

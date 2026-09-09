@@ -334,6 +334,7 @@ screenshot.
 | Objection | Answer |
 |---|---|
 | The GET request grows | Only the `f[]`, `op[...]` and `v[...]` fields are sent, so the request carries the filter rows and nothing else — the same fields the page already submits by GET when you press Apply. |
+| "The filter comes off the request, so a hand-made one can name any project." | It can, and the version scope no longer trusts it. `fixed_version_values` narrows to `project.self_and_descendants` excluding archived ones *in addition to* `project_statement`, so a request naming an unrelated project id gets no versions from it. This matters because `project_statement` builds its `=` branch as `[project.id] + values_for('subproject_id').map(&:to_i)` without intersecting the submitted ids with the descendants it computed a line earlier — which is fine for an issue query, where `Issue.visible` decides what a user sees, but not for a values endpoint reached straight off the request. **The narrowing is deliberately on this patch's own call site rather than in `project_statement`:** that method is untouched upstream code, changing it would alter every issue query that uses a subproject filter, and that is a separate change with its own tests. Named here so a committer can decide whether they want it in `project_statement` too. |
 | An extra query per call to `fixed_version_values` | Three, measured, and only when the query has a project: `fixed_version_values` runs 5 SQL statements against trunk's 2 (`projects` for `project.descendants` in `project_statement`, the new `versions` SELECT, and its `preload(:project)`). On the very first call in a process it is 6 against 2, because `display_subprojects_issues` has to be read; after that the setting comes from the in-process cache. The list was already a round trip away — this is the AJAX call's own body. |
 | Does this leak version names from projects the user cannot see? | Yes, and it already did — this patch does not change it in either direction. `Project#shared_versions` has no permission scoping at all; it is a pure sharing query, so on trunk the target version filter of a public project already lists versions belonging to private projects. Anonymously, trunk and this patch return byte-identical JSON for `/queries/filter?project_id=1&name=fixed_version_id`, including "Private child of eCookbook - …" and "OnlineStore - …". The half this patch adds is the *scoped* one (`Version.visible`), so the union can only ever add values the user may already see. The replacement in `43534-v2.patch` does tighten this, as a side effect of dropping `shared_versions` — but tightening what is filterable is a behaviour change that deserves its own issue, and it should then apply to both halves rather than fall out of an unrelated patch. |
 | Why not simply scope to the project tree, as the attached patch does? | Because that drops versions shared in from outside it. See "Alternatives considered" and the test that fails on that implementation. |
@@ -349,9 +350,12 @@ screenshot.
 
 - **Issue:** [#43534](https://www.redmine.org/issues/43534) — bestaat al, status
   New, met `43534-v2.patch` van Go MAEDA eraan
-- **Patches attached:** `patches/version-subprojects/2026-09-05-r25037-feature.patch`
+- **Patches attached:** `patches/version-subprojects/2026-09-09-r25037-feature.patch`
   (code, geen locales — er is geen nieuwe string)
-- **Made against:** `origin/master` r25037 = `bee32a926` (2026-09-03)
+- **Made against:** `origin/master` r25037 = `bee32a926`, branch
+  `patch/version-subprojects` at `6ad109efe`. **Applies cleanly to current trunk
+  r25063 (`8de368193`) too**, checked 2026-09-09 with
+  `tools/check-patch-clean.sh version-subprojects --submit`.
 - **Status:** klaar om als note aan #43534 te hangen
 - **Feedback en wat ermee gebeurde:** —
 
