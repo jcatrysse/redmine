@@ -1555,3 +1555,41 @@ reden erbij; deze regel hierboven is de derde en laatste plek.
   *applied* undo te weigeren. Ook rapporteren wordt geweigerd, omdat een
   "WOULD RESTORE"-lijst over een journaal dat niets geschreven heeft de
   operator vertelt dat er iets terug te nemen is terwijl dat niet zo is.
+
+### Beslist (Jan) — K-19, 2026-09-09: optie A
+
+**De keuze.** De mirror wordt met de hand gesynct vóór elke inzendronde, en
+`CLAUDE.md` begint de "refresh tegen trunk"-stap met die sync. Niet B en niet C:
+de gate blijft dus tegen `origin/master` meten en gaat *niet* zelf naar
+redmine.org.
+
+**Wat dat betekent voor een sessie.** Twee dingen, en het tweede is het hele
+punt van deze keuze:
+
+1. **Jan schrijft de mirror, jij nooit.** Geen push, geen merge, geen force naar
+   `origin/master`. De branchtabel in `CLAUDE.md` zei tot vandaag "nobody" bij
+   die branch, en dat is precies hoe hij achttien commits achter kon raken
+   terwijl elke gate PASS meldde. Die regel staat nu goed.
+2. **Het verschil meten mag en moet je wel** — het is alleen lezen, en het is de
+   enige manier om te weten of een `--submit`-PASS iets over trunk zegt:
+   `git fetch https://github.com/redmine/redmine.git master` en dan
+   `git rev-list --count origin/master..FETCH_HEAD`. Is dat niet 0, dan meet je
+   niet verder alsof het wel klopte: zeg in het sessierapport dat de gate over
+   de mirror ging en hoe groot het gat is. De commando's staan in
+   `docs/runbook.md`, inclusief de `--is-ancestor`-check die vooraf bewijst dat
+   Jans sync een fast-forward is en niets weggooit.
+
+**Wat A niet oplost, en waarom dat aanvaard is.** Onder A kan de mirror opnieuw
+stil verouderen — niets dwingt de sync af, en dat is exact het verschil met C.
+De prijs is dus dat de gate blijft afhangen van een menselijke stap. Wat het
+wel wint: `patch/<slug>` wordt volgens `CLAUDE.md` van `origin/master` afgetakt,
+en onder A meet de gate hetzelfde ref waarvan de branches gemaakt zijn. Onder B
+zou de gate tegen echte trunk meten terwijl de branches van een oude mirror
+komen, en dan meet je iets anders dan je bouwt. A houdt die twee gelijk en legt
+de sync bij de enige persoon die de mirror mag schrijven. Dit is Jans keuze en
+geen afwijking, dus er hoort geen blok in `docs/exceptions.md` bij.
+
+**Stand op het moment van beslissen.** De mirror staat op `8de368193`, gelijk
+aan echte trunk (`git rev-list --count origin/master..FETCH_HEAD` = 0), want Jan
+heeft eerder vandaag gesynct. Alle negen patches zijn tegen die stand met
+`--submit` gemeten.
