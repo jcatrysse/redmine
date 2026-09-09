@@ -18,9 +18,10 @@ op 2026-09-09 opgelost. De major was een echte en het is de belangrijkste van
 deze hele ronde: **de sessiedata stond als Marshal in de database.** Elke
 request deed dus `Marshal.load` over `sessions.data`, een kolom zonder
 signature — bij de cookiestore die Redmine hiervoor had, was dat onmogelijk.
-Nu is de serializer JSON. Er zit één keuze voor Jan aan vast, want elke
-bestaande sessie wordt daarmee onleesbaar en iedereen wordt één keer uitgelogd:
-**K-17** in `docs/DECISIONS.md`. De aanbevolen optie is wat er nu staat.
+Nu is de serializer JSON. Daar zat één keuze aan vast, want elke bestaande
+sessie wordt daarmee onleesbaar en iedereen wordt één keer uitgelogd: **Jan
+koos op 2026-09-09 optie A** (K-17), wat is wat er staat. De uitlog is dus
+geaccepteerd en hoeft niet opnieuw besproken te worden.
 
 Ronde-2 fix is af. Alle twaalf reviewbevindingen van 2026-09-03 hebben een
 `Resolution:`-regel: de blocker, de drie majors en de zes minors zijn opgelost,
@@ -243,11 +244,10 @@ id=14 updated=06:38:22  first12="{\"value\":{\"u"  marshalled=false
 
 ## Wat Jan nog moet doen
 
-**Eerst één keuze: K-17 in `docs/DECISIONS.md`** — de serializer. Wat er nu
-staat is de aanbevolen optie (A) en die is gebouwd en groen; je hoeft er alleen
-"ja" tegen te zeggen, met één gevolg: **na de deploy is iedereen één keer
-uitgelogd.** Dat is niet te vermijden, in geen van de opties behalve "niets
-doen".
+**K-17 is beslist (optie A), dus er staat geen keuze meer open.** Eén ding om
+te weten bij de deploy: **iedereen is daarna één keer uitgelogd**, omdat de
+bestaande sessierijen als Marshal opgeslagen zijn en JSON die niet leest. Er is
+niets aan te doen en het gebeurt precies één keer.
 
 **Drie stappen bij de deploy, in deze volgorde, en daarna één cronregel.**
 
@@ -362,8 +362,6 @@ doen".
 
 ## Volgende stap voor een sessie
 
-af — niets te doen. Ronde 3 is gedaan en alle drie haar bevindingen zijn
-gesloten. Jan heeft K-17 te beslissen en daarna de vier deploystappen hierboven.
-Kiest hij K-17 optie B, dan moet `Redmine::SessionDataSerializer` eruit en wordt
-`db:sessions:clear` een verplichte deploystap; kiest hij C, dan gaat de hele
-ronde-3-commit eruit.
+af — niets te doen. Ronde 3 is gedaan, alle drie haar bevindingen zijn gesloten
+en K-17 is beslist (optie A). Jan heeft alleen de vier deploystappen hierboven
+nog openstaan.

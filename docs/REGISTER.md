@@ -32,17 +32,16 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
-- `mypage-query-blocks` — cse_01VUeLQwkYYqqVPhKzx3M4qu sinds 2026-09-09
+- `ar-sessions` — cse_01VUeLQwkYYqqVPhKzx3M4qu sinds 2026-09-09
 
 ## Openstaand voor Jan
 
 ### `ar-sessions`
 
-**Eerst één keuze: K-17 in `docs/DECISIONS.md`** — de serializer. Wat er nu
-staat is de aanbevolen optie (A) en die is gebouwd en groen; je hoeft er alleen
-"ja" tegen te zeggen, met één gevolg: **na de deploy is iedereen één keer
-uitgelogd.** Dat is niet te vermijden, in geen van de opties behalve "niets
-doen".
+**K-17 is beslist (optie A), dus er staat geen keuze meer open.** Eén ding om
+te weten bij de deploy: **iedereen is daarna één keer uitgelogd**, omdat de
+bestaande sessierijen als Marshal opgeslagen zijn en JSON die niet leest. Er is
+niets aan te doen en het gebeurt precies één keer.
 
 **Drie stappen bij de deploy, in deze volgorde, en daarna één cronregel.**
 
