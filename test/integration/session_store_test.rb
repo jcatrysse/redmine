@@ -78,6 +78,44 @@ class SessionStoreTest < Redmine::IntegrationTest
     assert_equal({}, Redmine::SessionDataSerializer.load('not json at all'))
   end
 
+  # The query hash is the awkward shape, but it is not the only thing Redmine
+  # puts in the session, and JSON keeps neither symbol keys nor object types.
+  # These are every key grep finds in app/ and lib/, with the value shape the
+  # code that reads them expects.
+  def test_every_session_shape_redmine_stores_should_survive_the_serializer
+    {
+      'auth_source_registration' => {:login => 'jsmith', :auth_source_id => 1},
+      'sudo_timestamp' => 1_788_900_000,
+      'twofa_session_token' => 42,
+      'twofa_tries_counter' => 3,
+      'twofa_autologin' => '1',
+      'twofa_back_url' => '/my/page',
+      'per_page' => 25,
+      'user_id' => 2,
+      'tk' => 'abc123',
+      'password_recovery_token' => 'deadbeef'
+    }.each do |key, value|
+      restored = round_trip(key => value)
+      assert_equal [key], restored.to_h.keys, "#{key} did not survive"
+      assert_equal value, key == 'auth_source_registration' ? restored[key].symbolize_keys : restored[key]
+    end
+  end
+
+  def test_a_nested_session_hash_should_still_be_readable_by_symbol
+    # SudoMode and the registration flow both read nested values by symbol.
+    restored = round_trip('auth_source_registration' => {:login => 'jsmith', :auth_source_id => 1})
+    assert_equal 'jsmith', restored['auth_source_registration'][:login]
+    assert_equal 1, restored['auth_source_registration'][:auth_source_id]
+  end
+
+  def test_an_integer_session_value_should_not_come_back_as_a_string
+    # SudoMode compares session[:sudo_timestamp].to_i against a timestamp, so a
+    # String would still work here — but per_page is used as a number directly.
+    restored = round_trip('sudo_timestamp' => 1_788_900_000, 'per_page' => 25)
+    assert_kind_of Integer, restored['sudo_timestamp']
+    assert_kind_of Integer, restored['per_page']
+  end
+
   def test_a_query_should_survive_a_round_trip_through_the_stored_session
     log_user('jsmith', 'jsmith')
 
@@ -119,6 +157,10 @@ class SessionStoreTest < Redmine::IntegrationTest
                  css_select('table.issues thead th:not(.checkbox):not(.buttons)')
                    .collect {|th| th.text.strip}.reject(&:blank?)
     assert_include 'priority%3Adesc', css_select('table.issues thead th.tracker a').first['href']
+  end
+
+  def round_trip(hash)
+    Redmine::SessionDataSerializer.load(Redmine::SessionDataSerializer.dump(hash))
   end
 
   def issue_ids_on_page
