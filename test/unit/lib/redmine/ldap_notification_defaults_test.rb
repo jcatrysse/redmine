@@ -291,6 +291,20 @@ class Redmine::LdapNotificationDefaultsTest < ActiveSupport::TestCase
     assert_equal 'none', User.find(2).mail_notification
   end
 
+  # A reporting run wrote nothing, so its journal is not evidence of anything
+  # to take back. Without the guard, jsmith choosing none afterwards makes the
+  # dry-run journal look applied and the undo restores the stale all.
+  def test_undo_should_refuse_the_journal_of_a_reporting_run
+    set_defaults('mail_notification' => 'none')
+    User.find(2).update_column(:mail_notification, 'none')
+
+    error = assert_raise(Redmine::LdapNotificationDefaults::Error) do
+      Redmine::LdapNotificationDefaults.undo({'journal' => @journal, 'apply' => '1'}, StringIO.new)
+    end
+    assert_include 'journal of a reporting run', error.message
+    assert_equal 'none', User.find(2).mail_notification
+  end
+
   def test_undo_should_raise_on_a_journal_that_records_no_values
     set_defaults('mail_notification' => 'none', 'apply' => '1')
     journal = JSON.parse(File.read(@journal))

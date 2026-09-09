@@ -161,6 +161,15 @@ module Redmine
       raise Error, "#{path} does not exist." unless File.exist?(path)
 
       journal = JSON.parse(File.read(path))
+      # A reporting run writes a journal too, and that journal has nothing to
+      # take back. Without this an account that later acquires the proposed
+      # values by its owner's own choice looks, to the guard below, exactly
+      # like one the run wrote, so the undo would restore stale values over a
+      # deliberate setting.
+      unless journal['applied'] == true
+        raise Error, "#{path} is the journal of a reporting run, which changed nothing. There is nothing to undo."
+      end
+
       entries = journal['users'] || []
       applied = (journal['values'] || {}).slice(*FIELDS)
       if entries.any? && applied.empty?
