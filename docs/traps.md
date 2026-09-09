@@ -1277,3 +1277,12 @@ toegevoegd.
   ongecommitte wijzigingen krijg je `FAIL could not replay on
   origin/geoxyz/framework` en is er niets toegevoegd. Commit en push eerst, dan
   appenden.
+
+- **"Applyt op trunk" is een uitspraak over `origin/master`, en dat is een
+  mirror.** Meet het gat zelf voordat je een `--submit`-PASS als bewijs
+  opschrijft: `git fetch https://github.com/redmine/redmine.git master` en
+  `git rev-list --count origin/master..FETCH_HEAD`. Niet 0 betekent dat de gate
+  het over de mirror had. Op 2026-09-09 was dat 18 commits en applyde
+  `wiki-export-attachments` in werkelijkheid niet meer, terwijl negen van de
+  negen PASS meldden. Sinds K-19 optie A synct Jan de mirror vóór een
+  inzendronde; jij schrijft die branch nooit, je meet alleen het verschil.
