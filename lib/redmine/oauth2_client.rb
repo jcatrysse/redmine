@@ -36,7 +36,10 @@ module Redmine
       end
 
       # The URL the mailbox owner opens to consent, first leg of the
-      # authorization code grant.
+      # authorization code grant. Returns the URL and the state it carries;
+      # refresh_token needs that state to tell this authorization apart from
+      # any other one, so the two are returned together rather than left to
+      # the caller to keep in step.
       def authorize_url(credentials_file)
         credentials = read_credentials(credentials_file, %w(authorize_url client_id))
         uri = https_uri(credentials['authorize_url'], 'authorize_url')
@@ -44,23 +47,30 @@ module Redmine
         if credentials['authorize_params'].is_a?(Hash)
           params.merge!(credentials['authorize_params'].transform_keys(&:to_s))
         end
+        state = SecureRandom.urlsafe_base64(32)
         params['response_type'] = 'code'
         params['client_id'] = credentials['client_id']
         params['redirect_uri'] = redirect_uri(credentials)
         params['scope'] = credentials['scope'] if credentials['scope'].present?
+        params['state'] = state
         uri.query = URI.encode_www_form(params)
-        uri.to_s
+        [uri.to_s, state]
       end
 
       # Exchanges the authorization code carried by the address the browser was
       # redirected to for a refresh token, second leg of the authorization code
-      # grant.
-      def refresh_token(credentials_file, redirect_url)
+      # grant. The state is the one authorize_url returned in the same run.
+      def refresh_token(credentials_file, redirect_url, state)
         credentials = read_credentials(credentials_file, %w(token_url client_id client_secret))
+        # Read the code before checking the state so that a provider that
+        # refused still reports the refusal, and check the state before the
+        # code is used for anything.
+        code = authorization_code(redirect_url)
+        verify_state(redirect_url, state)
         response = post_to_token_endpoint(
           credentials,
           'grant_type' => 'authorization_code',
-          'code' => authorization_code(redirect_url),
+          'code' => code,
           'redirect_uri' => redirect_uri(credentials)
         )
         token_from(response, 'refresh_token')
@@ -84,6 +94,25 @@ module Redmine
 
       def redirect_uri(credentials)
         credentials['redirect_uri'].presence || DEFAULT_REDIRECT_URI
+      end
+
+      # Without this the code from any authorization request would be accepted,
+      # so a redirect address obtained from a different one — for another
+      # mailbox — could be pasted here and its token written down as this
+      # mailbox's.
+      def verify_state(redirect_url, state)
+        if state.blank?
+          raise 'No state to check the authorization against, start over with oauth2_authorize'
+        end
+
+        returned = redirect_query(redirect_url)['state'].first
+        if returned.blank?
+          raise 'No state parameter in the address, paste the whole address the browser was redirected to'
+        end
+
+        unless ActiveSupport::SecurityUtils.secure_compare(returned, state)
+          raise 'The address does not belong to this authorization request, start over with oauth2_authorize'
+        end
       end
 
       def authorization_code(redirect_url)

@@ -68,7 +68,8 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
 
   def test_authorize_url_should_carry_the_authorization_code_grant_parameters
     with_credentials(CREDENTIALS.merge('authorize_url' => 'https://login.example.net/oauth2/v2.0/authorize')) do |file|
-      url = URI.parse(Redmine::Oauth2Client.authorize_url(file))
+      url, state = Redmine::Oauth2Client.authorize_url(file)
+      url = URI.parse(url)
 
       assert_equal 'login.example.net', url.host
       assert_equal '/oauth2/v2.0/authorize', url.path
@@ -76,7 +77,8 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
         {
           'response_type' => 'code',
           'client_id' => 'a-client-id',
-          'redirect_uri' => 'http://localhost'
+          'redirect_uri' => 'http://localhost',
+          'state' => state
         },
         URI.decode_www_form(url.query).to_h
       )
@@ -91,7 +93,7 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
       'authorize_params' => {'access_type' => 'offline', 'prompt' => 'consent'}
     )
     with_credentials(credentials) do |file|
-      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file)).query).to_h
+      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file).first).query).to_h
 
       assert_equal 'http://localhost:8080/oauth2', params['redirect_uri']
       assert_equal 'https://mail.google.com/', params['scope']
@@ -106,7 +108,7 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
       'authorize_params' => {'response_type' => 'token', 'client_id' => 'someone-else'}
     )
     with_credentials(credentials) do |file|
-      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file)).query).to_h
+      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file).first).query).to_h
 
       assert_equal 'code', params['response_type']
       assert_equal 'a-client-id', params['client_id']
@@ -118,7 +120,7 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
       'authorize_url' => 'https://tenant.b2clogin.com/tenant.onmicrosoft.com/oauth2/v2.0/authorize?p=B2C_1_signin'
     )
     with_credentials(credentials) do |file|
-      url = URI.parse(Redmine::Oauth2Client.authorize_url(file))
+      url = URI.parse(Redmine::Oauth2Client.authorize_url(file).first)
       params = URI.decode_www_form(url.query).to_h
 
       assert_equal '/tenant.onmicrosoft.com/oauth2/v2.0/authorize', url.path
@@ -133,7 +135,7 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
       'authorize_url' => 'https://login.example.net/authorize?response_type=token&client_id=someone-else'
     )
     with_credentials(credentials) do |file|
-      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file)).query).to_h
+      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file).first).query).to_h
 
       assert_equal 'code', params['response_type']
       assert_equal 'a-client-id', params['client_id']
@@ -147,6 +149,56 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
     end
   end
 
+  def test_authorize_url_should_carry_an_unpredictable_state
+    with_credentials(CREDENTIALS.merge('authorize_url' => 'https://login.example.net/authorize')) do |file|
+      url, state = Redmine::Oauth2Client.authorize_url(file)
+      assert state.present?
+      assert state.length >= 32, "state is only #{state.length} characters"
+      assert_equal state, URI.decode_www_form(URI.parse(url).query).to_h['state']
+
+      _, other = Redmine::Oauth2Client.authorize_url(file)
+      assert_not_equal state, other, 'two authorizations got the same state'
+    end
+  end
+
+  # Without this check the code from any authorization request would be
+  # accepted, so a redirect address from an authorization for another mailbox
+  # could be pasted here and its refresh token written down as this one's.
+  def test_refresh_token_should_raise_when_the_state_does_not_match
+    Net::HTTP.expects(:start).never
+
+    with_credentials(CREDENTIALS) do |file|
+      error = assert_raise(RuntimeError) do
+        Redmine::Oauth2Client.refresh_token(
+          file, 'http://localhost/?code=the-code&state=another-authorization', 'st'
+        )
+      end
+      assert_include 'does not belong to this authorization request', error.message
+    end
+  end
+
+  def test_refresh_token_should_raise_when_the_address_carries_no_state
+    Net::HTTP.expects(:start).never
+
+    with_credentials(CREDENTIALS) do |file|
+      error = assert_raise(RuntimeError) do
+        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?code=the-code', 'st')
+      end
+      assert_include 'No state parameter', error.message
+    end
+  end
+
+  def test_refresh_token_should_raise_when_there_is_no_state_to_check_against
+    Net::HTTP.expects(:start).never
+
+    with_credentials(CREDENTIALS) do |file|
+      error = assert_raise(RuntimeError) do
+        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?code=the-code&state=st', '')
+      end
+      assert_include 'No state to check', error.message
+    end
+  end
+
   def test_refresh_token_should_exchange_the_code_from_the_redirect_address
     request = nil
     expect_token_request(response(Net::HTTPOK, '200', 'OK', {'refresh_token' => 'a-refresh-token'}.to_json)) {|req| request = req}
@@ -154,7 +206,7 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
     with_credentials(CREDENTIALS) do |file|
       assert_equal(
         'a-refresh-token',
-        Redmine::Oauth2Client.refresh_token(file, "http://localhost/?code=the-code&session_state=abc\n")
+        Redmine::Oauth2Client.refresh_token(file, "http://localhost/?code=the-code&session_state=abc&state=st\n", 'st')
       )
     end
 
@@ -175,7 +227,7 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
 
     with_credentials(CREDENTIALS) do |file|
       error = assert_raise(RuntimeError) do
-        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?error=access_denied')
+        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?error=access_denied', 'st')
       end
       assert_equal 'The authorization was refused (access_denied)', error.message
     end
@@ -185,7 +237,7 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
     Net::HTTP.expects(:start).never
 
     with_credentials(CREDENTIALS) do |file|
-      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.refresh_token(file, 'http://localhost/')}
+      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.refresh_token(file, 'http://localhost/', 'st')}
       assert_include 'paste the whole address', error.message
     end
   end
@@ -194,7 +246,7 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
     Net::HTTP.expects(:start).never
 
     with_credentials(CREDENTIALS) do |file|
-      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.refresh_token(file, 'not an address at all')}
+      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.refresh_token(file, 'not an address at all', 'st')}
       assert_include 'paste the whole address', error.message
     end
   end
@@ -204,7 +256,7 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
 
     with_credentials(CREDENTIALS) do |file|
       error = assert_raise(RuntimeError) do
-        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?code=the-code')
+        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?code=the-code&state=st', 'st')
       end
       assert_include 'no refresh token', error.message
     end

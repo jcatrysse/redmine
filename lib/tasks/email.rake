@@ -179,14 +179,15 @@ END_DESC
       credentials_file = ENV['oauth2_credentials']
       abort 'Missing oauth2_credentials=FILE' if credentials_file.blank?
 
+      url, state = Redmine::Oauth2Client.authorize_url(credentials_file)
       puts "Open this URL in a browser and sign in as the mailbox owner:"
       puts
-      puts Redmine::Oauth2Client.authorize_url(credentials_file)
+      puts url
       puts
       print "Then paste the whole address you were redirected to: "
       STDOUT.flush
       redirect_url = STDIN.gets
-      refresh_token = Redmine::Oauth2Client.refresh_token(credentials_file, redirect_url)
+      refresh_token = Redmine::Oauth2Client.refresh_token(credentials_file, redirect_url, state)
 
       puts
       puts "Add this line to #{credentials_file}:"
