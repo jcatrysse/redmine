@@ -3,7 +3,7 @@ slug: members-pagination
 feature: Paginatie op projectleden en groepsleden
 commit_51: 455f5753c
 geoxyz: live
-geoxyz_commit: 148faafb6 + 02ca8b044 + 22a4244c0
+geoxyz_commit: 148faafb6 + 02ca8b044 + 22a4244c0 + 8fb5c8b8a
 upstream: nooit
 patch:
 issue: 43355
@@ -12,6 +12,12 @@ issue: 43355
 # members-pagination — status
 
 ## Waar het staat
+
+Ronde 3 (blinde herreview, 2026-09-08) is gedaan: **nul blockers, nul majors,
+twee nits**, en die twee zijn op 2026-09-09 opgelost. De review vond niets fout
+in de wijziging zelf; de ene nit ging over een test die 48 gebruikers aanmaakte
+om vier regels te bewijzen, en de andere over iets dat beter in de note aan
+#43355 staat dan dat een committer het daar opmerkt. Zie "Bewijs — ronde 3".
 
 Af, met één ding voor Jan. De upstream-kant is **niet van ons**: Takenori
 TAKAKI heeft op 2026-08-05 Jans eigen issue
@@ -101,6 +107,58 @@ als je een lid toevoegt, bewerkt of verwijdert.
   `members-page-clamped-after-delete.png`. Reden: de oude lege-tabschermafdruk
   was niet te onderscheiden van een project zónder leden.
 
+## Bewijs — ronde 3 (2026-09-09)
+
+**F02 (nit) — de test maakt nu 2 gebruikers aan in plaats van 48.** Commit
+`8fb5c8b8a` op `7.0-stable-GEOxyz`. De regel
+`(51 - project.memberships.count).times {...}` liep 48 keer, want project 1
+heeft er drie in de fixtures, alleen om voorbij twee pagina's van 25 te komen.
+Het is nu `per_page_options => '2,5'` met **twee** gegenereerde leden: vijf
+leden, drie pagina's van twee, en de derde heeft er één. Dat is de kleinste
+vorm die een laatste pagina heeft om te verliezen. Precies zoals de review
+voorstelde, en het is dezelfde truc die de twee helper-tests in dezelfde commit
+al gebruikten.
+
+**En de test onderscheidt nog steeds** — dat is het enige dat bij zo'n
+verkleining telt, dus het is nagegaan in plaats van aangenomen. Met de clamp
+eruit (`page = params['members_page'].to_i`) faalt hij, en de faalmelding is de
+bug zelf:
+
+```
+"nodata" found in ... <p class="nodata">No data to display</p>
+```
+
+Met de clamp erin: `1 runs, 6 assertions, 0 failures`. De drie geraakte suites
+samen in één proces: **64 runs, 280 assertions, 0 failures, 0 errors, 0 skips**.
+RuboCop op het gewijzigde bestand: **0**.
+
+**Volledige suite op `7.0-stable-GEOxyz`, systeemtests inbegrepen**
+(`tools/test-env.sh /home/user/wt/geoxyz bundle exec ruby bin/rails test:all`):
+**6145 runs, 32425 assertions, 0 failures, 0 errors, 39 skips**, in 967 s.
+Hetzelfde aantal runs als de run ervoor — deze test is *gewijzigd*, niet
+toegevoegd. Het aantal assertions ligt 3 lager dan die vorige run (32428); dat
+is niet nagejaagd, want de suite is groen en de gewijzigde test staat los op
+6 assertions groen.
+
+**F01 (nit) — geen code, wel een regel in de note.** De paginatie gebeurt in
+Ruby, niet in SQL: de `pluck` haalt voor *N* leden met elk *R* rollen *N × R*
+rijen op en `uniq` maakt daar in Ruby *N* van, dus pagina 1 kost hetzelfde als
+pagina 200. Dat is nog steeds een grote verbetering — wat het vervangt bouwde
+*N* volledige `Member`-objecten — maar het is het eerste dat een
+Redmine-committer die naar schaalbaarheid kijkt gaat opmerken. Dus staat het nu
+in het dossier onder *Anticipated objections*, met het antwoord erbij: de
+SQL-variant moet de dubbele rolrijen daar óók samenvouwen, en de portable
+manier (`GROUP BY members.id` met `MIN(roles.position)`) sleept op PostgreSQL
+elke sorteerkolom mee in de `GROUP BY` — `users.type`, `users.firstname`,
+`users.lastname` en `users.id`, **nagekeken en niet geraden**:
+`Principal.fields_for_order_statement` geeft precies die vier. `DISTINCT ON` is
+netter en alleen PostgreSQL, en Redmine ondersteunt ook MySQL en SQLite.
+
+**Geen nieuwe schermafbeeldingen, en dat is met opzet.** Er is niets aan het
+gedrag veranderd: F02 raakt alleen een test, F01 alleen het dossier. De
+G9-bewijzen van de clamp zelf staan er al, inclusief het paar
+`defect-empty-page-after-delete.png` / `members-page-clamped-after-delete.png`.
+
 ## Wat Jan nog moet doen
 
 Eén note aan **https://www.redmine.org/issues/43355** — geen nieuw issue, en
@@ -144,6 +202,18 @@ derde laat zien wat de voorgestelde vier regels doen.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
 
+- **De paginatie gebeurt in Ruby en dat is een keuze, geen vergetelheid**
+  (ronde 3, F01). De `LIMIT`/`OFFSET` in SQL doen vraagt om het samenvouwen van
+  de dubbele rolrijen daar, en dat is óf niet portable (`DISTINCT ON`) óf
+  duurder dan het oplevert (`GROUP BY` met alle vier de sorteerkolommen erin).
+  Niet opnieuw wegen; het antwoord staat in het dossier onder *Anticipated
+  objections* zodat de note het vóór is.
+- **De last-page-test gebruikt `per_page_options => '2,5'` en twee gegenereerde
+  leden** (ronde 3, F02). Niet terug naar 48 gebruikers "voor de realistischere
+  paginagrootte": de eigenschap die de test vastpint is de clamp, en die is
+  onafhankelijk van de paginagrootte. De test is met de clamp eruit rood
+  gedreven om dat te controleren.
+
 - **De note is een verbetervoorstel, geen defectmelding.** Beslist door Jan als
   **g15** en uitgevoerd op 2026-09-06. Onbewerkt Redmine laat elke gepagineerde
   lijst zo doodlopen; wat de paginatie toevoegt is dat je er op het ledentabblad
@@ -180,7 +250,8 @@ derde laat zien wat de voorgestelde vier regels doen.
 
 Af — niets te doen, behalve dat Jan de note plaatst. Alle tien
 reviewbevindingen van 2026-09-03 op deze feature hebben sinds 2026-09-06 een `Resolution:`-regel
-in `docs/review/findings/2026-09-03-members-pagination-claude-opus5.md`. Komt er reactie van
+in `docs/review/findings/2026-09-03-members-pagination-claude-opus5.md`, en de
+twee nits van ronde 3 zijn sinds 2026-09-09 ook gesloten. Komt er reactie van
 Takenori of een committer op de bevinding, dan is de volgende stap die reactie
 verwerken in `dossier.md` en, als de clamp upstream landt, de derde
 GEOxyz-commit laten vervallen zodra GEOxyz naar die release gaat.

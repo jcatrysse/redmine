@@ -84,7 +84,7 @@ is not there.
 
 ### F01 — every page view reads the id of every member in the project
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed (by reading; not measured)
 - **Category:** performance
@@ -141,13 +141,13 @@ role rows collapsed there too, and the portable way to do that —
 is strict about it. `DISTINCT ON` would be cleaner and is PostgreSQL-only.
 Plucking the ids is the portable middle, and saying so pre-empts the question.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-09 — **no code change, which is what the suggested direction asks for**, and the trade-off is now written where it pre-empts the question rather than answers it after the fact. `docs/features/members-pagination/dossier.md`, under *Anticipated objections*, keeps its existing `pluck` row but states the shape exactly (for *N* members with *R* roles each the `pluck` returns *N × R* rows and `uniq` reduces them to *N* in Ruby, so page 1 costs what page 200 costs, against the *N* full `Member` objects it replaces), and a second row answers "then why not do the `LIMIT`/`OFFSET` in SQL": the duplicate role rows have to be collapsed there too, `GROUP BY members.id` with `MIN(roles.position)` needs every ordering column in the `GROUP BY` on PostgreSQL, and `DISTINCT ON` is cleaner but PostgreSQL-only while Redmine supports MySQL and SQLite. **One thing the finding stated loosely and this checked:** "every column of `Principal.fields_for_order_statement`" is four — `users.type DESC`, `users.firstname`, `users.lastname`, `users.id`, resolved by running it rather than reading it — so the dossier names them instead of gesturing at them. The row also says plainly that plucking the ids is a deliberate portable middle and that an SQL version would be a separate change with its own database matrix to prove. `status.md` records it under "wat er al bekend is" so a later session does not re-litigate it. No measurement was added: the finding claims no timing and neither does the answer.
 
 ---
 
 ### F02 — the last-page test generates about 45 users to prove a four-line clamp
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -197,4 +197,4 @@ Lower `per_page_options` in the `with_settings` block and generate the handful
 of members that then span three pages. The assertions can stay as they are, with
 25 becoming whatever the new page size is.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-09 on `7.0-stable-GEOxyz` — the test generates **two** users instead of forty-eight, exactly along the suggested direction: `with_settings :per_page_options => '2,5'` and `2.times {member = User.add_to_project(User.generate!, project)}`, which with project 1's three fixture memberships gives five members over three pages of two, the smallest shape that has a last page to lose. Assertions scale with it (`assert_equal 4, project.memberships.count`, two rendered rows instead of twenty-five) and `assert_not_include 'nodata'` and `assert_include 'members_page=1'` stay as they were. **The only thing that matters when shrinking a test is whether it still discriminates, so that was driven rather than assumed:** with the clamp removed (`page = params['members_page'].to_i`) the smaller test fails, and the failure message is the defect itself — `"nodata" found in ... <p class="nodata">No data to display</p>` on a project that has four members. With the clamp in place: `1 runs, 6 assertions, 0 failures`. The three touched suites in one process: `64 runs, 280 assertions, 0 failures, 0 errors, 0 skips`. RuboCop on the changed file: `no offenses detected`. Full suite on the branch: see `status.md`. No G9 was re-run and none was needed — the change is test-only, the behaviour is untouched, and the clamp's own before/after pair (`defect-empty-page-after-delete.png`, `members-page-clamped-after-delete.png`) already stands.
