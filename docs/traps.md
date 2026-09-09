@@ -1184,3 +1184,35 @@ toegevoegd.
   onderwerpregel op zowel `patch/<slug>` als `7.0-stable-GEOxyz`. **Regel:**
   vervang alleen wat je per stuk gelezen hebt, en beperk automatisch vervangen
   tot het veld dat het register voedt.
+
+- **De kloon waarin een sessie begint is *shallow*, en de startcommando's uit
+  `docs/STATE.md` klappen daarop.** Op 2026-09-09 gaf
+  `git merge --ff-only origin/geoxyz/framework` als eerste handeling
+  `fatal: refusing to merge unrelated histories`, met "50 and 50 different
+  commits each" — wat leest als een kapotte branch of een verkeerde remote.
+  Dat is het niet. `.git/shallow` bevat twee grafts, dus de lokale
+  `geoxyz/framework` en `origin/geoxyz/framework` hebben elk hun eigen
+  kunstmatige root (`a30a7e2` tegen `8d78a2d`) en git ziet twee losse
+  historieën. **Wat je doet:** `git fetch --unshallow origin geoxyz/framework`,
+  daarna slaagt `merge --ff-only` gewoon (287 commits, HEAD was een echte
+  voorouder). **Waar je aan merkt dat dit het is:** `cat .git/shallow` geeft
+  meer dan één regel, en `git rev-list --max-parents=0 <ref>` geeft aan beide
+  kanten een andere sha. **En het tweede halve probleem:** een verse kloon
+  heeft alleen de branch van de sessie plus `geoxyz/framework`. `git branch -r`
+  toont géén `patch/*` en géén `7.0-stable-GEOxyz`, wat eruitziet alsof het
+  werk weg is. Haal ze op met
+  `git fetch origin 'refs/heads/patch/*:refs/remotes/origin/patch/*'` en
+  `git fetch origin master 7.0-stable 7.0-stable-GEOxyz`.
+- **`tools/session-push.sh` kan een herschreven branch niet pushen, en dat is
+  opzet — maar het faalt onhandig.** Het script force-pusht nooit. Bij een
+  amend op `patch/<slug>` is de remote-tip geen voorouder meer, dus ziet het
+  script "1 nieuwe commit op origin" en gaat het jouw commit *replayen* op de
+  commit die hij juist moet vervangen: je krijgt twee commits in plaats van
+  een gerepareerde. **Wat je doet:** voor een patchbranch (en alleen daar, want
+  niemand checkt hem uit) handmatig
+  `git push --force-with-lease=patch/<slug>:<oude sha>`, en draai de
+  INV-4-identiteitscontrole uit `session-push.sh` er zelf eerst overheen —
+  `git log --format='%h %an <%ae> / %cn <%ce>' origin/master..HEAD | grep -iE
+  'anthropic|(^| )claude( |<)'` — want die sla je met de force-push over. Op
+  `7.0-stable-GEOxyz` doe je dit niet: daar is de replay precies het gewenste
+  gedrag.
