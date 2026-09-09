@@ -3,7 +3,7 @@ slug: ldap-mail-prefs
 feature: "Rake: notificatievoorkeuren van LDAP-accounts zetten na een import"
 commit_51: 9e2c38e2d
 geoxyz: live
-geoxyz_commit: bc7314a62 + 5b4943570 + f00b41afd
+geoxyz_commit: bc7314a62 + 5b4943570 + f00b41afd + ae2417a6e
 upstream: nooit
 patch:
 issue: 
@@ -224,6 +224,32 @@ force-optie.
 - Volledige suite op de branch: **6159 runs, 32502 assertions, 0 failures,
   0 errors, 39 skips**.
 
+## Bewijs — Codex-ronde 2 (2026-09-09)
+
+**Wat er veranderd is:** `undo` weigert nu het journaal van een **rapportagerun**.
+De vergelijk-en-herstel uit de eerste ronde hierboven vertrouwde `values`, maar
+keek niet of de run ook echt geschreven had. Een rapportagerun schrijft óók een
+journaal — met `"applied": false` — en dan is "het account heeft nu precies de
+voorgestelde waarden" geen bewijs dat de run ze gezet heeft: de gebruiker kan ze
+zelf gekozen hebben. De undo herstelde dan de oude waarde over die keuze heen.
+`undo` werpt daarom `Error` zodra `journal['applied']` niet exact `true` is, ook
+zonder `apply=1`, want een "WOULD RESTORE"-rapport over zo'n journaal is op
+zichzelf misleidend.
+
+**Cijfers:**
+
+- **Het verlies is nagemeten, niet beredeneerd.** Een wegwerp-probe deed de
+  reeks uit de bevinding: rapportagerun met `mail_notification=none`, daarna
+  jsmith zelf op `none`, daarna `undo … apply=1` met dat journaal. jsmith kwam
+  terug op `all` — de eigen keuze weg. Dat is de bevinding, letterlijk.
+- **De nieuwe test is rood zonder de guard**: `Error expected but nothing was
+  raised`. Met de guard: **40 runs, 84 assertions, 0 failures, 0 errors,
+  0 skips**.
+- Geen journaal dat bestaat wordt hierdoor geweigerd: `'applied' => apply?`
+  staat in de journaalschrijver sinds de eerste commit van het bestand
+  (`bc7314a62`), dus er is geen ouder formaat om mild voor te zijn.
+- RuboCop op de gewijzigde bestanden: **0**, baseline 0.
+
 ## Wat Jan nog moet doen
 
 Twee dingen, allebei eenmalig, en de tweede is niet dringend.
@@ -252,6 +278,12 @@ Twee dingen, allebei eenmalig, en de tweede is niet dringend.
   slotregel. Niet "vereenvoudigen" naar onvoorwaardelijk herstellen: het
   journaal bevat de gezette waarden precies zodat dit te zien is, en een undo
   van een oud journaal zou anders stil een latere keuze wissen.
+- **Het journaal van een rapportagerun kan niet ongedaan gemaakt worden**
+  (Codex ronde 2, F01, 2026-09-09). `"applied": false` betekent dat de run niets
+  geschreven heeft, dus is er niets van hem terug te nemen; dat het account nú
+  de voorgestelde waarden heeft, zegt alleen dat iemand ze zelf gekozen heeft.
+  Niet "milder maken" zodat zo'n journaal wél te rapporteren valt: het verlies
+  is nagemeten en het is echt.
 - **Een journaal zonder `values` wordt geweigerd.** Zonder dat veld kan een
   undo een gewijzigd account niet van een onaangeraakt account onderscheiden,
   en dan is stil het onveilige doen precies de fout die hierboven staat. Er is

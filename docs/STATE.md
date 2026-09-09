@@ -117,6 +117,7 @@ bestanden** aanraken, niet omdat ze het onthouden. `tools/check-ownership.sh
 | `tools/check-ownership.sh <slug>` | weigert een push die bestanden van iemand anders aanraakt. De twee **gegenereerde** bestanden (`docs/REGISTER.md`, `docs/review/FINDINGS.md`) mag je wél meesturen, maar ze moeten vers gegenereerd zijn — een met de hand bewerkt gegenereerd bestand faalt |
 | `tools/check-patch-clean.sh <slug>` | G6 — controleert het **patchbestand** en vergelijkt het met de branch; `--submit` maakt "applyt niet meer op trunk" fataal. Sinds K-16 leest hij ook de auteur- en committervelden van de eigen commits van de branch, want `git format-patch` zet de committer niet in het bestand en een force-push komt niet langs `session-push.sh` |
 | `tools/check-geoxyz-branch.sh` | G8 — lint gemeten tegen de baseline op `origin/7.0-stable`, alleen wat de branch toevoegt telt |
+| `tools/check-symmetry.sh <slug>` \| `--all` | INV-10 mechanisch: staat elke regel van `patch/<slug>` ook op `7.0-stable-GEOxyz`? `check-geoxyz-branch.sh` ziet dit niet — die keurt de branch, niet de gelijkheid per feature. Toegestane afwijkingen staan met hun reden in `docs/features/<slug>/symmetry-allow.txt`. Ontstaan uit Codex ronde 2, blocker `geoxyz-branch` F02 |
 | `tools/dev-server.sh`, `tools/dev-seed.rb`, `tools/verify-lib.mjs` | G9 |
 | `tools/test-env.sh <worktree> <cmd>` | `test:all` bruikbaar maken (zonder dit ~260 systeemtestfouten) |
 

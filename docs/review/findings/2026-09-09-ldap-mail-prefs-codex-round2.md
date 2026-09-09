@@ -20,7 +20,7 @@ The compare-before-restore fix correctly protects changes made after an applied 
 
 ### F01 — Undo accepts a journal whose run never applied anything
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -43,7 +43,7 @@ Read the journal writer and undo together: the writer records `applied?`, while 
 
 Refuse an applied undo when `journal['applied']` is not exactly `true`, with an explicit operator message. Add a regression test that creates a report-only journal, later sets the proposed value independently, and proves undo cannot restore it.
 
-**Resolution:**
+- **Resolution:** Confirmed by reproducing the data loss, not by reading: an ephemeral probe ran a reporting run, then set jsmith to `none` independently, then undid the dry-run journal with `apply=1`, and jsmith came back `all`. The deliberate choice was destroyed, exactly as described. `undo` now refuses outright — in reporting mode too, not only with `apply=1` — when `journal['applied']` is not exactly `true`, because a reporting run wrote nothing and a "WOULD RESTORE" report over such a journal is misleading in its own right. Refusing on anything but `true` rejects no journal that exists: `'applied' => apply?` has been written since the file's first commit (`bc7314a62`), so there is no older format to be lenient about. `test_undo_should_refuse_the_journal_of_a_reporting_run` follows the finding's own sequence and was driven red without the guard (`Error expected but nothing was raised`). GEOxyz commit `ae2417a6e`. File suite 40 runs, 84 assertions, 0 failures, 0 errors, 0 skips; RuboCop adds nothing.
 
 ---
 

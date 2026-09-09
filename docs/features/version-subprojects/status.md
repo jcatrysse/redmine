@@ -3,7 +3,7 @@ slug: version-subprojects
 feature: Doelversiefilter biedt ook de versies van de subprojecten in de query
 commit_51: 89752a599
 geoxyz: live
-geoxyz_commit: fd35bd2d1 + 157c171a5 + 74f343d3d
+geoxyz_commit: fd35bd2d1 + 157c171a5 + 74f343d3d + 73157aee5
 upstream: patch klaar
 patch: patches/version-subprojects/2026-09-09-r25037-feature.patch
 issue: "43534"
@@ -14,8 +14,11 @@ issue: "43534"
 ## Waar het staat
 
 Ronde 2 is af. De patch is op 2026-09-05 opnieuw opgebouwd op trunk r25037
-(`bee32a926`), alle twaalf reviewbevindingen hebben een `Resolution:`-regel, en
-de GEOxyz-branch draait dezelfde wijziging. Eén patchbestand, vijf bestanden,
+(`bee32a926`), alle reviewbevindingen hebben een `Resolution:`-regel, en de
+GEOxyz-branch draait dezelfde wijziging — sinds `73157aee5` ook de vernauwing
+uit de Codex-ronde, wat er tussen 2026-09-09 en die commit niet zo was; zie
+"Bewijs — Codex-ronde 2" hieronder. `tools/check-symmetry.sh
+version-subprojects` bewijst het nu per regel. Eén patchbestand, vijf bestanden,
 124 regels. Het issue bestaat en is van Jan zelf:
 [#43534](https://www.redmine.org/issues/43534).
 
@@ -153,6 +156,42 @@ ook de issuequery raakt, en dat is hun keuze.
   repository- en `sys`-tests van een image zonder `svn`, `hg`, `bzr` en `cvs`.
 - `tools/check-patch-clean.sh version-subprojects --submit`: **PASS**, applyt op
   de huidige trunk r25063.
+
+## Bewijs — Codex-ronde 2 (2026-09-09)
+
+**De review had gelijk en de fout was van mij.** De vernauwing hierboven stond
+alleen op `patch/version-subprojects`. Op `7.0-stable-GEOxyz` stond nog de
+oude vereniging, terwijl dit bestand beweerde dat beide kanten dezelfde
+wijziging droegen. Dat is INV-10, en het is de erge soort: niet een afwijking
+die iemand afgewogen heeft, maar een claim die niet klopte. In dezelfde ronde
+heb ik de `state`-fix van `imap-oauth` wél naar GEOxyz gebracht; deze vergat ik,
+en het generieke `check-geoxyz-branch.sh` meldde PASS omdat het de branch keurt
+en niet de gelijkheid per feature.
+
+**Wat er nu staat:** GEOxyz-commit `73157aee5` met dezelfde drie regels en
+dezelfde twee regressietests. Regel voor regel nagekeken: het enige wat in
+`query.rb` en `queries_controller_test.rb` nog tussen de twee worktrees
+verschilt, hoort bij `assignee-nobody`.
+
+**En het is nu mechanisch te controleren.** `tools/check-symmetry.sh <slug>`
+vergelijkt elke inhoudelijke regel van `patch/<slug>` met hetzelfde bestand op
+`7.0-stable-GEOxyz`. Tegen de tip van vóór de fix (`f00b41afd`) meldt hij
+**20 afwijkingen** voor deze slug; tegen de nieuwe tip `ok`. `--all` meldt PASS
+voor alle negen patches.
+
+**Cijfers:**
+
+- **De test is opnieuw rood bewezen, nu op GEOxyz zelf**: zonder de fix zit
+  `["OnlineStore - Unrelated project version", "9", "open"]` in de JSON van
+  project 1's filtereindpunt. Met de fix niet.
+- De archief-test staat op GEOxyz net als op trunk groen aan **beide** kanten,
+  dus die is daar ook een bewaker en geen bewijs. Dat staat nu zo in het
+  dossier in plaats van dat het geïmpliceerd wordt.
+- `queries_controller_test.rb` op GEOxyz: **68 runs, 318 assertions,
+  0 failures, 0 errors, 0 skips**.
+- RuboCop op de vier gewijzigde bestanden op GEOxyz: **1**, baseline **1** —
+  de bestaande `Style/DirectiveScope` op regel 1546, die van `assignee-nobody`
+  is en van 7.0-stable's oudere RuboCop-vorm.
 
 ## Wat Jan nog moet doen
 

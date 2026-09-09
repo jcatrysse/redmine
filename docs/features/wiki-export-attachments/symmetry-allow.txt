@@ -1,0 +1,10 @@
+# Divergences between patch/wiki-export-attachments and 7.0-stable-GEOxyz that
+# are correct, with the reason. One pattern per line, matched against the line
+# body. See tools/check-symmetry.sh.
+
+# Trunk's zeitwerk.rb has an ITCPDF inflection that 7.0-stable does not: it
+# arrived with upstream's Rubyzip 3.6 work, not with this feature. The patch
+# touches the line only because the feature adds 'zip' => 'ZIP' to the same
+# inflect call, and resolving that conflict against trunk keeps both entries.
+# GEOxyz adds 'zip' => 'ZIP' alone, which is the whole of the feature there.
+'itcpdf' => 'ITCPDF',

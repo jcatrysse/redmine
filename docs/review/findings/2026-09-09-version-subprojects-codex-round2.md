@@ -20,7 +20,7 @@ The upstream patch fixes the unrelated-project result correctly at its own value
 
 ### F01 — The Codex scope fix is absent from `7.0-stable-GEOxyz`
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** blocker
 - **Confidence:** confirmed
 - **Category:** scm-symmetry
@@ -43,7 +43,7 @@ Fetched both remote branches afresh and printed the complete `fixed_version_valu
 
 Apply the same narrow value-list design and regression test to `7.0-stable-GEOxyz`, rerun the GEOxyz focused and full suites, record its new commit, then run a direct per-feature diff rather than relying only on the generic branch checker.
 
-**Resolution:**
+- **Resolution:** Correct, and my miss: I applied the imap-oauth `state` fix to GEOxyz in the same round and did not do the same for this one, while `status.md` claimed both sides carried "letterlijk dezelfde wijziging". The narrowing and both regression tests are now on `7.0-stable-GEOxyz` as `73157aee5`, byte-identical to the patch (verified line by line, and the only remaining difference in `query.rb` and `queries_controller_test.rb` between the two worktrees belongs to `assignee-nobody`). `test_filter_should_not_offer_versions_of_a_project_outside_the_tree` was driven red on GEOxyz before the fix — the unrelated `OnlineStore - Unrelated project version` was in the JSON — and green after; the archived-subproject test passes either way there and is defensive, which is now said so in the dossier rather than implied. RuboCop on the four changed files: 1 offence before, 1 after, the pre-existing `Style/DirectiveScope` on line 1546 that belongs to `assignee-nobody`. And, per the suggested direction, the per-feature comparison is now mechanical: `tools/check-symmetry.sh` compares every substantive line of each patch against the same file on GEOxyz. It reports FAIL for this slug against the pre-fix tip `f00b41afd` (20 divergences) and `ok` against the new one.
 
 ---
 
