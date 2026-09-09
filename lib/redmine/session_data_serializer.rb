@@ -19,7 +19,7 @@
 
 module Redmine
   # The session store's own serializer, with one difference: a row it cannot
-  # parse is an empty session rather than an exception.
+  # read as a session is an empty session rather than an exception.
   #
   # The store defaults to Marshal, which means every request runs Marshal.load
   # over a database column that carries no signature. JSON keeps that out of
@@ -29,8 +29,13 @@ module Redmine
   # empty session logs them out once, which is what the cookie store does with
   # a cookie it cannot verify.
   class SessionDataSerializer < ActiveRecord::SessionStore::ClassMethods::JsonSerializer
+    # Not just a rescue: the serializer this inherits from returns any valid
+    # top-level JSON value it finds, so a row holding [] or "text" or 1 parses
+    # and then reaches Rails, which calls stringify_keys on it and raises. The
+    # shape has to be checked, not only the syntax.
     def self.load(value)
-      super
+      restored = super
+      restored.is_a?(Hash) ? restored : {}
     rescue JSON::ParserError
       {}
     end

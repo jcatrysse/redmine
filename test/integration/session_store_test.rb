@@ -78,6 +78,35 @@ class SessionStoreTest < Redmine::IntegrationTest
     assert_equal({}, Redmine::SessionDataSerializer.load('not json at all'))
   end
 
+  # Valid JSON of the wrong shape parses, so only a syntax rescue would let it
+  # through to Rails, which calls stringify_keys on it.
+  def test_the_serializer_should_read_valid_json_that_is_not_a_session_as_an_empty_session
+    ['[]', '"text"', '1', 'null', '{"value":[]}'].each do |raw|
+      assert_equal({}, Redmine::SessionDataSerializer.load(raw), "#{raw} was not read as an empty session")
+    end
+  end
+
+  def test_the_serializer_should_keep_a_real_session
+    restored = Redmine::SessionDataSerializer.load(Redmine::SessionDataSerializer.dump('user_id' => 2))
+    assert_equal 2, restored['user_id']
+  end
+
+  # The same row shape, through the real middleware: this is a logout, not the
+  # 500 that reaching Rails with an Array produces.
+  def test_a_session_row_holding_valid_json_of_the_wrong_shape_should_log_the_user_out
+    ['[]', '"text"', '1'].each do |raw|
+      reset!
+      log_user('jsmith', 'jsmith')
+      get '/my/account'
+      assert_response :success, "setup failed for #{raw}"
+
+      Session.update_all(:data => raw)
+      get '/my/account'
+      assert_redirected_to '/login?back_url=http%3A%2F%2Fwww.example.com%2Fmy%2Faccount',
+                           "a row holding #{raw} did not log the user out"
+    end
+  end
+
   # The query hash is the awkward shape, but it is not the only thing Redmine
   # puts in the session, and JSON keeps neither symbol keys nor object types.
   # These are every key grep finds in app/ and lib/, with the value shape the
