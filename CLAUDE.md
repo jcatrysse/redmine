@@ -15,7 +15,7 @@ the review findings. Nothing here may ever appear in a patch.
 | `geoxyz/framework` | this framework — orphan, no Redmine code | you |
 | `7.0-stable-GEOxyz` | what GEOxyz actually runs | you, via a worktree |
 | `patch/<slug>` | one upstream patch, branched from `origin/master` | you, via a worktree |
-| `origin/master` | Redmine trunk mirror — the target for every patch | nobody |
+| `origin/master` | Redmine trunk mirror — the target for every patch | **Jan**, by syncing it from redmine.org before a submission round (K-19 option A). Never you: not a push, not a merge, not a force. This row said "nobody" until 2026-09-09, and that is exactly how the mirror came to sit 18 commits behind real trunk while every gate said PASS |
 | `origin/7.0-stable` | upstream 7.0 — the base of the GEOxyz branch | nobody |
 
 **The branch name above is pinned.** Jan authorised pushing to
@@ -101,7 +101,15 @@ task description seems to ask for it.
   something that no longer applies is. Refreshing against current trunk is the
   last step before submitting (g05), and the evidence numbers are re-run in the
   same breath. `tools/check-patch-clean.sh <slug>` warns about staleness;
-  `--submit` makes it fail.
+  `--submit` makes it fail. **That refresh starts with Jan syncing the mirror,
+  because the gate measures `origin/master` and nobody writes it** (Jan's K-19,
+  option A). On 2026-09-09 the mirror sat six days and 18 commits behind real
+  trunk while the gate reported "applies to a pristine origin/master" for all
+  nine patches — true about the mirror, and wrong about the trunk they get
+  submitted to: `wiki-export-attachments` did not apply. So a `--submit` PASS
+  measured against a stale mirror is not evidence. Say so in the report when you
+  cannot tell, `docs/runbook.md` has the three commands, and the mirror stays
+  Jan's to write.
 - **INV-3 Comment at Redmine's own density, which is not zero.** "Almost
   comment-free" was wrong, and a rule that is wrong gets argued with instead of
   followed. Measured on trunk r25037 over `app/{models,controllers,helpers}`
@@ -247,7 +255,7 @@ both sides (INV-10).
 | **G3 Tests** | the **full** suite green — not only the touched suites — output seen, counts in the dossier; each new test red on the old code, and you say how you know. Redmine requires that all existing tests pass. Budget for it: the whole suite takes tens of minutes, so start it early and do other work while it runs. |
 | **G4 Lint** | `rubocop` on the changed files adds no offence beyond the baseline for those files at the merge base; both counts in the dossier. An offence that upstream's own line already had is upstream's, not yours (INV-1) — name it, do not fix it |
 | **G5 Minimality** | you re-read the diff adversarially and every line is defensible; no scope creep |
-| **G6 Patch hygiene** | `tools/check-patch-clean.sh <slug>` passes: the patch file touches no framework path, no locale outside the five, no AI trace, and does not disagree with its branch — and the branch's own commits carry no AI identity in their author or committer (Jan's K-16). Applying to current trunk is checked with `--submit`, as the last step before submitting (g05) |
+| **G6 Patch hygiene** | `tools/check-patch-clean.sh <slug>` passes: the patch file touches no framework path, no locale outside the five, no AI trace, and does not disagree with its branch — and the branch's own commits carry no AI identity in their author or committer (Jan's K-16). Applying to current trunk is checked with `--submit`, as the last step before submitting (g05) — **after Jan has synced the mirror**, since that check reads `origin/master` and not redmine.org (K-19, option A). Compare the two yourself before you claim the PASS means anything: `git fetch https://github.com/redmine/redmine.git master` and then `git rev-list --count origin/master..FETCH_HEAD`. Not zero means the answer is about the mirror |
 | **G7 Dossier** | complete, including anticipated objections with answers |
 | **G8 GEOxyz branch** | `tools/check-geoxyz-branch.sh` passes: merges cleanly with upstream `7.0-stable`, lint adds nothing beyond upstream's own offences on the same files, own commits match the register. Suites green there too — a green trunk patch can still fail on 7.0-stable. **And `tools/check-symmetry.sh <slug>` passes**, which is a different question: the branch check keeps saying PASS while a fix sits on one side only. That is how `patch/version-subprojects` carried a scope narrowing for a day that GEOxyz did not, with `status.md` claiming both sides were the same change (Codex round 2). Run it after every code change to a patch, not only at the end. |
 | **G9 Live verification** | the feature exercised by hand in a **real running Redmine**, in a real browser, with a screenshot per function committed as evidence. A green suite is not proof the feature works: the 2026 port shipped a link that was in the DOM, passed `assert_select`, and did nothing when clicked because its JavaScript was never loaded on that page. |

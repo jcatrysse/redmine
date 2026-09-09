@@ -37,6 +37,45 @@ RAILS_ENV=test bundle exec ruby bin/rails db:migrate
 **Trap:** there is no `rake` binstub in the bundle — `bundle exec rake` fails
 with "command not found". Use `bundle exec ruby bin/rails <task>`.
 
+## Syncing the trunk mirror — before a submission round (K-19, option A)
+
+`origin` is `jcatrysse/redmine`, not Redmine. So `origin/master` is a **mirror**
+of trunk, and `tools/check-patch-clean.sh --submit` measures against it. When the
+mirror is behind, "PASS — safe to submit" is a statement about the mirror and not
+about the trunk the patch is submitted to. On 2026-09-09 that gap was six days
+and 18 commits, and one of the nine patches did not in fact apply any more.
+
+**First measure the gap.** Every session may and should do this — it is read-only:
+
+```sh
+git fetch https://github.com/redmine/redmine.git master
+git rev-list --count origin/master..FETCH_HEAD    # 0 = the mirror is current
+git merge-base --is-ancestor origin/master FETCH_HEAD && echo "fast-forward"
+```
+
+If that count is not 0, **it stops there for you**: say so in the session report,
+and do not go on measuring as though the gate had said something about trunk.
+Only Jan writes the mirror. His two routes:
+
+```sh
+# from a checkout of jcatrysse/redmine
+git fetch https://github.com/redmine/redmine.git master
+git push origin FETCH_HEAD:refs/heads/master
+```
+
+or, if the repository is a fork of `redmine/redmine`, the **Sync fork** button on
+the GitHub page of its `master` branch. Both do the same thing: fast-forward
+`master` to real trunk. The `--is-ancestor` check above proves in advance that it
+is a fast-forward and therefore discards nothing.
+
+Two reasons to sync *before* re-measuring rather than after:
+
+- `9a74cdf20` (#44428) pins the json gem below 3.0. That is exactly the fault
+  behind the old baseline of `48 failures, 82 errors`; after a sync those numbers
+  should fall back to `27 failures, 2 errors`.
+- upstream moves underneath the patch. A patch built on an old mirror and
+  measured against the same old mirror looks clean and does not apply.
+
 ## SCM fixtures
 
 Repository tests **skip silently** without the test repositories, so a green
