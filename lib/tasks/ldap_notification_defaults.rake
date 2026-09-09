@@ -23,10 +23,13 @@ owns, for the one-off pass after an LDAP import. Local accounts, the built-in
 administrator included, have no authentication source and are never touched.
 
 Only the preferences you name are written; the ones you leave out keep their
-current value. Nothing is written unless apply=1 is given: without it the task
-reports what it would change. Either way it writes a journal file holding the
-previous values of every account it would touch, so that a run can be undone
-with redmine:users:undo_ldap_notification_defaults.
+current value. Nothing is written unless apply=1 is given: without it, and with
+apply=0, apply=false or apply=no, the task reports what it would change. Either
+way it writes a journal file holding the previous values of every account it
+would touch, so that a run can be undone with
+redmine:users:undo_ldap_notification_defaults. That journal is the only record
+of the previous values, and tmp/ does not survive a deploy, so copy it somewhere
+durable before the next one.
 
 Available options:
   * mail_notification => all, selected, only_my_events, only_assigned,
@@ -35,9 +38,10 @@ Available options:
   * auto_watch_on     => comma separated list of issue_created,
                          issue_contributed_to and issue_assigned_to_me, or
                          empty for none
-  * apply             => 1 to write the changes; omit it to report only
+  * apply             => 1, true or yes to write the changes; 0, false, no or
+                         omitted to report only
   * journal           => path of the journal file, defaults to
-                         log/ldap-notification-defaults-<timestamp>.json
+                         tmp/ldap-notification-defaults-<timestamp>.json
 
 Example:
   bundle exec rake redmine:users:set_ldap_notification_defaults mail_notification=none no_self_notified=1 auto_watch_on= apply=1 RAILS_ENV="production"
@@ -54,10 +58,11 @@ redmine:users:set_ldap_notification_defaults run.
 
 Available options:
   * journal => path of the journal file to undo
-  * apply   => 1 to write the changes; omit it to report only
+  * apply   => 1, true or yes to write the changes; 0, false, no or omitted to
+               report only
 
 Example:
-  bundle exec rake redmine:users:undo_ldap_notification_defaults journal=log/ldap-notification-defaults-20260905-101500.json apply=1 RAILS_ENV="production"
+  bundle exec rake redmine:users:undo_ldap_notification_defaults journal=tmp/ldap-notification-defaults-20260905-101500.json apply=1 RAILS_ENV="production"
 DESC
     task :undo_ldap_notification_defaults => :environment do
       Redmine::LdapNotificationDefaults.undo(ENV.to_h)

@@ -84,6 +84,34 @@ class Redmine::LdapNotificationDefaultsTest < ActiveSupport::TestCase
     end
   end
 
+  def test_new_should_not_apply_for_a_false_apply_value
+    %w[0 false no FALSE No].each do |value|
+      task = Redmine::LdapNotificationDefaults.new('mail_notification' => 'none', 'apply' => value)
+      assert_equal false, task.apply?, "apply=#{value} should not write"
+    end
+  end
+
+  def test_new_should_apply_for_a_true_apply_value
+    %w[1 true yes TRUE Yes].each do |value|
+      task = Redmine::LdapNotificationDefaults.new('mail_notification' => 'none', 'apply' => value)
+      assert_equal true, task.apply?, "apply=#{value} should write"
+    end
+  end
+
+  def test_new_should_not_apply_without_an_apply_option
+    task = Redmine::LdapNotificationDefaults.new('mail_notification' => 'none')
+    assert_equal false, task.apply?
+    task = Redmine::LdapNotificationDefaults.new('mail_notification' => 'none', 'apply' => '')
+    assert_equal false, task.apply?
+  end
+
+  def test_new_should_reject_a_non_boolean_apply
+    e = assert_raise(Redmine::LdapNotificationDefaults::Error) do
+      Redmine::LdapNotificationDefaults.new('mail_notification' => 'none', 'apply' => 'maybe')
+    end
+    assert_include 'apply', e.message
+  end
+
   def test_new_should_reject_a_run_that_sets_nothing
     assert_raise(Redmine::LdapNotificationDefaults::Error) do
       Redmine::LdapNotificationDefaults.new('apply' => '1')
@@ -103,6 +131,25 @@ class Redmine::LdapNotificationDefaultsTest < ActiveSupport::TestCase
     assert_equal 2, changed
     assert_equal 'all', User.find(2).mail_notification
     assert_equal false, User.find(2).pref.no_self_notified
+  end
+
+  def test_run_with_a_false_apply_should_change_nothing
+    set_defaults('mail_notification' => 'none', 'apply' => '0')
+    assert_equal 'all', User.find(2).mail_notification
+    assert_equal 'all', User.find(3).mail_notification
+  end
+
+  def test_undo_with_a_false_apply_should_change_nothing
+    set_defaults('mail_notification' => 'none', 'apply' => '1')
+    Redmine::LdapNotificationDefaults.undo({'journal' => @journal, 'apply' => '0'}, StringIO.new)
+    assert_equal 'none', User.find(2).mail_notification
+  end
+
+  def test_undo_should_reject_a_non_boolean_apply
+    set_defaults('mail_notification' => 'none', 'apply' => '1')
+    assert_raise(Redmine::LdapNotificationDefaults::Error) do
+      Redmine::LdapNotificationDefaults.undo({'journal' => @journal, 'apply' => 'maybe'}, StringIO.new)
+    end
   end
 
   def test_run_without_apply_should_still_write_the_journal
@@ -158,6 +205,24 @@ class Redmine::LdapNotificationDefaultsTest < ActiveSupport::TestCase
     assert_nil entry['previous']['auto_watch_on']
   end
 
+  def test_run_should_not_change_an_account_when_the_journal_cannot_be_written
+    task = Redmine::LdapNotificationDefaults.new(
+      'mail_notification' => 'none', 'apply' => '1', 'journal' => @journal
+    )
+    # The first write is the writability probe and succeeds; the second one
+    # carries the previous values, and it is the one that has to roll the
+    # accounts back with it.
+    task.stubs(:write_journal).returns(nil).then.raises(Errno::ENOSPC)
+    assert_raise(Errno::ENOSPC) {task.run(StringIO.new)}
+    assert_equal 'all', User.find(2).mail_notification
+    assert_equal 'all', User.find(3).mail_notification
+  end
+
+  def test_run_should_list_every_changed_account_in_the_journal_on_disk
+    set_defaults('mail_notification' => 'none', 'apply' => '1')
+    assert_equal [2, 3], JSON.parse(File.read(@journal))['users'].pluck('id').sort
+  end
+
   def test_run_should_roll_back_every_account_when_a_later_one_fails
     break_preferences_of_dlopper
     assert_raise(StandardError) do
@@ -198,6 +263,13 @@ class Redmine::LdapNotificationDefaultsTest < ActiveSupport::TestCase
       {'journal' => @journal, 'apply' => '1'}, output
     )
     assert_include 'no longer exists', output.string
+  end
+
+  # tmp/ because .gitignore covers it wholesale and log/ only covers *.log*.
+  def test_default_journal_path_should_be_under_tmp
+    path = Redmine::LdapNotificationDefaults.default_journal_path
+    assert_equal Rails.root.join('tmp').to_s, File.dirname(path)
+    assert_match(/\Aldap-notification-defaults-\d{8}-\d{6}\.json\z/, File.basename(path))
   end
 
   def test_undo_should_raise_without_a_journal

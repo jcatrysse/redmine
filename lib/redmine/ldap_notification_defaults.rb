@@ -40,7 +40,7 @@ module Redmine
       @values = self.class.parse(options)
       raise Error, "Give at least one of #{FIELDS.join(', ')}; nothing to set." if @values.empty?
 
-      @apply = options['apply'].present?
+      @apply = self.class.parse_apply(options['apply'].to_s)
       @journal_path = options['journal'].presence || self.class.default_journal_path
     end
 
@@ -55,6 +55,17 @@ module Redmine
       FIELDS.each_with_object({}) do |field, values|
         values[field] = send(:"parse_#{field}", options[field].to_s) if options.key?(field)
       end
+    end
+
+    # Not options['apply'].present?: "0", "false" and "no" are all present, so
+    # that predicate turned an explicit "do not write" into a write.
+    def self.parse_apply(value)
+      return false if value.blank?
+
+      parsed = BOOLEANS[value.downcase]
+      raise Error, "apply must be one of #{BOOLEANS.keys.join(', ')}, got #{value.inspect}." if parsed.nil?
+
+      parsed
     end
 
     def self.parse_mail_notification(value)
@@ -86,8 +97,11 @@ module Redmine
       UserPreference::AUTO_WATCH_ON_OPTIONS & given
     end
 
+    # tmp/ rather than log/: .gitignore covers tmp/ wholesale but only
+    # /log/*.log*, so a journal written into a checkout would show up as an
+    # untracked file holding every account's login.
     def self.default_journal_path
-      Rails.root.join('log', "ldap-notification-defaults-#{Time.now.strftime('%Y%m%d-%H%M%S')}.json").to_s
+      Rails.root.join('tmp', "ldap-notification-defaults-#{Time.now.strftime('%Y%m%d-%H%M%S')}.json").to_s
     end
 
     # The accounts an authentication source owns. A local account, the
@@ -147,7 +161,7 @@ module Redmine
 
       journal = JSON.parse(File.read(path))
       entries = journal['users'] || []
-      apply = options['apply'].present?
+      apply = parse_apply(options['apply'].to_s)
       io.puts "Undoing #{path} of #{journal['run_at']}: #{entries.size} accounts."
       io.puts 'Reporting only. Add apply=1 to write.' unless apply
 
@@ -230,9 +244,13 @@ module Redmine
             self.class.persist(user)
           end
         end
+
+        # Inside the transaction: a journal that cannot be written rolls the
+        # accounts back with it, instead of leaving them changed behind a file
+        # that still says no account was touched.
+        write_journal(journal)
       end
 
-      write_journal(journal)
       io.puts "#{journal.size} of #{total} accounts #{apply? ? 'changed' : 'would change'}, " \
               "#{total - journal.size} already set. Journal: #{journal_path}"
       journal.size
