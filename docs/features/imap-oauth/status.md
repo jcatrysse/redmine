@@ -3,7 +3,7 @@ slug: imap-oauth
 feature: IMAP inbound mail via OAuth 2.0 (Gmail / O365)
 commit_51: bbf5c0eb3
 geoxyz: live
-geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8
+geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872
 upstream: patch klaar
 patch: patches/imap-oauth/2026-09-09-r25037-feature.patch
 issue: 43023
@@ -254,6 +254,13 @@ ingewisseld voor de statecheck.
   staat en de basislijn op r25063 — er is vandaag **geen** verse basislijn op
   r25037 gedraaid, en dat is precies waarom de vergelijking hier op de
   faalnamen leunt en niet op het runtotaal.
+
+**INV-10: dezelfde wijziging staat op `7.0-stable-GEOxyz`** als `90afb7872`.
+De drie bestanden waren vóór de fix **byte-identiek** aan de patchkant
+(nagegaan met `diff` op de commit-versies, niet op de werkboom), dus het is
+letterlijk dezelfde code. Volledige suite daar: **6152 runs, 32466 assertions,
+0 failures, 0 errors, 39 skips** in 1032 s — vier runs meer dan de vorige run
+op die branch, en dat zijn de vier state-tests.
 
 **Wat hier niet te bewijzen valt, en dat blijft zo.** Of een provider de state
 echt terugstuurt, is niet te testen zonder een echte provider. RFC 6749 §4.1.2
