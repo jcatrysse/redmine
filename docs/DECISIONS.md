@@ -1528,3 +1528,30 @@ deployment-dossier: die "wat is al beslist"-secties zijn juist bedoeld om
 gevolgd te worden, dus een achterhaalde regel daarin stuurt een latere
 onderhoudswijziging terug naar Marshal. Beide plekken zijn nu doorgehaald met de
 reden erbij; deze regel hierboven is de derde en laatste plek.
+
+### Class A — autonoom, 2026-09-09 (Codex-ronde 2)
+
+- **`origin/7.0-stable` ingemerged in `7.0-stable-GEOxyz` zonder eerst op Jans
+  antwoord te wachten.** G8 meldde "5 commits achter" en ik had de merge aan Jan
+  voorgelegd in plaats van hem te doen. Dat was de verkeerde keuze: CLAUDE.md
+  schrijft de merge voor als gewoon onderhoud *vóór* featurewerk ("Do it before
+  starting a feature, not after"), en de branch is niet klaar voor productie
+  zolang het bewijs bij een tree hoort die niemand deployt. Uitgevoerd als
+  `git merge origin/7.0-stable` (nooit rebase), commit `32659b6f7`, schone
+  'ort'-merge over zes upstream-bestanden, daarna de volledige suite op de
+  gemergde tree. Codex-ronde 2 `geoxyz-branch` F01 vroeg exact dit.
+- **`tools/check-symmetry.sh` toegevoegd**, in antwoord op de gevraagde richting
+  bij `geoxyz-branch` F02. Het is een framework-bestand en dus normaal alleen
+  voor een sessie die Jan daarom vraagt; hier is het het gevraagde middel om een
+  blocker te sluiten, niet een eigen initiatief. Drie ontwerpen zijn onderweg
+  weggegooid omdat ze ruis geven in plaats van signaal: substring-vergelijking
+  meldt een gewijzigde regel als "nog aanwezig", en tellen kan principieel niet
+  omdat GEOxyz álle features tegelijk draagt. Wat overblijft is aanwezig aan de
+  ene kant en afwezig aan de andere — precies het geval dat gebeurde. De grens
+  staat in de header van het script zelf: een wijziging waarvan elke regel al
+  elders in het bestand voorkomt, ziet hij niet.
+- **`undo` van de LDAP-taak weigert een rapportagejournaal, ook zonder
+  `apply=1`.** Codex-ronde 2 `ldap-mail-prefs` F01 stelde voor alleen de
+  *applied* undo te weigeren. Ook rapporteren wordt geweigerd, omdat een
+  "WOULD RESTORE"-lijst over een journaal dat niets geschreven heeft de
+  operator vertelt dat er iets terug te nemen is terwijl dat niet zo is.
