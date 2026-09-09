@@ -3,7 +3,7 @@ slug: ar-sessions
 feature: Sessies in de database
 commit_51: ea61e37e8 + c2fefd51c
 geoxyz: live
-geoxyz_commit: bc745ce73 + 22daa7c96
+geoxyz_commit: bc745ce73 + 22daa7c96 + 5b04c5c15
 upstream: nooit
 patch:
 issue: 
@@ -176,7 +176,8 @@ bytes worden gedeserialiseerd voordat er ook maar iets gecontroleerd wordt.
 
 - **Volledige suite op `7.0-stable-GEOxyz`, systeemtests inbegrepen**
   (`tools/test-env.sh /home/user/wt/geoxyz bundle exec ruby bin/rails test:all`):
-  **6145 runs, 32428 assertions, 0 failures, 0 errors, 39 skips**, in 913 s.
+  **6148 runs, 32452 assertions, 0 failures, 0 errors, 39 skips**, in 969 s
+  (de run vóór de drie extra sessievorm-tests gaf 6145).
   De run ervoor op dezelfde branch, met alleen de `ldap-mail-prefs`-fix erin,
   gaf **6138 runs** — het verschil is precies de zeven tests die hieronder
   staan. Nul failures en nul errors is hier het hele verhaal: er is geen
@@ -192,6 +193,20 @@ bytes worden gedeserialiseerd voordat er ook maar iets gecontroleerd wordt.
   werd geaccepteerd. `session_store_check_test.rb` gaf `14 runs, 3 failures`.
   Met de fix: **8 runs, 51 assertions, 0 failures** en **14 runs, 25 assertions,
   0 failures**.
+- **Nagekomen op 2026-09-09, en het was de juiste vraag om te stellen:** de
+  ronde-3 bevinding wees naar de queryhash, maar dat is niet het enige dat
+  Redmine in de sessie zet, en JSON houdt noch symbolen noch types vast. Dus
+  zijn **alle** sessiesleutels die `grep` in `app/` en `lib/` vindt door de
+  serializer gehaald: `auth_source_registration` (een genest symbol-keyed hash,
+  gelezen met `[:login]` en `[:auth_source_id]`), `sudo_timestamp` (een Integer,
+  vergeleken met `.to_i`), de vier `twofa_*`-sleutels, `per_page`, `user_id`,
+  `tk` en `password_recovery_token`. **Alle elf komen heel terug**, de geneste
+  symbolen blijven met symbolen leesbaar en een Integer blijft een Integer.
+  Drie tests pinnen dat vast (commit `5b04c5c15`); ze staan in
+  `session_store_test.rb`, dat daarmee
+  op **11 runs, 75 assertions, 0 failures, 0 errors** staat. Dit was geen
+  bevinding — het was een gat in het bewijs dat pas zichtbaar werd bij het
+  schrijven van de reviewprompt voor de onafhankelijke ronde.
 - **Eerlijk gelabeld:** twee van de nieuwe tests staan groen op *beide* kanten
   en zijn bewakers, geen bewijs —
   `test_a_query_should_survive_a_round_trip_through_the_stored_session` (die is

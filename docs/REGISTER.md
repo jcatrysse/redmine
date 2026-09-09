@@ -19,7 +19,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`c6631e937 + 86647653e + 72058fa43 + 8ac09f4ff`) | patch klaar | — |
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`6078281ff`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
-| [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`bc745ce73 + 22daa7c96`) | nooit | — |
+| [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`bc745ce73 + 22daa7c96 + 5b04c5c15`) | nooit | — |
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | live (`075c86e8a + 363686456`) | nooit | — |
 | [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key, de credentials-map en credentials.yml.enc negeren | `8ec9951d3` | live (`af0af806d + 737b0a549`) | nooit | — |
@@ -32,7 +32,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
-- `search-token-limit` — cse_01VUeLQwkYYqqVPhKzx3M4qu sinds 2026-09-09
+- `ar-sessions` — cse_01VUeLQwkYYqqVPhKzx3M4qu sinds 2026-09-09
 
 ## Openstaand voor Jan
 
