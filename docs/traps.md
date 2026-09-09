@@ -1216,3 +1216,27 @@ toegevoegd.
   'anthropic|(^| )claude( |<)'` — want die sla je met de force-push over. Op
   `7.0-stable-GEOxyz` doe je dit niet: daar is de replay precies het gewenste
   gedrag.
+
+- **`origin/master` is niet Redmine's trunk, het is een mirror die niemand
+  bijwerkt — en "applyt op trunk" wordt daartegen gemeten.** Op 2026-09-09 gaf
+  `tools/check-patch-clean.sh <slug> --submit` voor alle negen patches
+  `ok  applies to a pristine origin/master (r25037) checkout`, en dat was waar:
+  `origin/master` stond op `bee32a926` van **2026-09-03**. De echte trunk stond
+  op dat moment 18 commits verder (`8de368193`), en tegen díe trunk applyt
+  `wiki-export-attachments` **niet** meer —
+  `config/initializers/zeitwerk.rb: patch does not apply`. De gate zei dus PASS
+  over een patch die stale is. **Hoe je het controleert, en het kost tien
+  seconden:** `git ls-remote https://github.com/redmine/redmine.git
+  refs/heads/master` en vergelijk met `git rev-parse origin/master`. Zijn ze
+  ongelijk, dan is elke "applies to trunk"-uitspraak in deze repo een uitspraak
+  over de mirror. **Wat je niet moet doen:** de mirror zelf pushen zonder dat
+  Jan dat vraagt — `CLAUDE.md` zet bij `origin/master` met opzet "nobody" als
+  schrijver. Zie K-19 in `docs/DECISIONS.md`.
+- **Een gem-fout in `docs/traps.md` kan door upstream opgelost zijn, dus lees de
+  trunk-log voordat je hem weer opschrijft.** De json-3.0-fout die de
+  suitecijfers van `27 failures, 2 errors` naar `48 failures, 82 errors` tilde,
+  is op trunk gepind in `9a74cdf20` (#44428) — een van die 18 commits. Wie na
+  een sync hermeet, hoort de oude cijfers terug te zien en moet niet naar een
+  regressie gaan zoeken. Zelfde ronde: `a41077d2a` zet Rubyzip op 3.6, en dat is
+  de gem waar `wiki-export-attachments` op leunt, dus die feature moet na de
+  refresh niet alleen applyen maar ook opnieuw *werken*.
