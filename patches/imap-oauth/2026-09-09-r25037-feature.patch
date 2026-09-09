@@ -1,4 +1,4 @@
-From 10efe8761e9efb7ec33f9c707c0be9e50c9c4c91 Mon Sep 17 00:00:00 2001
+From 45893a712fa65cd3056a8d52cbd8b8cd6bd1c721 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Sun, 6 Sep 2026 12:55:09 +0000
 Subject: [PATCH] Authenticate IMAP inbound mail with an OAuth 2.0 access token
@@ -6,11 +6,11 @@ Subject: [PATCH] Authenticate IMAP inbound mail with an OAuth 2.0 access token
 
 ---
  lib/redmine/imap.rb                         |  20 +-
- lib/redmine/oauth2_client.rb                | 169 ++++++++++
- lib/tasks/email.rake                        |  70 +++++
- test/unit/lib/redmine/imap_test.rb          |  90 ++++++
- test/unit/lib/redmine/oauth2_client_test.rb | 325 ++++++++++++++++++++
- 5 files changed, 673 insertions(+), 1 deletion(-)
+ lib/redmine/oauth2_client.rb                | 198 ++++++++++
+ lib/tasks/email.rake                        |  71 ++++
+ test/unit/lib/redmine/imap_test.rb          |  90 +++++
+ test/unit/lib/redmine/oauth2_client_test.rb | 377 ++++++++++++++++++++
+ 5 files changed, 755 insertions(+), 1 deletion(-)
  create mode 100644 lib/redmine/oauth2_client.rb
  create mode 100644 test/unit/lib/redmine/imap_test.rb
  create mode 100644 test/unit/lib/redmine/oauth2_client_test.rb
@@ -59,10 +59,10 @@ index 77b8da80f..329ca7462 100644
        end
 diff --git a/lib/redmine/oauth2_client.rb b/lib/redmine/oauth2_client.rb
 new file mode 100644
-index 000000000..4e6ba63ab
+index 000000000..e365c0d70
 --- /dev/null
 +++ b/lib/redmine/oauth2_client.rb
-@@ -0,0 +1,169 @@
+@@ -0,0 +1,198 @@
 +# frozen_string_literal: true
 +
 +# Redmine - project management software
@@ -101,7 +101,10 @@ index 000000000..4e6ba63ab
 +      end
 +
 +      # The URL the mailbox owner opens to consent, first leg of the
-+      # authorization code grant.
++      # authorization code grant. Returns the URL and the state it carries;
++      # refresh_token needs that state to tell this authorization apart from
++      # any other one, so the two are returned together rather than left to
++      # the caller to keep in step.
 +      def authorize_url(credentials_file)
 +        credentials = read_credentials(credentials_file, %w(authorize_url client_id))
 +        uri = https_uri(credentials['authorize_url'], 'authorize_url')
@@ -109,23 +112,30 @@ index 000000000..4e6ba63ab
 +        if credentials['authorize_params'].is_a?(Hash)
 +          params.merge!(credentials['authorize_params'].transform_keys(&:to_s))
 +        end
++        state = SecureRandom.urlsafe_base64(32)
 +        params['response_type'] = 'code'
 +        params['client_id'] = credentials['client_id']
 +        params['redirect_uri'] = redirect_uri(credentials)
 +        params['scope'] = credentials['scope'] if credentials['scope'].present?
++        params['state'] = state
 +        uri.query = URI.encode_www_form(params)
-+        uri.to_s
++        [uri.to_s, state]
 +      end
 +
 +      # Exchanges the authorization code carried by the address the browser was
 +      # redirected to for a refresh token, second leg of the authorization code
-+      # grant.
-+      def refresh_token(credentials_file, redirect_url)
++      # grant. The state is the one authorize_url returned in the same run.
++      def refresh_token(credentials_file, redirect_url, state)
 +        credentials = read_credentials(credentials_file, %w(token_url client_id client_secret))
++        # Read the code before checking the state so that a provider that
++        # refused still reports the refusal, and check the state before the
++        # code is used for anything.
++        code = authorization_code(redirect_url)
++        verify_state(redirect_url, state)
 +        response = post_to_token_endpoint(
 +          credentials,
 +          'grant_type' => 'authorization_code',
-+          'code' => authorization_code(redirect_url),
++          'code' => code,
 +          'redirect_uri' => redirect_uri(credentials)
 +        )
 +        token_from(response, 'refresh_token')
@@ -149,6 +159,25 @@ index 000000000..4e6ba63ab
 +
 +      def redirect_uri(credentials)
 +        credentials['redirect_uri'].presence || DEFAULT_REDIRECT_URI
++      end
++
++      # Without this the code from any authorization request would be accepted,
++      # so a redirect address obtained from a different one — for another
++      # mailbox — could be pasted here and its token written down as this
++      # mailbox's.
++      def verify_state(redirect_url, state)
++        if state.blank?
++          raise 'No state to check the authorization against, start over with oauth2_authorize'
++        end
++
++        returned = redirect_query(redirect_url)['state'].first
++        if returned.blank?
++          raise 'No state parameter in the address, paste the whole address the browser was redirected to'
++        end
++
++        unless ActiveSupport::SecurityUtils.secure_compare(returned, state)
++          raise 'The address does not belong to this authorization request, start over with oauth2_authorize'
++        end
 +      end
 +
 +      def authorization_code(redirect_url)
@@ -233,7 +262,7 @@ index 000000000..4e6ba63ab
 +  end
 +end
 diff --git a/lib/tasks/email.rake b/lib/tasks/email.rake
-index 4ba669510..031ce5749 100644
+index 4ba669510..5651ac8c0 100644
 --- a/lib/tasks/email.rake
 +++ b/lib/tasks/email.rake
 @@ -42,6 +42,19 @@ Available IMAP options:
@@ -282,7 +311,7 @@ index 4ba669510..031ce5749 100644
                        :folder => ENV['folder'],
                        :move_on_success => ENV['move_on_success'],
                        :move_on_failure => ENV['move_on_failure']}
-@@ -124,6 +149,51 @@ END_DESC
+@@ -124,6 +149,52 @@ END_DESC
        end
      end
  
@@ -316,14 +345,15 @@ index 4ba669510..031ce5749 100644
 +      credentials_file = ENV['oauth2_credentials']
 +      abort 'Missing oauth2_credentials=FILE' if credentials_file.blank?
 +
++      url, state = Redmine::Oauth2Client.authorize_url(credentials_file)
 +      puts "Open this URL in a browser and sign in as the mailbox owner:"
 +      puts
-+      puts Redmine::Oauth2Client.authorize_url(credentials_file)
++      puts url
 +      puts
 +      print "Then paste the whole address you were redirected to: "
 +      STDOUT.flush
 +      redirect_url = STDIN.gets
-+      refresh_token = Redmine::Oauth2Client.refresh_token(credentials_file, redirect_url)
++      refresh_token = Redmine::Oauth2Client.refresh_token(credentials_file, redirect_url, state)
 +
 +      puts
 +      puts "Add this line to #{credentials_file}:"
@@ -432,10 +462,10 @@ index 000000000..997fc5fb5
 +end
 diff --git a/test/unit/lib/redmine/oauth2_client_test.rb b/test/unit/lib/redmine/oauth2_client_test.rb
 new file mode 100644
-index 000000000..a10b1294f
+index 000000000..5d17d89fe
 --- /dev/null
 +++ b/test/unit/lib/redmine/oauth2_client_test.rb
-@@ -0,0 +1,325 @@
+@@ -0,0 +1,377 @@
 +# frozen_string_literal: true
 +
 +# Redmine - project management software
@@ -506,7 +536,8 @@ index 000000000..a10b1294f
 +
 +  def test_authorize_url_should_carry_the_authorization_code_grant_parameters
 +    with_credentials(CREDENTIALS.merge('authorize_url' => 'https://login.example.net/oauth2/v2.0/authorize')) do |file|
-+      url = URI.parse(Redmine::Oauth2Client.authorize_url(file))
++      url, state = Redmine::Oauth2Client.authorize_url(file)
++      url = URI.parse(url)
 +
 +      assert_equal 'login.example.net', url.host
 +      assert_equal '/oauth2/v2.0/authorize', url.path
@@ -514,7 +545,8 @@ index 000000000..a10b1294f
 +        {
 +          'response_type' => 'code',
 +          'client_id' => 'a-client-id',
-+          'redirect_uri' => 'http://localhost'
++          'redirect_uri' => 'http://localhost',
++          'state' => state
 +        },
 +        URI.decode_www_form(url.query).to_h
 +      )
@@ -529,7 +561,7 @@ index 000000000..a10b1294f
 +      'authorize_params' => {'access_type' => 'offline', 'prompt' => 'consent'}
 +    )
 +    with_credentials(credentials) do |file|
-+      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file)).query).to_h
++      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file).first).query).to_h
 +
 +      assert_equal 'http://localhost:8080/oauth2', params['redirect_uri']
 +      assert_equal 'https://mail.google.com/', params['scope']
@@ -544,7 +576,7 @@ index 000000000..a10b1294f
 +      'authorize_params' => {'response_type' => 'token', 'client_id' => 'someone-else'}
 +    )
 +    with_credentials(credentials) do |file|
-+      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file)).query).to_h
++      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file).first).query).to_h
 +
 +      assert_equal 'code', params['response_type']
 +      assert_equal 'a-client-id', params['client_id']
@@ -556,7 +588,7 @@ index 000000000..a10b1294f
 +      'authorize_url' => 'https://tenant.b2clogin.com/tenant.onmicrosoft.com/oauth2/v2.0/authorize?p=B2C_1_signin'
 +    )
 +    with_credentials(credentials) do |file|
-+      url = URI.parse(Redmine::Oauth2Client.authorize_url(file))
++      url = URI.parse(Redmine::Oauth2Client.authorize_url(file).first)
 +      params = URI.decode_www_form(url.query).to_h
 +
 +      assert_equal '/tenant.onmicrosoft.com/oauth2/v2.0/authorize', url.path
@@ -571,7 +603,7 @@ index 000000000..a10b1294f
 +      'authorize_url' => 'https://login.example.net/authorize?response_type=token&client_id=someone-else'
 +    )
 +    with_credentials(credentials) do |file|
-+      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file)).query).to_h
++      params = URI.decode_www_form(URI.parse(Redmine::Oauth2Client.authorize_url(file).first).query).to_h
 +
 +      assert_equal 'code', params['response_type']
 +      assert_equal 'a-client-id', params['client_id']
@@ -585,6 +617,56 @@ index 000000000..a10b1294f
 +    end
 +  end
 +
++  def test_authorize_url_should_carry_an_unpredictable_state
++    with_credentials(CREDENTIALS.merge('authorize_url' => 'https://login.example.net/authorize')) do |file|
++      url, state = Redmine::Oauth2Client.authorize_url(file)
++      assert state.present?
++      assert state.length >= 32, "state is only #{state.length} characters"
++      assert_equal state, URI.decode_www_form(URI.parse(url).query).to_h['state']
++
++      _, other = Redmine::Oauth2Client.authorize_url(file)
++      assert_not_equal state, other, 'two authorizations got the same state'
++    end
++  end
++
++  # Without this check the code from any authorization request would be
++  # accepted, so a redirect address from an authorization for another mailbox
++  # could be pasted here and its refresh token written down as this one's.
++  def test_refresh_token_should_raise_when_the_state_does_not_match
++    Net::HTTP.expects(:start).never
++
++    with_credentials(CREDENTIALS) do |file|
++      error = assert_raise(RuntimeError) do
++        Redmine::Oauth2Client.refresh_token(
++          file, 'http://localhost/?code=the-code&state=another-authorization', 'st'
++        )
++      end
++      assert_include 'does not belong to this authorization request', error.message
++    end
++  end
++
++  def test_refresh_token_should_raise_when_the_address_carries_no_state
++    Net::HTTP.expects(:start).never
++
++    with_credentials(CREDENTIALS) do |file|
++      error = assert_raise(RuntimeError) do
++        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?code=the-code', 'st')
++      end
++      assert_include 'No state parameter', error.message
++    end
++  end
++
++  def test_refresh_token_should_raise_when_there_is_no_state_to_check_against
++    Net::HTTP.expects(:start).never
++
++    with_credentials(CREDENTIALS) do |file|
++      error = assert_raise(RuntimeError) do
++        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?code=the-code&state=st', '')
++      end
++      assert_include 'No state to check', error.message
++    end
++  end
++
 +  def test_refresh_token_should_exchange_the_code_from_the_redirect_address
 +    request = nil
 +    expect_token_request(response(Net::HTTPOK, '200', 'OK', {'refresh_token' => 'a-refresh-token'}.to_json)) {|req| request = req}
@@ -592,7 +674,7 @@ index 000000000..a10b1294f
 +    with_credentials(CREDENTIALS) do |file|
 +      assert_equal(
 +        'a-refresh-token',
-+        Redmine::Oauth2Client.refresh_token(file, "http://localhost/?code=the-code&session_state=abc\n")
++        Redmine::Oauth2Client.refresh_token(file, "http://localhost/?code=the-code&session_state=abc&state=st\n", 'st')
 +      )
 +    end
 +
@@ -613,7 +695,7 @@ index 000000000..a10b1294f
 +
 +    with_credentials(CREDENTIALS) do |file|
 +      error = assert_raise(RuntimeError) do
-+        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?error=access_denied')
++        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?error=access_denied', 'st')
 +      end
 +      assert_equal 'The authorization was refused (access_denied)', error.message
 +    end
@@ -623,7 +705,7 @@ index 000000000..a10b1294f
 +    Net::HTTP.expects(:start).never
 +
 +    with_credentials(CREDENTIALS) do |file|
-+      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.refresh_token(file, 'http://localhost/')}
++      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.refresh_token(file, 'http://localhost/', 'st')}
 +      assert_include 'paste the whole address', error.message
 +    end
 +  end
@@ -632,7 +714,7 @@ index 000000000..a10b1294f
 +    Net::HTTP.expects(:start).never
 +
 +    with_credentials(CREDENTIALS) do |file|
-+      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.refresh_token(file, 'not an address at all')}
++      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.refresh_token(file, 'not an address at all', 'st')}
 +      assert_include 'paste the whole address', error.message
 +    end
 +  end
@@ -642,7 +724,7 @@ index 000000000..a10b1294f
 +
 +    with_credentials(CREDENTIALS) do |file|
 +      error = assert_raise(RuntimeError) do
-+        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?code=the-code')
++        Redmine::Oauth2Client.refresh_token(file, 'http://localhost/?code=the-code&state=st', 'st')
 +      end
 +      assert_include 'no refresh token', error.message
 +    end

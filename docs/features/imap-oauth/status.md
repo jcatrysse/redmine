@@ -5,13 +5,22 @@ commit_51: bbf5c0eb3
 geoxyz: live
 geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8
 upstream: patch klaar
-patch: patches/imap-oauth/2026-09-06-r25037-feature.patch
+patch: patches/imap-oauth/2026-09-09-r25037-feature.patch
 issue: 43023
 ---
 
 # imap-oauth — status
 
 ## Waar het staat
+
+**De onafhankelijke Codex-review van 2026-09-09 vond hier de major die drie
+Claude-rondes gemist hadden, en hij had gelijk: de autorisatieflow had geen
+`state`.** De taak printte een URL, jij plakte het antwoord terug, en er was
+niets dat die twee aan elkaar verbond. Een redirect-adres uit een *andere*
+autorisatie — voor een andere mailbox — kon dus geplakt worden en zijn refresh
+token belandde als dat van jouw mailbox in het bestand. Opgelost op 2026-09-09;
+zie "Bewijs — Codex-ronde". De branch is `45893a712`, opnieuw geexporteerd naar
+`2026-09-09-r25037-feature.patch`, en applyt op de huidige trunk r25063.
 
 Af, herschreven, en op 2026-09-06 door reviewronde 2 heen. De patch die al een
 jaar aan Jans eigen issue [#43023](https://www.redmine.org/issues/43023) hangt
@@ -204,11 +213,60 @@ r25037 (`10efe8761`), en de oude tip staat bewaard als
 `archive/patch-imap-oauth-r25037-before-round3` zodat `fd712001c` uit de review
 oplosbaar blijft.
 
+## Bewijs — Codex-ronde (2026-09-09)
+
+**Wat er veranderd is.** `authorize_url` maakt per aanroep 32 bytes met
+`SecureRandom.urlsafe_base64`, zet die als `state` in de URL, en geeft **URL én
+state samen terug**. `refresh_token` eist die state als derde argument en
+vergelijkt hem met de `state` uit het geplakte adres via
+`ActiveSupport::SecurityUtils.secure_compare` voordat de code ingewisseld wordt.
+De twee samen teruggeven is opzet: zo kan een aanroeper de state niet vergeten,
+in plaats van dat het van discipline afhangt.
+
+**Eén ontwerpkeuze binnen de fix, en die is niet willekeurig.** De code wordt
+*gelezen* vóór de statecheck en pas *gebruikt* erna. Anders zou een echte
+weigering van de provider (`?error=access_denied`, zonder code) als
+"geen state" gemeld worden in plaats van als weigering, en dat is een slechtere
+melding voor de beheerder zonder dat het iets veiliger maakt — er wordt niets
+ingewisseld voor de statecheck.
+
+**Cijfers:**
+
+- **Vier nieuwe tests pinnen de eigenschap vast en falen op de oude code**: de
+  state moet in de URL staan en per aanroep verschillen, een niet-passende
+  state moet werpen, een adres zonder state moet werpen, en een lege verwachte
+  state moet werpen. **Eerlijk erbij:** op de oude code faalden er in totaal 14
+  van de 26, maar tien daarvan zijn alleen de gewijzigde signatuur die
+  doorwerkt (`authorize_url` geeft nu een paar terug, `refresh_token` neemt een
+  derde argument). Die tien zijn geen bewijs van iets; de vier hierboven zijn
+  dat wel.
+- Met de fix: `oauth2_client_test.rb` **26 runs, 92 assertions, 0 failures**;
+  samen met `imap_test.rb` in één proces **31 runs, 109 assertions, 0 failures,
+  0 errors, 0 skips**.
+- RuboCop op de vier gewijzigde bestanden: **0 offences**.
+- **Volledige suite met de fix** (`tools/test-env.sh`, systeemtests inbegrepen):
+  **6008 runs, 31819 assertions, 27 failures, 2 errors, 92 skips** in 974 s. De
+  29 faalvoorkomens zijn **exact dezelfde verzameling namen** als op de schone
+  trunk-basislijn die vandaag voor `wiki-export-attachments` gemeten is
+  (`diff` van de gesorteerde lijsten leeg): de repository- en `sys`-tests van
+  een image zonder `svn`, `hg`, `bzr` en `cvs`. Geen enkele raakt IMAP of OAuth.
+  Het aantal runs verschilt van die basislijn omdat deze branch nog op r25037
+  staat en de basislijn op r25063 — er is vandaag **geen** verse basislijn op
+  r25037 gedraaid, en dat is precies waarom de vergelijking hier op de
+  faalnamen leunt en niet op het runtotaal.
+
+**Wat hier niet te bewijzen valt, en dat blijft zo.** Of een provider de state
+echt terugstuurt, is niet te testen zonder een echte provider. RFC 6749 §4.1.2
+maakt het verplicht zodra de aanvraag hem meestuurt, en zowel Microsoft als
+Google doen het, maar een provider die het níét doet zou nu op de statecheck
+stuklopen waar hij eerder doorliep. Dat staat als objectie in het dossier, met
+het RFC-artikel erbij.
+
 ## Wat Jan nog moet doen
 
 Twee dingen, en het eerste is het echte werk.
 
-**1. Hang `patches/imap-oauth/2026-09-06-r25037-feature.patch` als note aan je
+**1. Hang `patches/imap-oauth/2026-09-09-r25037-feature.patch` als note aan je
 eigen issue [#43023](https://www.redmine.org/issues/43023)** — geen nieuw
 issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 7.1.0. Zeg in die note dat dit een **vervanging** is van
@@ -289,6 +347,16 @@ de note biedt de splitsing aan, de bijlage blijft één bestand. Beide staan in
 `docs/DECISIONS.md`; niet opnieuw afwegen.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
+
+- **De `state` is verplicht en `refresh_token` neemt hem als argument** (Codex,
+  2026-09-09). Niet "vereenvoudigen" door de state in een class-variabele te
+  zetten of optioneel te maken: het punt van de huidige vorm is dat je hem niet
+  kunt vergeten. En niet terugdraaien naar twee argumenten.
+- **De code wordt gelezen vóór de statecheck en gebruikt erna.** Dat is een
+  keuze, niet een slordigheid — zie "Bewijs — Codex-ronde". De branch is `45893a712`, opnieuw geexporteerd naar
+`2026-09-09-r25037-feature.patch`, en applyt op de huidige trunk r25063. Zet de statecheck
+  niet als eerste regel, dan verliest een echte providerweigering zijn eigen
+  foutmelding.
 
 - **Er is al een issue, en het is Jans eigen: #43023.** Assignee Marius
   BĂLTEANU, doelversie 7.1.0 (was 7.0.0, verschoven 2026-06-29; daarvóór

@@ -32,7 +32,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
-- `wiki-export-attachments` — cse_01VUeLQwkYYqqVPhKzx3M4qu sinds 2026-09-09
+- `imap-oauth` — cse_01VUeLQwkYYqqVPhKzx3M4qu sinds 2026-09-09
 
 ## Openstaand voor Jan
 
@@ -117,7 +117,7 @@ trunk intussen verder gelopen, dan ververst een sessie de patch eerst (g05).
 
 Twee dingen, en het eerste is het echte werk.
 
-**1. Hang `patches/imap-oauth/2026-09-06-r25037-feature.patch` als note aan je
+**1. Hang `patches/imap-oauth/2026-09-09-r25037-feature.patch` als note aan je
 eigen issue [#43023](https://www.redmine.org/issues/43023)** — geen nieuw
 issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 7.1.0. Zeg in die note dat dit een **vervanging** is van

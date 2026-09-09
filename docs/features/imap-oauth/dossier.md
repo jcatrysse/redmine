@@ -603,6 +603,7 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
 
 | Objection | Answer |
 |---|---|
+| "The pasted address is not tied to the authorization you started." | It is, through the OAuth `state` parameter. `authorize_url` generates 32 bytes from `SecureRandom.urlsafe_base64` per invocation and returns it alongside the URL; `refresh_token` requires that same value and compares it against the `state` in the pasted address with `ActiveSupport::SecurityUtils.secure_compare` before the code is exchanged. Without it, a redirect address obtained from a *different* authorization — for another mailbox — could be pasted at the prompt and its refresh token written down as this mailbox's. The two are returned together on purpose, so a caller cannot forget to carry the state. A provider that echoes no `state` at all would now fail the check; RFC 6749 §4.1.2 makes echoing it REQUIRED when the request carried it, and both Microsoft and Google do, but this is the one part of the flow that cannot be exercised here without a real provider. |
 | "The one-off authorization needs a browser, and my Redmine server has none." | The redirect happens in *your* browser, not on the server. Run the task over SSH, open the printed URL on your own machine, and paste the address back into the terminal. Nothing has to listen on `localhost` and nothing has to be reachable from the provider. |
 | "Why is there an interactive rake task at all? Nothing else in Redmine reads from stdin." | Redmine already does, in the same directory: `redmine:load_default_data` — the task every installation runs — prints `Select language:` and blocks on `STDIN.gets`, and `migrate_from_trac` and `migrate_from_mantis` prompt repeatedly. So the pattern is not new, and this task follows it. On the substance: only the mailbox owner can consent, and there is no non-interactive way to obtain a refresh token for a delegated grant. The alternative is telling administrators to hand-build an authorization URL and `curl` a single-use code within its expiry, which is the kind of instruction that gets one attempt and no feedback. The interactive part is four lines of the task; everything under it is ordinary, tested code. |
 | "Then Redmine now carries Microsoft's and Google's OAuth details after all." | It does not. `oauth2_authorize` reads the authorization endpoint, the scope, the redirect URI and any extra query parameters out of the administrator's file. Google's `access_type=offline` and `prompt=consent`, and Microsoft's `offline_access` scope, are values in that file. The two walk-throughs belong on the `EmailConfiguration` wiki page, where a provider changing its console can be corrected without a Redmine release. |
@@ -621,11 +622,15 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
 
 - **Issue:** [#43023](https://www.redmine.org/issues/43023) — bestaat al, Jans
   eigen issue, assignee Marius BĂLTEANU, doelversie 7.1.0. **Geen nieuw issue.**
-- **Patch attached:** `patches/imap-oauth/2026-09-06-r25037-feature.patch`
+- **Patch attached:** `patches/imap-oauth/2026-09-09-r25037-feature.patch`
   (711 regels patchbestand, 618 regels wijziging over 5 bestanden). Eén bestand
   — er zijn geen locale-sleutels, dus geen `-locales.patch`.
-- **Made against:** `origin/master` r25037 (`bee32a926`, huidige trunk-tip op
-  2026-09-06). De eerdere versie stond op r24882; die is bewaard als
+- **Made against:** `origin/master` r25037 (`bee32a926`), branch
+  `patch/imap-oauth` at `45893a712`. **Applies cleanly to current trunk r25063
+  (`8de368193`) as well**, checked on 2026-09-09 with
+  `tools/check-patch-clean.sh imap-oauth --submit`; the branch is left on r25037
+  because falling behind trunk is not a defect while the patch still applies
+  (INV-2). De eerdere versie stond op r24882; die is bewaard als
   `archive/patch-imap-oauth-r24882-before-round2` zodat de SHA `d63cb35a5`
   waar reviewronde 1 naar verwijst oplosbaar blijft.
 - **Status:** klaar om ingediend te worden; Jan hangt hem aan het issue
