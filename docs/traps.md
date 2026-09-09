@@ -1262,3 +1262,18 @@ toegevoegd.
   geschreven commitbericht door het woord "placeholder". Niet gepusht, dus met
   `reset --soft` teruggedraaid — maar een amend die je "voor de zekerheid"
   toevoegt is precies de commando die je niet blind wilt draaien.
+
+- **Een reviewronde die meerdere features raakt: de INV-10-stap per feature
+  doen, niet één keer.** Op 2026-09-09 bracht ik de `state`-fix van `imap-oauth`
+  naar `7.0-stable-GEOxyz` en vergat dezelfde stap voor
+  `version-subprojects`, terwijl ik in `status.md` liet staan dat beide kanten
+  "letterlijk dezelfde wijziging" droegen. `tools/check-geoxyz-branch.sh`
+  meldde PASS, want die keurt de branch en niet de gelijkheid per feature.
+  Codex-ronde 2 vond het als blocker aan twee kanten
+  (`version-subprojects` F01 en `geoxyz-branch` F02). Sinds die ronde bestaat
+  `tools/check-symmetry.sh` — draai die na élke codewijziging aan een patch, en
+  vertrouw de claim in `status.md` niet als je hem zelf geschreven hebt.
+- **`tools/append-note.sh` wil een schone tree.** Hij fetcht en replayt, dus met
+  ongecommitte wijzigingen krijg je `FAIL could not replay on
+  origin/geoxyz/framework` en is er niets toegevoegd. Commit en push eerst, dan
+  appenden.
