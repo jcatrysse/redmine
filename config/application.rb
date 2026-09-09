@@ -112,6 +112,17 @@ module RedmineApp
       :secure_session_only => true
     )
 
+    # The store's serializer defaults to Marshal, so every request would run
+    # Marshal.load over a database column that carries no signature. See
+    # Redmine::SessionDataSerializer for what replaces it and why it is not
+    # plain :json.
+    # after_initialize, not on_load(:active_record): ActiveRecord::Base loads
+    # before the autoload paths are set up, so the constant is not resolvable
+    # there yet. The store only deserialises on a request, which is later.
+    config.after_initialize do
+      ActiveRecord::SessionStore::Session.serializer = Redmine::SessionDataSerializer
+    end
+
     if File.exist?(File.join(File.dirname(__FILE__), 'additional_environment.rb'))
       instance_eval File.read(File.join(File.dirname(__FILE__), 'additional_environment.rb'))
     end

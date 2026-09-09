@@ -62,10 +62,39 @@ class Redmine::SessionStoreCheckTest < ActiveSupport::TestCase
   end
 
   def test_facts_should_count_the_rows_the_first_trim_would_delete
-    create_session('2::aaa', :updated_at => (Redmine::SessionStoreCheck::TRIM_DAYS + 1).days.ago)
+    create_session('2::aaa', :updated_at => 31.days.ago)
     create_session('2::bbb')
     assert_equal 2, @check.facts['rows']
     assert_equal 1, @check.facts['rows the first trim would delete']
+    assert_equal '30 days (recommended: 7)', @check.facts['trim period']
+  end
+
+  # The count has to describe what db:sessions:trim will delete, and the gem's
+  # task takes its cutoff from this variable alone.
+  def test_facts_should_count_over_the_period_the_trim_task_would_use
+    create_session('2::aaa', :updated_at => 8.days.ago)
+    create_session('2::bbb')
+    with_session_days_trim_threshold('7') do
+      assert_equal 1, @check.facts['rows the first trim would delete']
+      assert_equal '7 days', @check.facts['trim period']
+    end
+    with_session_days_trim_threshold(nil) do
+      assert_equal 0, @check.facts['rows the first trim would delete']
+      assert_equal '30 days (recommended: 7)', @check.facts['trim period']
+    end
+  end
+
+  def test_run_should_say_so_when_the_period_is_not_the_recommended_one
+    output = StringIO.new
+    with_session_days_trim_threshold('30') {@check.run(output)}
+    assert_include 'SESSION_DAYS_TRIM_THRESHOLD=7 on the cron line', output.string
+    assert_include '30 days (recommended: 7)', output.string
+  end
+
+  def test_run_should_not_mention_the_period_when_it_is_the_recommended_one
+    output = StringIO.new
+    with_session_days_trim_threshold('7') {@check.run(output)}
+    assert_not_include 'SESSION_DAYS_TRIM_THRESHOLD', output.string
   end
 
   def test_facts_should_count_the_rows_an_older_store_wrote
@@ -94,6 +123,14 @@ class Redmine::SessionStoreCheckTest < ActiveSupport::TestCase
   end
 
   private
+
+  def with_session_days_trim_threshold(value)
+    was = ENV['SESSION_DAYS_TRIM_THRESHOLD']
+    value.nil? ? ENV.delete('SESSION_DAYS_TRIM_THRESHOLD') : ENV['SESSION_DAYS_TRIM_THRESHOLD'] = value
+    yield
+  ensure
+    was.nil? ? ENV.delete('SESSION_DAYS_TRIM_THRESHOLD') : ENV['SESSION_DAYS_TRIM_THRESHOLD'] = was
+  end
 
   def create_session(session_id, attributes={})
     Session.create!({:session_id => session_id, :data => {}}.merge(attributes))

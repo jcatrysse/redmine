@@ -30,10 +30,12 @@ module Redmine
   class SessionStoreCheck
     REQUIRED_COLUMNS = %w[session_id data created_at updated_at].freeze
 
-    # The number of days after which db:sessions:trim deletes a session. A row
-    # is written for every page view, signed in or not, so the gem's own 30-day
-    # default lets the table grow far beyond what it is worth keeping.
-    TRIM_DAYS = 7
+    # The retention the deploy note puts in the cron line. A row is written for
+    # every page view, signed in or not, so the gem's own 30-day default lets
+    # the table grow far beyond what it is worth keeping. It is the recommended
+    # value only: what a trim actually deletes is trim_days below, read from
+    # the same place the gem's task reads it.
+    RECOMMENDED_TRIM_DAYS = 7
 
     class Failed < StandardError; end
 
@@ -68,6 +70,13 @@ module Redmine
       list
     end
 
+    # The cutoff db:sessions:trim would use, from the same source the gem's
+    # task reads. Reporting our own constant instead made the figure below a
+    # description of what we recommend rather than of what cron will do.
+    def trim_days
+      (ENV['SESSION_DAYS_TRIM_THRESHOLD'] || 30).to_i
+    end
+
     # What the deploy has to know and cannot work out from the repository: how
     # big a session may get, how much there is to trim, and how many rows an
     # older store left behind.
@@ -78,7 +87,8 @@ module Redmine
         'session size limit' =>
           data.limit ? "#{data.limit} bytes (#{data.sql_type}); a bigger session raises" : "none (#{data.sql_type})",
         'rows' => count,
-        'rows the first trim would delete' => count("updated_at < ?", TRIM_DAYS.days.ago),
+        'trim period' => "#{trim_days} days" + (trim_days == RECOMMENDED_TRIM_DAYS ? '' : " (recommended: #{RECOMMENDED_TRIM_DAYS})"),
+        'rows the first trim would delete' => count("updated_at < ?", trim_days.days.ago),
         'rows written by an older store' => count("session_id NOT LIKE ?", '%::%')
       }
     end
@@ -102,6 +112,10 @@ module Redmine
 
       collected = facts
       collected.each {|name, value| io.puts format('  %-34s %s', name, value)}
+      if trim_days != RECOMMENDED_TRIM_DAYS
+        io.puts '  note  the count above is over the period db:sessions:trim would actually use. Set ' \
+                "SESSION_DAYS_TRIM_THRESHOLD=#{RECOMMENDED_TRIM_DAYS} on the cron line to get the recommended one."
+      end
       if collected['rows written by an older store'].positive?
         io.puts '  note  those rows are refused as a login by secure_session_only, but they are dead ' \
                 'weight — db:sessions:clear empties the table, db:sessions:upgrade rewrites them.'
