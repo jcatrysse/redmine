@@ -1298,3 +1298,59 @@ volgende deploy".
 **Als je A of B kiest, hoort dit in de deploy-notitie:** draai
 `bundle exec rake db:sessions:clear RAILS_ENV=production` bij de deploy. Bij A
 is dat netheid (het ruimt dode rijen op); bij B is het verplicht.
+
+## Beslist (Jan) — K-16 en K-17, 2026-09-09
+
+- **K-16: `check-patch-clean.sh` gaat de commit-identiteit van de patchbranch
+  bewaken. Optie B.**
+  De ronde-3 blocker van `mypage-query-blocks` was een AI-committer op een
+  patchbranch, en bij het repareren bleek dat geen enkele gate die eigenschap
+  daar dekte: `git format-patch` zet alleen de auteur in het bestand, dus
+  controle 3 van `check-patch-clean.sh` is er structureel blind voor, en
+  `check-geoxyz-branch.sh` kan niet op een trunkbranch gericht worden omdat hij
+  "eigen commits" als `origin/7.0-stable..ref` rekent. Zes dagen PASS op een
+  branch die er wél een droeg.
+  **Wat er gebeurd is:** `tools/check-patch-clean.sh` heeft een zesde controle,
+  over `merge-base(origin/master, branch)..branch`, met hetzelfde nauwe patroon
+  als in K-15 — alleen gereedschapsnamen, geen `\bai\b`, want dat vuurt op een
+  medewerker die echt Ai heet. Bij een treffer noemt hij de commit en de exacte
+  reparatie (amend plus `--force-with-lease`, en het patchbestand opnieuw
+  exporteren).
+  **Eerst rood gedreven, met echte data, zoals `docs/traps.md` voorschrijft:**
+  een tijdelijke branch op de oude commit `6af3b35c4` geeft
+  `FAIL  an AI identity in the author or committer of test-inv4-red (INV-4)` met
+  de regel `committer=Claude <noreply@anthropic.com>` eronder — en pal daarboven
+  staat `ok  no AI trace in the header or the commit message`, dus het gat is in
+  één uitvoer te zien. Daarna groen op alle negen patchbranches. En de guard is
+  ook gedreven: met het patroon leeggemaakt aborteert het script met exit 2 in
+  plaats van `ok` te melden.
+  **Waarom optie B en niet C:** C zette het patroon in één gedeeld bestand. Dat
+  is netter, maar het lost een probleem op dat er niet is — het patroon staat nu
+  op twee plaatsen en is sinds K-15 niet veranderd — en het kost een extra
+  bewegend deel in `tools/`.
+  Doorgevoerd in `tools/check-patch-clean.sh`; `CLAUDE.md` (INV-4 en G6) en
+  `docs/STATE.md` verwijzen ernaar.
+
+- **K-17 `ar-sessions`: de sessiedata wordt JSON, met het klasje erbij. Optie A.**
+  De standaardserializer van `activerecord-session_store` is Marshal, dus elke
+  request deed `Marshal.load` over `sessions.data` — een kolom zonder signature.
+  Bij de cookiestore die Redmine hiervoor had kon dat niet: die payload was met
+  `secret_key_base` gesigneerd en werd geweigerd vóórdat er iets
+  gedeserialiseerd werd. Het verschil is niet toegang maar bereik: een
+  schrijfmogelijkheid ergens in de database werd een uitvoeringsmogelijkheid in
+  het Redmine-proces.
+  **Wat er staat:** JSON, plus `Redmine::SessionDataSerializer` — de
+  JSON-serializer van de gem met één verschil, namelijk dat een rij die niet te
+  parsen is een lege sessie wordt in plaats van een uitzondering. Dat verschil
+  is niet cosmetisch: op de kale `:json` geeft elke bestaande Marshal-rij
+  `JSON::ParserError` binnen de request, en dat is een **500** voor elke
+  ingelogde gebruiker tot zijn rij verdwijnt. Gemeten, niet beredeneerd.
+  **De prijs, en die is onvermijdelijk:** na de deploy is iedereen één keer
+  uitgelogd. Daarna nooit meer.
+  **Waarom niet B:** dan wordt `db:sessions:clear` bij de deploy verplicht in
+  plaats van netjes, en één keer vergeten is een storing.
+  **Waarom niet C:** zolang Marshal blijft, is elke schrijfprimitief in de
+  database een uitvoeringsprimitief.
+  Doorgevoerd op `7.0-stable-GEOxyz` in `22daa7c96`. Volledige suite daar:
+  6145 runs, 0 failures, 0 errors. `db:sessions:clear` blijft in de
+  deploy-notitie staan als opruimstap.
