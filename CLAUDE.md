@@ -127,7 +127,11 @@ task description seems to ask for it.
   2026-09-06 (K-13). Commit to those two branches with the identity spelled
   out — `git -c user.name="Jan Catrysse" -c user.email="jan.catrysse@geoxyz.eu"
   commit …` — and let `tools/session-push.sh` catch it if you forget; it now
-  refuses such a push instead of carrying it.
+  refuses such a push instead of carrying it. **A force-push slips past that
+  guard**, which is how `patch/mypage-query-blocks` kept an AI committer until
+  2026-09-09 with every gate reporting PASS, so `tools/check-patch-clean.sh`
+  reads the branch's identity fields too (Jan's K-16). On `7.0-stable-GEOxyz`
+  that job belongs to `tools/check-geoxyz-branch.sh` (K-15).
 - **INV-5 Locales: `en`, `nl`, `fr`, `de`, `es` — nothing else, and every
   translation is derived, never invented.** Jan's decision (2026-09-01): these
   four languages ship with the work. The rule that makes that safe: for each
@@ -233,7 +237,7 @@ both sides (INV-10).
 | **G3 Tests** | the **full** suite green — not only the touched suites — output seen, counts in the dossier; each new test red on the old code, and you say how you know. Redmine requires that all existing tests pass. Budget for it: the whole suite takes tens of minutes, so start it early and do other work while it runs. |
 | **G4 Lint** | `rubocop` on the changed files adds no offence beyond the baseline for those files at the merge base; both counts in the dossier. An offence that upstream's own line already had is upstream's, not yours (INV-1) — name it, do not fix it |
 | **G5 Minimality** | you re-read the diff adversarially and every line is defensible; no scope creep |
-| **G6 Patch hygiene** | `tools/check-patch-clean.sh <slug>` passes: the patch file touches no framework path, no locale outside the five, no AI trace, and does not disagree with its branch. Applying to current trunk is checked with `--submit`, as the last step before submitting (g05) |
+| **G6 Patch hygiene** | `tools/check-patch-clean.sh <slug>` passes: the patch file touches no framework path, no locale outside the five, no AI trace, and does not disagree with its branch — and the branch's own commits carry no AI identity in their author or committer (Jan's K-16). Applying to current trunk is checked with `--submit`, as the last step before submitting (g05) |
 | **G7 Dossier** | complete, including anticipated objections with answers |
 | **G8 GEOxyz branch** | `tools/check-geoxyz-branch.sh` passes: merges cleanly with upstream `7.0-stable`, lint adds nothing beyond upstream's own offences on the same files, own commits match the register. Suites green there too — a green trunk patch can still fail on 7.0-stable. |
 | **G9 Live verification** | the feature exercised by hand in a **real running Redmine**, in a real browser, with a screenshot per function committed as evidence. A green suite is not proof the feature works: the 2026 port shipped a link that was in the DOM, passed `assert_select`, and did nothing when clicked because its JavaScript was never loaded on that page. |

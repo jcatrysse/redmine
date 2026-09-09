@@ -18,6 +18,15 @@
 #   3. no AI trace in the From: line or the commit message (INV-4)
 #   4. it applies to a pristine origin/master checkout
 #   5. branch and patch file are the same change (no drift)
+#   6. no AI identity in the author or committer of the branch's own commits
+#
+# Check 6 is Jan's K-16 (2026-09-09, option B). Until then nothing covered this
+# on a patch branch at all: `git format-patch` writes only the author into the
+# file, so check 3 is structurally blind to the committer, and
+# check-geoxyz-branch.sh cannot be pointed here because it computes own commits
+# as origin/7.0-stable..ref, which for a trunk branch is thousands of them.
+# patch/mypage-query-blocks carried `Claude <noreply@anthropic.com>` as its
+# committer from 2026-09-03 to 2026-09-09 with every gate reporting PASS.
 #
 # Check 4 is a WARNING by default and a FAILURE with --submit. A patch that
 # stopped applying because trunk moved 88 commits is not defective, it is
@@ -224,6 +233,37 @@ if [ -n "$BRANCH" ] && [ "$FILES" != "$tmp/branch.patch" ]; then
   fi
 elif [ -z "$BRANCH" ]; then
   warn "no patch/$SLUG branch to compare against"
+fi
+
+# --- 6. AI identity in the branch's own commits (INV-4) --------------------
+# The same narrow pattern as check-geoxyz-branch.sh: tool names only. A broad
+# one such as \bai\b fires on a contributor genuinely named Ai, and a gate with
+# false positives on real names is a gate somebody switches off.
+AI_IDENTITY_RE='claude|anthropic|copilot|codex|chatgpt|cursor\.(sh|com)'
+if [ -n "$BRANCH" ]; then
+  # A pattern that fell out of the script would make the grep below match
+  # nothing and this check report ok while testing nothing — which is how
+  # check-geoxyz-branch.sh once passed a branch that carried a trace (see
+  # docs/traps.md, 2026-09-08).
+  [ -n "${AI_IDENTITY_RE:-}" ] ||
+    { echo "FAIL  the AI identity pattern is empty — this check would pass without testing anything" >&2; exit 2; }
+
+  ibase=$(git merge-base origin/master "$BRANCH")
+  own=$(git rev-list --count "$ibase..$BRANCH")
+  identities=$(git log --format='%h  author=%an <%ae>  committer=%cn <%ce>' "$ibase..$BRANCH" |
+               grep -iE "$AI_IDENTITY_RE" || true)
+  if [ -n "$identities" ]; then
+    fail "an AI identity in the author or committer of $BRANCH (INV-4):"
+    printf '%s\n' "$identities" | sed 's/^/          /'
+    printf '          The author reaches the patch file; the committer reaches every clone.\n'
+    printf '          A patch branch may be rewritten — nobody checks it out — so:\n'
+    printf '            git -c user.name="Jan Catrysse" -c user.email="jan.catrysse@geoxyz.eu" \\\n'
+    printf '              commit --amend --no-edit\n'
+    printf '            git push --force-with-lease=%s:<old sha>\n' "${BRANCH#origin/}"
+    printf '          Then re-export the patch file so its From: sha matches.\n'
+  else
+    pass "no AI identity in the author or committer of $BRANCH ($own own commit(s))"
+  fi
 fi
 
 echo
