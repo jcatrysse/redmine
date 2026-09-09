@@ -12,16 +12,18 @@
 # version-subprojects F01 and geoxyz-branch F02).
 #
 # The comparison is line-level and deliberately crude, because that is what
-# makes it mechanical: every line the patch adds must appear somewhere in the
-# same file on GEOxyz, and every line it removes must not. It cannot judge
-# whether two implementations are equivalent — it catches the case that
-# actually happened, a hunk present on one side only.
+# makes it mechanical. For every substantive line the patch's diff touches, the
+# question is presence, not position: is the line in the file on the patch
+# branch and absent from the same file on GEOxyz, or the reverse? It cannot
+# judge whether two implementations are equivalent, and it does not try — it
+# catches the case that actually happened, a hunk on one side only, and it
+# narrows what has to be read by hand rather than replacing it.
 #
-# Legitimate divergences go in docs/features/<slug>/symmetry-allow.txt, one
-# regexp per line matching the diff line (with its +/- kept), '#' for a reason.
-# An empty or absent file means nothing is allowed to differ. A divergence that
-# is not listed there is a defect; one that is listed is a claim the dossier
-# has to back (INV-10).
+# Legitimate divergences go in docs/features/<slug>/symmetry-allow.txt: one
+# fixed string per line, matched as a substring of the line body (no +/- and
+# no leading indentation), '#' for a reason. A missing file means nothing may
+# differ. A divergence that is not listed there is a defect; one that is listed
+# is a claim the dossier has to back (INV-10).
 #
 # Exit 0 = symmetric. Exit 1 = a divergence that is not allowed.
 
@@ -53,20 +55,25 @@ for slug in "$@"; do
   git rev-parse -q --verify "$patch_ref" >/dev/null ||
     { fail "$patch_ref does not exist"; continue; }
 
-  allow="docs/features/$slug/symmetry-allow.txt"
-  # grep -f with an empty file matches nothing, which is the behaviour we want
-  # for a slug that has no allowlist, so a missing file becomes an empty one.
-  allowfile=$(mktemp); trap 'rm -f "$allowfile"' EXIT
-  if [ -f "$allow" ]; then
-    grep -v '^[[:space:]]*\(#\|$\)' "$allow" > "$allowfile"
-    warn "$(wc -l < "$allowfile" | tr -d ' ') allowed divergence pattern(s) from $allow"
-  else
-    : > "$allowfile"
-  fi
-
   mb=$(git merge-base "$BASE" "$patch_ref")
   files=$(git diff --name-only "$mb" "$patch_ref")
   [ -n "$files" ] || { fail "$patch_ref changes nothing against $BASE"; continue; }
+
+  allow="docs/features/$slug/symmetry-allow.txt"
+  allowfile=$(mktemp)
+  if [ -f "$allow" ]; then
+    grep -v '^[[:space:]]*\(#\|$\)' "$allow" > "$allowfile"
+    # A short pattern is matched as a substring against every line, so `end`
+    # would excuse most of the file and the check would report PASS having
+    # tested almost nothing. Same threshold as the signal threshold below.
+    short=$(awk '{ gsub(/[ \t]/, ""); if (length($0) < 8) print }' "$allowfile")
+    if [ -n "$short" ]; then
+      fail "$slug: $allow has a pattern under 8 non-blank characters, which would excuse whole files: $(printf '%s' "$short" | tr '\n' ' ')"
+      rm -f "$allowfile"
+      continue
+    fi
+    warn "$(wc -l < "$allowfile" | tr -d ' ') allowed divergence pattern(s) from $allow"
+  fi
 
   slug_fails=0
   for f in $files; do
@@ -76,14 +83,28 @@ for slug in "$@"; do
     case "$f" in config/locales/*) continue;; esac
 
     pat=$(mktemp); geo=$(mktemp)
-    git show "$patch_ref:$f" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' > "$pat"
-    if ! git show "$GEOXYZ:$f" > /dev/null 2>&1; then
+    on_patch=no; on_geoxyz=no
+    git show "$patch_ref:$f" 2>/dev/null | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' > "$pat" &&
+      git cat-file -e "$patch_ref:$f" 2>/dev/null && on_patch=yes
+    git show "$GEOXYZ:$f" 2>/dev/null | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' > "$geo" &&
+      git cat-file -e "$GEOXYZ:$f" 2>/dev/null && on_geoxyz=yes
+
+    # A patch that deletes a file is symmetric when GEOxyz has deleted it too,
+    # and comparing the lines of two absent files says nothing either way.
+    if [ "$on_patch" = no ]; then
+      if [ "$on_geoxyz" = yes ]; then
+        fail "$slug: $f deleted by the patch, still on $GEOXYZ"
+        slug_fails=$((slug_fails + 1))
+      fi
+      rm -f "$pat" "$geo"
+      continue
+    fi
+    if [ "$on_geoxyz" = no ]; then
       fail "$slug: $f exists on $patch_ref but not on $GEOXYZ"
       slug_fails=$((slug_fails + 1))
       rm -f "$pat" "$geo"
       continue
     fi
-    git show "$GEOXYZ:$f" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' > "$geo"
 
     # Present on one side, absent on the other — not equal counts. Three
     # things make a count comparison useless here: a block the patch moves
@@ -121,7 +142,7 @@ for slug in "$@"; do
   done
 
   [ "$slug_fails" -eq 0 ] && pass "$slug: every substantive line of the patch is on both sides"
-  rm -f "$allowfile"; trap - EXIT
+  rm -f "$allowfile"
 done
 
 echo
