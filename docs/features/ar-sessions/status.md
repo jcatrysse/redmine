@@ -3,7 +3,7 @@ slug: ar-sessions
 feature: Sessies in de database
 commit_51: ea61e37e8 + c2fefd51c
 geoxyz: live
-geoxyz_commit: bc745ce73 + 22daa7c96 + 5b04c5c15
+geoxyz_commit: bc745ce73 + 22daa7c96 + 5b04c5c15 + bf5b41a0d
 upstream: nooit
 patch:
 issue: 
@@ -193,6 +193,22 @@ bytes worden gedeserialiseerd voordat er ook maar iets gecontroleerd wordt.
   werd geaccepteerd. `session_store_check_test.rb` gaf `14 runs, 3 failures`.
   Met de fix: **8 runs, 51 assertions, 0 failures** en **14 runs, 25 assertions,
   0 failures**.
+- **Codex-ronde (2026-09-09) — de vormcontrole.** Alleen `JSON::ParserError`
+  opvangen was niet genoeg: de serializer van de gem geeft élke geldige
+  JSON-waarde op het hoogste niveau terug, dus een rij met `[]`, `"tekst"`, `1`
+  of `null` kwam er doorheen en gaf daarna een **500** bij Rails'
+  `stringify_keys` in plaats van een uitlog. Nu wordt de vorm gecontroleerd:
+  `restored.is_a?(Hash) ? restored : {}`. Alle acht vormen nagegaan — een echte
+  sessie houdt zijn waarden, en `[]`, `"tekst"`, `1`, `null`, `{"value":[]}`,
+  onparseerbare tekst en een Marshal-payload worden alle zeven `{}`. **Twee
+  tests, beide rood op de oude code**, waarvan één door de echte middleware:
+  inloggen, de rij overschrijven met `[]`, `"tekst"` en `1`, en elke keer de
+  redirect naar `/login` eisen. `session_store_test.rb` staat daarmee op
+  **14 runs, 102 assertions, 0 failures**.
+- **Volledige suite na deze fix**: **6159 runs, 32502 assertions, 0 failures,
+  0 errors, 39 skips** — zeven runs meer dan de run ervoor, en dat zijn de twee
+  nieuwe sessievorm-tests plus de vijf van `ldap-mail-prefs` en `imap-oauth` in
+  dezelfde ronde.
 - **Nagekomen op 2026-09-09, en het was de juiste vraag om te stellen:** de
   ronde-3 bevinding wees naar de queryhash, maar dat is niet het enige dat
   Redmine in de sessie zet, en JSON houdt noch symbolen noch types vast. Dus
@@ -336,10 +352,17 @@ niets aan te doen en het gebeurt precies één keer.
   (ronde 3, F01). `:hybrid` valt terug op `Marshal.load` voor elke waarde die
   met `BAh` begint, dus daarmee blijft het gat open. Niet opnieuw wegen.
 - **`Redmine::SessionDataSerializer` bestaat om één reden**: een rij die niet
-  te parsen is wordt een lege sessie in plaats van een uitzondering, zodat de
-  bestaande Marshal-rijen na de deploy een uitlog zijn en geen 500. Weghalen
-  betekent dat `db:sessions:clear` bij de deploy verplicht wordt in plaats van
-  netjes.
+  als sessie te lezen is wordt een lege sessie in plaats van een uitzondering,
+  zodat de bestaande Marshal-rijen na de deploy een uitlog zijn en geen 500.
+  Weghalen betekent dat `db:sessions:clear` bij de deploy verplicht wordt in
+  plaats van netjes.
+- **Hij controleert de vórm en niet alleen de syntaxis** (Codex F01,
+  2026-09-09). Alleen `JSON::ParserError` opvangen was niet genoeg: de
+  serializer van de gem geeft élke geldige JSON-waarde op het hoogste niveau
+  terug, dus `[]`, `"tekst"`, `1` en `null` kwamen er doorheen en gaven daarna
+  een 500 bij Rails' `stringify_keys`. De regel is nu
+  `restored.is_a?(Hash) ? restored : {}`. Vereenvoudig dat niet terug naar een
+  losse `rescue`.
 
 - Gaat **nooit** naar upstream: sessies in de database is een
   deployment-keuze, geen core-feature. Redmine kiest bewust de cookiestore.
@@ -382,16 +405,7 @@ niets aan te doen en het gebeurt precies één keer.
 
 ## Volgende stap voor een sessie
 
-**Openstaand: Codex F01.** Een sessierij met geldige JSON van de verkeerde
-*vorm* — `[]`, `"tekst"`, `1` — komt door de serializer heen en geeft dan een
-**500** in plaats van een uitlog, omdat Rails `stringify_keys` op het resultaat
-doet. `Redmine::SessionDataSerializer` vangt alleen `JSON::ParserError` op, en
-de JSON-serializer van de gem geeft elke geldige niet-object-waarde
-onveranderd terug. De reparatie is klein — `{}` teruggeven tenzij de gedecodeerde
-waarde de hashvorm heeft die Rails nodig heeft — en hoort met een
-integratietest voor minstens één geldige niet-object-waarde, plus de volledige
-suite op deze branch. Zie de `Resolution:`-regel bij F01 in
-`docs/review/findings/2026-09-09-ar-sessions-codex.md`.
+af — niets te doen. Alle bevindingen uit vier reviewrondes zijn gesloten.
 
 
 af — niets te doen. Ronde 3 is gedaan, alle drie haar bevindingen zijn gesloten
