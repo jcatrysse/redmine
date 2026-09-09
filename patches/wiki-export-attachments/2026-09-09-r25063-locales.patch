@@ -1,4 +1,4 @@
-From 8121846bebb3ad34421513b01d827a5a95b6fbd9 Mon Sep 17 00:00:00 2001
+From eed20582870deb83a7b5222c7fa639f363e9e6a1 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Tue, 8 Sep 2026 11:00:45 +0000
 Subject: [PATCH] Preserve the wiki page hierarchy and include page attachments

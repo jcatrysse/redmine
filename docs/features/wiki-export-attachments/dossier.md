@@ -40,8 +40,9 @@
 
 ## Trunk check (G1)
 
-- **Trunk-revisie nagekeken:** `bee32a926` = r25037 van 2026-09-03; de patch
-  is daartegen gemaakt en ververst. De eerste versie (2026-09-01) stond op
+- **Trunk-revisie nagekeken:** `8de368193` = **r25063** van 2026-09-09; de patch
+  is daartegen ververst. De vorige twee versies stonden op r25037
+  (`bee32a926`) en r24882. De eerste versie (2026-09-01) stond op
   r24882; tussen die twee raakt trunk `wiki_controller.rb` alleen met #44228
   (de `\x00` in de sanitizer), en dat overleeft de patch omdat die regel
   ongewijzigd meeverhuist.
@@ -348,6 +349,33 @@ the tests before they were fixed.
 the helper's methods `private`, the Dutch string), against trunk **r25037**
 (`bee32a926`) on a matched `Gemfile.lock`.
 
+**Re-measured on 2026-09-09 against trunk r25063** (`8de368193`) after the
+refresh, both sides on a matched `Gemfile.lock` (rubyzip 3.6.0, json 2.21.2):
+
+- **full** suite on `patch/wiki-export-attachments` (commit `eed205828`):
+  `5995 runs, 31777 assertions, 27 failures, 2 errors, 92 skips`
+- **full** suite on pristine `origin/master` r25063, **same `Gemfile.lock`**:
+  `5981 runs, 31724 assertions, 27 failures, 2 errors, 92 skips`
+- **14 runs** more, **no extra failures and no extra errors**, and the 29
+  failing test names are identical on both sides (`diff` of the sorted lists is
+  empty in both directions). All 29 are the repository and `sys` tests of an
+  image without `svn`, `hg`, `bzr` and `cvs`; none touches the wiki or the
+  export.
+- The earlier figures below read `48 failures, 82 errors` because json 3.0
+  broke `ActiveSupport::JSON.decode` at the time. Trunk pinned it in
+  `9a74cdf20` (#44428), so that noise is gone from these numbers.
+- **The ZIP itself was re-verified on rubyzip 3.6.0**, which the same trunk
+  round introduced (`a41077d2a`, #44388), rather than inferred from a green
+  suite: an archive built against Redmine's own fixtures comes back with the
+  hierarchy three levels deep, the attachment beside its page at the right byte
+  count, Cyrillic directory names intact (so `Zip.unicode_names` still works)
+  and the page `updated_on` values as entry mtimes (so `Zip::DOSTime` and the
+  `universaltime` extra field still work). Driven through a real browser too,
+  both with and without attachments, including the `diagram(1).txt` collision
+  rename.
+
+Previous measurement, on r25037:
+
 - **full** suite on `patch/wiki-export-attachments` (commit `8121846be`):
   **5991 runs, 31410 assertions, 48 failures, 82 errors, 92 skips**
 - **full** suite on pristine `origin/master` r25037, **same `Gemfile.lock`**:
@@ -580,10 +608,16 @@ Reported, not touched — INV-1.
 
 - **Issue:** nog aan te maken door Jan — follow-up van
   [#43978](https://www.redmine.org/issues/43978)
-- **Patches attached:** `patches/wiki-export-attachments/2026-09-08-r25037-feature.patch` (code + `en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`)
-- **Made against:** `origin/master` r25037 (`bee32a926`, 2026-09-03)
-- **Status:** nog niet ingediend — wacht op Jan. Vóór het indienen:
-  `tools/check-patch-clean.sh wiki-export-attachments --submit` (g05).
+- **Patches attached:** `patches/wiki-export-attachments/2026-09-09-r25063-feature.patch` (code + `en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`)
+- **Made against:** `origin/master` **r25063** (`8de368193`, 2026-09-09), branch
+  `patch/wiki-export-attachments` at `eed205828`. Ververst op 2026-09-09 vanaf
+  r25037: trunk voegde in `e0e38cb9b` (#44396) een regel toe aan dezelfde
+  acroniemhash in `config/initializers/zeitwerk.rb`, waardoor de r25037-export
+  niet meer applyde. Beide regels gehouden. Dezelfde trunkronde zette Rubyzip
+  op 3.6 (`a41077d2a`, #44388) en de export is daar opnieuw op geverifieerd.
+- **Status:** nog niet ingediend — wacht op Jan.
+  `tools/check-patch-clean.sh wiki-export-attachments --submit` geeft **PASS** op
+  r25063 (g05).
 - **Feedback en wat ermee gebeurde:** interne review 2026-09-03
   (`docs/review/findings/2026-09-03-wiki-export-attachments-claude-opus5.md`,
   12 bevindingen) — alle twaalf afgewerkt op 2026-09-05, zie de

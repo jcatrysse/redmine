@@ -32,7 +32,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
-- `ar-sessions` — cse_01VUeLQwkYYqqVPhKzx3M4qu sinds 2026-09-09
+- `wiki-export-attachments` — cse_01VUeLQwkYYqqVPhKzx3M4qu sinds 2026-09-09
 
 ## Openstaand voor Jan
 
@@ -426,10 +426,12 @@ hook wordt gedeactiveerd als zijn laatste tracker verdwijnt.
 
 Maak een nieuw issue op redmine.org als follow-up van
 [#43978](https://www.redmine.org/issues/43978) en hang er
-`patches/wiki-export-attachments/2026-09-08-r25037-feature.patch` en
+`patches/wiki-export-attachments/2026-09-09-r25063-feature.patch` en
 `-locales.patch` aan. Draai vlak daarvoor
 `tools/check-patch-clean.sh wiki-export-attachments --submit`; als trunk
-intussen verder is, ververst een sessie de patch eerst (g05). De Engelse
+intussen verder is, ververst een sessie de patch eerst (g05) — en controleer
+dan ook of `origin/master` zelf nog actueel is, want dat is een mirror
+(K-19). De Engelse
 issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem". Het
 argument dat erbij hoort: de indiener van #43978 liet bijlagen bewust weg
 omdat ze drie ontwerpvragen opwerpen (archiefstructuur, naamconflicten,

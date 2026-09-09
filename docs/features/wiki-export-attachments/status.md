@@ -5,7 +5,7 @@ commit_51: 3c3e9368e
 geoxyz: live
 geoxyz_commit: 6078281ff
 upstream: patch klaar
-patch: patches/wiki-export-attachments/2026-09-08-r25037-{feature,locales}.patch
+patch: patches/wiki-export-attachments/2026-09-09-r25063-{feature,locales}.patch
 issue:
 ---
 
@@ -13,11 +13,30 @@ issue:
 
 ## Waar het staat
 
+**Ververst tegen verse trunk op 2026-09-09 (g05, INV-2), en dat was nodig.**
+Toen Jan de trunk-mirror synchroniseerde bleek deze patch als enige van de negen
+niet meer te applyen: trunk had in `e0e38cb9b` (#44396) een regel toegevoegd aan
+dezelfde acroniemhash in `config/initializers/zeitwerk.rb` waar wij
+`'zip' => 'ZIP'` in zetten. Beide kanten voegen een regel toe op precies dezelfde
+plek, dus er was niets te kiezen: beide gehouden, met onze regel achteraan zodat
+de diff tegen de nieuwe trunk minimaal blijft. De branch is opnieuw gebaseerd op
+**r25063** (`8de368193`) als één commit **`eed205828`**, en de inhoud is
+ongewijzigd — de enige verandering in onze diff is dat het zeitwerk-blok nu om
+trunks nieuwe regel heen valt.
+
+**Waarom dat meer werk was dan een rebase.** Diezelfde trunkronde zette
+**Rubyzip op 3.6** (`a41077d2a`, #44388), en deze feature *is* de ZIP-export.
+Applyen is dan niet genoeg: de helper gebruikt vijf Rubyzip-API's die tussen 2.x
+en 3.x konden breken (`Zip.unicode_names=`, `Zip::OutputStream.write_buffer`,
+`Zip::Entry.new`, `Zip::DOSTime` en `entry.extra[:universaltime]`). Alle vijf
+doen het nog; zie "Bewijs — refresh op r25063".
+
 Ronde 2 af (2026-09-05). De review van 2026-09-03 vond twaalf punten
 (`docs/review/findings/2026-09-03-wiki-export-attachments-claude-opus5.md`),
 waaronder twee blockers; alle twaalf hebben een `Resolution:`-regel. De
 patchbranch is opnieuw opgebouwd uit het gekozen ontwerp op trunk r25037
-(één commit, `f434bff64`), de twee patchbestanden zijn daaruit geëxporteerd, en
+(één commit, `f434bff64` — sindsdien ververst, zie boven), de twee
+patchbestanden zijn daaruit geëxporteerd, en
 `7.0-stable-GEOxyz` heeft dezelfde fix als tweede commit (`7006c4f00`, bovenop
 `28c618860`). Er is nog **geen issue** op redmine.org: dit wordt een follow-up
 van [#43978](https://www.redmine.org/issues/43978), en dat issue moet Jan
@@ -45,11 +64,12 @@ objectietabel, de correctie dat Info-ZIP een `..`-component **hernoemt** naar
 `__` in plaats van hem over te slaan, en een blijven staan `SHORT`-token in dit
 bestand.
 
-De branch is één commit, opnieuw geëxporteerd naar
-`2026-09-08-r25037-{feature,locales}.patch`, en de G9-verificatie is na de
-codewijzigingen opnieuw door de browser gereden — inclusief het botsingsgeval,
-dat nog steeds de paginatekst op `Wiki/Wiki.txt` zet en de bijlage naar
-`Wiki/Wiki(1).txt` hernoemt.
+De branch is één commit, en de G9-verificatie is na de codewijzigingen opnieuw
+door de browser gereden — inclusief het botsingsgeval, dat nog steeds de
+paginatekst op `Wiki/Wiki.txt` zet en de bijlage naar `Wiki/Wiki(1).txt`
+hernoemt. De patchbestanden van die ronde
+(`2026-09-08-r25037-{feature,locales}.patch`) zijn op 2026-09-09 vervangen door
+de r25063-export; zie hierboven.
 
 ## Wat het doet
 
@@ -60,7 +80,90 @@ zodat een verwijzing als `!diagram.png!` klopt zodra je het archief uitpakt.
 Een bijlage die heet als de pagina zelf of als een kindpagina krijgt een
 `(1)`-suffix in plaats van de paginatekst of de kindmap te verdringen.
 
-## Bewijs
+## Bewijs — refresh op r25063 (2026-09-09)
+
+**Rubyzip 3.6 is het echte risico van deze refresh, dus dat is eerst
+uitgezocht.** Een groene suite zegt hier weinig: de helper leunt op vijf
+Rubyzip-API's die tussen 2.x en 3.x konden breken. Er is dus een **echt archief
+gebouwd** met de helper tegen Redmine's eigen fixtures op rubyzip 3.6.0 en de
+inhoud is uitgelezen:
+
+```
+entries: 9
+  Another_page/Another_page.txt                        117 bytes  mtime=2007-03-07 23:18:07
+  Another_page/Child_1/Child_1.txt                      38 bytes  mtime=2007-03-07 23:18:07
+  Another_page/Child_1/Child_1_1/Child_1_1.txt          25 bytes  mtime=2007-03-07 23:18:07
+  CookBook_documentation/CookBook_documentation.txt    101 bytes  mtime=2007-03-06 23:10:51
+  CookBook_documentation/ecookbook-gantt.pdf         31620 bytes  mtime=2019-05-11 05:18:19
+  Этика_менеджмента/Этика_менеджмента.txt               24 bytes  mtime=2007-03-07 23:18:07
+```
+
+Dat dekt alle vijf in één keer: de **hiërarchie** gaat drie niveaus diep, de
+**bijlage** staat naast zijn pagina en komt er met de juiste 31620 bytes weer
+uit, de **Cyrillische** namen werken (dus `Zip.unicode_names = true` doet het
+nog), en de **tijdstempels** zijn de `updated_on` van de pagina's, wat betekent
+dat `Zip::DOSTime` en `entry.extra[:universaltime]` het ook nog doen.
+
+**En het downloadpad ook, niet alleen de buffer.** `verify/wiki-export-attachments.mjs`
+in `MODE=modal` klikt in een echte browser beide varianten aan en pakt uit:
+
+```
+zip-without-attachments.zip        zip-with-attachments.zip
+  Wiki/Wiki.txt                      Wiki/Wiki.txt
+  Wiki/Child_one/Child_one.txt       Wiki/notes.txt
+  Wiki/Child_two/Child_two.txt       Wiki/Child_one/Child_one.txt
+  3 files                            Wiki/Child_one/diagram.txt
+                                     Wiki/Child_one/diagram(1).txt
+                                     Wiki/Child_two/Child_two.txt
+                                     6 files
+```
+
+De botsingsnaam `diagram(1).txt` staat er nog, dus ook dat gedrag overleeft de
+nieuwe gem. **De schermafbeeldingen zijn niet vervangen**: de interface is niet
+gewijzigd, dus de bestaande shots kloppen nog en opnieuw nemen zou alleen ruis
+in de historie geven. Wat nieuw is aan dit bewijs is de archiefinhoud op
+rubyzip 3.6, en dat is tekst.
+
+**RuboCop op r25063:** 7 gewijzigde Ruby-bestanden **0 offences**; baseline op
+de 5 die op `origin/master` al bestaan ook **0**.
+
+`tools/check-patch-clean.sh wiki-export-attachments --submit`: **PASS** op
+r25063 — 15 bestanden, locales `de,en,es,fr,nl`, geen AI-spoor, applyt op een
+schone r25063, branch en bestand zijn dezelfde wijziging, en geen AI-identiteit
+in auteur of committer.
+
+**INV-10: `7.0-stable-GEOxyz` verandert hier niet, en dat is juist.** De enige
+verschuiving in de patch is dat `'zip' => 'ZIP'` nu ná trunks nieuwe
+`'itcpdf' => 'ITCPDF'` staat, en die regel bestaat op `origin/7.0-stable`
+helemaal niet — nagekeken: `grep -c itcpdf` geeft daar 0. GEOxyz heeft dus
+`'imap' => 'IMAP', 'zip' => 'ZIP'`, wat voor zijn eigen basis de juiste vorm is.
+INV-10 gaat over gedrag, niet over de letterlijke vorm van een hunk die van de
+basis afhangt, en het gedrag is aan beide kanten hetzelfde.
+
+**Suite op r25063**, beide kanten met een **identieke `Gemfile.lock`** (de lock
+staat in `.gitignore`, dus die is van de patchkant naar de trunkkant gekopieerd
+vóór het bundelen — zonder dat vergelijk je twee verschillende Redmines):
+
+| Wat | Uitkomst |
+|---|---|
+| `test:all` met patch (`eed205828`) | **5995 runs, 31777 assertions, 27 failures, 2 errors, 92 skips** |
+| `test:all` op schone trunk r25063, zelfde lock | **5981 runs, 31724 assertions, 27 failures, 2 errors, 92 skips** |
+| verschil | **14 runs**, en **nul extra failures, nul extra errors** |
+| faalnamen | **29 aan elke kant, identiek** — `diff` van de gesorteerde lijsten is leeg in beide richtingen |
+
+De 14 extra runs zijn de 12 nieuwe functionele tests en de 2 nieuwe unittests.
+De 29 falende tests zitten in `RepositoriesControllerTest` (14),
+`Redmine::ApiTest::RepositoriesTest` (8), `SysControllerTest` (5), `UserTest`
+(1) en `Redmine::ApiTest::IssuesTest` (1) — geen enkele raakt de wiki of de
+export.
+
+**En let op het verschil met de meting van 2026-09-08:** die stond op
+`48 failures, 82 errors`, dit op `27 failures, 2 errors`. Dat is geen
+verbetering van onze kant — trunk heeft in `9a74cdf20` (#44428) de json-gem
+onder 3.0 gepind, precies de fout die in `docs/traps.md` staat. Na de sync is
+die weg, en daarmee zijn deze cijfers een stuk beter leesbaar dan de vorige.
+
+## Bewijs — ronde 3 op r25037
 
 **Opnieuw gemeten op 2026-09-08, na de ronde-3 wijzigingen**, tegen trunk
 r25037 met een gelijke `Gemfile.lock` aan beide kanten:
@@ -115,10 +218,12 @@ De cijfers hieronder zijn de ronde-2 meting van 2026-09-05.
 
 Maak een nieuw issue op redmine.org als follow-up van
 [#43978](https://www.redmine.org/issues/43978) en hang er
-`patches/wiki-export-attachments/2026-09-08-r25037-feature.patch` en
+`patches/wiki-export-attachments/2026-09-09-r25063-feature.patch` en
 `-locales.patch` aan. Draai vlak daarvoor
 `tools/check-patch-clean.sh wiki-export-attachments --submit`; als trunk
-intussen verder is, ververst een sessie de patch eerst (g05). De Engelse
+intussen verder is, ververst een sessie de patch eerst (g05) — en controleer
+dan ook of `origin/master` zelf nog actueel is, want dat is een mirror
+(K-19). De Engelse
 issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem". Het
 argument dat erbij hoort: de indiener van #43978 liet bijlagen bewust weg
 omdat ze drie ontwerpvragen opwerpen (archiefstructuur, naamconflicten,
