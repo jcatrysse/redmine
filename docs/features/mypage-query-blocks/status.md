@@ -84,8 +84,10 @@ patchbranches met een AI-identiteit. Opgelost op 2026-09-09:
   `committer=Claude <noreply@anthropic.com>`, `3fc86ca5b` levert niets. Het
   script zelf **kan hier niet op gericht worden** — het rekent `own` als
   `origin/7.0-stable..ref`, wat voor een trunkbranch duizenden commits is. Dat
-  gat is gemeld, niet gerepareerd (`tools/**` is framework): het staat als
-  **K-16** in `docs/DECISIONS.md`
+  gat is gemeld en Jan heeft het op 2026-09-09 laten repareren (**K-16**, optie
+  B): `check-patch-clean.sh` heeft er een zesde controle bij die de auteur- en
+  committervelden van de branch leest. Rood gedreven op een tijdelijke branch
+  op `6af3b35c4`, groen op alle negen
 
 ## Wat Jan nog moet doen
 
