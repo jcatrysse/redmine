@@ -1354,3 +1354,71 @@ is dat netheid (het ruimt dode rijen op); bij B is het verplicht.
   Doorgevoerd op `7.0-stable-GEOxyz` in `22daa7c96`. Volledige suite daar:
   6145 runs, 0 failures, 0 errors. `db:sessions:clear` blijft in de
   deploy-notitie staan als opruimstap.
+
+## Open — keuze voor Jan (toegevoegd 2026-09-09, search-token-limit)
+
+### K-18 — moet de patch zelf een grens op het aantal filtertokens leggen, of niet?
+
+**Waar dit uit komt.** De ronde-3 review van `search-token-limit` had geen
+enkele bevinding over de code, maar wel één vraag, en die is van jou. De patch
+haalt `.first 5` uit `Redmine::Search::Tokenizer#tokens` — dat is de fout die
+hij repareert, want daardoor negeerde een tekstfilter alles na het vijfde woord.
+Diezelfde tokenizer voedt `Query.tokenized_like_conditions`, dat één `LIKE` per
+token bouwt. Dus na de patch zit er **geen enkele grens** meer op het aantal
+`LIKE`-condities dat iemand via de URL kan laten bouwen.
+
+**Wat het kost, gemeten (staat al in het dossier, PostgreSQL 16, 50 000
+issues, filter `Subject`, operator `*~` tegen `~`):**
+
+```
+   1 token   0,054 s / 0,051 s
+   5 tokens  0,184 s / 0,053 s
+  50 tokens  0,554 s / 0,032 s
+ 200 tokens  2,233 s / 0,046 s
+1000 tokens 10,930 s / 0,123 s
+```
+
+De scheve verdeling is echt en klopt: `~` en `!~` plakken met `AND`, dus de
+database geeft een rij op bij de eerste voorwaarde die faalt en de kosten
+blijven vlak. `*~`, `^` en `$` plakken met `OR`, dus een rij die niet matcht
+wordt tegen élke voorwaarde getest en de kosten zijn tokens × rijen. In een
+requestregel van 8 KB passen ruwweg duizend tokens — de laatste regel van die
+tabel — en iedereen die de issuelijst mag zien kan die versturen. Tegenover de
+oude grens van vijf is dat ongeveer 60× meer databasewerk per request.
+
+**Het tegengewicht, ook nagekeken:** `Principal.like` in
+`app/models/principal.rb` bouwt al één `LIKE`-paar per token van `params[:q]`
+zonder enige grens, en dat pad wordt bereikt via de autocompletes voor
+watchers en leden. Onbegrensde tokenaantallen uit gebruikersinvoer zijn dus
+niet nieuw in Redmine — ze zijn nieuw op *dit* pad.
+
+**Opties, elk in één zin:**
+
+- **A) Inzenden zoals hij is** en de meettabel in de note zetten, met het
+  argument dat een grens op gebruikersinvoer thuishoort in
+  `Query#validate_query_filters` — waar hij élke operator en élk filter dekt —
+  en dus een aparte wijziging is.
+- **B) De grens meteen aan deze patch toevoegen**, als een controle op de
+  filterwaarde in `validate_query_filters`: die **weigert** de vraag in plaats
+  van hem stil af te kappen, wat precies het bezwaar is dat het dossier tegen
+  de oude tokenizer-grens maakt.
+- **C) Alleen de `OR`-tak begrenzen** in `tokenized_like_conditions`, waar de
+  kosten tokens × rijen zijn. Kleinste ingreep met het meeste effect, maar het
+  kapt de vraag stil af — hetzelfde bezwaar als bij de oude grens, alleen op
+  een andere plek.
+
+**Aanbeveling: A.** Drie redenen. De patch gaat over de tokenizer, en B trekt
+hem een methode in die deze feature verder niet nodig heeft (INV-1). B vraagt
+bovendien om een getal, en dat is een tweede keuze voor jou. En het dossier
+heeft al gelijk over *waar* de grens hoort: in de validatie, voor alle filters,
+en dat is een betere wijziging als eigen issue dan als bijwagen hier.
+
+**Maar het eerlijke risico bij A, en dat is niet nul:** 10,9 s databasewerk per
+request, opvraagbaar door iedereen die de issuelijst mag zien, is precies iets
+waar een committer op kan gaan staan vóórdat hij de patch aanneemt. Dat kost
+één rondje. Wil je dat rondje niet, dan is **B** de juiste — niet C, want C
+maakt dezelfde fout die deze patch juist repareert.
+
+**Haast?** Nee, en er is niets stuk: `patch/search-token-limit` staat nu op A
+(er is niets toegevoegd) en dat is ook de staat waarin hij ingediend kan
+worden. De keuze gaat over of je het bezwaar vóór wil zijn of afwachten.
