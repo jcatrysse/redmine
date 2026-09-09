@@ -400,18 +400,21 @@ class MembersControllerTest < Redmine::ControllerTest
   def test_destroy_a_member_that_removes_the_last_page_should_render_the_new_last_page
     project = Project.find(1)
     member = nil
-    (51 - project.memberships.count).times {member = User.add_to_project(User.generate!, project)}
+    # Two pages of two and a third page holding one member, which is the
+    # smallest shape that has a last page to lose.
+    2.times {member = User.add_to_project(User.generate!, project)}
     @request.session[:user_id] = 2
 
-    with_settings :per_page_options => '25,50,100' do
+    with_settings :per_page_options => '2,5' do
+      assert_equal 5, project.memberships.count
       delete(:destroy, :params => {:id => member.id, :members_page => 3}, :xhr => true)
     end
     assert_response :success
-    assert_equal 50, project.memberships.count
+    assert_equal 4, project.memberships.count
     # Page 3 no longer exists, so the tab falls back to the new last page
     # instead of rendering a list the user cannot navigate out of.
     assert_not_include 'nodata', response.body
-    assert_equal 25, response.body.scan(/member-\d+-roles/).size
+    assert_equal 2, response.body.scan(/member-\d+-roles/).size
     assert_include 'members_page=1', response.body
   end
 end
