@@ -1240,3 +1240,25 @@ toegevoegd.
   regressie gaan zoeken. Zelfde ronde: `a41077d2a` zet Rubyzip op 3.6, en dat is
   de gem waar `wiki-export-attachments` op leunt, dus die feature moet na de
   refresh niet alleen applyen maar ook opnieuw *werken*.
+
+- **`tools/check-ownership.sh <slug>` meet `origin/geoxyz/framework...HEAD`, dus
+  de héle branch-delta — niet de commit die je maakt.** Werk je in één sessie
+  aan meer dan één slug, dan faalt hij per definitie: bij `ar-sessions` noemt hij
+  de bestanden van `ldap-mail-prefs` en `version-subprojects` als "van iemand
+  anders", ook als je die twee gewoon zelf geclaimd hebt. Op 2026-09-09 gebeurde
+  dat bij het verwerken van een reviewronde die bevindingen over drie slugs
+  opleverde, en dat is geen uitzondering: **elke** reviewronde levert dat op.
+  **Wat je doet:** de eigenschap die de check beschermt met de hand nalopen —
+  hoort elk gewijzigd bestand bij een slug die *jij* geclaimd hebt, of is het een
+  van de twee gegenereerde bestanden? — en dat in het sessieverslag zeggen in
+  plaats van "PASS" te melden. Splits de commits wel per slug, zodat de historie
+  per feature leesbaar blijft; dat maakt de check niet groen (hij kijkt niet naar
+  commits) maar het is wel de juiste vorm.
+  **Wat je niet doet:** de check "even overslaan" zonder het te zeggen. Hij
+  bestaat omdat twee parallelle sessies elkaars werk kunnen overschrijven, en
+  dat risico is echt zodra je niet alle betrokken slugs zelf houdt.
+- **En pas op met `git commit --amend` in een `&&`-keten.** Op dezelfde dag
+  verving een `--amend -m "placeholder"` die als vangnet bedoeld was, het net
+  geschreven commitbericht door het woord "placeholder". Niet gepusht, dus met
+  `reset --soft` teruggedraaid — maar een amend die je "voor de zekerheid"
+  toevoegt is precies de commando die je niet blind wilt draaien.
