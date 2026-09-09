@@ -456,9 +456,10 @@ anybody who does not set it.
 - **Issue:** [#27313](https://www.redmine.org/issues/27313) — existing, status
   New, target "Candidate for next major release". Do **not** open a new issue;
   this is a note on that one, and the note has to answer note-9.
-- **Patches attached:** `patches/mypage-query-blocks/2026-09-05-r25037-feature.patch`
+- **Patches attached:** `patches/mypage-query-blocks/2026-09-09-r25037-feature.patch`
   (code + `en.yml`) and `-locales.patch` (`nl`, `fr`, `de`, `es`)
-- **Made against:** `origin/master` r25037 = `bee32a926` (2026-09-05)
+- **Made against:** `origin/master` r25037 = `bee32a926`; branch `patch/mypage-query-blocks`
+  at `3fc86ca5b` (re-exported 2026-09-09, same tree as the 2026-09-05 export)
 - **Status:** nog niet ingediend — wacht op Jan
 - **Feedback en wat ermee gebeurde:** —
 

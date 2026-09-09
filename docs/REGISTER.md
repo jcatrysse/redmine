@@ -32,16 +32,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
-- `ar-sessions` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
-- `assignee-nobody` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
-- `gitignore-credentials` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
-- `ldap-mail-prefs` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
-- `mypage-query-blocks` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
-- `revision-branches` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
-- `search-token-limit` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
-- `version-subprojects` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
-- `webhook-issue-closed` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
-- `webhook-tracker-filter` — cse_01JEyJUWHCNhHGxWp41KYSuK sinds 2026-09-08
+- `mypage-query-blocks` — cse_01VUeLQwkYYqqVPhKzx3M4qu sinds 2026-09-09
 
 ## Openstaand voor Jan
 
@@ -261,7 +252,7 @@ derde laat zien wat de voorgestelde vier regels doen.
 
 ### `mypage-query-blocks`
 
-Hang `patches/mypage-query-blocks/2026-09-05-r25037-feature.patch` en
+Hang `patches/mypage-query-blocks/2026-09-09-r25037-feature.patch` en
 `-locales.patch` als note aan het **bestaande** issue
 [#27313](https://www.redmine.org/issues/27313) — dus geen nieuw issue — en zeg in
 die note expliciet dat dit note-9 van Jean-Philippe Lang beantwoordt: de

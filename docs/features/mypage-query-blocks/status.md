@@ -5,7 +5,7 @@ commit_51: 0214f3ecc
 geoxyz: live
 geoxyz_commit: dc6dad120 + dd063fa8b + f5ed23c8e
 upstream: patch klaar
-patch: patches/mypage-query-blocks/2026-09-05-r25037-{feature,locales}.patch
+patch: patches/mypage-query-blocks/2026-09-09-r25037-{feature,locales}.patch
 issue: "27313"
 ---
 
@@ -13,12 +13,15 @@ issue: "27313"
 
 ## Waar het staat
 
-Af, en door ronde 2 heen. Alle tien reviewbevindingen van 2026-09-03 hebben een
-`Resolution:`-regel en zijn gerepareerd — geen enkele "wont-fix". Twee
-patchbestanden tegen trunk **r25037** (`bee32a926`), dezelfde wijziging als
-commits `dc6dad120` + `dd063fa8b` + `f5ed23c8e` op `7.0-stable-GEOxyz`, dossier bijgewerkt,
-vijftien screenshots. Het issue bestaat sinds 2017 en is door de projectleider
-geparkeerd: [#27313](https://www.redmine.org/issues/27313).
+Af, en door ronde 2 én ronde 3 heen. Alle tien reviewbevindingen van 2026-09-03
+hebben een `Resolution:`-regel en zijn gerepareerd — geen enkele "wont-fix". De
+blinde herreview van 2026-09-08 vond **niets in de wijziging zelf**; haar ene
+bevinding zat in de commit eromheen en is op 2026-09-09 opgelost (zie
+"Bewijs"). Twee patchbestanden tegen trunk **r25037** (`bee32a926`), dezelfde
+wijziging als commits `dc6dad120` + `dd063fa8b` + `f5ed23c8e` op
+`7.0-stable-GEOxyz`, dossier bijgewerkt, vijftien screenshots. Het issue bestaat
+sinds 2017 en is door de projectleider geparkeerd:
+[#27313](https://www.redmine.org/issues/27313).
 
 ## Wat het doet
 
@@ -52,9 +55,41 @@ de grens is een tikfoutbeveiliging, geen aanbeveling.
 - Screenshots: vijftien (voor/na), gelezen: ja. `fourth-block.png` toont nu vier
   échte issuelijsten in plaats van vier lege keuzeformulieren.
 
+### Ronde 3 en de INV-4-reparatie (2026-09-09)
+
+De blinde herreview draaide de suite aan beide kanten opnieuw, met dezelfde
+`Gemfile.lock`, en kwam op **5992 tegen 5977 runs, in beide richtingen nul
+extra failures en nul extra errors**, 87 identieke faalnamen. Die 48/82 in plaats
+van 27/2 is de json-gem, niet de patch — zie `docs/traps.md`.
+
+De bevinding zat niet in de diff maar in de commit: `6af3b35c4` had
+`Claude <noreply@anthropic.com>` als **committer**, de laatste van de negen
+patchbranches met een AI-identiteit. Opgelost op 2026-09-09:
+
+- `patch/mypage-query-blocks` is met de juiste identiteit heropgeslagen en
+  force-gepusht: **`3fc86ca5b`**, auteur én committer `Jan Catrysse`
+- de **boom is byte-identiek** (`1474fc51a` voor en na, `git diff 6af3b35c4 HEAD`
+  leeg), dus alle cijfers hierboven blijven staan; alleen de commit-headers
+  veranderden
+- de twee patchbestanden zijn opnieuw geëxporteerd als
+  `2026-09-09-r25037-{feature,locales}.patch`; het **enige** verschil met de
+  2026-09-05-versie is de `From <sha>`-regel, en de bestandsgroottes zijn
+  gelijk (13606 en 3157 bytes)
+- `tools/check-patch-clean.sh mypage-query-blocks --submit`: **PASS** — 12
+  bestanden, locales `de,en,es,fr,nl`, geen AI-spoor, applyt op een schone
+  r25037, branch en bestand zijn dezelfde wijziging
+- de identiteitscontrole uit K-15 is **rood gedreven vóór en groen ná**, met
+  het patroon uit `tools/check-geoxyz-branch.sh` maar over het juiste bereik
+  (`origin/master..<tip>`): `6af3b35c4` levert
+  `committer=Claude <noreply@anthropic.com>`, `3fc86ca5b` levert niets. Het
+  script zelf **kan hier niet op gericht worden** — het rekent `own` als
+  `origin/7.0-stable..ref`, wat voor een trunkbranch duizenden commits is. Dat
+  gat is gemeld, niet gerepareerd (`tools/**` is framework): het staat als
+  **K-16** in `docs/DECISIONS.md`
+
 ## Wat Jan nog moet doen
 
-Hang `patches/mypage-query-blocks/2026-09-05-r25037-feature.patch` en
+Hang `patches/mypage-query-blocks/2026-09-09-r25037-feature.patch` en
 `-locales.patch` als note aan het **bestaande** issue
 [#27313](https://www.redmine.org/issues/27313) — dus geen nieuw issue — en zeg in
 die note expliciet dat dit note-9 van Jean-Philippe Lang beantwoordt: de
@@ -94,8 +129,15 @@ De Engelse tekst voor de note staat in `dossier.md` vanaf "The problem".
   wordt in het formulier geweigerd, niet stilzwijgend bijgeknipt.
 - **De niet-discriminerende test blijft staan**, als bewaker gelabeld, met een
   tweede test ernaast die de verlaagde grens wél vastpint (review F05).
+- **De patchbranch is op 2026-09-09 herschreven, en dat mág hier.** Een
+  `patch/*`-branch checkt niemand uit, dus force-pushen kost niets; op
+  `7.0-stable-GEOxyz` zou het wel wat kosten en gebeurt het dus niet. De oude
+  tip `6af3b35c4` is niet bewaard: de boom is identiek aan `3fc86ca5b`, dus er
+  is niets om naar terug te kijken. `session-push.sh` kon deze push niet doen —
+  dat script force-pusht principieel nooit — dus is de INV-4-identiteitscheck
+  eruit met de hand gedraaid vóór de push.
 
 ## Volgende stap voor een sessie
 
-Af — niets te doen behalve Jans twee handelingen hierboven. Ronde 3 (blinde
-herreview) kan deze slug meenemen.
+Af — niets te doen behalve Jans twee handelingen hierboven. Ronde 3 is gedaan
+(2026-09-08) en haar enige bevinding is gesloten (2026-09-09).
