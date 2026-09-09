@@ -93,6 +93,7 @@ bestanden** aanraken, niet omdat ze het onthouden. `tools/check-ownership.sh
 | `docs/features/<slug>/dossier.md` | de inzending, Engels vanaf "The problem" | idem |
 | `docs/features/<slug>/decisions.md` | Class A-beslissingen van die feature | idem |
 | `docs/features/<slug>/shots/` | het G9-bewijs | idem |
+| `docs/features/<slug>/symmetry-allow.txt` | afwijkingen tussen patch en GEOxyz die kloppen, met de reden erbij (INV-10) | idem |
 | `patches/<slug>/` | precies wat aan het issue hangt | idem |
 | `verify/<slug>.mjs` | het G9-script | idem |
 | `docs/claims/<slug>--<sessie>` | het slot, één bestand per sessie | `tools/claim.sh` |
