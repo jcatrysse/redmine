@@ -229,7 +229,8 @@ code path.
 
 Three of these tests come from `43534-v2.patch` and are kept under their own
 names, marked **(v2)** below. Two of the three are unchanged; the third is
-tightened, as noted.
+tightened, as noted. The last two rows arrived with an independent review round
+and cover the scope narrowing rather than the feature itself.
 
 | Test | What it proves |
 |---|---|
@@ -242,6 +243,8 @@ tightened, as noted.
 | `QueryTest#test_time_entry_query_fixed_version_filter_should_include_subproject_versions` | `TimeEntryQuery`'s `issue.fixed_version_id` filter gets the same list, which the patch claims and nothing pinned before |
 | `QueriesControllerTest#test_filter_should_take_the_current_filters_into_account` | `GET /queries/filter` answers for the query in the request, not for a bare project |
 | `QueriesControllerTest#test_filter_should_ignore_request_params_that_are_not_filters` | `c` and `t` in the request no longer reach the query, so a scalar `c=subject` still returns JSON instead of raising |
+| `QueriesControllerTest#test_filter_should_not_offer_versions_of_a_project_outside_the_tree` | a hand-made request naming an unrelated project id gets none of its versions — the narrowing described in the objections table |
+| `QueriesControllerTest#test_filter_should_still_offer_versions_of_an_archived_subproject_never` | an archived subproject's version is never offered. **A guard, not evidence**: it is green with and without the narrowing, because `project_statement` already excludes archived projects. It is here so the narrowing cannot later be widened into offering them |
 
 **Evidence (INV-8 — figures, not claims):**
 
@@ -284,6 +287,15 @@ RuboCop 1.90.0, PostgreSQL 16, Ruby 3.3.6.
     trunk (which reads neither `c` nor `t` in this action) and errors on the
     first shape of this patch, which passed the whole `params` hash:
     `NoMethodError: private method 'select' called for an instance of String`
+  - `QueriesControllerTest#test_filter_should_not_offer_versions_of_a_project_outside_the_tree`
+    fails without the `self_and_descendants` narrowing, with
+    `["OnlineStore - Unrelated project version", "9", "open"]` present in the
+    JSON. Re-measured on `7.0-stable-GEOxyz` as well, where it fails the same
+    way, since that branch carries the same change
+  - `..._still_offer_versions_of_an_archived_subproject_never` is a guard and is
+    **green on both sides** — `project_statement` already excludes archived
+    projects — so it pins existing behaviour rather than proving the narrowing.
+    Said here rather than left to be inferred from the list
 - SQL statements for one `fixed_version_values` on a query with a project,
   counted with an `sql.active_record` subscriber: **5 with the patch, 2 on
   trunk** with the settings cache warm; **6 against 2** on the first call in a
