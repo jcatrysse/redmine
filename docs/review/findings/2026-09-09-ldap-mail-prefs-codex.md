@@ -20,7 +20,7 @@ The task is substantially safer than its initial shape: explicit false values re
 
 ### F01 — Undo silently overwrites preference changes made after the bulk run
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -43,7 +43,7 @@ Read `run`, `write_journal`, and `undo` together. `write_journal` stores top-lev
 
 Treat undo as a compare-and-restore operation: restore an account only when the fields touched by the journal still equal the values that run applied. Report conflicting accounts and leave them unchanged, with a separate explicit force mechanism only if operations genuinely needs one.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-09 — **confirmed by reading the same three methods, and the finding is right that this is not a duplicate of the round-3 journal work.** Those findings were about the journal existing and being durable; this one is about what an undo is entitled to take back. `undo` now compares before it restores, exactly as the suggested direction says: it reads `journal['values']` — the values that run wrote, which `write_journal` has always recorded and which `undo` simply ignored — and restores an account only when `already_set?(current_values(user, applied.keys), applied)` still holds. **Reusing `already_set?` rather than writing a second comparison is deliberate:** it is the same predicate the forward run uses to decide an account is already done, so the `auto_watch_on` array sorting is handled in one place and the two directions cannot drift. A conflicting account is reported per line — `SKIP:    <login> changed after the run, left alone (now …)` — and counted in a new closing line, so the operator sees how many were left rather than having to diff the output. **One decision the direction left open, taken deliberately:** a journal with entries but **no** `values` now raises rather than falling back to unconditional restore. Our own writer always records the field, so this only reaches a hand-edited or truncated journal — and silently doing the unsafe thing there is precisely the defect this finding names. **No `force` mechanism was added.** The direction offers one "only if operations genuinely needs one", and it does not today; a switch that turns the safety net off is worth adding when there is a real case for it, not in advance. **Four new tests, all four red on the old undo:** the run sets `none`, the user then picks `only_assigned`, and the undo must leave it (while still restoring the untouched second account); the closing count must report `1 of 2 … 1 changed after the run`; a change to only *one* of two written fields must still count as changed; and a journal stripped of `values` must raise. Existing tests: all 35 stay green, so the ordinary undo path is unchanged. RuboCop 0. Full-suite figures in `status.md`.
 
 ---
 

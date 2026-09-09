@@ -1,5 +1,23 @@
 # ldap-mail-prefs — Class A-beslissingen
 
+## Codex-ronde, 2026-09-09 — de onafhankelijke review
+
+- **Beslist (autonoom, 2026-09-09):** `undo` vergelijkt vóór hij herstelt. Het
+  journaal legt al vast *wat* de run gezet heeft (`values`) naast de vorige
+  waarden per account; die eerste werd niet gebruikt. Nu wordt een account
+  alleen teruggezet als het nog exact die gezette waarden heeft, via dezelfde
+  `already_set?` die de forward-run gebruikt — dus met dezelfde
+  `auto_watch_on`-sortering, geen tweede vergelijkingsregel.
+- **Beslist (autonoom, 2026-09-09):** een journaal zonder `values` werpt
+  `Error` in plaats van terug te vallen op onvoorwaardelijk herstellen. Onze
+  eigen `write_journal` schrijft dat veld altijd, dus dit raakt alleen een
+  handmatig bewerkt of afgekapt journaal — en daar is stil het onveilige doen
+  precies de fout die de bevinding aanwijst.
+- **Beslist (autonoom, 2026-09-09):** **geen** `force`-optie. De review noemt
+  hem als mogelijkheid "only if operations genuinely needs one", en dat is nu
+  niet zo; een schakelaar die het vangnet uitzet is pas een goed idee als er
+  een echte aanleiding is.
+
 ## Ronde 3, 2026-09-09 — de drie bevindingen van de blinde herreview
 
 - **Beslist (autonoom, 2026-09-09):** `apply` gaat door dezelfde `BOOLEANS`-

@@ -3,7 +3,7 @@ slug: ldap-mail-prefs
 feature: "Rake: notificatievoorkeuren van LDAP-accounts zetten na een import"
 commit_51: 9e2c38e2d
 geoxyz: live
-geoxyz_commit: bc7314a62 + 5b4943570
+geoxyz_commit: bc7314a62 + 5b4943570 + f00b41afd
 upstream: nooit
 patch:
 issue: 
@@ -47,7 +47,9 @@ Zonder `apply=1` verandert het niets en toont het alleen wat het zou doen; met
 `apply=1` schrijft het in één transactie, en in beide gevallen legt het de
 vorige waarden per account vast in een journaalbestand.
 `redmine:users:undo_ldap_notification_defaults journal=<pad> apply=1` zet die
-waarden terug.
+waarden terug — maar **alleen voor accounts die nog steeds hebben wat de run
+schreef**. Wie daarna zelf iets anders koos, houdt zijn keuze; die accounts
+worden overgeslagen en geteld.
 
 ```
 bundle exec rake redmine:users:set_ldap_notification_defaults \
@@ -195,6 +197,33 @@ als `log/`, en dat is geen codeprobleem — de taakbeschrijving zegt nu dat het
 journaal het enige undo-bewijs is en vóór de volgende deploy ergens duurzaam
 gekopieerd moet worden.
 
+## Bewijs — Codex-ronde (2026-09-09)
+
+**Wat er veranderd is:** `undo` vergelijkt nu vóór hij herstelt. Het journaal
+legde altijd al vast *wat* de run schreef (`values`), naast de vorige waarden
+per account, en die eerste werd niet gebruikt. Nu wordt een account alleen
+teruggezet als het nog exact die geschreven waarden heeft, met dezelfde
+`already_set?` die de forward-run gebruikt — dus één plek voor de
+`auto_watch_on`-sortering en geen kans op drift tussen de twee richtingen. Een
+conflict komt per regel als `SKIP:    <login> changed after the run, left alone
+(now …)`, met een teller in de slotregel. Een journaal zonder `values` werpt
+`Error` in plaats van stil onvoorwaardelijk te herstellen. Er is **geen**
+force-optie.
+
+**Cijfers:**
+
+- **Vier nieuwe tests, alle vier rood op de oude undo**: de run zet `none`, de
+  gebruiker kiest daarna `only_assigned`, en de undo moet dat account laten
+  staan terwijl het tweede (onaangeraakt) wél teruggezet wordt; de slotregel
+  moet `1 of 2 … 1 changed after the run` melden; een wijziging in slechts één
+  van twee geschreven velden telt óók als gewijzigd; en een journaal zonder
+  `values` moet werpen.
+- Met de fix: **39 runs, 81 assertions, 0 failures, 0 errors, 0 skips**. De 35
+  bestaande tests blijven groen, dus het gewone undo-pad is niet veranderd.
+- RuboCop op de gewijzigde bestanden: **0**.
+- Volledige suite op de branch: **6159 runs, 32502 assertions, 0 failures,
+  0 errors, 39 skips**.
+
 ## Wat Jan nog moet doen
 
 Twee dingen, allebei eenmalig, en de tweede is niet dringend.
@@ -214,6 +243,19 @@ Twee dingen, allebei eenmalig, en de tweede is niet dringend.
    bestaat zo'n instelling niet; dat blijft werk voor de taak.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
+
+- **`undo` is een vergelijk-en-herstel, geen blinde herstel** (Codex F01,
+  2026-09-09). Hij zet een account alleen terug als het nog steeds de waarden
+  heeft die *die run* geschreven heeft; koos een gebruiker of beheerder daarna
+  zelf iets anders, dan wordt dat account overgeslagen met
+  `SKIP:    <login> changed after the run, left alone` en een teller in de
+  slotregel. Niet "vereenvoudigen" naar onvoorwaardelijk herstellen: het
+  journaal bevat de gezette waarden precies zodat dit te zien is, en een undo
+  van een oud journaal zou anders stil een latere keuze wissen.
+- **Een journaal zonder `values` wordt geweigerd.** Zonder dat veld kan een
+  undo een gewijzigd account niet van een onaangeraakt account onderscheiden,
+  en dan is stil het onveilige doen precies de fout die hierboven staat. Er is
+  **geen** force-optie; die komt er alleen als de praktijk erom vraagt.
 
 - Gaat **nooit** naar upstream. De taak is nu wel generiek genoeg om te kunnen
   (geen hardcoded groepsnaam meer), maar "zet in bulk de voorkeuren van andermans
