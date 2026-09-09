@@ -61,13 +61,23 @@
   iedereen die de tabel of een back-up kan lezen. Kosten: zulke rijen worden
   geweigerd, dus die gebruikers loggen één keer opnieuw in. Dat is dezelfde
   eenmalige logout die de deploy sowieso al aankondigde.
-- **Beslist (autonoom, 2026-09-05):** de **serializer blijft Marshal**.
-  `:json` en `:hybrid` zijn hier niet gratis: `app/helpers/queries_helper.rb`
-  bewaart `session[:issue_query]` als een hash met **symboolsleutels** en leest
-  hem ook zo terug (`session[session_key][:filters]`). Een JSON-rondgang geeft
-  stringsleutels terug, dus het onthouden filter op de issuelijst zou stilletjes
-  stoppen met werken. Een aanval die databaseschrijfrechten vereist wegnemen
-  door een functie te breken die elke gebruiker gebruikt, is de verkeerde ruil.
+- ~~**Beslist (autonoom, 2026-09-05):** de **serializer blijft Marshal**.~~
+  **Teruggedraaid op 2026-09-09 door Jans K-17 (optie A): de serializer is
+  JSON.** De redenering van 2026-09-05 was dat `:json` het onthouden
+  issuelijstfilter zou breken, omdat `app/helpers/queries_helper.rb`
+  `session[:issue_query]` als hash met **symboolsleutels** bewaart en zo
+  terugleest. **Die redenering is nagemeten en klopt niet:**
+  `HashWithIndifferentAccess` converteert ook geneste hashes, dus
+  `session[session_key][:filters]` werkt na een JSON-rondgang gewoon — er staat
+  nu een integratietest die de query zonder URL-parameters uit de sessierij
+  terughaalt en alle vier de waardevormen op de pagina terugvindt. De ruil die
+  hier beschreven werd ("een functie breken die elke gebruiker gebruikt") was
+  dus geen echte ruil; er was niets te breken. Wat het wél kost is één
+  eenmalige uitlog, en dat is wat K-17 afwoog.
+  **Waarom dit blijft staan in plaats van weggehaald te worden:** de
+  Codex-review van 2026-09-09 (F02) vond dat deze regel en zijn tegenhanger in
+  `status.md` er nog stonden terwijl de code al om was, en een doorgehaalde
+  regel met de reden erbij is voor de volgende lezer nuttiger dan een gat.
 - **Beslist (autonoom, 2026-09-05):** de migratie weigert een rollback
   (`down` gooit `ActiveRecord::IrreversibleMigration`) in plaats van hem te
   laten slagen. De tabel droppen logt iedereen uit en vernietigt elke levende

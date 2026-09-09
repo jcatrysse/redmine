@@ -365,10 +365,15 @@ niets aan te doen en het gebeurt precies één keer.
   zodra de middleware-stack gebouwd wordt, dus na het opstarten is de sleutel
   weg en zou zo'n controle altijd "uit" melden. Dat is één keer geprobeerd en
   teruggedraaid.
-- **De serializer blijft Marshal.** `:json`/`:hybrid` zou
-  `session[:issue_query]` breken, want `queries_helper.rb` bewaart en leest die
-  hash met symboolsleutels en een JSON-rondgang geeft strings terug. Zie
-  `decisions.md`.
+- ~~**De serializer blijft Marshal.**~~ **Vervallen op 2026-09-09** (K-17, en
+  Codex F02 wees erop dat deze regel er nog stond). De serializer is JSON; zie
+  de regel hierboven en "Bewijs — ronde 3". De redenering die hier stond —
+  dat `:json` `session[:issue_query]` zou breken omdat `queries_helper.rb` die
+  hash met symboolsleutels leest — is **nagemeten en onjuist**:
+  `HashWithIndifferentAccess` converteert ook geneste hashes, en er staat nu
+  een integratietest die de hele query zonder URL-parameters uit de sessierij
+  terughaalt. Deze regel bleef staan toen de rest van het bestand omging, en
+  dat is precies het soort tegenstrijdigheid waar een deployer op afgaat.
 - **De index op `updated_at` staat er voor `db:sessions:trim`**, niet voor de
   netheid. PostgreSQL's planner kiest hem ook echt voor de DELETE.
 - Redmine's eigen sessiecontrole (`config.redmine_verify_sessions` en
