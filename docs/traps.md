@@ -1313,3 +1313,20 @@ toegevoegd.
   op 67 gewijzigde Ruby-bestanden, en die ene stond al op upstreams eigen regel.
   Installeer dus alle drie, en vertrouw een lintcijfer van 0 pas als de gate er
   ook bij zegt hoeveel bestanden ze gelezen heeft.
+
+
+- **De checkout is ondiep, en dan liegt de startopdracht uit `docs/STATE.md`.**
+  De omgeving cloont `geoxyz/framework` shallow, met twee geënte wortels
+  (`git rev-parse --is-shallow-repository` → `true`, `.git/shallow` heeft twee
+  regels). Gevolg op 2026-09-10: `git fetch origin geoxyz/framework` meldde
+  `+ ba8fd7d...9e33a1d (forced update)` en de voorgeschreven
+  `git merge --ff-only origin/geoxyz/framework` viel om met
+  **`fatal: refusing to merge unrelated histories`** — terwijl er niets
+  herschreven was. Na `git fetch --unshallow origin geoxyz/framework` zegt
+  `git merge-base --is-ancestor ba8fd7d09 9e33a1d95` gewoon ja: het wás een
+  fast-forward. **De les:** lees "unrelated histories" of "forced update" op
+  deze branch niet als bewijs dat iemand geforceerd gepusht heeft. Controleer
+  eerst of de clone ondiep is, doe dan `git fetch --unshallow origin
+  geoxyz/framework`, en pas daarna de merge. `git reset --hard
+  origin/geoxyz/framework` komt op dezelfde commit uit als er niets lokaals is,
+  maar dat is toeval en geen controle.
