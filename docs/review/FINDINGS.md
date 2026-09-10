@@ -3,7 +3,7 @@
 
 # FINDINGS — elke reviewbevinding, één regel elk
 
-202 bevindingen uit 68 reviews: 15 blocker, 34 major, 83 minor, 52 nit, 18 question. **16 zonder Resolution-regel.**
+202 bevindingen uit 68 reviews: 15 blocker, 34 major, 83 minor, 52 nit, 18 question. **15 zonder Resolution-regel.**
 
 | Sev | Slug | ID | Bevinding | Cat | Zekerheid | Waar | Resolution |
 |---|---|---|---|---|---|---|---|
@@ -194,7 +194,7 @@
 | question | `ar-sessions` | Q01 | The commit's committer is `Claude <noreply@anthropic.com>` (INV-4), which traps.md records as knowingly not fixed | conventions | confirmed | commit `95bbb9750` metadata | answered 2026-09-05 — this session commits as Jan; the two commits it put on the branch earlier today are named as worse, and are not force-pushed away |
 | question | `assignee-nobody` | F09 | question for Jan: is turning a 500 into a wrong answer on a neighbouring filter acceptable, or does F01 have to be fixed before the note goes up? | correctness | confirmed | `see F01` | answered 2026-09-05 — Jan decided it with g06: fix first, submit after. Done on both branches, so nothing is left open here |
 | question | `gitignore-credentials` | F03 | Ignoring `config/credentials.yml.enc` inverts Rails' intended workflow — is that deliberate? | minimality | confirmed | `.gitignore:11` | answered by Jan, g16a — reading (a): the line stays, deliberately, and the reason plus its price is now in `status.md` |
-| question | `imap-oauth` | F02 | PKCE is not used and not mentioned, on a patch whose whole subject is an authorization code grant | security | confirmed | `lib/redmine/oauth2_client.rb:41-58` and `:62-76`; the objections table in `dossier.md` | **—** |
+| question | `imap-oauth` | F02 | PKCE is not used and not mentioned, on a patch whose whole subject is an authorization code grant | security | confirmed | `lib/redmine/oauth2_client.rb:41-58` and `:62-76`; the objections table in `dossier.md` | decided by Jan on 2026-09-10, **option A** — no PKCE, but the |
 | question | `imap-oauth` | F07 | should the note offer to split the patch at the `oauth2_authorize` line before a committer asks? | scope | n/a — this is a question for Jan, not a defect | the whole patch; `docs/features/imap-oauth/dossier.md`, "Anticipated objections" | decided by Jan 2026-09-06 — **optie B**. The note offers the split in one sentence; the attachment stays one patch file. Logged in `docs/DECISIONS.md` under "Beslist (Jan) — 2026-09-06, imap-oauth (reviewronde 3)", the ready-to-paste English wording is the "This is two changes" row of the objections table in `dossier.md`, and `status.md` carries the instruction under "Wat Jan nog moet doen". Jan's 2026-09-03 decision that the consent step belongs in the patch is untouched |
 | question | `ldap-mail-prefs` | F11 | For an account nobody uses, is `only_assigned` the value you want, or `none`? | scope | confirmed (the behaviour; the intent is yours) | `lib/tasks/disable_mail_ldap_users.rake:29` | answered 2026-09-05 — Jan g01d: the value is a parameter, so neither is hardcoded; recorded in `decisions.md` |
 | question | `members-pagination` | Q01 | The three commits GEOxyz will run carry `Committer: Claude <noreply@anthropic.com>` | conventions | confirmed | `351fe9e54`, `55ae9d1dd`, `885f04097` on `7.0-stable-GEOxyz` | raised to Jan on 2026-09-06 as **K-13** in `docs/DECISIONS.md`, |

@@ -138,7 +138,7 @@ they cover the branch choice, which is a different question.
 
 ### F02 — PKCE is not used and not mentioned, on a patch whose whole subject is an authorization code grant
 
-- **Status:** open
+- **Status:** question
 - **Severity:** question
 - **Confidence:** confirmed
 - **Category:** security
@@ -183,7 +183,13 @@ hypothesis. I would take the row: the patch is already large for a first
 submission, and the interception the mechanism defends against is not present
 in this flow.
 
-**Resolution:**
+**Resolution:** decided by Jan on 2026-09-10, **option A** — no PKCE, but the
+argument goes into the submission. Written up as **K-23** in
+`docs/DECISIONS.md`, with the reasoning and with the limit of that reasoning
+(it does not carry over to a flow whose redirect is caught by a listening
+process). What is left is one row in "Anticipated objections" in
+`docs/features/imap-oauth/dossier.md`, and that belongs to the round-4 fix pass
+under K-22 rather than to this review. No code changes.
 
 ---
 
