@@ -89,7 +89,8 @@ gebouwd** met de helper tegen Redmine's eigen fixtures op rubyzip 3.6.0 en de
 inhoud is uitgelezen:
 
 ```
-entries: 9
+entries: 9  (6 of the 9 listed below; the three omitted are the remaining
+             fixture pages, each one <page>/<page>.txt like the ones shown)
   Another_page/Another_page.txt                        117 bytes  mtime=2007-03-07 23:18:07
   Another_page/Child_1/Child_1.txt                      38 bytes  mtime=2007-03-07 23:18:07
   Another_page/Child_1/Child_1_1/Child_1_1.txt          25 bytes  mtime=2007-03-07 23:18:07

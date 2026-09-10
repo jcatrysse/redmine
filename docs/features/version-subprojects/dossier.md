@@ -226,10 +226,14 @@ make a defect configurable.
 **Recompute the values when the subproject filter changes.** `addFilter` caches
 the fetched list in `filterOptions['values']` and never refetches it, so a
 subproject filter changed *after* the target version filter was added still
-shows the older list until the page is reloaded. That is pre-existing behaviour
-of every remote filter and this patch does not change it; fixing it means
+shows the older list until the page is reloaded. The cache is pre-existing and
+this patch does not touch it, but the staleness is **new here**, and saying only
+the first half would be too kind to ourselves: until now no remote filter's
+values depended on the other filters, so a cached list and a fresh one were
+always the same list. This patch is what makes the value list a function of the
+filter state, and therefore what makes the cache observable. Fixing it means
 invalidating the cache on filter changes, which is a separate change to a shared
-code path.
+code path, so it is left alone deliberately rather than by omission.
 
 # Tests
 
@@ -358,7 +362,7 @@ screenshot.
 | Why not simply scope to the project tree, as the attached patch does? | Because that drops versions shared in from outside it. See "Alternatives considered" and the test that fails on that implementation. |
 | Does the value list now cover every version an issue in the list can sit on? | Not quite, and the gap is named under "Proposed change": a `descendants`-shared version owned by a project between the queried project and a subproject that an explicit subproject filter brought into scope. Closing it needs a wider predicate than either patch on this issue proposes. |
 | `build_from_params` on a public endpoint | It builds a `Query` in memory from `params.slice(:f, :op, :v)` — the filter parameters only — exactly as `IssuesController#retrieve_query` does with the same three, and it now runs *after* the `view_permission` check rather than before it. Unavailable filters are ignored by `add_filters`. Because nothing else is passed, `c` and `t` no longer reach the array setters that would raise on a scalar, and the action's own `name` argument cannot become a filter value. **The boundary is worth stating exactly, because the slice is not a claim that every input is safe.** What it removes is crash surface that would have been *new to this endpoint*: `c` and `t` are read by no other part of `filter`, so a scalar `c=subject` would have raised here and nowhere else. The field list is also only used when it is one: `Query#add_filters` guards with `fields.present? && operators.present?` and then calls `fields.each`, and a non-empty String is `present?`, so `f=subproject_id&op[subproject_id]==` would raise `NoMethodError: undefined method 'each' for an instance of String`. Unpatched trunk answers that request with a 200 here, because it ignores `f` on this endpoint altogether, so consuming the parameter without checking its shape would be a regression this patch caused — the same error being reachable through `/issues?set_filter=1` on trunk says something about Redmine, not about whether this endpoint got worse. Hence `if params[:f].is_a?(Array)`, which restores the old answer for a malformed request and costs the feature nothing. Hardening `add_filters` itself is deliberately **not** done here: that is a one-line change to a core method this feature has no other reason to touch, and it is worth its own issue. |
-| The cached value list goes stale if the subproject filter is changed afterwards | True, and pre-existing for every remote filter; this patch does not touch that cache. Named under "Alternatives considered" so it is not mistaken for a regression. |
+| The cached value list goes stale if the subproject filter is changed afterwards | True. The cache itself is pre-existing and untouched; the staleness is new, because this is the first remote filter whose values depend on the other filters, so it is the first one where a cached list can differ from a fresh one. Reloading the page is the workaround; invalidating the cache on every filter change is a separate change to a shared code path. Named under "Alternatives considered" with that reasoning rather than left to be discovered. |
 | Why does the "Subproject" filter influence another filter's values at all? | Because `project_statement` is what decides which issues the list contains, and a filter whose values do not match its own list is the defect being fixed. |
 | Does it still work with `display_subprojects_issues` off? | Yes. `project_statement` consults an explicit `subproject_id` filter first and only falls back to the setting when there is none, so the filter widens the version list past the setting. Asserted by `..._should_respect_selected_subprojects` (`=`) and `..._when_filtering_any_subproject` (`*`), both with the setting off, and by `..._not_include_subproject_versions_when_not_displaying...` for the case with the setting off and no subproject filter, where nothing from a subproject may appear. |
 

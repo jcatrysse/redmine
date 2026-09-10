@@ -44,8 +44,17 @@ de grens is een tikfoutbeveiliging, geen aanbeveling.
 - Volledige suite op `7.0-stable-GEOxyz`: **6097 runs, 32265 assertions,
   0 failures, 0 errors, 39 skips** — helemaal groen
 - `tools/check-geoxyz-branch.sh`: **PASS**
-- Geraakte suites in één proces: **135 runs, 1346 assertions, 0 failures,
-  0 errors**
+- Geraakte suites in één proces, **met de bestandenlijst erbij** omdat het
+  cijfer anders niet na te rekenen is (ronde 4, F01):
+  `test/unit/lib/redmine/my_page_test.rb`, `test/unit/setting_test.rb`,
+  `test/functional/my_controller_test.rb`,
+  `test/functional/settings_controller_test.rb` en
+  `test/system/my_page_test.rb`, gedraaid via `tools/test-env.sh` zodat de
+  systeemtests echt draaien → **112 runs, 570 assertions, 0 failures, 0 errors,
+  0 skips** (opnieuw gemeten 2026-09-10). De eerder genoteerde
+  `135 runs, 1346 assertions` was niet te reconstrueren uit welke
+  bestandsverzameling dan ook en is daarom vervangen in plaats van aangevuld;
+  alleen de drie gewijzigde testbestanden samen geven 92 runs.
 - RuboCop op de vijf gewijzigde Ruby-bestanden: **0** (baseline op dezelfde
   bestanden op `origin/master`: **0**)
 - Rood op de oude code, in drie aparte mutaties: alle productiebestanden terug

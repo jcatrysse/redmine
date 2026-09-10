@@ -56,7 +56,7 @@ One number does not reproduce, and that is my only finding.
 
 ### F01 — the "geraakte suites" figure does not reproduce, and the bullet does not say which suites it means
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -100,7 +100,13 @@ Name the files in the bullet and re-run it, the way
 from a larger set that made sense at the time, saying which set is enough; the
 figure only has to be reconstructable.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10, by re-measuring rather than by explaining. The bullet now
+names all five files and says how they were run (`tools/test-env.sh`, so the
+four system tests execute instead of erroring), and carries the number that run
+produced: **112 runs, 570 assertions, 0 failures, 0 errors, 0 skips**. The old
+`135 runs, 1346 assertions` was replaced rather than annotated, because no file
+set I could construct reproduces it — the three changed test files alone give
+92 runs, and adding the two obvious companions gives 112.
 
 ---
 

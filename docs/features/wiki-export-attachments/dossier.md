@@ -124,8 +124,11 @@ instead of the current eight files in one directory. The tree is walked from
 (`LOWER(title)`), and reuses `archived_wiki_page_filename` unchanged, so the
 sanitising and the `(n)` de-duplication are the ones already there, applied per
 sibling group. A page whose parent is not among the exported pages is written
-at the archive root rather than dropped, so every page given appears exactly
-once whatever collection a caller passes.
+at the archive root rather than dropped, so a caller may pass any subset of a
+wiki. The one shape that is not written is a page whose parent chain never
+reaches the root — a page that is its own parent, or two that are each other's
+— which `WikiPage`'s own `validate_parent_title` refuses to create; see "Found
+but not fixed".
 
 **Attachments are an option on the export.** The `ZIP` entry in "Also
 available in" now opens the export-options dialog that Redmine already uses for
@@ -255,6 +258,18 @@ shapes behind one action, which is hard to justify and was the heaviest
 objection anticipated against it. And with the flat layout the attachment does
 not sit next to the source that refers to it, so `!diagram.png!` still does not
 resolve, leaving the third of #43978's design questions unanswered.
+
+**A directory only where one is needed** — that is, a page with children or,
+when the option is on, with attachments — so that a leaf page stays a plain
+`Foo.txt` beside its siblings. This is the intermediate that keeps a flat wiki
+flat, and it is the first thing a reviewer whose wiki has no hierarchy will ask
+for. Rejected because it makes the shape of the archive depend on which pages
+happen to have files: turn the attachment option on and a leaf page that
+acquired one attachment turns from a file into a directory, so the same wiki
+exports in two different layouts depending on a check box. That is the same
+"one action, two shapes" objection that sinks the two alternatives above, and
+it is worse here because the shape varies *within* one archive rather than
+between two runs.
 
 **Nesting only when attachments are included.** The intermediate position:
 flat when text-only, nested when attachments are asked for. Rejected for the
@@ -567,11 +582,18 @@ Reported, not touched — INV-1.
   both cases; what differs is where. The gap is upstream of this patch and
   worth its own report; the nesting here makes the wiki export the safer of the
   two paths.
-- **A `parent_id` cycle would recurse without end** in the tree walk, as it
-  would in core's `render_page_hierarchy`. `validate_parent_title` refuses a
-  page as its own ancestor, so no route to a cycle was found; a dangling
-  `parent_id`, the reachable half of that family, is handled (the page is
-  exported at the root).
+- **A `parent_id` cycle is silently left out of the archive**, rather than
+  recursing without end as one might expect: the walk starts at the root, and a
+  cycle is never reached from there, so its pages are simply not written. Driven
+  with `parent_id` set outside the validations, a self-parented page yields a
+  valid ZIP with zero entries, and two pages that are each other's parent leave
+  only the unrelated third page in the archive — in 0.04 s, so there is no
+  runaway. `validate_parent_title` refuses a page as its own ancestor, so no
+  route through the application produces this; a dangling `parent_id`, the
+  reachable half of that family, *is* handled (the page is exported at the
+  root). Left alone deliberately: guarding it means either a visited-set in the
+  walk or a second pass over the pages the walk did not reach, for data the
+  model does not allow.
 - **Trunk fails 29 repository tests on a machine without the SCM client
   binaries; `7.0-stable` fails none.** Cause: trunk added
   `Setting.enabled_scm` (`app/models/setting.rb`), which filters the setting
@@ -586,6 +608,7 @@ Reported, not touched — INV-1.
 
 | Objection | Answer |
 |---|---|
+| "My wiki has no hierarchy at all. Why do I now get one directory per page?" | Because the layout has to be one shape. A wiki with no parents exports as `Foo/Foo.txt` for every page where it used to be `Foo.txt`, which is one extra directory level and no lost information. The alternative — a directory only for pages that have children or attachments — is in "Alternatives considered": it keeps a flat wiki flat, and in exchange the same wiki exports in two layouts depending on whether the attachments box is ticked, because a leaf page with one attachment has to become a directory. One predictable shape was judged worth more than the flat case being one level shallower, but this is a reviewer's call to make and the patch is easy to change if the answer is the other one. |
 | "A deep wiki with long titles produces paths Windows cannot extract." | True, and it is inherent to mirroring the tree. The flat layout had a hard ceiling of one component, at most 255 characters plus `.txt`, because `WikiPage` caps the title at 255; the nested one is the sum of every ancestor title. Measured: Redmine's own fixture wiki goes from 37 to 78 characters, a fifty-deep chain of five-character titles reaches 363, and three levels of 251-character titles reach 1011. Windows' `MAX_PATH` is 260 including the extraction directory, and Explorer's built-in ZIP handling still enforces it. Truncating names to stay under it would break the collision guarantees in the row below, which is why the hierarchy wins: the alternative is an archive that unpacks everywhere and tells you nothing about the wiki. |
 | "This changes the ZIP layout that shipped in 7.0.0." | It does, deliberately, and that is the decision being asked for. The flat layout discards the page tree, which Redmine has and the archive cannot reconstruct. The feature is two months old in a stable release, and trunk targets a feature release. If the answer is no, the same work fits behind a second link instead, at the cost of two shapes for one format. |
 | "Two existing tests had to change." | Yes: `test_export_to_zip` and `test_export_to_zip_should_sanitize_non_portable_entry_name_characters` assert the flat entry paths. They are updated to the new paths, not relaxed — the first still asserts the complete set of entry paths as literals, the content, the DOS timestamp and the UT timestamp, and the second still asserts that `Foo*` is sanitised and that the unsanitised name is absent. |

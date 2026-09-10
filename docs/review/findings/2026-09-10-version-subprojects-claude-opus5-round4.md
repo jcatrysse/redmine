@@ -159,7 +159,7 @@ carries the identical change as `43246a900`. Gates after the fix:
 
 ### F02 — "pre-existing for every remote filter" is true of the mechanism and not of the consequence
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -202,7 +202,12 @@ Rewrite the clause: the cache is pre-existing, the observable staleness is new
 here, and invalidating it is a separate change to a shared code path. No code
 change.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10, in the dossier. Both places that mentioned the cache now say
+that the mechanism is pre-existing and the *staleness* is new — this is the
+first remote filter whose values depend on the other filters, so it is the first
+one where a cached list can differ from a fresh one. The decision not to
+invalidate the cache is unchanged and is now stated as a decision rather than
+as an absence.
 
 ---
 

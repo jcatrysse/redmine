@@ -3,7 +3,10 @@
 # body. See tools/check-symmetry.sh.
 
 # Trunk's zeitwerk.rb has an ITCPDF inflection that 7.0-stable does not: it
-# arrived with upstream's Rubyzip 3.6 work, not with this feature. The patch
+# arrived with e0e38cb9b, "Reduce memory usage by not loading rbpdf until a PDF
+# is generated. (#44396)", not with this feature. (It is not the Rubyzip 3.6
+# bump a41077d2a / #44388, which landed in the same trunk round; an earlier
+# version of this comment named that one — round 4, F06.) The patch
 # touches the line only because the feature adds 'zip' => 'ZIP' to the same
 # inflect call, and resolving that conflict against trunk keeps both entries.
 # GEOxyz adds 'zip' => 'ZIP' alone, which is the whole of the feature there.

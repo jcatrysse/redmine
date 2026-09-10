@@ -81,7 +81,7 @@ all nine** against real trunk r25065 today.
 
 ### F01 — the archive silently drops a page whose parent chain never reaches the root, and the dossier says the opposite twice
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -139,7 +139,16 @@ contract is worth keeping, appending any page that is not in `directories` at
 the archive root is two lines, and it makes the sentence true again — but that
 is a design call for the owner, and INV-1 argues for the documentary fix.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10, documentary as recommended. "Proposed change" no longer
+claims "every page given appears exactly once whatever collection a caller
+passes"; it says a caller may pass any subset, and names the one shape that is
+not written. "Found but not fixed" now describes what actually happens — the
+walk starts at the root, an unreachable cycle is never entered, so its pages are
+silently left out rather than recursing without end — with the measured result
+(a self-parented page gives a zero-entry ZIP; two mutually parented pages leave
+only the third; 0.04 s, no runaway) and the reason for leaving it: guarding it
+costs a visited-set or a second pass for data `validate_parent_title` refuses to
+create. The code is unchanged.
 
 ---
 
@@ -201,7 +210,7 @@ their weight in the "red on the old code" table.
 
 ### F03 — the objections table has no answer for the case most installations are in: a wiki with no hierarchy
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -243,7 +252,14 @@ One row in "Alternatives considered" for the hybrid, with the reason it was
 rejected, and one row in "Anticipated objections" phrased the way a reviewer
 would ask it.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10. "Alternatives considered" has a new entry for the hybrid —
+a directory only for a page with children, or with attachments when the option
+is on — rejected because it makes the shape depend on which pages happen to
+have files, so one archive would mix files and directories at the same level
+depending on a check box. "Anticipated objections" opens with the question in
+the words a reviewer would use ("My wiki has no hierarchy at all. Why do I now
+get one directory per page?"), gives the cost honestly (one level deeper, no
+information lost) and says the trade is a reviewer's call to make.
 
 ---
 
@@ -343,7 +359,7 @@ or a sentence in the dossier saying why the fixed target is preferred here.
 
 ### F06 — the allowlist that silences the INV-10 gate gives the wrong reason
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -380,13 +396,18 @@ there.
 
 One line: name `e0e38cb9b` (#44396) instead.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10. `symmetry-allow.txt` now names `e0e38cb9b` (#44396, "Reduce
+memory usage by not loading rbpdf until a PDF is generated") as the commit the
+`itcpdf` inflection arrived with, and says explicitly that it is *not* the
+Rubyzip 3.6 bump `a41077d2a` (#44388) that an earlier version of the comment
+credited. The allowlist entry itself is unchanged and still correct:
+`origin/7.0-stable` has no `itcpdf` line.
 
 ---
 
 ### F07 — the rubyzip 3.6 evidence block prints six of nine entries without saying so
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -414,7 +435,10 @@ Counted the lines under the header.
 
 Either list all nine or say "(6 of 9 shown)".
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10. The block header now reads "entries: 9 (6 of the 9 listed
+below; the three omitted are the remaining fixture pages, each one
+<page>/<page>.txt like the ones shown)", so the arithmetic adds up without
+padding the listing with three uninformative lines.
 
 ---
 

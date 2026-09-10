@@ -31,6 +31,20 @@ Zo is de Rails-encryptiesleutel niet per ongeluk mee te committen, in geen van
 de twee indelingen die Rails kent. Dat is dezelfde gedachte als de regels die er
 al staan voor `config/database.yml` en `config/secrets.yml`.
 
+**De versleutelde bestanden gaan bewust mee, en dat is breder dan Rails
+bedoelt.** Rails splitst die map met opzet: `<omgeving>.key` is het geheim en
+hoort nooit in de repository, terwijl `<omgeving>.yml.enc` juist versleutelde
+inhoud is die je *wel* commit — daar is `credentials:diff --enroll` voor. De
+regel `/config/credentials/` negeert allebei, en `/config/credentials.yml.enc`
+negeert het versleutelde bestand van de standaardindeling. Dat is een keuze en
+geen ongeluk: Redmine gebruikt geen Rails-credentials (zie de alinea hieronder),
+dus er is vandaag niets te verliezen, en een regel op de hele map kan niet
+omzeild worden door een bestandsnaam die niemand voorzien had — precies wat
+`737b0a549` moest repareren. **De prijs:** gaat GEOxyz ooit wél
+per-omgeving-credentials gebruiken, dan is `config/credentials/production.yml.enc`
+alleen met `git add -f` te committen, en dan is dit het moment om de regel te
+versmallen naar `/config/credentials/*.key`. Gevonden in ronde 4 (F01).
+
 **Dit is voorzorg, niet iets dat nu in gebruik is.** Redmine gebruikt geen
 Rails-credentials: `config.require_master_key` staat uitgecommentarieerd in
 `config/environments/production.rb:23`, nergens in `app/`, `lib/` of `config/`

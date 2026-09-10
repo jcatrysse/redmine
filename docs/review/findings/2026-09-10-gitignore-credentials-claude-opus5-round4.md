@@ -57,7 +57,7 @@ is not expressed in that file today.
 
 ### F01 — the directory rule also hides the encrypted file, which is meant to be committed
 
-- **Status:** open
+- **Status:** wont-fix
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** scope
@@ -98,7 +98,16 @@ cannot be defeated by a filename nobody anticipated. The second is a defensible
 answer and takes one sentence; what should not stay is the current position,
 where the broader rule looks like an accident of fixing the `<env>.key` gap.
 
-**Resolution:**
+**Resolution:** wont-fix on the rule, fixed on the reasoning, 2026-09-10. The `.gitignore` is
+unchanged: narrowing `/config/credentials/` to `*.key` would reintroduce exactly
+the class of gap `737b0a549` was written to close — a filename nobody
+anticipated — and Redmine uses no Rails credentials at all, so nothing is being
+withheld from the repository today. What was missing is the reason, and
+`status.md` now carries it: Rails splits that directory deliberately, the
+ciphertext is meant to be committed, we ignore it anyway because a
+whole-directory rule cannot be defeated by a new filename, and the price is one
+`git add -f` on the day GEOxyz starts using per-environment credentials — which
+is also the moment to narrow the rule.
 
 ---
 
