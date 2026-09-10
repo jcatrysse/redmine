@@ -3,7 +3,7 @@
 
 # FINDINGS — elke reviewbevinding, één regel elk
 
-206 bevindingen uit 72 reviews: 15 blocker, 35 major, 84 minor, 54 nit, 18 question. **18 zonder Resolution-regel.**
+206 bevindingen uit 73 reviews: 15 blocker, 35 major, 84 minor, 54 nit, 18 question. **18 zonder Resolution-regel.**
 
 | Sev | Slug | ID | Bevinding | Cat | Zekerheid | Waar | Resolution |
 |---|---|---|---|---|---|---|---|
@@ -289,4 +289,5 @@
 | [`tools-claude-opus5-round4`](findings/2026-09-10-tools-claude-opus5-round4.md) | 2026-09-10 | tools-claude-opus5-round4 | blocker 2 / major 4 / minor 5 / nit 2 / question 1 | no — Redmine's suite is not what this onderdeel tests. What  |
 | [`version-subprojects`](findings/2026-09-10-version-subprojects-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 1 / minor 0 / nit 1 / question 0 | partly — the two touched files in one process, on the patch  |
 | [`webhook-issue-closed`](findings/2026-09-10-webhook-issue-closed-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 1 / nit 0 / question 0 | partly — the two touched test files in one process, plus a p |
+| [`webhook-tracker-filter`](findings/2026-09-10-webhook-tracker-filter-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | partly — `webhook_test.rb`, `webhooks_controller_test.rb` an |
 | [`wiki-export-attachments`](findings/2026-09-10-wiki-export-attachments-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 3 / nit 5 / question 0 | yes — the **full** `test:all` on the patch tip and, separate |
