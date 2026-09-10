@@ -3,7 +3,7 @@
 
 # FINDINGS — elke reviewbevinding, één regel elk
 
-208 bevindingen uit 79 reviews: 15 blocker, 36 major, 84 minor, 55 nit, 18 question. **19 zonder Resolution-regel.**
+209 bevindingen uit 80 reviews: 15 blocker, 36 major, 84 minor, 56 nit, 18 question. **20 zonder Resolution-regel.**
 
 | Sev | Slug | ID | Bevinding | Cat | Zekerheid | Waar | Resolution |
 |---|---|---|---|---|---|---|---|
@@ -148,6 +148,7 @@
 | nit | `assignee-nobody` | F06 | the two equivalence tests would pass on two empty sets | test-quality | confirmed | `test/unit/query_test.rb` — | fixed 2026-09-05 — both equivalence tests assert the shared result is non-empty before asserting equality |
 | nit | `assignee-nobody` | F07 | five of the seven "before" screenshots are the same file, and the dossier describes them as showing something they cannot show | dossier | confirmed | `docs/features/assignee-nobody/shots/`, and the "Failure paths | fixed 2026-09-05 — the text was corrected, not the images: the five identical shots are named as Redmine's generic 500 page, and the widget claim is limited to the two shots that render one |
 | nit | `assignee-nobody` | F08 | "all 63 locale files" — trunk has 50 | dossier | confirmed | `docs/features/assignee-nobody/dossier.md`, "Proposed change" and | fixed 2026-09-05 — 50, with the counting command in the dossier; the substantive claim (every locale file has `label_nobody`) re-counted and unchanged |
+| nit | `geoxyz-branch-claude-opus5-round4` | F01 | the two webhook features meet in one method on this branch and nothing exercises the combination | test-quality | confirmed | `app/models/webhook.rb`, `Webhook.hooks_for`; `test/unit/webhook_test.rb` | **—** |
 | nit | `geoxyz-hosts` | F02 | The matched set is wider than "hostnames", but not in a way that re-opens DNS rebinding | security | confirmed | `config/environments/development.rb:63` | fixed 2026-09-06 — the `.*` prefix became `[a-z0-9-]+(?:\.[a-z0-9-]+)*`, so all thirteen junk-prefixed strings are refused while `a.b.c.geoxyz.eu` still passes and the apex still does not |
 | nit | `geoxyz-hosts` | F03 | The line lives in an upstream-tracked file, so it is a standing merge-conflict candidate | conventions | confirmed | `config/environments/development.rb:63` | wontfix 2026-09-06 — the line stays in `config/environments/development.rb`, per this finding's own first option; both alternatives are worse and the reasons are recorded in `docs/features/geoxyz-hosts/decisions.md` |
 | nit | `gitignore-credentials` | F01 | the directory rule also hides the encrypted file, which is meant to be committed | scope | confirmed | `.gitignore:12` (`/config/credentials/`) | **—** |
@@ -285,6 +286,7 @@
 | [`wiki-export-attachments`](findings/2026-09-09-wiki-export-attachments-codex.md) | 2026-09-09 | codex | blocker 1 / major 0 / minor 0 / nit 0 / question 0 | no — the patch cannot be applied unchanged to current trunk, |
 | [`ar-sessions`](findings/2026-09-10-ar-sessions-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | partly — `session_store_check_test.rb` and `session_store_te |
 | [`assignee-nobody`](findings/2026-09-10-assignee-nobody-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 1 / nit 1 / question 0 | partly — the three touched files in one process, plus the sa |
+| [`geoxyz-branch-claude-opus5-round4`](findings/2026-09-10-geoxyz-branch-claude-opus5-round4.md) | 2026-09-10 | geoxyz-branch-claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 1 / question 0 | yes — the **full** `test:all` on this branch tip, today, aft |
 | [`geoxyz-hosts`](findings/2026-09-10-geoxyz-hosts-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | no, and it would prove nothing: the change is one line in `c |
 | [`gitignore-credentials`](findings/2026-09-10-gitignore-credentials-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 1 / question 0 | no — `.gitignore` is not code and no suite reads it. Instead |
 | [`imap-oauth`](findings/2026-09-10-imap-oauth-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 1 / nit 3 / question 1 | yes — the **full** `test:all` on the patch tip and on pristi |
