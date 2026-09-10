@@ -28,7 +28,7 @@ module Redmine
         # written into the directory of their page
         def wiki_pages_to_zip(pages, attachments_by_page = {})
           Zip.unicode_names = true
-          page_ids = pages.map(&:id)
+          page_ids = pages.to_set(&:id)
           pages_by_parent_id = pages.group_by {|page| page.parent_id if page_ids.include?(page.parent_id)}
           directories = wiki_page_directories(pages_by_parent_id)
           buffer = Zip::OutputStream.write_buffer do |zos|

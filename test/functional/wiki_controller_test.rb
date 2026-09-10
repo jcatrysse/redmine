@@ -1218,6 +1218,40 @@ class WikiControllerTest < Redmine::ControllerTest
                     'Another_page/Child_1/Child_1_1/Child_1_1.txt'
   end
 
+  def test_export_to_zip_should_number_siblings_whose_titles_sanitize_to_the_same_name
+    wiki = Project.find(1).wiki
+    ['Foo*', 'Foo"'].each do |title|
+      page = WikiPage.create!(:wiki => wiki, :title => title)
+      page.build_content(:text => title, :author_id => 2).save!
+    end
+
+    @request.session[:user_id] = 2
+    get :export, :params => {:project_id => 'ecookbook', :format => 'zip'}
+
+    assert_response :success
+
+    entry_names = zip_entries_from_response.keys
+    assert_includes entry_names, 'Foo_/Foo_.txt'
+    assert_includes entry_names, 'Foo_(1)/Foo_(1).txt'
+  end
+
+  def test_export_to_zip_should_not_number_pages_that_sanitize_alike_under_different_parents
+    wiki = Project.find(1).wiki
+    {'Another_page' => 'Bar*', 'CookBook_documentation' => 'Bar"'}.each do |parent, title|
+      page = WikiPage.create!(:wiki => wiki, :title => title, :parent => wiki.find_page(parent))
+      page.build_content(:text => title, :author_id => 2).save!
+    end
+
+    @request.session[:user_id] = 2
+    get :export, :params => {:project_id => 'ecookbook', :format => 'zip'}
+
+    assert_response :success
+
+    entry_names = zip_entries_from_response.keys
+    assert_includes entry_names, 'Another_page/Bar_/Bar_.txt'
+    assert_includes entry_names, 'CookBook_documentation/Bar_/Bar_.txt'
+  end
+
   def test_export_to_zip_with_attachments
     set_tmp_attachments_directory
     page = Project.find(1).wiki.find_page('Child_1_1')
