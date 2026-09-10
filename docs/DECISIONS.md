@@ -1695,3 +1695,48 @@ Waard om na te kijken door de sessie die die feature bezit.
 wijziging vier `status.md`-bestanden van vier verschillende features raakt en
 `tools/claim.sh` er maar één tegelijk kan afdekken. Jan heeft er expliciet om
 gevraagd.
+
+
+### K-22 — mogen de bevindingen van ronde 4 blijven liggen tot alle onderdelen gereviewd zijn?
+
+**Beslist door Jan op 2026-09-10: ja, eerst alles reviewen, daarna in één ronde
+fixen.**
+
+**Wat er aan de hand is.** `docs/STATE.md` zei tot vandaag onvoorwaardelijk
+"fixen gaat voor nieuw reviewen": zodra `tools/findings.sh --open` niet leeg is,
+is dát het werk. Die regel komt uit ronde 2, waar 127 bevindingen van één ronde
+open stonden en het risico was dat ze zouden verjaren. In ronde 4 werkt hij
+averechts: de eerste twee onderdelen (`tools`, `wiki-export-attachments`)
+leverden samen acht openstaande bevindingen op waarvan nul blockers en nul
+majors op de feature, en een fixsessie ertussen kost telkens een claim en een
+verificatieronde.
+
+**De keuze die voorlag.**
+
+- **A) laten zoals het is** — na elk bevindingenbestand eerst fixen, dan pas het
+  volgende onderdeel reviewen.
+- **B) eerst alle onderdelen reviewen, daarna in één ronde fixen.**
+
+**Waarom B.** Drie redenen, in volgorde van gewicht. Een reviewsessie raakt geen
+code en schrijft één bestand met een unieke naam, dus reviews kunnen elkaar
+structureel niet in de weg zitten; fixen wel, dat claimt een feature. De
+bevindingen herhalen zich over features heen — bij `wiki-export-attachments`
+waren twee van de drie minors van het type "het dossier belooft iets dat niet
+klopt" en "de vertaling is niet na te rekenen zoals beschreven" — en zoiets wil
+je één keer samen beslissen in plaats van veertien keer los. En er is geen
+haast: er staat nog geen enkele patch op redmine.org, dus een minor die een paar
+dagen wacht kost niets.
+
+**De uitzondering, en die is hard.** Een **blocker of een major** wordt wél
+meteen gefixt. Reden: de volgende reviewsessie leest de gefixte staat, en een
+blocker die blijft staan vervuilt elk oordeel daarna. Dat is precies wat er bij
+het onderdeel `tools` gebeurde — twee blockers zaten in de gates zelf, en een
+gate die PASS meldt over iets wat ze niet meet, is het eerste waar de volgende
+sessie naar wijst in plaats van zelf te lezen.
+
+**Wat dit niet verandert.** Geen enkele bevinding blijft uiteindelijk op `open`
+zonder `Resolution:`-regel. K-22 stelt het fixen uit, het schrapt het niet, en
+"geen tijd gehad" blijft een geldige reden waar stilte dat niet is.
+
+**Reikwijdte.** Alleen ronde 4. Daarna geldt de oude regel weer, tenzij Jan dan
+iets anders zegt.
