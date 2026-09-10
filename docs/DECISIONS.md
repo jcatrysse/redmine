@@ -1593,3 +1593,46 @@ geen afwijking, dus er hoort geen blok in `docs/exceptions.md` bij.
 aan echte trunk (`git rev-list --count origin/master..FETCH_HEAD` = 0), want Jan
 heeft eerder vandaag gesynct. Alle negen patches zijn tegen die stand met
 `--submit` gemeten.
+
+### K-20 — moet `--submit` zelf bij redmine.org kijken hoe ver de mirror achterloopt?
+
+**Beslist door Jan op 2026-09-10: optie B.**
+
+**Wat er aan de hand is.** K-19 optie A legt het syncen van `origin/master` bij
+Jan en verbiedt elke sessie die branch te schrijven. Dat staat, en dit verandert
+er niets aan. Wat het wel oplost is de andere helft van hetzelfde probleem: de
+gate kón het verschil niet zien. `tools/check-patch-clean.sh --submit` meldde op
+2026-09-09 voor alle negen patches "applies to a pristine origin/master" terwijl
+de mirror zes dagen en achttien commits achterliep, en één patch tegen echte
+trunk niet meer applyde. De uitkomst was waar over de mirror en fout over de
+trunk waarop Jan indient, en niets in de uitvoer zei welke van de twee je las.
+
+**De keuze die voorlag.**
+
+- **A) laten zoals het is.** Jan synct met de hand, en de lezer van een PASS moet
+  zelf weten dat hij `git fetch https://github.com/redmine/redmine.git master`
+  moet draaien om te weten of die PASS iets betekent. Dat is precies wat er op
+  2026-09-09 misging: niemand wist dat hij het moest vragen.
+- **B) de gate haalt zelf echte trunk op en weigert als het gat niet nul is.**
+
+**Wat B wel en niet verandert.** Niet: wie de mirror schrijft. De fetch is alleen
+lezen, hij gaat naar `FETCH_HEAD` en raakt `origin/master` niet aan, en
+`patch/<slug>` blijft van `origin/master` afgetakt — de eigenschap waar K-19 A
+op steunde blijft dus intact. Wel: een `--submit`-PASS is voortaan
+onvoorwaardelijk een uitspraak over echte trunk. Loopt de mirror achter, dan
+faalt `--submit` met het gat erbij en met de sync-commando's uit
+`docs/runbook.md`, in plaats van een PASS af te geven die de lezer zelf had
+moeten wantrouwen.
+
+**Waarom dit K-19 niet heropent.** K-19 ging over *wie de mirror bijwerkt*; deze
+gaat over *wat de gate mag beweren als dat niet gebeurd is*. Onder A van K-19 kon
+de mirror stil verouderen — dat werd toen expliciet als de prijs aanvaard. B van
+K-20 laat het verouderen toe maar maakt het luid: de gate weigert dan te
+oordelen in plaats van iets anders te meten dan ze zegt.
+
+**Wat een sessie hiervan merkt.** Zonder net (`--submit` niet meegegeven) blijft
+alles zoals het was: geen netwerkeis, hoogstens een `note`. Met `--submit` is een
+netwerkfout naar github.com voortaan een blokkade en geen waarschuwing, want een
+`--submit` die de vraag niet kón stellen mag hem niet met ja beantwoorden. Dat is
+dezelfde regel als bij de ontbrekende RuboCop (ronde 4, `tools` F02): een gate die
+niet kon meten, is geen gate die geslaagd is.
