@@ -63,6 +63,17 @@ class Redmine::ImapTest < ActiveSupport::TestCase
     end
   end
 
+  # The mechanism name is what the patch passes to Net::IMAP, so it is what has
+  # to keep resolving: a rename, or a move away from the positional
+  # (username, token) form, would leave every mocked test above green while no
+  # mailbox authenticates any more.
+  def test_xoauth2_should_be_a_sasl_mechanism_net_imap_knows
+    authenticator = Net::IMAP::SASL.authenticator('XOAUTH2', 'redmine@example.net', 'an-access-token')
+
+    assert_equal "user=redmine@example.net\1auth=Bearer an-access-token\1\1",
+                 authenticator.process(nil)
+  end
+
   def test_check_should_login_with_the_password_when_the_oauth2_options_are_blank
     imap = connected_imap
     imap.expects(:authenticate).never
