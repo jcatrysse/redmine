@@ -6,7 +6,7 @@
 - **Status read:** n/a
 - **Ran the test suite:** no. The subject is a shell gate; I ran the gate and then reproduced its measurement by hand, twice, with the cache disabled.
 - **Scope covered:** the lint check of `check-geoxyz-branch.sh`, from its file list to the number it prints, reproduced step by step; whether the branch actually adds a lint offence, measured independently on both sides; the root cause isolated by A/B in one worktree; the blast radius across the other gates.
-- **Scope NOT covered:** the other four checks in that script, and the other gates. I did not fix anything: `tools/**` is framework-owned and Jan has not asked for a change there.
+- **Scope NOT covered:** the other four checks in that script, and the other gates. The finding was written before the fix: Jan asked for the gate to be repaired after reading it, so F01 carries a `Resolution:` and the rest of this file is left as it was written, unfixed-tense and all.
 
 ## Summary
 
@@ -48,7 +48,7 @@ the run is complete, correct and partial.
 
 ### F01 — the G8 lint check has never run a version-gated Rails cop, because it lints a worktree with no Gemfile.lock
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** scope
@@ -130,9 +130,55 @@ Two halves, and the second matters more than the first.
    thing that is true until it silently is not.
 
 Both are changes to `tools/**`, which `docs/STATE.md` reserves for a session
-Jan asked for a framework change. This one is filed, not fixed.
+Jan asked for a framework change.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10, after Jan chose option A and asked for the
+gate to be repaired (so `FRAMEWORK_CHANGE=1`). Both halves are in, and the
+second is the one that makes the first durable.
+
+`find_gemfile_lock` takes `$GEMFILE_LOCK` if set, otherwise the first
+`Gemfile.lock` in any worktree of the repo, and the same file is copied into
+**both** lint worktrees so branch and baseline are measured against the same
+gems. If no lockfile can be found the check reports `lint NOT MEASURED` with
+that remedy rather than a number.
+
+`rails_cops_live` then proves the cops are actually running before any count is
+believed: it writes a probe controller containing
+`Project.find(params[:id])` into the lint worktree, runs rubocop on it with
+`--cache false`, and requires `Rails/StrongParametersExpect` in the output. That
+cop needs Rails >= 8, so it is exactly the family that goes quiet. The probe
+disables the cache because with it on the same directory returns the previous
+run's answer either way, which is what made my own first A/B test wrong.
+
+Measured after the fix, on `origin/7.0-stable-GEOxyz`:
+
+```
+  note  lint: Rails cops confirmed live, with /home/user/wt/geoxyz/Gemfile.lock in the worktrees
+  ok    lint: 8 offence(s) on 67 changed Ruby file(s), all already on
+        origin/7.0-stable's own lines (baseline 8) — upstream's, not this branch's
+  PASS
+```
+
+8 and 8, which are the numbers I had measured by hand, against the 1 and 1 the
+gate used to print. And the refusal path was driven red rather than reasoned
+about: pointing `GEMFILE_LOCK` at a lockfile that pins no Rails gives
+
+```
+  ????  lint NOT MEASURED — the probe controller produced no
+        Rails/StrongParametersExpect, ...
+  INCOMPLETE — 1 check(s) could not be measured, so this is not a PASS.
+```
+
+with exit 1.
+
+**What this does not fix, and it should be read before trusting an old
+number.** Every "lint: 1 offence (baseline 1)" line already written into a
+`status.md` as G8 evidence was produced by the blind version of this check. The
+honest figure for that branch is 8 and 8. The *conclusion* those dossiers drew
+is unchanged — both sides were blind in the same way, so "this branch adds no
+lint offence" was true then and is true now — but the numbers are wrong and are
+left as they are rather than rewritten across eight features' files. The trap
+entry appended to `docs/traps.md` on 2026-09-10 says so.
 
 ---
 

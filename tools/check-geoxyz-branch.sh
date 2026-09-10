@@ -73,6 +73,60 @@ fi
 # A worktree checked out at $ref. Needed for both the merge test and the lint:
 # rubocop reads the working tree, so linting from the repo root would silently
 # skip files that exist only on this branch and report a false "clean".
+# --- the lint measurement needs a Gemfile.lock, and has to prove it ---------
+#
+# Until 2026-09-10 this script linted a worktree made by `git worktree add`,
+# which contains only tracked files — and Gemfile.lock is gitignored. Without
+# it, rubocop-rails' **version-gated** cops produce nothing, while the plugin
+# itself loads and Rails/Output still fires, so the run looked complete. On
+# 7.0-stable-GEOxyz the gate reported "1 offence (baseline 1)" where the honest
+# number is 8 and 8; the seven that vanished were all
+# Rails/StrongParametersExpect (round 4, tools second run, F01).
+#
+# Two things hid it, and both are why the probe below exists rather than a
+# comment saying "remember the lockfile":
+#   * with RuboCop's cache on, the same directory returns the previous run's
+#     answer whether or not a lockfile appeared, so the probe disables it;
+#   * `rubocop --show-cops Rails/StrongParametersExpect` prints an identical
+#     `Enabled: pending` config either way, so inspecting configuration proves
+#     nothing. Only running the cop does.
+
+# Where a Gemfile.lock can come from, in order: an explicit path, then any
+# worktree of this repo that has had `bundle install`. It is copied into both
+# lint worktrees, so branch and baseline are measured against the same gems.
+find_gemfile_lock() {
+  if [ -n "${GEMFILE_LOCK:-}" ] && [ -r "$GEMFILE_LOCK" ]; then
+    printf '%s\n' "$GEMFILE_LOCK"
+    return 0
+  fi
+  local d
+  while read -r d; do
+    [ -r "$d/Gemfile.lock" ] && { printf '%s\n' "$d/Gemfile.lock"; return 0; }
+  done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
+  return 1
+}
+
+# Proves the version-gated Rails cops are live in $1 by making one fire.
+# Project.find(params[:id]) in a controller is what Rails/StrongParametersExpect
+# is for, and that cop needs Rails >= 8, so it is exactly the family that goes
+# quiet without a lockfile.
+rails_cops_live() {
+  local wtdir="$1" probe="$1/app/controllers/zzz_rails_cop_probe_controller.rb" out
+  cat > "$probe" <<'PROBE'
+# frozen_string_literal: true
+
+class ZzzRailsCopProbeController < ApplicationController
+  def show
+    @object = Project.find(params[:id])
+  end
+end
+PROBE
+  out=$(cd "$wtdir" && "$RUBOCOP" --cache false --force-exclusion --format json \
+          app/controllers/zzz_rails_cop_probe_controller.rb 2>/dev/null)
+  rm -f "$probe"
+  printf '%s' "$out" | grep -q 'Rails/StrongParametersExpect'
+}
+
 tmp=$(mktemp -d)
 cleanup() { git worktree remove --force "$tmp/m" >/dev/null 2>&1; git worktree remove --force "$tmp/u" >/dev/null 2>&1; rm -rf "$tmp"; }
 trap cleanup EXIT
@@ -199,6 +253,12 @@ rm -f "$known"
 # Without the baseline this check failed on wiki_controller.rb:369
 # (Rails/StrongParametersExpect, an upstream line) for every branch that
 # touched the file (2026-09-05).
+#
+# Both worktrees get a Gemfile.lock first, and the run refuses to print a number
+# until a probe controller has made Rails/StrongParametersExpect fire — see
+# find_gemfile_lock and rails_cops_live above. Without that, every version-gated
+# rubocop-rails cop is silently off in a fresh worktree and this check reported
+# 1 offence where the honest number was 8.
 if [ "$own" -eq 0 ]; then
   pass "lint: nothing changed to lint"
 elif [ ! -x "$RUBOCOP" ]; then
@@ -215,11 +275,33 @@ else
     for f in "${files[@]}"; do
       git cat-file -e "$UPSTREAM:$f" 2>/dev/null && base_files+=("$f")
     done
+    lock=$(find_gemfile_lock)
+    if [ -z "$lock" ]; then
+      skip "lint NOT MEASURED — no Gemfile.lock to put in the lint worktrees, so every"
+      echo "      version-gated Rails cop would be silently off. Run bundle install in a" >&2
+      echo "      worktree of this repo, or set GEMFILE_LOCK=/path/to/Gemfile.lock." >&2
+      lint_measured=no
+    else
+      cp "$lock" "$wt/Gemfile.lock"
+      if ! rails_cops_live "$wt"; then
+        skip "lint NOT MEASURED — the probe controller produced no"
+        echo "      Rails/StrongParametersExpect, so the version-gated Rails cops are not" >&2
+        echo "      running even with $lock in place. Either the lockfile does not pin" >&2
+        echo "      Rails, or rubocop-rails renamed the cop and rails_cops_live() in this" >&2
+        echo "      script needs updating. Do not read a lint number until this passes." >&2
+        lint_measured=no
+      fi
+    fi
+    if [ "${lint_measured:-yes}" = no ]; then
+      :
+    else
+    warn "lint: Rails cops confirmed live, with $lock in the worktrees"
     branch_json=$(cd "$wt" && "$RUBOCOP" --force-exclusion --format json "${files[@]}" 2>/dev/null)
     base_json='{"files":[]}'
     base_ok=yes
     if [ "${#base_files[@]}" -gt 0 ]; then
       if git worktree add --detach -q "$tmp/u" "$UPSTREAM" 2>/dev/null; then
+        cp "$lock" "$tmp/u/Gemfile.lock"
         base_json=$(cd "$tmp/u" && "$RUBOCOP" --force-exclusion --format json "${base_files[@]}" 2>/dev/null)
         git worktree remove --force "$tmp/u" >/dev/null 2>&1
       else
@@ -277,6 +359,7 @@ RUBOCOPTALLY
     else
       fail "lint: $added_n offence(s) added by this branch ($n on the files, baseline $base_n on $UPSTREAM) — Redmine's CI runs rubocop:"
       printf '%s\n' "$verdict" | tail -n +2 | sed 's/^/          /'
+    fi
     fi
   fi
 fi
