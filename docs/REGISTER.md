@@ -15,15 +15,15 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`ff0d23b62 + 755d763a8 + 88d597548`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`6695461bd + 1cd7091fd`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`fd35bd2d1 + 157c171a5 + 74f343d3d + 73157aee5`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
-| [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`465d326aa`) | patch klaar | — |
+| [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`7d85538f3 + 465d326aa`) | patch klaar | — |
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`c6631e937 + 86647653e + 72058fa43 + 8ac09f4ff`) | patch klaar | — |
-| [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`6078281ff`) | patch klaar | — |
+| [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`c077d96df + 1fd3343ff + 6078281ff`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
-| [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`bc745ce73 + 22daa7c96 + 5b04c5c15 + bf5b41a0d`) | nooit | — |
+| [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`8612a76f4 + bc745ce73 + 22daa7c96 + 5b04c5c15 + bf5b41a0d`) | nooit | — |
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | live (`075c86e8a + 363686456`) | nooit | — |
 | [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key, de credentials-map en credentials.yml.enc negeren | `8ec9951d3` | live (`af0af806d + 737b0a549`) | nooit | — |
-| [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: notificatievoorkeuren van LDAP-accounts zetten na een import | `9e2c38e2d` | live (`bc7314a62 + 5b4943570 + f00b41afd + ae2417a6e`) | nooit | — |
+| [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: notificatievoorkeuren van LDAP-accounts zetten na een import | `9e2c38e2d` | live (`2ac1de3c6 + bc7314a62 + 5b4943570 + f00b41afd + ae2417a6e`) | nooit | — |
 | [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | live (`148faafb6 + 02ca8b044 + 22a4244c0 + 8fb5c8b8a`) | nooit | [#43355](https://www.redmine.org/issues/43355) |
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |

@@ -560,7 +560,7 @@ report.
 
 ## GEOxyz
 
-- **Commits op `7.0-stable-GEOxyz`:** `827e9e7d5` (2026-09-03, de feature) en
+- **Commits op `7.0-stable-GEOxyz`:** `7d85538f3` (2026-09-03, de feature) en
   `465d326aa` (2026-09-05, het ronde-2 ontwerp: de tijdstempelmapping terug uit
   `lib/redmine/acts/webhookable.rb` naar `Issue::Webhookable`, de regel waarom
   boven de bewaking, en de twee testwijzigingen). **Twee** commits en geen

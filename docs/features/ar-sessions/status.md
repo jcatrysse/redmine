@@ -3,7 +3,7 @@ slug: ar-sessions
 feature: Sessies in de database
 commit_51: ea61e37e8 + c2fefd51c
 geoxyz: live
-geoxyz_commit: bc745ce73 + 22daa7c96 + 5b04c5c15 + bf5b41a0d
+geoxyz_commit: 8612a76f4 + bc745ce73 + 22daa7c96 + 5b04c5c15 + bf5b41a0d
 upstream: nooit
 patch:
 issue: 
@@ -28,11 +28,14 @@ Ronde-2 fix is af. Alle twaalf reviewbevindingen van 2026-09-03 hebben een
 de nit is gecorrigeerd en de vraag is beantwoord. Gaat nooit naar upstream, dus
 geen dossier en geen patch.
 
-Op `7.0-stable-GEOxyz` staan er voor deze feature drie commits: `95bbb9750`
+Op `7.0-stable-GEOxyz` staan er voor deze feature vijf commits: `8612a76f4`
 (2026-09-03, de omschakeling zelf), `bc745ce73` (de ronde-2 fix) en
-`22daa7c96` (de ronde-3 fixes, 2026-09-09). Het registerveld noemt de twee die
-nog iets toevoegen. Geschiedenis wordt op deze branch niet
-herschreven, want dat maakt elke checkout van GEOxyz ongeldig.
+`22daa7c96`, `5b04c5c15` en `bf5b41a0d` (de ronde-3 fixes, 2026-09-09).
+**Het registerveld noemt ze alle vijf.** Tot 2026-09-10 noemde het alleen de
+laatste vier, en de zin hierboven noemde `95bbb9750` — een sha van vóór de
+K-13-herschrijving, die nergens meer bestaat. Zie K-21. Geschiedenis wordt op
+deze branch niet herschreven, want dat maakt elke checkout van GEOxyz
+ongeldig.
 
 ## Wat het doet
 

@@ -3,7 +3,7 @@ slug: ldap-mail-prefs
 feature: "Rake: notificatievoorkeuren van LDAP-accounts zetten na een import"
 commit_51: 9e2c38e2d
 geoxyz: live
-geoxyz_commit: bc7314a62 + 5b4943570 + f00b41afd + ae2417a6e
+geoxyz_commit: 2ac1de3c6 + bc7314a62 + 5b4943570 + f00b41afd + ae2417a6e
 upstream: nooit
 patch:
 issue: 
@@ -28,12 +28,15 @@ herbouwd op Jans gecorrigeerde doel (g01): **na een LDAP-import de
 notificatie-instellingen van de LDAP-accounts op de gewenste waarde zetten**,
 eenmalig, geen cron. Gaat nooit naar upstream, dus geen dossier en geen patch.
 
-Op `7.0-stable-GEOxyz` staan er voor deze feature **drie** commits:
-`add935736` (de oorspronkelijke taak, 2026-09-03), `bc7314a62` (de herbouw na
-ronde 2) en `5b4943570` (de drie ronde-3-fixes, 2026-09-09). Dat is met opzet:
+Op `7.0-stable-GEOxyz` staan er voor deze feature **vijf** commits:
+`2ac1de3c6` (de oorspronkelijke taak, 2026-09-03), `bc7314a62` (de herbouw na
+ronde 2), `5b4943570` (drie ronde-3-fixes, 2026-09-09), `f00b41afd` en
+`ae2417a6e` (de laatste twee ronde-3-fixes van dezelfde dag). Dat is met opzet:
 elke vorige was al gepusht en geschiedenis op die branch wordt niet
-herschreven, want dat maakt elke checkout van GEOxyz ongeldig. Het registerveld
-noemt de twee die nog iets toevoegen, `bc7314a62 + 5b4943570`.
+herschreven, want dat maakt elke checkout van GEOxyz ongeldig. **Het
+registerveld noemt ze alle vijf.** Tot 2026-09-10 noemde het alleen de laatste
+vier, en de zin hierboven noemde `add935736` — een sha van vóór de
+K-13-herschrijving, die nergens meer bestaat. Zie K-21.
 
 De oude taak `user:disable_mail_ldap_users` is weg. Wie hem gewend was, moet de
 nieuwe naam gebruiken; er stond geen cron-regel op (dat is precies wat g01

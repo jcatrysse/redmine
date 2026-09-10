@@ -3,7 +3,7 @@ slug: wiki-export-attachments
 feature: Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie
 commit_51: 3c3e9368e
 geoxyz: live
-geoxyz_commit: 6078281ff
+geoxyz_commit: c077d96df + 1fd3343ff + 6078281ff
 upstream: patch klaar
 patch: patches/wiki-export-attachments/2026-09-09-r25063-{feature,locales}.patch
 issue:
@@ -37,8 +37,8 @@ waaronder twee blockers; alle twaalf hebben een `Resolution:`-regel. De
 patchbranch is opnieuw opgebouwd uit het gekozen ontwerp op trunk r25037
 (één commit, `f434bff64` — sindsdien ververst, zie boven), de twee
 patchbestanden zijn daaruit geëxporteerd, en
-`7.0-stable-GEOxyz` heeft dezelfde fix als tweede commit (`7006c4f00`, bovenop
-`28c618860`). Er is nog **geen issue** op redmine.org: dit wordt een follow-up
+`7.0-stable-GEOxyz` heeft dezelfde fix als tweede commit (`1fd3343ff`, bovenop
+`c077d96df`). Er is nog **geen issue** op redmine.org: dit wordt een follow-up
 van [#43978](https://www.redmine.org/issues/43978), en dat issue moet Jan
 aanmaken. Ronde 3 (blinde herreview) is nog niet gedaan.
 

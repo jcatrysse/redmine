@@ -435,7 +435,7 @@ per-test red-on-old-code table and the GEOxyz numbers were taken with it.
   included): **5991 runs, 31764 assertions, 27 failures, 2 errors, 92 skips in 875 s**.
 - **full** suite on pristine `origin/master` r25037 in the same image:
   **5977 runs, 31710 assertions, 27 failures, 2 errors, 92 skips in 855 s**. The 29 failing test names are identical on both runs (`diff` of the sorted lists is empty): all of them are the `Repository::Subversion` validation failures of an image without `svn`, `hg`, `bzr` or `cvs` (see "Found but not fixed"). The 14 extra runs on the patch are the 12 new functional tests and the 2 new unit tests.
-- **full** suite on `7.0-stable-GEOxyz` with the same change, on the pushed tip `7006c4f00`:
+- **full** suite on `7.0-stable-GEOxyz` with the same change, on the pushed tip `1fd3343ff`:
   **6088 runs, 32244 assertions, 0 failures, 0 errors, 39 skips** in 889 s. Completely green.
 - `tools/check-geoxyz-branch.sh`: **PASS**. Its lint check reports 1 offence on
   the 58 Ruby files the branch changes, `Rails/StrongParametersExpect` at
@@ -625,8 +625,8 @@ Reported, not touched — INV-1.
 
 ## GEOxyz
 
-- **Commits op `7.0-stable-GEOxyz`:** `28c618860` (2026-09-02, het ontwerp),
-  `7006c4f00` (2026-09-05, de ronde-2 fix) en `6078281ff` (2026-09-08, de
+- **Commits op `7.0-stable-GEOxyz`:** `c077d96df` (2026-09-02, het ontwerp),
+  `1fd3343ff` (2026-09-05, de ronde-2 fix) en `6078281ff` (2026-09-08, de
   ronde-3 fix: de overbodige include weg, de helper `private`, en `Met
   bijlagen`). Drie commits, omdat de branch die GEOxyz draait nooit herschreven
   wordt; het registerveld wijst naar de laatste.

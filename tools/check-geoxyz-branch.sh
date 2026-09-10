@@ -140,6 +140,7 @@ fi
 # becomes `fatal: bad object` in a fresh clone. Hence: resolve the field, do
 # not trust it.
 recorded=0; dead=''
+known=$(mktemp)
 for f in docs/features/*/status.md; do
   [ -f "$f" ] || continue
   gc=$(sed -n 's/^geoxyz_commit: *//p' "$f" | head -1)
@@ -151,6 +152,8 @@ for f in docs/features/*/status.md; do
     elif ! git merge-base --is-ancestor "$c" "$ref" 2>/dev/null; then
       subj=$(git log -1 --format=%s "$c" 2>/dev/null)
       dead="$dead$(printf '\n          %-11s %s  not on the branch: %s' "$c" "$f" "${subj:0:52}")"
+    else
+      git rev-parse "$c^{commit}" >> "$known"
     fi
   done
 done
@@ -162,6 +165,32 @@ elif [ -n "$dead" ]; then
 else
   pass "all $recorded recorded geoxyz_commit sha(s) are on $ref"
 fi
+
+# --- 3c. and the other way round: is every own commit recorded? -------------
+# 3b only ever asked "does what the register says exist on the branch". Nothing
+# asked "does what is on the branch appear in the register", so five commits —
+# the FIRST commit of five different features — sat on the production branch
+# recorded nowhere, and the register read as complete (Jan's K-21, 2026-09-10).
+# Merges are exempt: an upstream merge belongs to no feature.
+if [ "$own" -gt 0 ]; then
+  unrecorded=$(git rev-list --no-merges "$UPSTREAM..$ref" | grep -vxFf "$known" || true)
+  if [ -n "$unrecorded" ]; then
+    # Rendered first, printed after the FAIL line. A `| while read` subshell
+    # flushes its own buffer independently, so piping straight to the terminal
+    # printed the commit list above the line that explains it.
+    listing=$(printf '%s\n' "$unrecorded" |
+      while read -r c; do git log -1 --format='          %h  %ad  %s' --date=short "$c"; done)
+    fail "own commit(s) on $ref that no status.md records as a geoxyz_commit:"
+    printf '%s\n' "$listing"
+    printf '          %s\n' \
+      "Add each one to the geoxyz_commit line of the feature it belongs to," \
+      "then tools/register.sh --write. A commit nobody records is a change" \
+      "nobody is tracking against its patch (INV-10)."
+  else
+    pass "every own non-merge commit on $ref is recorded against a feature"
+  fi
+fi
+rm -f "$known"
 
 # --- 4. lint on what the branch changes -----------------------------------
 # Measured against a baseline: the same files at $UPSTREAM, linted with
