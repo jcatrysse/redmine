@@ -1286,3 +1286,18 @@ toegevoegd.
   `wiki-export-attachments` in werkelijkheid niet meer, terwijl negen van de
   negen PASS meldden. Sinds K-19 optie A synct Jan de mirror vóór een
   inzendronde; jij schrijft die branch nooit, je meet alleen het verschil.
+
+- **Een gate die iets overslaat, moet de reden bewijzen — niet beweren.** In
+  `tools/check-symmetry.sh` stond dat locale-bestanden werden overgeslagen omdat
+  ze "elders per sleutel vergeleken worden (INV-5)". Dat had ik niet nagekeken
+  en het was onwaar: `check-patch-clean.sh` en `check-geoxyz-branch.sh` filteren
+  alleen wélke locale-bestanden mogen meedoen, ze lezen nooit een waarde. Dus
+  vergeleek niets ooit een vertaling, terwijl deze gate een globale INV-10 PASS
+  afdrukte. Codex ronde 3 brak één Engelse waarde op één kant en kreeg exit 0.
+  **De les is niet "vergeet locales niet"** — het is dat de rechtvaardiging van
+  een `continue` of een `skip` in een gate een controleerbare bewering is, en
+  dus gecontroleerd hoort te worden voordat je hem opschrijft. Sinds die ronde
+  heeft het script `--self-test`: die breekt één vertaling op een synthetische
+  kopie van GEOxyz (via een tijdelijke index, dus geen branch en geen worktree)
+  en eist dat de gate faalt. Zet de skip terug en die self-test meldt
+  "it is blind again".
