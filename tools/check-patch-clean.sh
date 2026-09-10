@@ -195,10 +195,26 @@ headers=$(awk '
 scanned=${headers##*@@scanned }
 headers=${headers%@@scanned *}
 
+# A file that starts with `diff --git` is a plain diff and not a format-patch
+# export, so it carries no commit message at all: there is nothing to scan and
+# nothing that could carry a trace. `members-pagination` is the only slug in
+# that shape — its two files are Takenori TAKAKI's, attached to #43355, and no
+# branch of ours exports them. "There was no message" is not the same claim as
+# "the message is clean", so it is a note and not an ok.
+fmtfiles=0
+for f in "${FILES[@]}"; do
+  IFS= read -r first < "$f" || first=""
+  case "$first" in
+    "From "*) fmtfiles=$((fmtfiles + 1)) ;;
+  esac
+done
+
 # An empty header set means the extraction broke, not that the patch is clean.
 # A grep over nothing reports nothing, and that is the shape of every gate
 # defect this framework has found so far.
-if [ "${scanned:-0}" -lt 1 ] || [ -z "$headers" ]; then
+if [ "$fmtfiles" -eq 0 ]; then
+  warn "no commit message to scan: ${#FILES[@]} file(s) are plain diffs, not format-patch exports"
+elif [ "${scanned:-0}" -lt 1 ] || [ -z "$headers" ]; then
   fail "could not read a single message header from ${#FILES[@]} file(s) — this check would pass without testing anything"
 else
   traces=$(printf '%s\n' "$headers" |
