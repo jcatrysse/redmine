@@ -63,6 +63,47 @@ uit de journaalregels te moeten opmaken of dit de sluiting was. Het event vuurt
 één keer per sluiting: niet opnieuw bij een tweede gesloten status, niet bij
 heropenen, wél opnieuw als het issue daarna weer dichtgaat.
 
+## Bewijs — fixronde ronde 4 (2026-09-10)
+
+**Ronde 4 vond één gat in de kernbewering van deze feature, en het is met tekst
+opgelost en niet met code.** De trigger is `saved_change_to_closed_on?`, en het
+dossier verdedigde die keuze met de stelling dat "deze opslag schreef
+`closed_on`" en "deze opslag sloot het issue" hetzelfde zijn. Dat klopt op één
+geval na: `update_closed_on` zet `closed_on = updated_on`, en Active Record ziet
+geen wijziging als de nieuwe waarde gelijk is aan de opgeslagen waarde. Een
+*her*sluiting op hetzelfde tijdstip als de vorige sluiting stuurt dus geen
+event.
+
+Nagespeeld met een stilstaande klok, tegen de patchtip:
+
+```
+klok bevroren op 12:00:00
+  eerste sluiting  -> ["issue.closed", "issue.updated"]  closed_on=12:00:00
+  heropenen        -> ["issue.updated"]                  closed_on=12:00:00
+  tweede sluiting  -> ["issue.updated"]                  closed_on=12:00:00   <- geen issue.closed
+
+klok loopt door
+  12:00:00 sluiten    -> ["issue.closed", "issue.updated"]  closed_on=12:00:00
+  12:00:01 heropenen  -> ["issue.updated"]                  closed_on=12:00:00
+  12:00:02 hersluiten -> ["issue.closed", "issue.updated"]  closed_on=12:00:02
+```
+
+**Waarom tekst en geen code.** Hoe breed dat venster is, hangt af van de
+resolutie van de kolom: op PostgreSQL microseconden, dus onbereikbaar; op een
+MySQL-`datetime` zonder fracties een hele seconde, en dan moet je sluiten,
+heropenen en hersluiten binnen die seconde. Het alternatief zonder venster
+staat al in het dossier onder "Alternatives considered" — `closing?` in een
+`before_save`-instantievariabele — en dat is een ontwerpwijziging van vier
+regels die een bewuste, eerder afgewogen keuze omkeert. INV-1 zegt dan: zet de
+bewering recht, niet de code. Het dossier noemt het gat nu op drie plaatsen: in
+"Proposed change" bij de trigger, in de bezwarentabel, en in het alternatief,
+waar er nu bij staat dát het de versie zonder venster is.
+
+**Geen test toegevoegd, en dat is ook een keuze.** Een test kan hier maar één
+van twee dingen vastleggen: dat het event uitblijft — dan cementeer je een
+tekortkoming — of dat het komt, en dan staat er een rode test in de inzending.
+De meting hierboven staat daarom in dit bestand en niet in de suite.
+
 ## Bewijs
 
 Alles opnieuw gemeten op **2026-09-05**, tegen trunk **r25037** (`bee32a926`).

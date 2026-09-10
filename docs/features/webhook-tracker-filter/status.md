@@ -3,7 +3,7 @@ slug: webhook-tracker-filter
 feature: Webhook beperken tot gekozen trackers
 commit_51: 25220b45d (deel)
 geoxyz: live
-geoxyz_commit: c6631e937 + 86647653e + 72058fa43 + 8ac09f4ff
+geoxyz_commit: c6631e937 + 86647653e + 72058fa43 + 8ac09f4ff + 1483f01e2 + fd2365dc3
 upstream: patch klaar
 patch: patches/webhook-tracker-filter/2026-09-05-r25037-feature.patch
 issue:
@@ -81,6 +81,30 @@ zijn aan beide kanten identiek. De K-11-mutatie geeft woordelijk de foutmelding
 die het dossier claimt. Vier eigen aanvalspogingen (migratievorm,
 callbackvolgorde, INV-10 tegen GEOxyz, en of de suitefouten van de patch waren)
 kwamen alle vier schoon terug.
+
+## Bewijs — fixronde ronde 4 (2026-09-10)
+
+- **Eén test die alleen op deze branch kan bestaan** (`geoxyz-branch` F01):
+  `should apply the tracker filter to the issue closed event as well`. De
+  trackerfilter en het `issue.closed`-event zijn twee losse upstream-patches,
+  elk apart van trunk afgetakt, dus hun combinatie bestaat nergens behalve waar
+  ze allebei toegepast zijn. Alle vijftien bestaande tests hielden de andere
+  feature op zijn standaardwaarde: de trackertests gebruiken `issue.created`,
+  de gesloten-tests zetten geen tracker.
+- De test zet een hook op `events: ['issue.closed']` én `trackers: [1]`, en
+  verwacht hem terug voor een issue van tracker 1 en niet voor een van tracker
+  2: **1 runs, 2 assertions, 0 failures**. RuboCop op het testbestand: 0.
+- **INV-10 blijft mechanisch controleerbaar** doordat er een
+  `symmetry-allow.txt` bij staat die deze ene regel benoemt en uitlegt waarom
+  hij in geen van beide patches thuishoort — hem daar wel in zetten sleept het
+  onderwerp van de andere feature de diff in en breekt INV-1 en INV-2.
+- Op `7.0-stable-GEOxyz` als **`1483f01e2`**, met **`fd2365dc3`** erachteraan:
+  de toelichtende opmerking boven de test is er weer uit gehaald, want
+  `check-symmetry.sh` strípt regels die met `#` beginnen uit
+  `symmetry-allow.txt` voordat hij vergelijkt, dus een commentaarregel in de
+  broncode is per constructie niet vrij te pleiten en zou de INV-10-gate
+  permanent rood houden. De reden staat nu in de allowlist, in het
+  commitbericht en hierboven.
 
 ## Bewijs
 

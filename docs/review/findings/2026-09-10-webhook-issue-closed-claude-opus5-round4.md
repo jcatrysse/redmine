@@ -59,7 +59,7 @@ under this image's json 3.0.2.
 
 ### F01 — a re-closing at an unchanged timestamp fires no event, and the dossier states the predicate as an identity
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -127,7 +127,23 @@ per-instance state") are weaker once the column-based version is known to be
 lossy. Either way it wants a test: the frozen-clock sequence above is four
 lines and is red on the current patch.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10, in the dossier rather than in the code, and the reasoning is
+recorded in `status.md` with the frozen-clock measurement. "Proposed change" no
+longer states the identity flat: it names the exception, says the window is the
+column's timestamp resolution (a microsecond on PostgreSQL, a second on a MySQL
+`datetime` without fractions), and says a script can reach it where a person
+cannot. The objections row repeats it where a reader meets the design choice,
+and "Alternatives considered" now records that the `before_save` instance
+variable is the version with **no** window — which is the one argument in its
+favour and turns that entry from a mention into a live option a committer can
+ask for in four lines.
+
+No test was added, deliberately. A test here can pin only one of two things:
+that no event is sent, which cements a shortcoming into the submission, or that
+one is, which would be a red test in the patch. The measurement lives in
+`status.md` instead. If the owner or a committer would rather close the window
+than describe it, the change is the ivar and it is small; that decision is
+explicitly left open rather than silently taken.
 
 ---
 

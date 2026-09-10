@@ -76,7 +76,7 @@ at branch level.
 
 ### F01 — the two webhook features meet in one method on this branch and nothing exercises the combination
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -127,7 +127,26 @@ break INV-1 and INV-2 both. Which of the two feature files records it is a
 judgement for the owner; `webhook-tracker-filter` is the one whose predicate
 grew.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10, on `7.0-stable-GEOxyz` only, which is where the combination
+exists. `should apply the tracker filter to the issue closed event as well`
+puts a hook on `events: ['issue.closed']` **and** `trackers: [1]` and asserts it
+is returned for closing an issue of tracker 1 and not for one of tracker 2:
+1 run, 2 assertions, 0 failures. It is deliberately in neither patch — putting
+it there would drag the other feature's subject into that diff and break INV-1
+and INV-2 — and `docs/features/webhook-tracker-filter/symmetry-allow.txt` now
+records every line of it with that reason, so INV-10 stays mechanical rather
+than being waived.
+
+Two things the fix taught, both recorded where the next session will meet them.
+`check-symmetry.sh` strips lines beginning with `#` from an allowlist before
+matching, so a **comment** in GEOxyz-only source can never be allowlisted and
+would hold the gate red permanently; the test therefore carries no comment and
+the reason lives in the allowlist, the commit message and `status.md`
+(`fd2365dc3`). And that second commit exists at all because the first attempt
+amended `1483f01e2` after it had been pushed — a rewrite of the production
+branch, which CLAUDE.md forbids outright. It was caught before any force push:
+`git reset --soft origin/7.0-stable-GEOxyz` put the pushed commit back and the
+change went on top as an ordinary commit.
 
 ---
 

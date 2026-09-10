@@ -1,0 +1,25 @@
+# Divergences between patch/webhook-tracker-filter and 7.0-stable-GEOxyz that
+# are correct, with the reason. One pattern per line, matched against the line
+# body. See tools/check-symmetry.sh.
+
+# One test exists on 7.0-stable-GEOxyz and in neither patch, on purpose. The
+# tracker filter (this feature) and the issue.closed event
+# (webhook-issue-closed) are two separate upstream patches, each branched from
+# trunk on its own, so their combination -- a hook restricted to a tracker AND
+# subscribed to issue.closed -- exists only where both are applied, which is
+# this branch. Putting it in either patch would drag the other feature's
+# subject into that diff and break INV-1 and INV-2. Round 4, geoxyz-branch F01.
+#
+# Every line of that test is listed, so the allowlist stays as narrow as the
+# thing it excuses: a tenth line appearing in webhook_test.rb still fails.
+# The test itself carries no explanatory comment, and that is not an oversight:
+# this file strips lines beginning with # before matching, so a comment line in
+# the source could never be allowlisted and would fail the gate for ever. The
+# reason lives here, in the commit message and in status.md instead.
+test "should apply the tracker filter to the issue closed event as well" do
+hook = create_hook(events: ['issue.closed'])
+selected = Issue.generate!(:project => Project.find(1), :tracker => Tracker.find(1),
+other = Issue.generate!(:project => Project.find(1), :tracker => Tracker.find(2),
+:status => IssueStatus.where(:is_closed => false).order(:id).first)
+assert_equal [hook], Webhook.hooks_for('issue.closed', selected)
+assert_equal [], Webhook.hooks_for('issue.closed', other)

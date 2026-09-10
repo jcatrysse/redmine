@@ -122,10 +122,25 @@ exactly as before, and the other four webhookable models are untouched.
 The trigger condition is `saved_change_to_closed_on?`. `closed_on` is written
 by exactly one place in core — the `update_closed_on` callback, `if closing?` —
 and it is not a safe attribute, so no request can set it. So "this save wrote
-`closed_on`" and "this save closed the issue" are the same statement, and the
-patch does not need a second definition of closing, an extra query for the
-previous status, or an instance variable carried from `before_save` into
-`after_commit`.
+`closed_on`" and "this save closed the issue" are the same statement, with one
+exception, and the patch does not need a second definition of closing, an extra
+query for the previous status, or an instance variable carried from
+`before_save` into `after_commit`.
+
+**The exception, stated rather than left to be found.** `update_closed_on`
+assigns `self.closed_on = updated_on`, and Active Record reports no change when
+the value assigned equals the value stored. So a *re-*closing whose
+`updated_on` lands on the same timestamp as the previous closing writes
+nothing, and no `issue.closed` is sent for it. How wide that window is depends
+on the resolution of the column: on PostgreSQL it carries microseconds and no
+sequence of close, reopen and close can fit inside one, while a MySQL
+`datetime` without fractional seconds — which is what an `issues` table created
+by an older Redmine has — makes it a full second. Reaching it needs all three
+transitions inside that window, so a person cannot and a script can. The
+alternative that has no such window is the `before_save` instance variable
+under "Alternatives considered"; the trade is one more callback and one more
+piece of per-instance state against a gap this narrow, and a committer who
+would rather have it can say so.
 
 | File | Change |
 |---|---|
@@ -272,7 +287,12 @@ is the exact predicate, but it reads the dirty state before the save and is
 false by the time `after_save_commit` runs. Carrying it across in an ivar works
 and is a pattern this model already uses for `@current_journal`, but it is an
 extra callback and an extra piece of per-instance state to express something
-already recorded in a column.
+already recorded in a column. It is the version with **no** timestamp window:
+`closing?` is true for a re-closing whatever `updated_on` turns out to be,
+where `saved_change_to_closed_on?` is not. That is the one argument in its
+favour, and it is the reason this alternative is worth a second look rather
+than a mention — if the window matters to you, this is the change, and it is
+four lines.
 
 **A setting to switch the event on.** Rejected on INV-6 grounds and because it
 would be a setting for something a check box on the hook already expresses.
@@ -518,7 +538,7 @@ report.
 
 | Objection | Answer |
 |---|---|
-| Why `closed_on` and not the status change? | `closed_on` is written by exactly one place in core, `update_closed_on`, `if closing?`, and it is not a safe attribute. So reading it is reading core's own answer to "was this a closing", with no extra query and no second definition to keep in step. The status-based version is in "Alternatives considered" with what it costs. |
+| Why `closed_on` and not the status change? | `closed_on` is written by exactly one place in core, `update_closed_on`, `if closing?`, and it is not a safe attribute. So reading it is reading core's own answer to "was this a closing", with no extra query and no second definition to keep in step. It has one gap and it is named under "Proposed change": a re-closing that lands on the same timestamp as the previous one assigns `closed_on` the value it already holds, so Active Record sees no change and no event is sent. That needs close, reopen and close inside the column's timestamp resolution — a microsecond on PostgreSQL, a second on a `datetime` column without fractional seconds. The status-based version and the `before_save` instance variable are both in "Alternatives considered" with what they cost. |
 | `closed` is in the `acts_as_webhookable` array but the `case` in that method has no branch for it. Is that not a bug? | No, it is the seam, and it is the reason `lib/redmine/acts/webhookable.rb` is not in this patch at all. Registering an event without a generic lifecycle callback is supported and trunk's own payload test does it (`should generate payload for custom event`, registering `news.commented`). "Closed" is not a lifecycle callback, so it is fired from `Issue::Webhookable` instead, next to the journal enrichment that is also issue-specific — and the payload timestamp for it is overridden in that same file rather than added to the generic mapping. `Issue#attachment_removed` calls `Webhook.trigger` directly for the same reason. |
 | This should be `after_update_commit`, not `after_save_commit`. | `after_save_commit` also covers an issue created directly in a closed status, which is a closing by Redmine's own definition (`Issue#closing?` returns `closed?` for a new record, and `update_closed_on` stamps `closed_on` on that create). Restricting it to updates would make the event silently miss that case. There is a test for it. |
 | What does this cost on `Issue#save` in an installation with webhooks off, which is the default? | One in-memory boolean, and **zero** queries. The condition is written `Webhook.trigger(...) if saved_change_to_closed_on?`, so the guard is evaluated first and `Setting.webhooks_enabled?` is not even read unless the save actually closed the issue. That is cheaper than the three callbacks `acts_as_webhookable` already installs, which call `Webhook.trigger` unconditionally on every create, update and destroy. Measured by counting `sql.active_record` around one `Issue#save`: with webhooks off the `webhooks` table is not touched on any save path, closing or not. |
