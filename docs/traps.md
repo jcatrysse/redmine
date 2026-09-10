@@ -1301,3 +1301,15 @@ toegevoegd.
   kopie van GEOxyz (via een tijdelijke index, dus geen branch en geen worktree)
   en eist dat de gate faalt. Zet de skip terug en die self-test meldt
   "it is blind again".
+
+- **RuboCop draait niet op Redmine zonder `rubocop-performance` én `rubocop-rails`.**
+  `.rubocop.yml` laadt ze als plugins, dus zonder die twee gems stopt RuboCop met
+  `cannot load such file -- rubocop-performance` en schrijft hij **niets** naar
+  stdout. `tools/check-geoxyz-branch.sh` las dat tot 2026-09-10 als lege JSON en
+  meldde `lint: 0 offences` — een groene regel over een meting die nooit gebeurd
+  is. Dat is bevinding `tools` F02 van ronde 4, en het gebeurde die dag ook echt:
+  na `gem install rubocop` alleen meldde de gate `NOT MEASURED`, en pas na
+  `gem install rubocop-performance rubocop-rails` kwam het echte cijfer — 1 fout
+  op 67 gewijzigde Ruby-bestanden, en die ene stond al op upstreams eigen regel.
+  Installeer dus alle drie, en vertrouw een lintcijfer van 0 pas als de gate er
+  ook bij zegt hoeveel bestanden ze gelezen heeft.
