@@ -1330,3 +1330,24 @@ toegevoegd.
   geoxyz/framework`, en pas daarna de merge. `git reset --hard
   origin/geoxyz/framework` komt op dezelfde commit uit als er niets lokaals is,
   maar dat is toeval en geen controle.
+
+
+- **De lintcheck van `check-geoxyz-branch.sh` mist alle versie-afhankelijke
+  `Rails/*`-cops, en zegt dat niet.** Hij lint in een tijdelijke worktree van
+  `git worktree add`, en `Gemfile.lock` staat in `.gitignore`, dus die worktree
+  heeft er nooit een. Zonder lockfile zwijgen de cops die naar de Rails-versie
+  vragen — ook al staat `TargetRailsVersion: 8.1` gewoon in `.rubocop.yml`. Niet
+  álle: `Rails/Output` vuurt wél, en juist daarom is het nooit opgevallen. Op
+  `7.0-stable-GEOxyz` meldde de gate op 2026-09-10 `1 offence (baseline 1)`
+  terwijl het echte getal **8 en 8** is; de zeven die wegvielen zijn allemaal
+  `Rails/StrongParametersExpect`. **Twee dingen die dit verborgen hielden:** met
+  de RuboCop-cache aan geven "zonder lockfile" en "met lockfile" hetzelfde
+  antwoord, dus meet dit alleen met `--cache false`; en
+  `rubocop --show-cops Rails/StrongParametersExpect` print in beide gevallen
+  exact dezelfde `Enabled: pending`-configuratie, dus de configuratie inspecteren
+  helpt niet — alleen de cop echt draaien. Dit is ronde-4-bevinding `tools`
+  (tweede run) F01. De conclusie van die ene PASS klopte wél: beide kanten meten
+  even scheef, en met de hand gemeten is het verschil nul. Wat de gate niet kan,
+  is een `Rails/*`-fout zien die de branch zélf toevoegt — en dat is precies de
+  familie waar `Rails/HasAndBelongsToMany` in zit, die twee van onze patches met
+  een `rubocop:disable`-commentaar afdekken.
