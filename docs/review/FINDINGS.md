@@ -3,7 +3,7 @@
 
 # FINDINGS — elke reviewbevinding, één regel elk
 
-202 bevindingen uit 68 reviews: 15 blocker, 34 major, 83 minor, 52 nit, 18 question. **15 zonder Resolution-regel.**
+202 bevindingen uit 69 reviews: 15 blocker, 34 major, 83 minor, 52 nit, 18 question. **15 zonder Resolution-regel.**
 
 | Sev | Slug | ID | Bevinding | Cat | Zekerheid | Waar | Resolution |
 |---|---|---|---|---|---|---|---|
@@ -279,6 +279,7 @@
 | [`wiki-export-attachments`](findings/2026-09-09-wiki-export-attachments-codex.md) | 2026-09-09 | codex | blocker 1 / major 0 / minor 0 / nit 0 / question 0 | no — the patch cannot be applied unchanged to current trunk, |
 | [`assignee-nobody`](findings/2026-09-10-assignee-nobody-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 1 / nit 1 / question 0 | partly — the three touched files in one process, plus the sa |
 | [`imap-oauth`](findings/2026-09-10-imap-oauth-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 1 / nit 3 / question 1 | yes — the **full** `test:all` on the patch tip and on pristi |
+| [`revision-branches`](findings/2026-09-10-revision-branches-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | partly — the six touched files in one process, with `tmp/tes |
 | [`search-token-limit`](findings/2026-09-10-search-token-limit-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 1 / question 0 | partly — the five touched files in one process. Not `test:al |
 | [`tools-claude-opus5-round4`](findings/2026-09-10-tools-claude-opus5-round4.md) | 2026-09-10 | tools-claude-opus5-round4 | blocker 2 / major 4 / minor 5 / nit 2 / question 1 | no — Redmine's suite is not what this onderdeel tests. What  |
 | [`wiki-export-attachments`](findings/2026-09-10-wiki-export-attachments-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 3 / nit 5 / question 0 | yes — the **full** `test:all` on the patch tip and, separate |
