@@ -3,7 +3,7 @@
 
 # FINDINGS — elke reviewbevinding, één regel elk
 
-208 bevindingen uit 77 reviews: 15 blocker, 36 major, 84 minor, 55 nit, 18 question. **19 zonder Resolution-regel.**
+208 bevindingen uit 78 reviews: 15 blocker, 36 major, 84 minor, 55 nit, 18 question. **19 zonder Resolution-regel.**
 
 | Sev | Slug | ID | Bevinding | Cat | Zekerheid | Waar | Resolution |
 |---|---|---|---|---|---|---|---|
@@ -287,6 +287,7 @@
 | [`geoxyz-hosts`](findings/2026-09-10-geoxyz-hosts-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | no, and it would prove nothing: the change is one line in `c |
 | [`gitignore-credentials`](findings/2026-09-10-gitignore-credentials-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 1 / question 0 | no — `.gitignore` is not code and no suite reads it. Instead |
 | [`imap-oauth`](findings/2026-09-10-imap-oauth-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 1 / nit 3 / question 1 | yes — the **full** `test:all` on the patch tip and on pristi |
+| [`ldap-mail-prefs`](findings/2026-09-10-ldap-mail-prefs-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | partly — `test/unit/lib/redmine/ldap_notification_defaults_t |
 | [`members-pagination`](findings/2026-09-10-members-pagination-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | partly — `members_helper_test`, `groups_helper_test`, `membe |
 | [`mypage-query-blocks`](findings/2026-09-10-mypage-query-blocks-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 1 / question 0 | partly — the three touched test files in one process, and tw |
 | [`revision-branches`](findings/2026-09-10-revision-branches-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | partly — the six touched files in one process, with `tmp/tes |
