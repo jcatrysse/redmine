@@ -214,9 +214,6 @@ class WebhookTest < ActiveSupport::TestCase
     assert_equal [], Webhook.hooks_for('issue.created', Issue.find(1))
   end
 
-  # GEOxyz only. The tracker filter and the issue.closed event are two separate
-  # upstream patches, each branched from trunk on its own, so this combination
-  # exists nowhere but on this branch and belongs in neither patch's diff.
   test "should apply the tracker filter to the issue closed event as well" do
     hook = create_hook(events: ['issue.closed'])
     hook.update! trackers: [Tracker.find(1)]
