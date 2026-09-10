@@ -59,7 +59,7 @@ onderdeel is not a patch.
 
 ### F01 — the AI-trace check reads only the first patch file, and five of nine slugs ship two
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** blocker
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -119,13 +119,13 @@ path the subject is every commit message in the range, which `git log` already
 gives without parsing the patch at all. Whatever the shape, the gate should
 print how many headers it scanned, so "ok" carries its own denominator.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10 — `check-patch-clean.sh` check 3 now reads the header of **every message in every file**: `awk 'FNR == 1 || /^From [0-9a-f]+ / { inhdr = 1; msgs++ } /^diff --git / { inhdr = 0 } inhdr { print FILENAME ": " $0 }'`, which re-enters the header on each new `From <sha>` line and so also covers the second and later commits of a multi-commit branch export. The `ok` line now carries its own denominator — `no AI trace in 2 message header(s) across 2 file(s)` — because an "ok" that does not say how much it read is how this hid for a week. **Driven red first, on the finding's own route:** the two real `wiki-export-attachments` patch files copied into a scratch `patches/zz-inv4-red/`, `Co-authored-by: Claude <noreply@anthropic.com>` inserted at line 3 of the **second** one, and the gate run against the directory — `FAIL  AI trace in the patch header or commit message (INV-4)`, exit 1. Removing the line gives `ok  no AI trace in 2 message header(s) across 2 file(s)`, and the scratch directory was deleted. The old code over the same input printed nothing at all. One more thing this check now refuses to do: if the extraction reads zero headers it fails instead of passing, because a grep over an empty string is what the whole defect was. All nine slugs pass `--submit`.
 
 ---
 
 ### F02 — `check-geoxyz-branch.sh` prints PASS with the lint check not run, and that is the state of this image
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** blocker
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -183,13 +183,13 @@ output as a hard failure rather than as zero offences. If the tool must remain
 runnable without rubocop, the verdict line has to say `PASS (lint not measured)`
 so the words a session pastes into a dossier carry the gap with them.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10, and the second half of the finding then happened for real. `check-geoxyz-branch.sh` gained a third outcome next to `ok` and `FAIL`: `????` for a check that could not run, counted separately, and a run with any `????` ends in `INCOMPLETE — n check(s) could not be measured, so this is not a PASS` and exits 1. Missing rubocop is now `????`, not a `note`; and the embedded tally no longer catches `JSONDecodeError` — unparseable output is reported as `UNMEASURED`, never as zero. **Three outcomes driven by hand:** no rubocop → `INCOMPLETE`, exit 1; a stub rubocop that writes to stderr and exits 1 → `lint NOT MEASURED — rubocop gave no parseable JSON for the branch worktree`, exit 1; a stub that prints `{"files":[]}` → `ok  lint: 0 offences`, `PASS`, exit 0. **Then the finding paid for itself.** I installed rubocop 1.90 to get a real measurement, and the gate said `NOT MEASURED` rather than green — because Redmine's `.rubocop.yml` loads `rubocop-performance` and `rubocop-rails` as plugins, and without them rubocop dies with `cannot load such file` and writes nothing to stdout. The old code would have printed `lint: 0 offences` on that machine. After `gem install rubocop-performance rubocop-rails` the branch measures for the first time in this session: **1 offence on 67 changed Ruby files, baseline 1 on `origin/7.0-stable`, 0 added — `PASS`, exit 0.** The trap is written up in `docs/traps.md`. Note the version caveat: rubocop 1.90 is what was available, not necessarily what Redmine's CI pins, so the *number* is worth less than the fact that it is now a number at all.
 
 ---
 
 ### F03 — the only mandatory guard, `session-push.sh`, has the weakest AI-identity pattern and fails open on an unfetched range
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -254,13 +254,13 @@ file or an exported variable — so the preventive guard can never be looser tha
 the audit. And before using a range, verify both endpoints resolve; a range that
 does not is a hard failure, exactly as an empty pattern already is.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10 — one pattern in one place. New `tools/inv4-identity.sh`, sourced (never executed) by all three gates, holds `AI_IDENTITY_RE`, `AI_TRACE_RE` and `inv4_identities <from> <to>`; the three local copies are gone, so the mandatory guard cannot be looser than the audits again. The range hole is closed in the same function: it verifies both endpoints resolve and **returns 2** rather than reporting clean, and `session-push.sh` additionally fetches the fallback ref before asking. **Driven red end to end in a throwaway clone with a local bare `origin`** — nothing was pushed anywhere real: a `patch/zz-probe` commit with committer `Cursor Agent <cursoragent@cursor.com>` and a clean author. The old pattern matches it 0 times; the new guard prints `FAIL INV-4: an AI identity on commits bound for patch/zz-probe`, exit 1. **A mistake worth recording, because it is the same class as the finding:** the first version of `inv4_identities` called `exit 2` on an unresolvable range, and `exit` inside `$( )` leaves only the subshell — so the guard printed FAIL and the parent pushed anyway, which the throwaway remote proved. It returns 2 now and every call site is `... || exit 2`; re-tested, the push is refused with exit 2 and the bare repo receives no ref. The audit gates were re-run afterwards: nine `--submit` PASS, `check-geoxyz-branch.sh` PASS.
 
 ---
 
 ### F04 — `check-symmetry.sh` never looks at what GEOxyz has and the patch does not
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -321,13 +321,13 @@ mechanical, then the header and CLAUDE.md's G8 row must stop saying "or the
 reverse" and state the one direction the gate covers, so nobody reads the `ok`
 line as more than it is.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10 — `check-symmetry.sh` now looks in both directions, and the scoping took three attempts. For every file the patch touches it also walks GEOxyz's own added lines and reports any that this patch does not carry. **Scoped by content, which needs no bookkeeping to be right:** such a line is this slug's divergence unless some other `patch/*` branch has it, in which case it belongs to that feature; it cannot be upstream's own line, because this patch branch is upstream plus one feature and the line is absent there. Locale files are handled by key presence, not by line, so a differing value stays the forward check's finding and is not reported twice. **The two scopings I tried first are recorded in the script's header because both are instructive.** Reading the feature's `geoxyz_commit` list out of `status.md` reproduces nothing: my own synthetic hotfix passed, because a hotfix is exactly the commit nobody wrote down. Treating every unrecorded commit as this feature's produced **45 false failures in one run** — five real GEOxyz commits are recorded against no feature at all (`1fd3343ff`, `2ac1de3c6`, `8612a76f4`, `7d85538f3`, `c077d96df`) and one of them shares `test/unit/webhook_test.rb` with another slug. **Red then green on the finding's own case:** the same `raise Unauthorized unless User.current.admin?` added to GEOxyz alone now gives `FAIL version-subprojects: app/controllers/queries_controller.rb — on GEOxyz, on no patch branch, absent here`, exit 1; a locale key added on GEOxyz alone gives `FAIL … key label_geoxyz_only_key is on GEOxyz and on no patch`. `--all` against the real branches is PASS for all nine with zero false positives, in 48 seconds. **One thing this does not fix, and it is worth someone's attention:** those five unattributed commits mean the register's `geoxyz_commit` fields are incomplete. `check-geoxyz-branch.sh` check 3b only verifies recorded → branch, never branch → recorded, so nothing notices. That is a finding for a future round rather than something a tools session should quietly rewrite in twelve `status.md` files it does not own.
 
 ---
 
 ### F05 — nothing regenerates the register when a claim changes, and the committed register is wrong today
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -377,13 +377,13 @@ cannot go stale. The second is smaller and removes a whole class of drift. Do
 not leave it to `check_generated`, which by construction only looks when
 somebody is already touching the file.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10, and the stale entry is gone. `claim.sh` now runs `tools/register.sh --write` and stages `docs/REGISTER.md` in the same commit as every claim, release and withdrawal, and refuses the claim outright if the register cannot be regenerated. The branch's own staleness was corrected in this commit: `docs/REGISTER.md` no longer advertises `version-subprojects` as held by `cse_01VUeLQwkYYqqVPhKzx3M4qu`, a claim released in `d409852c2` on 2026-09-09. `tools/register.sh` and the committed file now match byte for byte, which `check-ownership.sh` confirms. The finding's other half — that `check_generated` only looks when the register is part of the push — is unchanged and now harmless, since the only thing that made the register stale was the claim path.
 
 ---
 
 ### F06 — `check_generated` prints "matches its generator" when the generator fails
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -428,13 +428,13 @@ Split the two conditions: run the generator, fail loudly (with its stderr) if it
 exits non-zero, and only then compare. Same rule as F02 — a check that could not
 run is not a check that passed.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10 — the two conditions are separate statements instead of an `&&` chain, so a generator that exits non-zero now fails with its stderr attached (`$generator failed, so nothing is known about $path`) instead of falling into the branch that announces a match. The temp file is a `mktemp` rather than `/tmp/generated-check.$$`. **Driven red** with a stub generator that writes to stderr and exits 4: the old shape prints `ok  docs/REGISTER.md matches its generator`, the new one prints `FAIL  … failed, so nothing is known about docs/REGISTER.md` followed by `generator exploded`.
 
 ---
 
 ### F07 — the ownership rule is documented as mechanical, and nothing invokes it
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -470,13 +470,13 @@ framework sessions Jan asks for. Alternatively soften the two documents to say
 "run it before every push" rather than "enforces". The first is better; the
 second is at least honest.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10 — it is mechanical now, so the documents that said so are true. `check-ownership.sh` gained `--infer`, which works the slug out from the changed paths (`docs/features/X/`, `patches/X/`, `verify/X.mjs`, `docs/claims/X--`), fails when the changes span more than one feature, and falls back to a shared-and-generated-files-only rule when no slug is implied — a findings file cannot name its own slug, since `<date>-<slug>-<reviewer>` is dashed on both sides, so those are checked against `OWNED` once a slug is known. `session-push.sh` runs it on every push to `geoxyz/framework`. The one legitimate exception is a framework change, which now has to be *stated*: `FRAMEWORK_CHANGE=1`, and the tool prints `say in the report that Jan asked for this`. **Verified both ways:** on this session's own tree `--infer` correctly finds no slug and fails naming `tools/check-patch-clean.sh`, `tools/check-symmetry.sh`, `tools/inv4-identity.sh`, `tools/session-push.sh`; a planted `docs/features/imap-oauth/…tmp` while claiming another slug fails naming that file. This very commit was pushed with `FRAMEWORK_CHANGE=1`, which is the honest use of it: Jan asked for these tool changes on 2026-09-10.
 
 ---
 
 ### F08 — `go()` accepts a 403 page and the static 500 page as a successful navigation
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -529,13 +529,13 @@ Keep the response from `page.goto()` and refuse anything outside 2xx/3xx, with
 the status in the message. The title test can stay as a second, cheaper signal;
 it should not be the only one.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10 — `go()` keeps the response from `page.goto()` and refuses anything outside 2xx/3xx, with the status and the page title in the message. The title test is gone rather than kept as a second signal: it was never the right question, and two signals where one is authoritative is how a reader ends up trusting the weaker one. **Honest about the verification:** this is read-only. There is no Redmine instance in this session — no worktree, no PostgreSQL — so the change is verified by `node --check` and by reading Redmine's own templates (`app/views/common/error.html.erb` ends with `html_title @status`, `public/500.html` has the title `Redmine 500 error`, `render_403` sets `:status => 403`), not by driving a browser. The first G9 run after this should confirm it, and should watch for the opposite risk: a verify script that deliberately navigates to a page which now throws. I checked the thirteen scripts in `verify/` for that and found none — `wiki-export-attachments.mjs` asserts a 403 but does its own `page.goto` and reads `resp.status()` itself, so it never went through `go()`.
 
 ---
 
 ### F09 — `symmetry-allow.txt` matching is the reverse of its own documentation, and the guard protecting it is inert
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -581,13 +581,13 @@ Pick one direction and make the code, the header, `CLAUDE.md`'s G8 row and
 semantics and is what makes the 8-character guard meaningful; if instead exact
 bodies are wanted, say "the full line, verbatim" and drop the guard.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10 — the code now does what the file always said. A new `allowed()` helper walks the patterns and tests `case "$subject" in *"$pattern"*)`, so an allow entry is a **fragment of** the line body or the key path, which is the documented direction and the useful one. That also makes the 8-character guard load-bearing instead of inert. **Verified against the one live allow file**, `docs/features/wiki-export-attachments/symmetry-allow.txt`: its entry `'itcpdf' => 'ITCPDF',` still suppresses the exact line (it happened to work before only because it is a byte-for-byte copy), now also suppresses a longer line containing it, and does not suppress an unrelated line. `--all` stays PASS.
 
 ---
 
 ### F10 — `--self-test` reports a global PASS when it broke nothing, and never exercises the code half
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -634,13 +634,13 @@ non-zero and say so. Add a code-half break — delete one substantive line from
 the synthetic GEOxyz tree and require a FAIL — using the same temporary-index
 trick, which is already written.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10 — `--self-test` now builds **three** synthetic defects per slug and requires the gate to fail on each: a translation that reads differently on GEOxyz (forward, locales), a line of the patch missing from GEOxyz (forward, code) and a line on GEOxyz that no patch branch carries (reverse, code). It fails if it ran no probe at all, so the sentence "a one-sided change fails the gate" can no longer be printed over nothing. Every tree is still assembled in a temporary index and committed with `commit-tree`: no branch, no worktree, no ref. **Result: `PASS self-test: all 23 probe(s) fail the gate, in both directions`**, in 3m08s — 9 slugs × 2 code probes plus 5 translation probes, with a `note` for the four slugs that add no locale key of their own. Where the old self-test tested 5 things it now tests 23, and the code half — the older and larger one — is covered for the first time. The zero-probe branch is defensive and was reasoned about rather than executed: I could not construct a slug that has a patch branch, passes the main gate, and offers nothing to break.
 
 ---
 
 ### F11 — the G9 and G3 helpers continue past their own failed setup steps
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -679,13 +679,13 @@ Refuse rather than warn: no browser, no suite; a failed seed, no server. The
 cost of stopping is a rerun, and the cost of continuing is a number in a dossier
 that nobody can reproduce.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10 — both refuse now. `test-env.sh` exits 2 when there is no Playwright Chromium, with the reason ("those counts are not suite evidence (INV-8)"), and `SYSTEM_TESTS_MAY_ERROR=1` is the stated escape for someone who wants the run anyway and knows not to quote the numbers. `dev-server.sh` checks the exit status of both `redmine:load_default_data` and `dev-seed.rb`, writes their output to `$LOGFILE.seed` instead of `/dev/null`, and stops with the last ten lines rather than presenting a server on an empty database. **Verified for `test-env.sh`:** with the real Chromium present it runs (exit 0); against a copy pointed at an empty browser directory it prints the FAIL and exits 2, and with `SYSTEM_TESTS_MAY_ERROR=1` it continues with a note (exit 0). **Not verified for `dev-server.sh`:** it needs PostgreSQL, a Redmine worktree and a bundle install, none of which exist in this session, so that half is a read-only change.
 
 ---
 
 ### F12 — `findings.sh` counts every `###` heading as a finding, and round 4 asks for one that is not
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -718,13 +718,13 @@ Require a `**Severity:**` line before treating a chunk as a finding, and report
 the skipped headings in a comment so a genuinely malformed finding is not
 silently dropped instead.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10 — `findings.sh` treats a level-3 heading as a finding only when the chunk has a `**Severity:**` line, and lists the rest in an HTML comment at the foot of `FINDINGS.md` so a genuinely malformed finding is reported rather than silently dropped. **Driven red:** a throwaway findings file containing `### Where I disagree with round 2` and no severity used to add a phantom open minor; with the fix the total stays at 186, `--open` stays at 14, and the heading appears under `level-3 headings with no Severity line, read as prose and not counted`. The file was deleted. **A second parser defect fell out of fixing this one, and it is the same class again:** `docs/review/findings/TEMPLATE.md` writes the line as `**Resolution:**` while every resolved finding writes `- **Resolution:**`, and `field()` required the dash — so a fixer who followed the template wrote a resolution the tool could not see and `--open` would have listed the finding forever. `field()` now accepts both. Fixing *that* produced a third one in passing, caught before it was committed: relaxing the regex with `\s*` made it match across newlines, so an empty `**Resolution:**` swallowed the blank line and captured the `---` separator as its value, reporting all fourteen open findings as resolved. It is `[ \t]*` now, and the counts are back to 186 total, 14 open.
 
 ---
 
 ### F13 — word-splitting and a predictable temp path across the shell tools
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -766,13 +766,13 @@ Created `docs/features/tools probe.tmp` and a foreign file, ran
 Arrays and `"${arr[@]}"` in the four scripts, `git status --porcelain -z` with a
 null-delimited read, and `mktemp` for the comparison file.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10 — `check-patch-clean.sh`, `check-geoxyz-branch.sh` and `check-symmetry.sh` carry their file lists in bash arrays (`mapfile -t` / `"${arr[@]}"`) instead of whitespace-split strings; `check-ownership.sh` reads `git status --porcelain -z` instead of `awk '{print $NF}'`; `check_generated` uses `mktemp` instead of `/tmp/generated-check.$$`. Two unquoted expansions are left on purpose and are safe: `$ALL_PATCHES` in `check-symmetry.sh` holds git ref names and `$inferred` in `check-ownership.sh` holds slugs, neither of which can contain a space. All gates re-run afterwards: nine `--submit` PASS, `check-symmetry.sh --all` PASS, `check-geoxyz-branch.sh` PASS.
 
 ---
 
 ### F14 — should `claim.sh` and `append-note.sh` refuse to run when HEAD is not `geoxyz/framework`?
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** question
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -811,7 +811,7 @@ session does not claim.
 Two lines at the top of each: if `git rev-parse --abbrev-ref HEAD` is not
 `geoxyz/framework`, print the checkout command from STATE.md and exit 2.
 
-**Resolution:**
+- **Resolution:** fixed 2026-09-10 — answered yes rather than left as a question, because the guard is four lines and the alternative is a session losing its branch history to a tool it ran too early. `claim.sh` and `append-note.sh` share an `on_framework_branch` check that exits 2 with the two checkout commands from `docs/STATE.md` when HEAD is anything other than `geoxyz/framework`. Not executed as a red test: a review session does not claim, and running `claim.sh` for real would have written a claim file and pushed it. The guard is `git rev-parse --abbrev-ref HEAD` against a literal, which is as simple as it looks. Its usefulness was demonstrated by this session itself — it started on `claude/prompt-round4-review-ssd94p`, which is exactly the state the guard now refuses.
 
 ---
 

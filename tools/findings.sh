@@ -24,8 +24,16 @@ import glob, os, re, sys
 mode = sys.argv[1]
 RANK = {'blocker': 0, 'major': 1, 'minor': 2, 'nit': 3, 'question': 4}
 
+# The leading '- ' is optional. docs/review/findings/TEMPLATE.md writes the
+# Resolution line without one and every resolved finding so far writes it with
+# one, so a fixer who followed the template wrote a resolution this parser could
+# not see and --open kept listing the finding forever (found while fixing round
+# 4, tools F12).
 def field(block, name):
-    m = re.search(r'^-\s+\*\*%s:\*\*\s*(.*)$' % name, block, re.M)
+    # Spaces and tabs, never \s: \s matches a newline, so an empty
+    # "**Resolution:**" swallowed the blank line after it and captured the ---
+    # separator as its value, which reported every open finding as resolved.
+    m = re.search(r'^[ \t]*-?[ \t]*\*\*%s:\*\*[ \t]*(.*)$' % name, block, re.M)
     return m.group(1).strip() if m else ''
 
 KNOWN = sorted(
