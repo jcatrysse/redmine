@@ -8,43 +8,63 @@
 >
 > Verander dit bestand alleen als Jan om een framework-wijziging vraagt.
 
-## Huidige fase — ronde 3, blinde herreview (sinds 2026-09-06)
+## Huidige fase — ronde 4, hercontrole van ons eigen werk (sinds 2026-09-10)
 
 **Lees dit voordat je `docs/REGISTER.md` opent.** Het werk gaat niet over nieuwe
 features. Alle achttien staan in het register en negen patches zijn klaar; dat
 is de *uitkomst van ronde 1* en geen todo-lijst meer. Er staat dus geen
 `todo`-regel in het register, en dat betekent niet dat er niets te doen is.
 
-Jan sprak op 2026-09-04 een cyclus van drie rondes af:
+Jan sprak op 2026-09-04 een cyclus van drie rondes af; die cyclus is af, en er
+is een vierde ronde bij gekomen.
 
 | Ronde | Wat | Waar het staat |
 |---|---|---|
 | 1, **af** | veertien onderdelen gereviewd, 129 bevindingen | `docs/review/findings/`, gebundeld in `docs/review/FINDINGS.md` |
 | 2, **af** (2026-09-06) | elke bevinding een `Resolution:`-regel — 127 stuks, geen enkele blijven liggen | `tools/findings.sh --open` was de werklijst en is leeg gedraaid |
-| 3, **nu** | blinde herreview: een verse sessie leest de gefixte patch koud, **zonder de bevindingen van ronde 1 eerst te lezen**, en pas daarna vergelijken we | `docs/review/findings/*-round3.md` |
+| 3, **af** (2026-09-08) | blinde herreview, alle veertien onderdelen koud herlezen | `docs/review/findings/*-round3.md` |
+| Codex 1–3, **af** (2026-09-09) | een onafhankelijke tweede lezer over hetzelfde werk | `docs/review/findings/*-codex*.md` |
+| 4, **nu** | hercontrole: niet nog een brede veegbeurt, maar juist daar kijken waar niemand keek | `docs/review/prompt-round4.md`, deel A → `docs/review/findings/*-round4.md` |
 
-**Hoever ronde 3 is, vraag je op — dat staat hier met opzet niet als getal**,
-want een getal in dit bestand veroudert en dat is vandaag al drie keer misgegaan:
+**De prompt is het werkdocument, niet dit bestand.** `docs/review/prompt-round4.md`
+zegt precies waar ronde 4 haar tijd hoort te steken, en dat is niet waar de
+vorige rondes keken: de `tools/` als code (twee van de laatste blockers zaten
+in een gate, niet in een patch), het bewijs **narekenen** in plaats van lezen,
+de screenshots echt openen, de dossiers lezen als inzending en niet als
+documentatie, en de `.patch`-bestanden tegen **echte** trunk houden in plaats
+van tegen de mirror. Deel B van diezelfde prompt is de vergelijking met ansifi's
+PR #1; die komt als laatste en in een aparte run.
+
+**Hoever ronde 4 is, vraag je op — dat staat hier met opzet niet als getal**,
+want een getal in dit bestand veroudert en dat is al vier keer misgegaan:
 
 ```sh
-ls docs/review/findings/*round3*        # de onderdelen die al blind gedaan zijn
-ls docs/review/findings/ | grep -v round3 | grep -v TEMPLATE   # de veertien uit ronde 1
+ls docs/review/findings/*round4*        # de onderdelen die al gedaan zijn
 ```
 
-Wat nog moet, is het verschil tussen die twee lijsten. Neem daaruit een onderdeel
+De volledige lijst van zestien onderdelen staat in `docs/review/prompt-round4.md`
+onder "De onderdelen". Wat nog moet, is het verschil. Neem daaruit een onderdeel
 dat je zelf nog niet gelezen hebt.
 
-**Wat een ronde-3-sessie doet, en wat ze juist niet doet.** Lezen: de patch, het
+**Wat een ronde-4-sessie doet, en wat ze juist niet doet.** Lezen: de patch, het
 dossier, `status.md` (inclusief "al bekend", zodat je niets heropent wat beslist
-is) en `docs/DECISIONS.md`. **Niet** lezen: het ronde-1-bevindingenbestand van
-diezelfde slug — dat is het hele punt van blind. Schrijven: één bestand,
-`docs/review/findings/<datum>-<slug>-<reviewer>-round3.md`. De skill is
+is) en `docs/DECISIONS.md`. **Niet** lezen, tot je je eigen bevindingen
+geschreven hebt: `docs/review/findings/**` van diezelfde slug — pas daarna
+vergelijk je, in een slotsectie "Where I disagree with the previous rounds".
+Schrijven: één bestand,
+`docs/review/findings/<datum>-<slug>-<reviewer>-round4.md`. De skill is
 `patch-review`.
 
-Een bevinding uit ronde 3 wordt daarna gefixt zoals in ronde 2: **geen enkele
-bevinding blijft op `open` zonder `Resolution:`-regel.** "Geen tijd gehad" is een
-geldige reden, stilte niet. Dat fixen is gewoon werk voor een volgende sessie,
-met `tools/claim.sh` erbij als er code aan te pas komt.
+**De volgorde voor ronde 4 is omgekeerd, en dat is een beslissing van Jan
+(K-22, 2026-09-10): eerst alle onderdelen reviewen, daarna in één ronde fixen.**
+Reviews raken geen code en kunnen elkaar dus niet in de weg zitten, en de
+bevindingen blijken zich te herhalen over features heen, dus je wil ze één keer
+samen beslissen in plaats van veertien keer los. Dat keert stap 1 hieronder om,
+en alleen voor ronde 4. **Eén uitzondering:** een **blocker of major** wordt wél
+meteen gefixt, want daar leest de volgende sessie anders iets verkeerds uit af —
+zo ging het bij het onderdeel `tools`, waar twee blockers in de gates zelf
+zaten. Geen enkele bevinding blijft uiteindelijk op `open` zonder
+`Resolution:`-regel; "geen tijd gehad" is een geldige reden, stilte niet.
 
 Jans twintig keuzes uit ronde 1 staan in `docs/DECISIONS.md` onder **"Beslist
 (Jan) — reviewronde 1, 2026-09-04"**, met een groepsnummer (g01..g18) per keuze,
@@ -65,12 +85,14 @@ feature die al af was.
 Dan:
 
 1. `tools/findings.sh --open` — bevindingen die nog geen `Resolution:`-regel
-   hebben, uit welke ronde dan ook. **Staat daar werk, dan is dát je werk**:
-   fixen gaat voor nieuw reviewen. Lees er `docs/DECISIONS.md` bij vanaf
-   "Beslist (Jan) — reviewronde 1".
-2. Is die lijst leeg, dan is het de blinde herreview van ronde 3 — zie "Huidige
-   fase" hierboven voor de twee commando's die zeggen welke onderdelen al gedaan
-   zijn en welke niet. Feature van Jan gekregen? Neem die.
+   hebben, uit welke ronde dan ook. **Staat daar een blocker of een major, dan
+   is dát je werk**, meteen. Lees er `docs/DECISIONS.md` bij vanaf "Beslist
+   (Jan) — reviewronde 1". Staan er alleen minors en nits, dan blijven die
+   liggen tot ronde 4 rond is: dat is K-22, en het is de enige plek waar dit
+   bestand "fixen gaat voor reviewen" niet meer zegt.
+2. Feature van Jan gekregen? Neem die. Anders is het ronde 4 — zie "Huidige
+   fase" hierboven voor het commando dat zegt welke onderdelen al gedaan zijn,
+   en `docs/review/prompt-round4.md` voor de volledige lijst en de opdracht.
 3. **`tools/claim.sh <slug>`** — verplicht zodra je iets van een feature
    verandert, ook als je denkt dat je alleen werkt; het is het enige dat
    voorkomt dat twee sessies hetzelfde bouwen. **Een reviewsessie claimt juist
