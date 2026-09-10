@@ -3,15 +3,45 @@ slug: version-subprojects
 feature: Doelversiefilter biedt ook de versies van de subprojecten in de query
 commit_51: 89752a599
 geoxyz: live
-geoxyz_commit: fd35bd2d1 + 157c171a5 + 74f343d3d + 73157aee5
+geoxyz_commit: fd35bd2d1 + 157c171a5 + 74f343d3d + 73157aee5 + 43246a900
 upstream: patch klaar
-patch: patches/version-subprojects/2026-09-09-r25037-feature.patch
+patch: patches/version-subprojects/2026-09-10-r25037-feature.patch
 issue: "43534"
 ---
 
 # version-subprojects — status
 
 ## Waar het staat
+
+**Ronde 4 vond een echte regressie en hij is dezelfde dag gefixt (2026-09-10).**
+`QueriesController#filter` gaf sinds deze feature de `f`-, `op`- en
+`v`-parameters van het verzoek door aan `Query#build_from_params`, en
+`Query#add_filters` itereert die veldenlijst. Een verzoek met `f` als losse
+waarde in plaats van een lijst gaf daardoor `NoMethodError` en een HTTP 500,
+waar kale trunk op datzelfde endpoint 200 antwoordde en de parameter negeerde.
+Gemeten aan beide kanten op dezelfde machine, met hetzelfde `Gemfile.lock` en
+dezelfde fixtures:
+
+```
+GET /projects/1/queries/filter?name=fixed_version_id&f=subproject_id&op[subproject_id]==
+  kale trunk r25037   -> HTTP 200
+  patch 6ad109efe     -> NoMethodError: undefined method `each' for an instance of String
+```
+
+**Waarom dit wél onze fout was en niet die van trunk.** De crash in
+`Query#add_filters` bestaat op trunk ook, en ronde 3 had hem gevonden en onder
+INV-1 bewust laten liggen: die regel zit in een kernmethode waar deze feature
+niets mee te maken had. Dat klopte tot het moment dat deze feature de enige
+aanroep toevoegde die er onbewerkte verzoekparameters in stopt. De reparatie
+zit dus in **onze eigen regel** en niet in `add_filters`: de veldenlijst wordt
+alleen gebruikt als het echt een lijst is. Trunks bredere probleem blijft
+onaangeroerd en is nog steeds een los issue waard.
+
+De patchbranch is één commit gebleven: `6ad109efe` is vervangen door
+**`0f0bd0a53`** met de guard en één extra test erin, de oude tip staat bewaard
+als `archive/patch-version-subprojects-before-round4`, en het patchbestand is
+opnieuw geëxporteerd als `2026-09-10-r25037-feature.patch`. Op
+`7.0-stable-GEOxyz` staat dezelfde wijziging als **`43246a900`** (INV-10).
 
 Ronde 2 is af. De patch is op 2026-09-05 opnieuw opgebouwd op trunk r25037
 (`bee32a926`), alle reviewbevindingen hebben een `Resolution:`-regel, en de
@@ -81,6 +111,39 @@ aan trekt zijn onafhankelijk nagemeten en kloppen: de volledige suite komt op
 `5986 runs, 31733 assertions, 27 failures, 2 errors, 92 skips` — vijf cijfers
 gelijk aan wat het dossier claimt — en per test klopt welke er rood staan op
 onbewerkte trunk: dezelfde zes rood, dezelfde drie met opzet groen.
+
+## Bewijs — ronde-4-fix (2026-09-10)
+
+Gemeten op `0f0bd0a53`, trunk r25037 = `bee32a926`, RuboCop 1.90.0,
+PostgreSQL 16, Ruby 3.3.6, beide kanten met een identiek `Gemfile.lock`.
+
+- **Rood bewezen op de oude code, per mutatie:** met de guard weggehaald geeft
+  `test_filter_should_ignore_a_filter_field_list_that_is_not_a_list`
+  `1 runs, 0 assertions, 0 failures, 1 errors`; met de guard erin
+  `1 runs, 2 assertions, 0 failures, 0 errors`. De test asserteert bewust
+  alleen de statuscode en het mediatype en niet de JSON-inhoud, want
+  `ActiveSupport::JSON.decode` valt in dit image om op de json-3.0.2-gem en
+  dan is een echte crash niet te onderscheiden van de omgeving.
+- Aangeraakte suites in één proces: **360 runs, 1138 assertions, 0 failures,
+  15 errors** — één run meer dan vóór de fix, en alle vijftien errors zijn
+  `ArgumentError: wrong number of arguments (given 2, expected 1)` uit
+  `ActiveSupport::JSON.decode`; hetzelfde bestand heeft er elf op **kale**
+  trunk r25037 in dit image.
+- RuboCop op de twee gewijzigde bestanden: **0**.
+- Op `7.0-stable-GEOxyz` (`43246a900`): dezelfde test groen
+  (`1 runs, 2 assertions, 0 failures`), en RuboCop **2 offences op 2
+  bestanden, baseline ook 2** — beide `Rails/StrongParametersExpect` op regels
+  van upstream, niet van ons.
+- `tools/check-patch-clean.sh version-subprojects --submit`: **PASS** tegen
+  echte trunk r25065, inclusief de vergelijking tussen branch en patchbestand.
+- `tools/check-symmetry.sh version-subprojects`: **PASS**.
+- **Volledige suite op `7.0-stable-GEOxyz` (`43246a900`): 6165 runs, 32522
+  assertions, 0 failures, 0 errors, 39 skips** — helemaal groen, en precies
+  één run meer dan de 6164 die dezelfde branchtip vandaag vóór deze commit gaf.
+  Die ene run is de nieuwe test.
+- `tools/check-geoxyz-branch.sh`: **PASS** nadat `43246a900` aan het
+  `geoxyz_commit`-veld hierboven is toegevoegd; de gate weigerde eerst, precies
+  waar K-21 hem voor gebouwd heeft.
 
 ## Bewijs
 
@@ -202,7 +265,7 @@ voor alle negen patches.
 
 ## Wat Jan nog moet doen
 
-Hang `patches/version-subprojects/2026-09-09-r25037-feature.patch` als note aan
+Hang `patches/version-subprojects/2026-09-10-r25037-feature.patch` als note aan
 je eigen issue [#43534](https://www.redmine.org/issues/43534). Volgens jouw
 keuze **g16g** begint die note direct met de regressie: `43534-v2.patch` van
 **Go MAEDA** vervangt `project.shared_versions` in plaats van er een vereniging

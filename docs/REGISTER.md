@@ -14,7 +14,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`dc6dad120 + dd063fa8b + f5ed23c8e`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`ff0d23b62 + 755d763a8 + 88d597548`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`6695461bd + 1cd7091fd`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
-| [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`fd35bd2d1 + 157c171a5 + 74f343d3d + 73157aee5`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
+| [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`fd35bd2d1 + 157c171a5 + 74f343d3d + 73157aee5 + 43246a900`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
 | [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`7d85538f3 + 465d326aa`) | patch klaar | — |
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`c6631e937 + 86647653e + 72058fa43 + 8ac09f4ff`) | patch klaar | — |
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`c077d96df + 1fd3343ff + 6078281ff`) | patch klaar | — |
@@ -308,7 +308,7 @@ woorden (jouw keuze K-04, optie A). Vermeld de oude bijlage als achterhaald.
 
 ### `version-subprojects`
 
-Hang `patches/version-subprojects/2026-09-09-r25037-feature.patch` als note aan
+Hang `patches/version-subprojects/2026-09-10-r25037-feature.patch` als note aan
 je eigen issue [#43534](https://www.redmine.org/issues/43534). Volgens jouw
 keuze **g16g** begint die note direct met de regressie: `43534-v2.patch` van
 **Go MAEDA** vervangt `project.shared_versions` in plaats van er een vereniging

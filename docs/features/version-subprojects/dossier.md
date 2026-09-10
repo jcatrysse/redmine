@@ -114,12 +114,12 @@ project, and the browser sends it those filter parameters.
 | File | Change |
 |---|---|
 | `app/models/query.rb` | `fixed_version_values` unions `project.shared_versions` with `Version.visible.where(project_statement)` |
-| `app/controllers/queries_controller.rb` | `filter` calls `build_from_params` with the filter parameters, after the permission check |
+| `app/controllers/queries_controller.rb` | `filter` calls `build_from_params` with the filter parameters, after the permission check, and only when the field list really is a list |
 | `app/assets/javascripts/application-legacy.js` | `addFilter` sends the current filter parameters along with the field name |
 | `test/unit/query_test.rb` | seven tests on the value list |
-| `test/functional/queries_controller_test.rb` | two tests on the endpoint |
+| `test/functional/queries_controller_test.rb` | five tests on the endpoint |
 
-Four details are deliberate:
+Five details are deliberate:
 
 - **Union, not replacement.** `Version.visible.where(project_statement)` alone
   loses every version shared into this project from outside the queried tree.
@@ -127,6 +127,12 @@ Four details are deliberate:
 - **`build_from_params` after `raise Unauthorized`, not before.** Building the
   query evaluates `available_filters`, which runs several queries. There is no
   reason to do that for a request that is about to be rejected.
+- **`if params[:f].is_a?(Array)`.** `Query#add_filters` iterates the field
+  list, and these parameters come straight off the request, so a scalar `f`
+  would raise there. Trunk answers such a request with a 200 on this endpoint
+  because it ignores `f` here, and consuming the parameter should not change
+  that. The guard sits at this call site rather than in `add_filters`, which is
+  a shared core method this feature has no other reason to touch.
 - **`params.slice(:f, :op, :v)`, not the whole request.** The values of a filter
   can only depend on the other filters, so only the filter parameters are
   passed. Handing the whole hash over would make the action's own `name`
@@ -351,7 +357,7 @@ screenshot.
 | Does this leak version names from projects the user cannot see? | Yes, and it already did — this patch does not change it in either direction. `Project#shared_versions` has no permission scoping at all; it is a pure sharing query, so on trunk the target version filter of a public project already lists versions belonging to private projects. Anonymously, trunk and this patch return byte-identical JSON for `/queries/filter?project_id=1&name=fixed_version_id`, including "Private child of eCookbook - …" and "OnlineStore - …". The half this patch adds is the *scoped* one (`Version.visible`), so the union can only ever add values the user may already see. The replacement in `43534-v2.patch` does tighten this, as a side effect of dropping `shared_versions` — but tightening what is filterable is a behaviour change that deserves its own issue, and it should then apply to both halves rather than fall out of an unrelated patch. |
 | Why not simply scope to the project tree, as the attached patch does? | Because that drops versions shared in from outside it. See "Alternatives considered" and the test that fails on that implementation. |
 | Does the value list now cover every version an issue in the list can sit on? | Not quite, and the gap is named under "Proposed change": a `descendants`-shared version owned by a project between the queried project and a subproject that an explicit subproject filter brought into scope. Closing it needs a wider predicate than either patch on this issue proposes. |
-| `build_from_params` on a public endpoint | It builds a `Query` in memory from `params.slice(:f, :op, :v)` — the filter parameters only — exactly as `IssuesController#retrieve_query` does with the same three, and it now runs *after* the `view_permission` check rather than before it. Unavailable filters are ignored by `add_filters`. Because nothing else is passed, `c` and `t` no longer reach the array setters that would raise on a scalar, and the action's own `name` argument cannot become a filter value. **The boundary is worth stating exactly, because the slice is not a claim that every input is safe.** What it removes is crash surface that would have been *new to this endpoint*: `c` and `t` are read by no other part of `filter`, so a scalar `c=subject` would have raised here and nowhere else. What it does not change is how `f` and `op` themselves behave, and those still go straight into `Query#add_filters`, which guards with `fields.present? && operators.present?` and then calls `fields.each`. A non-empty String is `present?`, so `f=subproject_id&op[subproject_id]==` — `f` as a scalar rather than an array, with a matching `op` — raises `NoMethodError: undefined method 'each' for an instance of String`. That is not introduced here: the identical request against `/issues?set_filter=1` raises the identical error on unpatched trunk, through `retrieve_query` feeding the same method. This endpoint is therefore no worse than the one beside it, and hardening `add_filters` against a scalar field list is a one-line change to a core method this feature has no other reason to touch — a separate issue, not this patch. |
+| `build_from_params` on a public endpoint | It builds a `Query` in memory from `params.slice(:f, :op, :v)` — the filter parameters only — exactly as `IssuesController#retrieve_query` does with the same three, and it now runs *after* the `view_permission` check rather than before it. Unavailable filters are ignored by `add_filters`. Because nothing else is passed, `c` and `t` no longer reach the array setters that would raise on a scalar, and the action's own `name` argument cannot become a filter value. **The boundary is worth stating exactly, because the slice is not a claim that every input is safe.** What it removes is crash surface that would have been *new to this endpoint*: `c` and `t` are read by no other part of `filter`, so a scalar `c=subject` would have raised here and nowhere else. The field list is also only used when it is one: `Query#add_filters` guards with `fields.present? && operators.present?` and then calls `fields.each`, and a non-empty String is `present?`, so `f=subproject_id&op[subproject_id]==` would raise `NoMethodError: undefined method 'each' for an instance of String`. Unpatched trunk answers that request with a 200 here, because it ignores `f` on this endpoint altogether, so consuming the parameter without checking its shape would be a regression this patch caused — the same error being reachable through `/issues?set_filter=1` on trunk says something about Redmine, not about whether this endpoint got worse. Hence `if params[:f].is_a?(Array)`, which restores the old answer for a malformed request and costs the feature nothing. Hardening `add_filters` itself is deliberately **not** done here: that is a one-line change to a core method this feature has no other reason to touch, and it is worth its own issue. |
 | The cached value list goes stale if the subproject filter is changed afterwards | True, and pre-existing for every remote filter; this patch does not touch that cache. Named under "Alternatives considered" so it is not mistaken for a regression. |
 | Why does the "Subproject" filter influence another filter's values at all? | Because `project_statement` is what decides which issues the list contains, and a filter whose values do not match its own list is the defect being fixed. |
 | Does it still work with `display_subprojects_issues` off? | Yes. `project_statement` consults an explicit `subproject_id` filter first and only falls back to the setting when there is none, so the filter widens the version list past the setting. Asserted by `..._should_respect_selected_subprojects` (`=`) and `..._when_filtering_any_subproject` (`*`), both with the setting off, and by `..._not_include_subproject_versions_when_not_displaying...` for the case with the setting off and no subproject filter, where nothing from a subproject may appear. |
@@ -362,7 +368,7 @@ screenshot.
 
 - **Issue:** [#43534](https://www.redmine.org/issues/43534) — bestaat al, status
   New, met `43534-v2.patch` van Go MAEDA eraan
-- **Patches attached:** `patches/version-subprojects/2026-09-09-r25037-feature.patch`
+- **Patches attached:** `patches/version-subprojects/2026-09-10-r25037-feature.patch`
   (code, geen locales — er is geen nieuwe string)
 - **Made against:** `origin/master` r25037 = `bee32a926`, branch
   `patch/version-subprojects` at `6ad109efe`. **Applies cleanly to current trunk

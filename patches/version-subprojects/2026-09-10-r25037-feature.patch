@@ -1,16 +1,31 @@
-From 6ad109efef2cebe263676eb81a6c8537060fddc2 Mon Sep 17 00:00:00 2001
+From 0f0bd0a5314d8b141851712649b07702605904ff Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Sat, 5 Sep 2026 16:16:33 +0000
 Subject: [PATCH] Offer the versions of the subprojects covered by the query in
  the target version filter (#43534).
 
+The target version filter lists project.shared_versions, which does not
+include the versions of the subprojects whose issues the query shows. So a
+query that displays subproject issues cannot filter on the versions of those
+issues.
+
+fixed_version_values now adds the versions of the projects the query itself
+covers, taken from project_statement and narrowed to the project's own
+non-archived tree, and unions them with shared_versions rather than replacing
+them, so versions shared from outside the tree stay in the list.
+
+QueriesController#filter answers the AJAX call that fills a remote filter, and
+it did not know which filters the form already had. It now builds the query
+from the f, op and v parameters of the request, and addFilter sends them.
+Those parameters come straight off the request, so the field list is only used
+when it really is a list: Query#add_filters iterates it.
 ---
- app/assets/javascripts/application-legacy.js |  9 ++-
- app/controllers/queries_controller.rb        |  2 +
+ app/assets/javascripts/application-legacy.js |  9 +-
+ app/controllers/queries_controller.rb        |  3 +
  app/models/query.rb                          | 11 ++-
- test/functional/queries_controller_test.rb   | 80 ++++++++++++++++++++
- test/unit/query_test.rb                      | 74 ++++++++++++++++++
- 5 files changed, 174 insertions(+), 2 deletions(-)
+ test/functional/queries_controller_test.rb   | 95 ++++++++++++++++++++
+ test/unit/query_test.rb                      | 74 +++++++++++++++
+ 5 files changed, 190 insertions(+), 2 deletions(-)
 
 diff --git a/app/assets/javascripts/application-legacy.js b/app/assets/javascripts/application-legacy.js
 index 6249f0adf..30caea7e6 100644
@@ -33,14 +48,15 @@ index 6249f0adf..30caea7e6 100644
        addFilter(field, operator, values) ;
      });
 diff --git a/app/controllers/queries_controller.rb b/app/controllers/queries_controller.rb
-index 24f37eda2..15d860bc9 100644
+index 24f37eda2..5ccfbcff3 100644
 --- a/app/controllers/queries_controller.rb
 +++ b/app/controllers/queries_controller.rb
-@@ -100,6 +100,8 @@ class QueriesController < ApplicationController
+@@ -100,6 +100,9 @@ class QueriesController < ApplicationController
        raise Unauthorized
      end
  
-+    q.build_from_params(params.slice(:f, :op, :v))
++    # Query#add_filters iterates the field list, so a scalar f raises there
++    q.build_from_params(params.slice(:f, :op, :v)) if params[:f].is_a?(Array)
 +
      filter = q.available_filters[params[:name].to_s]
      values = filter ? filter.values : []
@@ -68,10 +84,10 @@ index 824dc027d..d2321c627 100644
        versions = Version.visible.to_a
      end
 diff --git a/test/functional/queries_controller_test.rb b/test/functional/queries_controller_test.rb
-index 297bfa232..3416c713e 100644
+index 297bfa232..5f4948f1d 100644
 --- a/test/functional/queries_controller_test.rb
 +++ b/test/functional/queries_controller_test.rb
-@@ -823,6 +823,86 @@ class QueriesControllerTest < Redmine::ControllerTest
+@@ -823,6 +823,101 @@ class QueriesControllerTest < Redmine::ControllerTest
      assert_include ["eCookbook - 2.0", "3", "open"], json
    end
  
@@ -153,6 +169,21 @@ index 297bfa232..3416c713e 100644
 +    assert_equal 'application/json', response.media_type
 +    json = ActiveSupport::JSON.decode(response.body)
 +    assert_include ["eCookbook - 2.0", "3", "open"], json
++  end
++
++  def test_filter_should_ignore_a_filter_field_list_that_is_not_a_list
++    @request.session[:user_id] = 2
++    get(
++      :filter,
++      :params => {
++        :project_id => 1,
++        :name => 'fixed_version_id',
++        :f => 'subproject_id',
++        :op => {'subproject_id' => '='}
++      }
++    )
++    assert_response :success
++    assert_equal 'application/json', response.media_type
 +  end
 +
    def test_version_filter_time_entries_with_project_id_should_return_filter_values
