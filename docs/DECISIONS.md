@@ -1636,3 +1636,62 @@ netwerkfout naar github.com voortaan een blokkade en geen waarschuwing, want een
 `--submit` die de vraag niet kón stellen mag hem niet met ja beantwoorden. Dat is
 dezelfde regel als bij de ontbrekende RuboCop (ronde 4, `tools` F02): een gate die
 niet kon meten, is geen gate die geslaagd is.
+
+### K-21 — vijf commits op de productiebranch stonden in geen enkel `status.md`
+
+**Beslist door Jan op 2026-09-10: optie A** — aanvullen én de gate de andere
+kant op laten kijken.
+
+**Wat er aan de hand was.** `check-geoxyz-branch.sh` check 3b vraagt: bestaat
+elke sha die het register noemt ook echt op `7.0-stable-GEOxyz`? Dat is de helft
+van G8's eis "own commits match the register". De andere helft — staat elke
+commit op de branch ook ergens in het register? — vroeg niemand. Gevolg: vijf
+commits stonden op de branch die GEOxyz draait zonder dat één `status.md` ze
+noemde, en het register las als compleet. Het waren telkens de **eerste** commit
+van een feature, de oorspronkelijke implementatie:
+
+| commit | datum | feature |
+|---|---|---|
+| `c077d96df` | 2026-09-02 | `wiki-export-attachments` |
+| `7d85538f3` | 2026-09-03 | `webhook-issue-closed` |
+| `8612a76f4` | 2026-09-03 | `ar-sessions` |
+| `2ac1de3c6` | 2026-09-03 | `ldap-mail-prefs` |
+| `1fd3343ff` | 2026-09-05 | `wiki-export-attachments` |
+
+Gevonden bij het bouwen van de omgekeerde richting van `check-symmetry.sh`
+(ronde 4, `tools` F04): een eerdere versie daarvan schreef elke niet-genoteerde
+commit toe aan de feature waarvan ze een bestand raakte, en dat gaf in één run
+**45 valse fouten** — omdat `7d85538f3` `test/unit/webhook_test.rb` deelt met
+`webhook-tracker-filter`. De valse fouten waren het symptoom; dit was de oorzaak.
+
+**Wat eronder zat, en het is erger dan een ontbrekend veld.** De vier
+`status.md`-bestanden beschreven die eerste commits wél in hun tekst, maar met
+shas van **vóór de K-13-herschrijving van 2026-09-06**: `add935736`,
+`95bbb9750`, `827e9e7d5`, `28c618860`, `7006c4f00`. Die objecten bestaan alleen
+nog op `archive/7.0-stable-GEOxyz-identities-before-20260906`. In een verse
+clone geeft `git show` daarop `fatal: bad object` — precies het stille verval dat
+de opmerking bij check 3b beschrijft, maar dan in de lopende tekst in plaats van
+in het front matter, waar geen enkele gate keek. Alle tien verwijzingen zijn
+omgezet naar de levende sha, geverifieerd tegen die archiefbranch op onderwerp
+én datum, niet geraden.
+
+**Wat er nu staat.** 46 genoteerde sha's, 46 eigen non-merge commits, en de gate
+bevestigt beide richtingen. Merges zijn vrijgesteld: een upstream-merge hoort bij
+geen enkele feature. De nieuwe check is rood gedraaid door `8612a76f4` weer uit
+`ar-sessions/status.md` te halen — `FAIL own commit(s) on
+origin/7.0-stable-GEOxyz that no status.md records as a geoxyz_commit`, exit 1 —
+en daarna groen.
+
+**Wat dit niet oplost.** Er staan nog meer niet-oplosbare sha's in de dossiers,
+maar dat zijn er twee soorten en alleen de eerste is een fout: verwijzingen naar
+`5.1-stable-GEOxyz` en naar ansifi's PR #1 horen daar en zijn hier alleen
+onvindbaar omdat die branches niet opgehaald zijn. Wat overblijft zijn
+`f434bff64` en `8121846be` in `wiki-export-attachments`, allebei over de
+*patch*branch en niet over GEOxyz. Die zijn niet aangeraakt: een patchbranch mag
+herschreven worden en heeft zijn eigen archief, dus daar geldt een ander verhaal.
+Waard om na te kijken door de sessie die die feature bezit.
+
+**Wie dit schreef.** Een frameworksessie, met `FRAMEWORK_CHANGE=1`, omdat de
+wijziging vier `status.md`-bestanden van vier verschillende features raakt en
+`tools/claim.sh` er maar één tegelijk kan afdekken. Jan heeft er expliciet om
+gevraagd.
