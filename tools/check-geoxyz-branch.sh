@@ -16,6 +16,8 @@
 
 set -uo pipefail
 
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/inv4-identity.sh"
+
 REPO="${1:-/home/user/redmine}"
 BRANCH=7.0-stable-GEOxyz
 UPSTREAM=origin/7.0-stable
@@ -24,9 +26,16 @@ RUBOCOP="${RUBOCOP:-/opt/rbenv/versions/3.3.6/bin/rubocop}"
 cd "$REPO" || { echo "FAIL  repo not found: $REPO" >&2; exit 2; }
 
 fails=0
+unmeasured=0
 pass() { printf '  ok    %s\n' "$1"; }
 warn() { printf '  note  %s\n' "$1"; }
 fail() { printf '  FAIL  %s\n' "$1"; fails=$((fails + 1)); }
+# A check that could not run is not a check that passed. It is not a defect in
+# the branch either, so it gets its own outcome rather than being counted as
+# one — but it still costs the run its PASS, because the whole point of this
+# script is that a session pastes its verdict into a dossier as G8 evidence
+# (round 4, tools F02).
+skip() { printf '  ????  %s\n' "$1"; unmeasured=$((unmeasured + 1)); }
 
 echo "check-geoxyz-branch: $BRANCH  (repo $REPO)"
 
@@ -98,11 +107,8 @@ fi
 # what let patch/mypage-query-blocks keep one until 2026-09-08: `git
 # format-patch` writes the author into the .patch file but not the committer,
 # so neither this check nor check-patch-clean.sh saw it.
-AI_TRACE_RE='co-authored-by:.*(cursor|claude|copilot|codex|chatgpt)|generated (with|by)|claude-(opus|sonnet|haiku|fable)|(claude|chatgpt|cursor)[-.]?session|claude\.ai/code'
-# Deliberately narrow: the tool names only. A broad pattern such as \bai\b
-# would fire on a contributor genuinely named Ai, and a gate with false
-# positives on real names is a gate somebody switches off.
-AI_IDENTITY_RE='claude|anthropic|copilot|codex|chatgpt|cursor\.(sh|com)'
+# Both patterns come from tools/inv4-identity.sh, so the three gates cannot
+# drift apart again (round 4, tools F03).
 if [ "$own" -gt 0 ]; then
   traces=$(git log --format='%B' "$UPSTREAM..$ref" | grep -inE "$AI_TRACE_RE" || true)
   if [ -n "$traces" ]; then
@@ -112,10 +118,9 @@ if [ "$own" -gt 0 ]; then
     pass "no AI traces in own commit messages"
   fi
 
-  [ -n "${AI_TRACE_RE:-}" ] && [ -n "${AI_IDENTITY_RE:-}" ] ||
+  [ -n "${AI_TRACE_RE:-}" ] ||
     { echo "FAIL  AI pattern is empty — this check would pass without testing anything" >&2; exit 2; }
-  identities=$(git log --format='%h  author=%an <%ae>  committer=%cn <%ce>' "$UPSTREAM..$ref" |
-               grep -iE "$AI_IDENTITY_RE" || true)
+  identities=$(inv4_identities "$UPSTREAM" "$ref") || exit 2
   if [ -n "$identities" ]; then
     fail "own commits carry an AI identity in author or committer (INV-4):"
     printf '%s\n' "$identities" | sed 's/^/          /'
@@ -168,48 +173,75 @@ fi
 if [ "$own" -eq 0 ]; then
   pass "lint: nothing changed to lint"
 elif [ ! -x "$RUBOCOP" ]; then
-  warn "rubocop not found at $RUBOCOP — set RUBOCOP= to check lint"
+  skip "lint NOT MEASURED — no rubocop at $RUBOCOP. Install it, or point RUBOCOP= at one."
 elif [ -z "$wt" ]; then
-  warn "lint skipped — no worktree"
+  skip "lint NOT MEASURED — no worktree to lint"
 else
-  files=$(git diff --name-only "$UPSTREAM...$ref" | grep -E '\.(rb|rake)$' || true)
-  if [ -z "$files" ]; then
+  mapfile -t files < <(git diff --name-only "$UPSTREAM...$ref" | grep -E '\.(rb|rake)$')
+  if [ "${#files[@]}" -eq 0 ]; then
     pass "lint: no Ruby files changed"
   else
-    nfiles=$(printf '%s\n' "$files" | wc -l | tr -d ' ')
-    base_files=""
-    for f in $files; do
-      git cat-file -e "$UPSTREAM:$f" 2>/dev/null && base_files="$base_files $f"
+    nfiles=${#files[@]}
+    base_files=()
+    for f in "${files[@]}"; do
+      git cat-file -e "$UPSTREAM:$f" 2>/dev/null && base_files+=("$f")
     done
-    branch_json=$(cd "$wt" && "$RUBOCOP" --force-exclusion --format json $files 2>/dev/null)
+    branch_json=$(cd "$wt" && "$RUBOCOP" --force-exclusion --format json "${files[@]}" 2>/dev/null)
     base_json='{"files":[]}'
-    if [ -n "$base_files" ] && git worktree add --detach -q "$tmp/u" "$UPSTREAM" 2>/dev/null; then
-      base_json=$(cd "$tmp/u" && "$RUBOCOP" --force-exclusion --format json $base_files 2>/dev/null)
-      git worktree remove --force "$tmp/u" >/dev/null 2>&1
+    base_ok=yes
+    if [ "${#base_files[@]}" -gt 0 ]; then
+      if git worktree add --detach -q "$tmp/u" "$UPSTREAM" 2>/dev/null; then
+        base_json=$(cd "$tmp/u" && "$RUBOCOP" --force-exclusion --format json "${base_files[@]}" 2>/dev/null)
+        git worktree remove --force "$tmp/u" >/dev/null 2>&1
+      else
+        base_ok=no
+      fi
     fi
     # Per file and cop, count offences on both sides; what the branch has more
     # of than upstream is what the branch added.
-    verdict=$(python3 - "$branch_json" "$base_json" <<'PY'
+    #
+    # Output that will not parse is reported as UNMEASURED, never as zero. Until
+    # 2026-09-10 an empty $branch_json — a rubocop that crashed, a bad config, a
+    # bundler mismatch, all of it swallowed by 2>/dev/null — was caught as a
+    # JSONDecodeError and became "lint: 0 offences", so a rubocop that never ran
+    # and a file with nothing wrong printed the same line (round 4, tools F02).
+    verdict=$(python3 - "$branch_json" "$base_json" "$base_ok" <<'RUBOCOPTALLY'
 import json, sys
+
+# No try/except in here: output that will not parse is the thing the caller has
+# to report, and swallowing it is the defect being fixed.
 def tally(raw):
     t = {}
-    try:
-        for f in json.loads(raw or '{}').get('files', []):
-            for o in f.get('offenses', []):
-                k = (f['path'], o['cop_name'])
-                t[k] = t.get(k, 0) + 1
-    except json.JSONDecodeError:
-        pass
+    for f in json.loads(raw)['files']:
+        for o in f.get('offenses', []):
+            k = (f['path'], o['cop_name'])
+            t[k] = t.get(k, 0) + 1
     return t
-b, u = tally(sys.argv[1]), tally(sys.argv[2])
+
+try:
+    b = tally(sys.argv[1])
+except Exception as e:
+    print('UNMEASURED rubocop gave no parseable JSON for the branch worktree (%s)' % e)
+    raise SystemExit(0)
+if sys.argv[3] != 'yes':
+    print('UNMEASURED the upstream baseline worktree could not be created')
+    raise SystemExit(0)
+try:
+    u = tally(sys.argv[2])
+except Exception as e:
+    print('UNMEASURED rubocop gave no parseable JSON for the upstream baseline (%s)' % e)
+    raise SystemExit(0)
+
 added = {k: n - u.get(k, 0) for k, n in b.items() if n > u.get(k, 0)}
-print(sum(b.values()), sum(u.values()), sum(added.values()))
+print('OK %d %d %d' % (sum(b.values()), sum(u.values()), sum(added.values())))
 for (path, cop), n in sorted(added.items()):
     print("%s  %s x%d" % (path, cop, n))
-PY
+RUBOCOPTALLY
 )
-    read -r n base_n added_n <<< "$(printf '%s\n' "$verdict" | head -1)"
-    if [ "${added_n:-0}" -eq 0 ] && [ "${n:-0}" -eq 0 ]; then
+    read -r verdict_kind n base_n added_n <<< "$(printf '%s\n' "$verdict" | head -1)"
+    if [ "$verdict_kind" != OK ]; then
+      skip "lint NOT MEASURED — $(printf '%s\n' "$verdict" | head -1 | cut -d' ' -f2-)"
+    elif [ "${added_n:-0}" -eq 0 ] && [ "${n:-0}" -eq 0 ]; then
       pass "lint: 0 offences on $nfiles changed Ruby file(s)"
     elif [ "${added_n:-0}" -eq 0 ]; then
       pass "lint: $n offence(s) on $nfiles changed Ruby file(s), all already on $UPSTREAM's own lines (baseline $base_n) — upstream's, not this branch's"
@@ -235,9 +267,19 @@ fi
 echo
 echo "Not covered here (G8's other half): the test suite. Run it — see docs/runbook.md."
 echo
-if [ "$fails" -eq 0 ]; then
+if [ "$fails" -eq 0 ] && [ "$unmeasured" -eq 0 ]; then
   echo "PASS"
   exit 0
 fi
-echo "$fails check(s) need attention"
+if [ "$fails" -eq 0 ]; then
+  echo "INCOMPLETE — $unmeasured check(s) could not be measured, so this is not a PASS."
+  echo "Nothing is known to be wrong with the branch; something is unknown about it."
+  echo "Do not quote this run as G8 evidence while a ???? line is above."
+  exit 1
+fi
+if [ "$unmeasured" -gt 0 ]; then
+  echo "$fails check(s) need attention, and $unmeasured could not be measured"
+else
+  echo "$fails check(s) need attention"
+fi
 exit 1

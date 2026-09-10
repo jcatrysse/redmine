@@ -84,15 +84,22 @@ echo "==> migrate"
 RAILS_ENV=development bundle exec ruby bin/rails db:migrate >/dev/null 2>&1 ||
   { echo "FAIL  db:migrate" >&2; exit 1; }
 
+# Both of these used to throw their output away and their exit status with it,
+# so a failed load or a failed seed produced a server that answers 200 over an
+# empty database — and then a verify script screenshots an empty Redmine and
+# calls it G9 evidence (round 4, tools F11).
 RAILS_ENV=development bundle exec ruby bin/rails runner \
   'exit(Tracker.any? ? 0 : 1)' >/dev/null 2>&1 || {
   echo "==> default data"
-  RAILS_ENV=development REDMINE_LANG=en bundle exec ruby bin/rails redmine:load_default_data >/dev/null 2>&1
+  RAILS_ENV=development REDMINE_LANG=en bundle exec ruby bin/rails redmine:load_default_data >"$LOGFILE.seed" 2>&1 ||
+    { echo "FAIL  redmine:load_default_data — see $LOGFILE.seed" >&2; tail -10 "$LOGFILE.seed" >&2; exit 1; }
 }
 
 echo "==> seed"
 REDMINE_ADMIN_PASSWORD="$PASSWORD" RAILS_ENV=development \
-  bundle exec ruby bin/rails runner "$TOOLS/dev-seed.rb" 2>&1 | grep -v '^\s*from ' | tail -2
+  bundle exec ruby bin/rails runner "$TOOLS/dev-seed.rb" >"$LOGFILE.seed" 2>&1 ||
+  { echo "FAIL  dev-seed.rb — see $LOGFILE.seed" >&2; grep -v '^\s*from ' "$LOGFILE.seed" | tail -10 >&2; exit 1; }
+grep -v '^\s*from ' "$LOGFILE.seed" | tail -2
 
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
   echo "==> already running (pid $(cat "$PIDFILE"))"

@@ -20,6 +20,11 @@
 # replay — the replay was never the only cause. Catching it at push time is what
 # stops it from accumulating unnoticed for sixteen commits again.
 #
+# On geoxyz/framework it also runs tools/check-ownership.sh --infer, which is
+# what makes the disjoint-files rule mechanical instead of a thing to remember;
+# CLAUDE.md called it mechanical while nothing invoked it (round 4, tools F07).
+# A session Jan asked for a framework change sets FRAMEWORK_CHANGE=1.
+#
 # "Never rebase" in CLAUDE.md is about history that has been published — a
 # rebase there invalidates every checkout GEOxyz has. Replaying a commit you
 # have not pushed yet onto the branch tip is the opposite: nobody has it, and it
@@ -27,6 +32,10 @@
 # thicket of merge commits from parallel sessions.
 
 set -uo pipefail
+
+# One pattern for all three gates, and a range that has to resolve before the
+# answer counts (round 4, tools F03).
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/inv4-identity.sh"
 
 BRANCH="${1:-$(git rev-parse --abbrev-ref HEAD)}"
 REPO="${REPO:-$(git rev-parse --show-toplevel)}"
@@ -90,20 +99,44 @@ TXT
     fi
   fi
 
+  # Disjoint files: does everything about to be pushed belong to one feature?
+  case "$BRANCH" in
+    geoxyz/framework)
+      if [ "${FRAMEWORK_CHANGE:-0}" = 1 ]; then
+        echo "note  FRAMEWORK_CHANGE=1 — ownership check skipped, so say in the report that Jan asked for this"
+      elif ! "$(dirname "${BASH_SOURCE[0]}")/check-ownership.sh" --infer; then
+        cat >&2 <<'TXT'
+
+FAIL  this push would write files another session owns.
+
+      Move them out of the commit, or — if Jan asked for a framework change —
+      run again with FRAMEWORK_CHANGE=1 and say so in the session report.
+TXT
+        exit 1
+      fi
+      ;;
+  esac
+
   # INV-4: nothing with an AI identity may reach the two branches that ship
   # Redmine code. geoxyz/framework is exempt — K-01 puts the attribution there
   # on purpose.
   case "$BRANCH" in
     7.0-stable-GEOxyz|patch/*)
       if git rev-parse --verify --quiet "origin/$BRANCH" >/dev/null; then
-        range="origin/$BRANCH..HEAD"
+        from="origin/$BRANCH"
       elif [ "$BRANCH" = "7.0-stable-GEOxyz" ]; then
-        range="origin/7.0-stable..HEAD"
+        from="origin/7.0-stable"
       else
-        range="origin/master..HEAD"
+        from="origin/master"
       fi
-      traced=$(git log --format='%h %an <%ae> / %cn <%ce>' "$range" |
-               grep -iE 'anthropic|(^| )claude( |<)' )
+      # The fallback refs are the ones a fresh clone may not have, and a range
+      # that does not resolve produces an empty grep — a clean answer over
+      # nothing. Fetch them, and let inv4_identities refuse if they still are
+      # not there.
+      git rev-parse --verify --quiet "$from^{commit}" >/dev/null ||
+        git fetch -q origin "${from#origin/}" 2>/dev/null
+      range="$from..HEAD"
+      traced=$(inv4_identities "$from" HEAD) || exit 2
       if [ -n "$traced" ]; then
         echo "FAIL  INV-4: an AI identity on commits bound for $BRANCH" >&2
         printf '        %s\n' "$traced" >&2

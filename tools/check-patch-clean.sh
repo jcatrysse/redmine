@@ -16,9 +16,10 @@
 #   1. the patch touches no framework path and no GEOxyz-local path (INV-9)
 #   2. locales stay inside en/nl/fr/de/es (INV-5)
 #   3. no AI trace in the From: line or the commit message (INV-4)
-#   4. it applies to a pristine origin/master checkout
-#   5. branch and patch file are the same change (no drift)
-#   6. no AI identity in the author or committer of the branch's own commits
+#   4. with --submit: origin/master really is current trunk (K-20)
+#   5. it applies to a pristine origin/master checkout
+#   6. branch and patch file are the same change (no drift)
+#   7. no AI identity in the author or committer of the branch's own commits
 #
 # Check 6 is Jan's K-16 (2026-09-09, option B). Until then nothing covered this
 # on a patch branch at all: `git format-patch` writes only the author into the
@@ -28,7 +29,16 @@
 # patch/mypage-query-blocks carried `Claude <noreply@anthropic.com>` as its
 # committer from 2026-09-03 to 2026-09-09 with every gate reporting PASS.
 #
-# Check 4 is a WARNING by default and a FAILURE with --submit. A patch that
+# Check 4 is Jan's K-20 (2026-09-10, option B) and runs only with --submit.
+# origin/master is a mirror only Jan writes (K-19 option A), so "applies to
+# origin/master" is a statement about the mirror unless somebody checks. On
+# 2026-09-09 nobody did: the mirror sat six days and 18 commits behind real
+# trunk, this gate reported PASS for all nine patches, and one of them did not
+# apply to the trunk it gets submitted to. The fetch is read-only — it lands in
+# FETCH_HEAD and never writes origin/master, so K-19's rule that only Jan syncs
+# the mirror is untouched, and patch/<slug> stays branched from origin/master.
+#
+# Check 5 is a WARNING by default and a FAILURE with --submit. A patch that
 # stopped applying because trunk moved 88 commits is not defective, it is
 # stale; all nine branches failed the old permanent version of this rule for
 # exactly that reason and it measured decay rather than quality (g13.1).
@@ -38,6 +48,8 @@
 # Exit 0 = safe. Exit 1 = do not submit.
 
 set -uo pipefail
+
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/inv4-identity.sh"
 
 SUBJECT=""
 SUBMIT=0
@@ -77,15 +89,15 @@ git fetch -q origin master 2>/dev/null || warn "could not fetch; using the origi
 # --- what are we checking? -------------------------------------------------
 SLUG=""
 BRANCH=""
-FILES=""
+FILES=()
 
 if [ -f "$SUBJECT" ]; then
-  FILES="$SUBJECT"
+  FILES=("$SUBJECT")
   SLUG=$(printf '%s' "$SUBJECT" | sed -n 's|^patches/\([^/]*\)/.*|\1|p')
 elif [ -d "patches/$SUBJECT" ]; then
   SLUG="$SUBJECT"
-  FILES=$(find "patches/$SLUG" -maxdepth 1 -name '*.patch' | sort)
-  [ -n "$FILES" ] || { echo "FAIL  no .patch file in patches/$SLUG" >&2; exit 2; }
+  mapfile -t FILES < <(find "patches/$SLUG" -maxdepth 1 -name '*.patch' | sort)
+  [ "${#FILES[@]}" -gt 0 ] || { echo "FAIL  no .patch file in patches/$SLUG" >&2; exit 2; }
 elif git rev-parse --verify --quiet "$SUBJECT" >/dev/null ||
      git rev-parse --verify --quiet "origin/$SUBJECT" >/dev/null; then
   SLUG=${SUBJECT#patch/}
@@ -94,7 +106,7 @@ elif git rev-parse --verify --quiet "$SUBJECT" >/dev/null ||
   base=$(git merge-base origin/master "$BRANCH")
   git format-patch "$base..$BRANCH" --stdout > "$tmp/branch.patch" 2>/dev/null
   [ -s "$tmp/branch.patch" ] || { echo "FAIL  $BRANCH changes nothing since $base" >&2; exit 2; }
-  FILES="$tmp/branch.patch"
+  FILES=("$tmp/branch.patch")
   warn "checking an export of $BRANCH — the file under patches/$SLUG/ is what gets attached"
 else
   echo "FAIL  '$SUBJECT' is neither a patch file, a patches/<slug> directory, nor a branch" >&2
@@ -112,18 +124,16 @@ fi
 # git apply runs with -C inside a temporary worktree, so a relative path here
 # would resolve against the wrong directory and report "no such file" as if the
 # patch were stale.
-abs=""
-for f in $FILES; do
-  case "$f" in /*) abs="$abs $f" ;; *) abs="$abs $REPO/$f" ;; esac
+for i in "${!FILES[@]}"; do
+  case "${FILES[$i]}" in /*) ;; *) FILES[$i]="$REPO/${FILES[$i]}" ;; esac
 done
-FILES="${abs# }"
 
 trunk_rev=$(git log -1 --format='%B' origin/master | sed -n 's|.*/trunk@\([0-9]*\) .*|\1|p')
 echo "check-patch-clean: ${SLUG:-$SUBJECT}  (trunk r${trunk_rev:-?}, repo $REPO)"
-printf '  file  %s\n' $FILES
+printf '  file  %s\n' "${FILES[@]}"
 
 # --- 1 + 2. the paths the patch touches ------------------------------------
-changed=$(grep -h '^diff --git ' $FILES | sed 's|^diff --git a/\(.*\) b/.*|\1|' | sort -u)
+changed=$(grep -h '^diff --git ' "${FILES[@]}" | sed 's|^diff --git a/\(.*\) b/.*|\1|' | sort -u)
 
 FORBIDDEN_PATHS='^(CLAUDE\.md|\.claude/|docs/|patches/|verify/|tools/|config/database\.yml|config/additional_environment\.rb)'
 ALLOWED_LOCALES='^config/locales/(en|nl|fr|de|es)\.yml$'
@@ -149,7 +159,7 @@ else
 
     # Per file, not over the set: a slug that already splits feature from
     # translations is doing exactly what this note asks for.
-    for f in $FILES; do
+    for f in "${FILES[@]}"; do
       fc=$(grep -h '^diff --git ' "$f" | sed 's|^diff --git a/\(.*\) b/.*|\1|' | sort -u)
       code=$(printf '%s\n' "$fc" | grep -v -E '^config/locales/' | grep . || true)
       extra=$(printf '%s\n' "$fc" | grep -E '^config/locales/' | grep -v -E '^config/locales/en\.yml$' | grep -c . || true)
@@ -165,21 +175,68 @@ else
 fi
 
 # --- 3. AI traces in the header and the commit message ---------------------
-# Only the part before the first hunk: a diff body may legitimately contain the
-# word "generated" (Redmine generates plenty of things).
-headers=$(awk '/^diff --git /{exit} {print}' $FILES)
-traces=$(printf '%s\n' "$headers" |
-         grep -inE 'co-authored-by:.*(cursor|claude|copilot|codex|chatgpt|ai\b)|generated (with|by)|claude-(opus|sonnet|haiku|fable)|(claude|chatgpt|cursor)[-.]?session|claude\.ai/code|claude|anthropic|copilot|codex|openai|noreply@' || true)
-if [ -n "$traces" ]; then
-  fail "AI trace in the patch header or commit message (INV-4):"
-  printf '%s\n' "$traces" | sed 's/^/          /'
+# Only the part before each hunk: a diff body may legitimately contain the word
+# "generated" (Redmine generates plenty of things).
+#
+# The header of EVERY message in EVERY file, which is not what this did until
+# 2026-09-10. It was `awk '/^diff --git /{exit}'`, and awk's `exit` ends the
+# whole program rather than the current file, so with more than one .patch file
+# only the first one's header was ever read — while the check printed "ok". Five
+# of the nine slugs ship two files, mypage-query-blocks among them, which is the
+# slug K-16 was written for (round 4, tools F01). The same truncation hid the
+# second and later commit messages of a multi-commit branch export, since git
+# format-patch writes those after the first diff.
+headers=$(awk '
+  FNR == 1 || /^From [0-9a-f]+ / { inhdr = 1; msgs++ }
+  /^diff --git / { inhdr = 0 }
+  inhdr { print FILENAME ": " $0 }
+  END { print "@@scanned " msgs+0 }
+' "${FILES[@]}")
+scanned=${headers##*@@scanned }
+headers=${headers%@@scanned *}
+
+# An empty header set means the extraction broke, not that the patch is clean.
+# A grep over nothing reports nothing, and that is the shape of every gate
+# defect this framework has found so far.
+if [ "${scanned:-0}" -lt 1 ] || [ -z "$headers" ]; then
+  fail "could not read a single message header from ${#FILES[@]} file(s) — this check would pass without testing anything"
 else
-  pass "no AI trace in the header or the commit message"
+  traces=$(printf '%s\n' "$headers" |
+           grep -inE 'co-authored-by:.*(cursor|claude|copilot|codex|chatgpt|ai\b)|generated (with|by)|claude-(opus|sonnet|haiku|fable)|(claude|chatgpt|cursor)[-.]?session|claude\.ai/code|claude|anthropic|copilot|codex|openai|noreply@' || true)
+  if [ -n "$traces" ]; then
+    fail "AI trace in the patch header or commit message (INV-4):"
+    printf '%s\n' "$traces" | sed 's/^/          /'
+  else
+    pass "no AI trace in $scanned message header(s) across ${#FILES[@]} file(s)"
+  fi
 fi
 
-# --- 4. applies to a pristine trunk checkout -------------------------------
+# --- 4. is origin/master really trunk? (K-20, --submit only) ---------------
+UPSTREAM_TRUNK="${UPSTREAM_TRUNK:-https://github.com/redmine/redmine.git}"
+if [ "$SUBMIT" -eq 1 ]; then
+  if git fetch -q "$UPSTREAM_TRUNK" master 2>"$tmp/trunkerr"; then
+    gap=$(git rev-list --count origin/master..FETCH_HEAD 2>/dev/null)
+    if [ "${gap:-}" = 0 ]; then
+      pass "origin/master is current with $UPSTREAM_TRUNK"
+    elif [ -z "${gap:-}" ]; then
+      fail "could not compare origin/master with $UPSTREAM_TRUNK — one of the two refs does not resolve"
+    else
+      fail "origin/master is $gap commit(s) behind real trunk, so this answer would be about the mirror (K-19, K-20):"
+      printf '          %s\n' \
+        "$(git log -1 --format='mirror     %h  %ad  %s' --date=short origin/master)" \
+        "$(git log -1 --format='real trunk %h  %ad  %s' --date=short FETCH_HEAD)" \
+        "Jan syncs the mirror — the three commands are in docs/runbook.md." \
+        "Re-run --submit after the sync; the evidence numbers are re-measured with it (g05)."
+    fi
+  else
+    fail "could not reach $UPSTREAM_TRUNK — a --submit that cannot ask whether the mirror is current may not answer yes (K-20):"
+    sed 's/^/          /' "$tmp/trunkerr" 2>/dev/null | head -3
+  fi
+fi
+
+# --- 5. applies to a pristine trunk checkout -------------------------------
 if git worktree add --detach -q "$tmp/trunk" origin/master 2>/dev/null; then
-  if git -C "$tmp/trunk" apply --check $FILES 2>"$tmp/err"; then
+  if git -C "$tmp/trunk" apply --check "${FILES[@]}" 2>"$tmp/err"; then
     pass "applies to a pristine origin/master (r${trunk_rev:-?}) checkout"
   elif [ "$SUBMIT" -eq 1 ]; then
     fail "does NOT apply to trunk r${trunk_rev:-?} — refresh it before submitting:"
@@ -195,11 +252,11 @@ else
   fail "could not create a trunk worktree to test against"
 fi
 
-# --- 5. branch and file are the same change --------------------------------
-if [ -n "$BRANCH" ] && [ "$FILES" != "$tmp/branch.patch" ]; then
+# --- 6. branch and file are the same change --------------------------------
+if [ -n "$BRANCH" ] && [ "${FILES[0]}" != "$tmp/branch.patch" ]; then
   base=$(git merge-base origin/master "$BRANCH")
   if git worktree add --detach -q "$tmp/drift" "$base" 2>/dev/null; then
-    if git -C "$tmp/drift" apply $FILES 2>"$tmp/drifterr"; then
+    if git -C "$tmp/drift" apply "${FILES[@]}" 2>"$tmp/drifterr"; then
       # Stage first: git apply leaves a new file untracked, and an untracked
       # file is invisible to git diff — which would report "no drift" for a
       # patch that adds a file the branch does not have.
@@ -235,23 +292,13 @@ elif [ -z "$BRANCH" ]; then
   warn "no patch/$SLUG branch to compare against"
 fi
 
-# --- 6. AI identity in the branch's own commits (INV-4) --------------------
-# The same narrow pattern as check-geoxyz-branch.sh: tool names only. A broad
-# one such as \bai\b fires on a contributor genuinely named Ai, and a gate with
-# false positives on real names is a gate somebody switches off.
-AI_IDENTITY_RE='claude|anthropic|copilot|codex|chatgpt|cursor\.(sh|com)'
+# --- 7. AI identity in the branch's own commits (INV-4) --------------------
+# Pattern and range guard both live in tools/inv4-identity.sh, so the mandatory
+# guard in session-push.sh can never be looser than this one (round 4, F03).
 if [ -n "$BRANCH" ]; then
-  # A pattern that fell out of the script would make the grep below match
-  # nothing and this check report ok while testing nothing — which is how
-  # check-geoxyz-branch.sh once passed a branch that carried a trace (see
-  # docs/traps.md, 2026-09-08).
-  [ -n "${AI_IDENTITY_RE:-}" ] ||
-    { echo "FAIL  the AI identity pattern is empty — this check would pass without testing anything" >&2; exit 2; }
-
   ibase=$(git merge-base origin/master "$BRANCH")
   own=$(git rev-list --count "$ibase..$BRANCH")
-  identities=$(git log --format='%h  author=%an <%ae>  committer=%cn <%ce>' "$ibase..$BRANCH" |
-               grep -iE "$AI_IDENTITY_RE" || true)
+  identities=$(inv4_identities "$ibase" "$BRANCH") || exit 2
   if [ -n "$identities" ]; then
     fail "an AI identity in the author or committer of $BRANCH (INV-4):"
     printf '%s\n' "$identities" | sed 's/^/          /'

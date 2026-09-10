@@ -22,6 +22,29 @@
 # catches the case that actually happened, a hunk on one side only, and it
 # narrows what has to be read by hand rather than replacing it.
 #
+# **In both directions since 2026-09-10.** Until then the set of lines examined
+# was the patch's own diff, so a line GEOxyz has and the patch never mentions
+# was not in the set at all and could not be seen — a hotfix applied to
+# production and never carried back, which is the divergence this branch will
+# actually produce next. Adding an unrelated guard to GEOxyz alone passed with a
+# global INV-10 PASS (round 4, tools F04).
+#
+# The reverse direction has to be scoped or it is unusable: GEOxyz carries
+# thirteen features at once, so every line of the other twelve would read as a
+# divergence of this one. It is scoped **by content**, which needs no bookkeeping
+# to be right: a line GEOxyz added to one of this patch's files, and this patch
+# does not have, is this slug's divergence unless some other patch branch has
+# it — in which case it belongs to that feature. It cannot be upstream's own
+# line either, since this patch branch is upstream plus one feature and the line
+# is absent there.
+#
+# Two scopings were tried first and both are worse. Reading the feature's own
+# geoxyz_commit list out of status.md can only see divergences somebody already
+# wrote down, which is the opposite of the case worth catching. Treating every
+# unrecorded commit as this feature's produced 45 false failures in one run,
+# because five real commits are recorded against no feature at all and one of
+# them shares a test file with another slug.
+#
 # **Locale files** are compared by value, per key, with a real YAML parser.
 # They used to be skipped here, on the stated grounds that they were "compared
 # as whole keys elsewhere". That was wrong, and it was a claim made without
@@ -39,9 +62,22 @@
 # divergence that is not listed there is a defect; one that is listed is a
 # claim the dossier has to back (INV-10).
 #
-# --self-test proves the gate still bites: it breaks one translation value on a
-# synthetic copy of GEOxyz and requires this script to fail on it. It creates
-# no branch and touches no worktree.
+# That substring direction is what the file always said and not what it did
+# until 2026-09-10: `grep -F "$body" allowfile` asks whether an allow LINE
+# contains the whole body, the opposite, so a short distinguishing fragment —
+# the documented thing to write — suppressed nothing, and the 8-character guard
+# below was inert because no body is ever short enough to be excused by it
+# (round 4, tools F09).
+#
+# --self-test proves the gate still bites. It builds three synthetic defects on
+# a copy of GEOxyz — a broken translation, a missing code line, an extra code
+# line — and requires this script to fail on each. Three, because until
+# 2026-09-10 it only ever broke a translation: the code half, which is the older
+# and larger one and the reason the gate exists at all, had no self-test, and a
+# run that found nothing to break still printed a global PASS (round 4, tools
+# F10). It now fails if it ran no probe. It creates no branch and touches no
+# worktree: every tree is assembled in a temporary index and committed with
+# commit-tree, leaving unreferenced objects.
 #
 # Exit 0 = symmetric. Exit 1 = a divergence that is not allowed.
 
@@ -49,14 +85,61 @@ set -uo pipefail
 
 REPO="${REPO:-/home/user/redmine}"
 GEOXYZ="${GEOXYZ:-origin/7.0-stable-GEOxyz}"
+GEOBASE="${GEOBASE:-origin/7.0-stable}"
 BASE="${BASE:-origin/master}"
 RUBY="${RUBY:-/opt/rbenv/versions/3.3.6/bin/ruby}"
+SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 LOCALES='^config/locales/(en|nl|fr|de|es)\.yml$'
 
 cd "$REPO" || { echo "FAIL  repo not found: $REPO" >&2; exit 2; }
 
 fails=0
 pass() { printf '  ok    %s\n' "$1"; }
+# Is this divergence one the dossier already accounts for? The pattern is a
+# fragment of the line body or of the key path, matched literally.
+allowed() {
+  local subject="$1" pattern
+  while IFS= read -r pattern; do
+    [ -n "$pattern" ] || continue
+    case "$subject" in *"$pattern"*) return 0 ;; esac
+  done < "$allowfile"
+  return 1
+}
+
+# One trimmed copy per (ref, path) for the whole run. A feature adds a few
+# hundred lines and every one of them is looked up on up to nine branches, so a
+# git show per lookup turns 30 seconds into half an hour.
+CACHE=$(mktemp -d)
+trap 'rm -rf "$CACHE"' EXIT
+trimmed() {
+  local key; key=$(printf '%s:%s' "$1" "$2" | tr -c 'A-Za-z0-9.' '_')
+  [ -f "$CACHE/$key" ] ||
+    git show "$1:$2" 2>/dev/null | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' > "$CACHE/$key"
+  printf '%s' "$CACHE/$key"
+}
+
+# Does this line, or this locale key, belong to one of the other features? Every
+# feature that has a patch branch carries its own lines there, so a line absent
+# from this patch and present on another one is that feature's, not a divergence
+# of this one.
+claimed_elsewhere() {
+  local body="$1" file="$2" other
+  for other in $ALL_PATCHES; do
+    [ "$other" = "$patch_ref" ] && continue
+    git cat-file -e "$other:$file" 2>/dev/null || continue
+    grep -qxF -- "$body" "$(trimmed "$other" "$file")" && return 0
+  done
+  return 1
+}
+claimed_elsewhere_key() {
+  local lkey="$1" file="$2" other
+  for other in $ALL_PATCHES; do
+    [ "$other" = "$patch_ref" ] && continue
+    git cat-file -e "$other:$file" 2>/dev/null || continue
+    grep -qE "^$lkey:" "$(trimmed "$other" "$file")" && return 0
+  done
+  return 1
+}
 warn() { printf '  note  %s\n' "$1"; }
 fail() { printf '  FAIL  %s\n' "$1"; fails=$((fails + 1)); }
 
@@ -72,7 +155,7 @@ fi
 command -v "$RUBY" >/dev/null 2>&1 ||
   { echo "FAIL  no ruby at $RUBY — the locale comparison needs a YAML parser, and skipping it is how this gate went blind once already" >&2; exit 2; }
 
-git fetch -q origin master 7.0-stable-GEOxyz 'refs/heads/patch/*:refs/remotes/origin/patch/*' 2>/dev/null ||
+git fetch -q origin master 7.0-stable 7.0-stable-GEOxyz 'refs/heads/patch/*:refs/remotes/origin/patch/*' 2>/dev/null ||
   warn "could not fetch; using the refs already present"
 
 # Flattens both YAML trees to key -> value and reports, for every key this
@@ -113,6 +196,8 @@ end
 ' "$base_f" "$patch_f" "$geo_f"
 }
 
+ALL_PATCHES=$(git for-each-ref --format='%(refname:short)' 'refs/remotes/origin/patch/*')
+
 for slug in "$@"; do
   echo "check-symmetry: $slug"
   patch_ref="origin/patch/$slug"
@@ -120,8 +205,10 @@ for slug in "$@"; do
     { fail "$patch_ref does not exist"; continue; }
 
   mb=$(git merge-base "$BASE" "$patch_ref")
-  files=$(git diff --name-only "$mb" "$patch_ref")
-  [ -n "$files" ] || { fail "$patch_ref changes nothing against $BASE"; continue; }
+  gmb=$(git merge-base "$GEOBASE" "$GEOXYZ" 2>/dev/null)
+  [ -n "$gmb" ] || { fail "$slug: $GEOXYZ has no merge base with $GEOBASE, so the GEOxyz -> patch direction cannot be checked"; continue; }
+  mapfile -t files < <(git diff --name-only "$mb" "$patch_ref")
+  [ "${#files[@]}" -gt 0 ] || { fail "$patch_ref changes nothing against $BASE"; continue; }
 
   allow="docs/features/$slug/symmetry-allow.txt"
   allowfile=$(mktemp)
@@ -141,7 +228,7 @@ for slug in "$@"; do
 
   slug_fails=0
   locale_keys=0
-  for f in $files; do
+  for f in "${files[@]}"; do
     pat=$(mktemp); geo=$(mktemp); bas=$(mktemp)
     on_patch=no; on_geoxyz=no
     git cat-file -e "$patch_ref:$f" 2>/dev/null && on_patch=yes
@@ -171,7 +258,7 @@ for slug in "$@"; do
 
       while IFS=$'\t' read -r key geo_value patch_value; do
         [ -n "$key" ] || continue
-        grep -qF -- "$key" "$allowfile" 2>/dev/null && continue
+        allowed "$key" && continue
         fail "$slug: $f — key $key reads \"$patch_value\" on the patch and \"$geo_value\" on GEOxyz"
         slug_fails=$((slug_fails + 1))
       done < <(locale_divergences "$bas" "$pat" "$geo")
@@ -215,7 +302,7 @@ puts p.count {|k, v| b[k] != v}
       stripped=$(printf '%s' "$body" | tr -d '[:space:]')
       [ ${#stripped} -ge 8 ] || continue
 
-      grep -qF -- "$body" "$allowfile" 2>/dev/null && continue
+      allowed "$body" && continue
 
       np=$(grep -cxF -- "$body" "$pat")
       ng=$(grep -cxF -- "$body" "$geo")
@@ -233,11 +320,46 @@ puts p.count {|k, v| b[k] != v}
     rm -f "$pat" "$geo" "$bas"
   done
 
+  # --- the other direction: what GEOxyz carries in these files that the patch
+  # does not. See the header for why it is scoped by content.
+  for f in "${files[@]}"; do
+    git cat-file -e "$GEOXYZ:$f" 2>/dev/null || continue
+    git cat-file -e "$patch_ref:$f" 2>/dev/null || continue
+
+    while IFS= read -r body; do
+      [ -n "$body" ] || continue
+      stripped=$(printf '%s' "$body" | tr -d '[:space:]')
+      [ ${#stripped} -ge 8 ] || continue
+      allowed "$body" && continue
+
+      if printf '%s' "$f" | grep -qE "$LOCALES"; then
+        # Compared by key, not by line: a differing value is already the forward
+        # check's finding, so the only question left here is whether the key
+        # exists on the patch side at all. Key presence has none of the ordering
+        # and neighbouring noise that made a line comparison useless for YAML.
+        lkey=${body%%:*}
+        case "$lkey" in *[!A-Za-z0-9_]*|'') continue ;; esac
+        grep -qE "^$lkey:" "$(trimmed "$patch_ref" "$f")" && continue
+        claimed_elsewhere_key "$lkey" "$f" && continue
+        fail "$slug: $f — key $lkey is on GEOxyz and on no patch, so this feature's translation exists only in production"
+        slug_fails=$((slug_fails + 1))
+        continue
+      fi
+
+      grep -qxF -- "$body" "$(trimmed "$patch_ref" "$f")" && continue
+      claimed_elsewhere "$body" "$f" && continue
+      fail "$slug: $f — on GEOxyz, on no patch branch, absent here:  $body"
+      slug_fails=$((slug_fails + 1))
+    done < <(git diff -U0 "$gmb" "$GEOXYZ" -- "$f" |
+             grep -E '^\+' | grep -Ev '^\+\+\+' |
+             sed 's/^.//; s/^[[:space:]]*//; s/[[:space:]]*$//' | sort -u)
+  done
+
   if [ "$slug_fails" -eq 0 ]; then
     if [ "$locale_keys" -gt 0 ]; then
-      pass "$slug: every substantive line of the patch is on both sides, and its $locale_keys locale key(s) read the same"
+      pass "$slug: every substantive line is on both sides in both directions, and its $locale_keys locale key(s) read the same"
     else
-      pass "$slug: every substantive line of the patch is on both sides (no locale key of its own)"
+      pass "$slug: every substantive line is on both sides in both directions (no locale key of its own)"
     fi
   fi
   rm -f "$allowfile"
@@ -252,47 +374,95 @@ echo "PASS  no unexplained divergence between the patches and $GEOXYZ"
 
 if [ "$SELF_TEST" = yes ]; then
   echo
-  echo "self-test: breaking one translation on a synthetic copy of $GEOXYZ"
+  echo "self-test: three synthetic defects per slug on a copy of $GEOXYZ"
   st_fails=0
-  for slug in "$@"; do
-    patch_ref="origin/patch/$slug"
-    mb=$(git merge-base "$BASE" "$patch_ref" 2>/dev/null) || continue
-    key=''
-    for lf in $(git diff --name-only "$mb" "$patch_ref" | grep -E "$LOCALES"); do
-      key=$(git diff -U0 "$mb" "$patch_ref" -- "$lf" |
-            grep -E '^\+  [a-z_]+:' | head -1 | sed 's/^+  \([a-z_]*\):.*/\1/')
-      [ -n "$key" ] && break
-    done
-    if [ -z "$key" ]; then
-      warn "$slug: adds no locale key of its own, nothing to break"
-      continue
-    fi
+  st_ran=0
 
-    # A synthetic commit built through a temporary index: no branch, no
-    # worktree change, and the objects are unreferenced afterwards.
+  # A GEOxyz tree with one file replaced. No branch, no worktree, no ref.
+  st_tree() {
+    local path="$1" blob="$2" tmpidx tree
     tmpidx=$(mktemp -u)
-    GIT_INDEX_FILE="$tmpidx" git read-tree "$GEOXYZ" || { fail "$slug: could not read $GEOXYZ"; continue; }
-    blob=$(git show "$GEOXYZ:$lf" |
-           sed "s/^\(  $key:\) .*/\1 BROKEN TRANSLATION/" |
-           git hash-object -w --stdin)
-    GIT_INDEX_FILE="$tmpidx" git update-index --cacheinfo "100644,$blob,$lf"
-    tree=$(GIT_INDEX_FILE="$tmpidx" git write-tree)
-    broken=$(git commit-tree "$tree" -p "$(git rev-parse "$GEOXYZ")" -m 'check-symmetry self-test')
-    rm -f "$tmpidx"
+    GIT_INDEX_FILE="$tmpidx" git read-tree "$GEOXYZ" 2>/dev/null || { rm -f "$tmpidx"; return 1; }
+    GIT_INDEX_FILE="$tmpidx" git update-index --cacheinfo "100644,$blob,$path" || { rm -f "$tmpidx"; return 1; }
+    tree=$(GIT_INDEX_FILE="$tmpidx" git write-tree); rm -f "$tmpidx"
+    git commit-tree "$tree" -p "$(git rev-parse "$GEOXYZ")" -m 'check-symmetry self-test'
+  }
 
-    if GEOXYZ="$broken" "$0" "$slug" >/dev/null 2>&1; then
-      printf '  FAIL  %s: the gate passed with %s broken on one side only — it is blind again\n' "$slug" "$key"
+  # The gate has to FAIL on the synthetic tree. Passing means it is blind again.
+  st_probe() {
+    local label="$1" broken="$2"
+    st_ran=$((st_ran + 1))
+    if GEOXYZ="$broken" "$SELF" "$slug" >/dev/null 2>&1; then
+      printf '  FAIL  %s: %s — the gate passed with this on one side only, it is blind again\n' "$slug" "$label"
       st_fails=$((st_fails + 1))
     else
-      printf '  ok    %s: breaking %s in %s is caught\n' "$slug" "$key" "$(basename "$lf")"
+      printf '  ok    %s: %s\n' "$slug" "$label"
+    fi
+  }
+
+  for slug in "$@"; do
+    patch_ref="origin/patch/$slug"
+    git rev-parse -q --verify "$patch_ref" >/dev/null || continue
+    mb=$(git merge-base "$BASE" "$patch_ref") || continue
+
+    # 1. a translation this patch adds, broken on GEOxyz only (forward, locales)
+    key=''; lf=''
+    for cand in $(git diff --name-only "$mb" "$patch_ref" | grep -E "$LOCALES"); do
+      key=$(git diff -U0 "$mb" "$patch_ref" -- "$cand" |
+            grep -E '^\+  [a-z_]+:' | head -1 | sed 's/^+  \([a-z_]*\):.*/\1/')
+      [ -n "$key" ] && { lf="$cand"; break; }
+    done
+    if [ -n "$key" ]; then
+      broken=$(st_tree "$lf" "$(git show "$GEOXYZ:$lf" |
+               sed "s/^\(  $key:\) .*/\1 BROKEN TRANSLATION/" | git hash-object -w --stdin)") &&
+        st_probe "$key in $(basename "$lf") reads differently on GEOxyz" "$broken"
+    else
+      printf '  note  %s: adds no locale key of its own, so no translation probe\n' "$slug"
+    fi
+
+    # a code file both sides have, and a substantive line the patch adds to it
+    cf=''; body=''
+    while IFS= read -r cand; do
+      printf '%s' "$cand" | grep -qE "$LOCALES" && continue
+      git cat-file -e "$GEOXYZ:$cand" 2>/dev/null || continue
+      body=$(git diff -U0 "$mb" "$patch_ref" -- "$cand" |
+             grep -E '^\+' | grep -Ev '^\+\+\+' |
+             sed 's/^.//; s/^[[:space:]]*//; s/[[:space:]]*$//' |
+             awk 'length($0) >= 20' |
+             while IFS= read -r l; do
+               git show "$GEOXYZ:$cand" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' |
+                 grep -qxF -- "$l" && { printf '%s' "$l"; break; }
+             done)
+      [ -n "$body" ] && { cf="$cand"; break; }
+    done < <(git diff --name-only "$mb" "$patch_ref")
+
+    if [ -z "$cf" ]; then
+      fail "$slug: no code file to probe — the code half of this gate is untested for this slug"
+    else
+      # 2. a line of the patch missing on GEOxyz (forward, code)
+      broken=$(st_tree "$cf" "$(git show "$GEOXYZ:$cf" |
+               awk -v b="$body" 'index($0, b) && !gone { gone = 1; next } { print }' |
+               git hash-object -w --stdin)") &&
+        st_probe "a line of the patch missing from $(basename "$cf") on GEOxyz" "$broken"
+
+      # 3. a line on GEOxyz that no patch branch has (reverse, code)
+      broken=$(st_tree "$cf" "$(git show "$GEOXYZ:$cf" |
+               sed '1i\
+# check-symmetry self-test: a line that exists in production and in no patch' |
+               git hash-object -w --stdin)") &&
+        st_probe "a line on GEOxyz that no patch branch carries" "$broken"
     fi
   done
 
   echo
-  if [ "$st_fails" -ne 0 ]; then
-    echo "FAIL  self-test: $st_fails slug(s) where a one-sided translation change goes unnoticed"
+  if [ "$st_ran" -eq 0 ]; then
+    echo "FAIL  self-test: not a single probe ran, so this proves nothing"
     exit 1
   fi
-  echo "PASS  self-test: a one-sided translation change fails the gate"
+  if [ "$st_fails" -ne 0 ]; then
+    echo "FAIL  self-test: $st_fails of $st_ran probe(s) went unnoticed"
+    exit 1
+  fi
+  echo "PASS  self-test: all $st_ran probe(s) fail the gate, in both directions"
 fi
 exit 0

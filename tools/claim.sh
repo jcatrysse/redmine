@@ -27,6 +27,25 @@ ME=$(printf '%s' "$ME" | tr -c 'A-Za-z0-9_.-' '-')
 TODAY=$(date -u +%Y-%m-%d)
 DIR=docs/claims
 
+# Both this script and tools/append-note.sh replay onto origin/geoxyz/framework,
+# and neither checked which branch was actually checked out. The execution
+# environment mints a fresh branch per session, so a session that ran this
+# before doing the checkout in docs/STATE.md rebased that branch onto the
+# framework branch and got an exit code with no explanation (round 4, tools
+# F14).
+on_framework_branch() {
+  local here; here=$(git rev-parse --abbrev-ref HEAD)
+  [ "$here" = geoxyz/framework ] && return 0
+  cat >&2 <<TXT
+FAIL  HEAD is '$here', not geoxyz/framework, and this tool replays onto the
+      framework branch. Do the checkout from docs/STATE.md first:
+
+          git fetch origin geoxyz/framework
+          git checkout geoxyz/framework && git merge --ff-only origin/geoxyz/framework
+TXT
+  exit 2
+}
+
 holders() { ls "$DIR/$1--"* 2>/dev/null; }
 
 # Both sides must agree on the winner without talking to each other: sort the
@@ -38,6 +57,7 @@ winner() {
   done | LC_ALL=C sort | head -1 | awk '{print $2}'
 }
 
+on_framework_branch
 git fetch -q origin geoxyz/framework 2>/dev/null
 
 if [ "${1:-}" = "--list" ]; then
@@ -66,9 +86,24 @@ git rebase -q origin/geoxyz/framework 2>/dev/null || {
   exit 1
 }
 
+# docs/REGISTER.md carries a "Nu in behandeling" section generated from these
+# files, and nothing regenerated it — so a released claim stayed advertised on
+# the branch, and check-ownership.sh's freshness check only looks when the
+# register is itself part of the push, which is exactly when it is not stale.
+# On 2026-09-10 the branch had claimed version-subprojects to a session that
+# gave it back the day before (round 4, tools F05).
+stage_register() {
+  tools/register.sh --write >/dev/null 2>&1 || {
+    echo "FAIL  could not regenerate docs/REGISTER.md — fix that before changing a claim" >&2
+    exit 1
+  }
+  git add docs/REGISTER.md
+}
+
 if [ "${2:-}" = "--release" ]; then
   [ -f "$MINE" ] || { echo "note  this session holds no claim on $SLUG"; exit 0; }
   git rm -q "$MINE"
+  stage_register
   git commit -q -m "$SLUG: claim released"
   exec tools/session-push.sh geoxyz/framework
 fi
@@ -85,6 +120,7 @@ mkdir -p "$DIR"
 } > "$MINE"
 
 git add "$MINE"
+stage_register
 if ! git diff --cached --quiet; then
   git commit -q -m "$SLUG: claimed"
   tools/session-push.sh geoxyz/framework >/dev/null || exit 1
@@ -101,6 +137,7 @@ fi
 
 echo "note  $SLUG went to $(sed -n 's/^session: *//p' "$win" | head -1) — standing down"
 git rm -q "$MINE"
+stage_register
 git commit -q -m "$SLUG: claim withdrawn, another session got there first"
 tools/session-push.sh geoxyz/framework >/dev/null || exit 1
 echo "FAIL  $SLUG is taken. Take a different row from docs/REGISTER.md." >&2

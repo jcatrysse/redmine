@@ -16,11 +16,19 @@
 set -uo pipefail
 
 CHROME=$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome 2>/dev/null | head -1)
-if [ -n "$CHROME" ]; then
+if [ -z "$CHROME" ]; then
+  # Refusing, not warning. The header above says a run that is 260 errors deep
+  # proves nothing under INV-8, and then it used to let exactly that run happen
+  # — and its counts get written into a dossier as evidence (round 4, tools
+  # F11). Set SYSTEM_TESTS_MAY_ERROR=1 to run anyway, and then do not quote the
+  # numbers.
+  echo "FAIL  no Playwright Chromium under /opt/pw-browsers — every system test would error in setup," >&2
+  echo "      and those counts are not suite evidence (INV-8)." >&2
+  [ "${SYSTEM_TESTS_MAY_ERROR:-0}" = 1 ] || exit 2
+  echo "note  SYSTEM_TESTS_MAY_ERROR=1 — continuing; the system-test errors are environmental" >&2
+else
   ln -sf "$CHROME" /usr/local/bin/google-chrome
   ln -sf "$CHROME" /usr/local/bin/chrome
-else
-  echo "note  no Playwright Chromium found — system tests will error" >&2
 fi
 
 # Drop the directory holding the mismatched chromedriver.

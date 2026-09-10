@@ -37,11 +37,22 @@ export async function session(shotDir) {
     return file;
   }
 
+  // The HTTP status, not the page title. The title test alone caught 404, 422
+  // and an in-app 500 — Redmine's error view ends with `html_title @status`, so
+  // those read "404 - Redmine" — but it missed the two that matter most for
+  // G9: a 403, which is what a permission-gated URL returns and exactly the
+  // failure path G9 asks to be shown, and a real unhandled exception, which
+  // Rails serves from public/500.html with the title "Redmine 500 error".
+  // Both were accepted as a successful navigation and screenshotted as
+  // evidence, while verify/assignee-nobody.mjs states in a comment that go()
+  // refuses an error page (round 4, tools F08).
   async function go(path) {
-    await page.goto(`${BASE}${path}`);
+    const response = await page.goto(`${BASE}${path}`);
     await page.waitForLoadState('networkidle');
-    const code = await page.evaluate(() => document.title);
-    if (/^(500|422|404|Error)/.test(code)) throw new Error(`${path} returned ${code}`);
+    const status = response ? response.status() : 0;
+    if (status < 200 || status >= 400) {
+      throw new Error(`${path} returned HTTP ${status} (${await page.title()})`);
+    }
     return page;
   }
 

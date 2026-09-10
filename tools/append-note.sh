@@ -34,6 +34,27 @@ case "$FILE" in
     ;;
 esac
 
+# Both this script and tools/append-note.sh replay onto origin/geoxyz/framework,
+# and neither checked which branch was actually checked out. The execution
+# environment mints a fresh branch per session, so a session that ran this
+# before doing the checkout in docs/STATE.md rebased that branch onto the
+# framework branch and got an exit code with no explanation (round 4, tools
+# F14).
+on_framework_branch() {
+  local here; here=$(git rev-parse --abbrev-ref HEAD)
+  [ "$here" = geoxyz/framework ] && return 0
+  cat >&2 <<TXT
+FAIL  HEAD is '$here', not geoxyz/framework, and this tool replays onto the
+      framework branch. Do the checkout from docs/STATE.md first:
+
+          git fetch origin geoxyz/framework
+          git checkout geoxyz/framework && git merge --ff-only origin/geoxyz/framework
+TXT
+  exit 2
+}
+
+on_framework_branch
+
 BLOCK=$(cat)
 [ -n "$BLOCK" ] || { echo "FAIL  nothing on stdin" >&2; exit 2; }
 

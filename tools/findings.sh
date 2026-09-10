@@ -32,7 +32,7 @@ KNOWN = sorted(
     (os.path.basename(d) for d in glob.glob('docs/features/*') if os.path.isdir(d)),
     key=len, reverse=True)
 
-rows, files = [], []
+rows, files, stray = [], [], []
 for path in sorted(glob.glob('docs/review/findings/*.md')):
     if os.path.basename(path) == 'TEMPLATE.md':
         continue
@@ -55,8 +55,17 @@ for path in sorted(glob.glob('docs/review/findings/*.md')):
 
     for chunk in re.split(r'^### ', text, flags=re.M)[1:]:
         title = chunk.split('\n', 1)[0].strip()
-        fid, _, label = title.partition('—')
         sev = field(chunk, 'Severity').split('|')[0].strip().lower()
+        # A finding has a Severity line. Every other level-3 heading is prose —
+        # a "Where I disagree with the previous rounds" subsection, say — and
+        # counting it as a finding gave it a severity of minor and no
+        # Resolution, so it sat on the --open work list forever and could never
+        # be cleared (round 4, tools F12). Reported below rather than dropped
+        # silently, because a genuinely malformed finding looks the same.
+        if not sev:
+            stray.append('%s: %s' % (os.path.basename(path), title[:70]))
+            continue
+        fid, _, label = title.partition('—')
         res = field(chunk, 'Resolution')
         rows.append({
             'slug': slug, 'id': fid.strip(), 'label': label.strip(),
@@ -107,6 +116,12 @@ else:
     for slug, date, reviewer, counts, ran, path in files:
         w('| [`%s`](findings/%s) | %s | %s | %s | %s |' % (
             slug, os.path.basename(path), date, reviewer, counts, ran[:60]))
+    if stray:
+        w('')
+        w('<!-- level-3 headings with no Severity line, read as prose and not counted:')
+        for x in stray:
+            w('     %s' % x)
+        w('-->')
 doc = '\n'.join(out) + '\n'
 if mode == '--write':
     with open('docs/review/FINDINGS.md', 'w', encoding='utf-8') as fh:
