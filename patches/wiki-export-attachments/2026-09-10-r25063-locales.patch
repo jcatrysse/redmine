@@ -1,4 +1,4 @@
-From eed20582870deb83a7b5222c7fa639f363e9e6a1 Mon Sep 17 00:00:00 2001
+From c5a0656bd61b68545da1ffe18622447e29e36165 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Tue, 8 Sep 2026 11:00:45 +0000
 Subject: [PATCH] Preserve the wiki page hierarchy and include page attachments
@@ -52,14 +52,14 @@ index 4215b1ee7..e09da5650 100644
    label_copy_source: Quelle
    label_copy_subtasks: Untergeordnetes Ticket kopieren
 diff --git a/config/locales/es.yml b/config/locales/es.yml
-index 62987704b..790783a9c 100644
+index 62987704b..d3d6e2903 100644
 --- a/config/locales/es.yml
 +++ b/config/locales/es.yml
 @@ -1008,6 +1008,7 @@ es:
    label_repository_new: Nuevo repositorio
    field_repository_is_default: Repositorio principal
    label_copy_attachments: Copiar adjuntos
-+  label_include_attachments: Incluir los adjuntos
++  label_include_attachments: Incluir adjuntos
    label_item_position: "%{position}/%{count}"
    label_completed_versions: Versiones completadas
    text_project_identifier_info: Solo se permiten letras en minúscula (a-z), números, guiones y barras bajas.<br />Una vez guardado, el identificador no se puede cambiar.

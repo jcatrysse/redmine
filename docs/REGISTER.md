@@ -17,7 +17,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`fd35bd2d1 + 157c171a5 + 74f343d3d + 73157aee5 + 43246a900`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
 | [`webhook-issue-closed`](features/webhook-issue-closed/status.md) | Apart issue.closed-event op de webhook | `25220b45d (deel)` | live (`7d85538f3 + 465d326aa`) | patch klaar | — |
 | [`webhook-tracker-filter`](features/webhook-tracker-filter/status.md) | Webhook beperken tot gekozen trackers | `25220b45d (deel)` | live (`c6631e937 + 86647653e + 72058fa43 + 8ac09f4ff`) | patch klaar | — |
-| [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`c077d96df + 1fd3343ff + 6078281ff`) | patch klaar | — |
+| [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`c077d96df + 1fd3343ff + 6078281ff + cf0dda572`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
 | [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`8612a76f4 + bc745ce73 + 22daa7c96 + 5b04c5c15 + bf5b41a0d`) | nooit | — |
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
@@ -422,7 +422,7 @@ hook wordt gedeactiveerd als zijn laatste tracker verdwijnt.
 
 Maak een nieuw issue op redmine.org als follow-up van
 [#43978](https://www.redmine.org/issues/43978) en hang er
-`patches/wiki-export-attachments/2026-09-09-r25063-feature.patch` en
+`patches/wiki-export-attachments/2026-09-10-r25063-feature.patch` en
 `-locales.patch` aan. Draai vlak daarvoor
 `tools/check-patch-clean.sh wiki-export-attachments --submit`; als trunk
 intussen verder is, ververst een sessie de patch eerst (g05) — en controleer

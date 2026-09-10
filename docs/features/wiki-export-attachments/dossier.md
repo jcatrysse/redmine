@@ -220,7 +220,7 @@ is already a dependency, used by the export this builds on.
 
 | Key | en | nl | fr | de | es | Patterned on |
 |---|---|---|---|---|---|---|
-| `label_include_attachments` | Include attachments | Met bijlagen | Inclure les pièces jointes | Mit Anhängen | Incluir los adjuntos | en: `error_bulk_download_size_too_big` ("These attachments…"); nl: `label_cross_project_descendants` ("Met subprojecten") — the same key the German value follows, so both rows derive from one pattern; fr: verb from `setting_show_status_changes_in_mail_subject` ("Inclure les…"), noun from `error_bulk_download_size_too_big` ("Ces pièces jointes"); de: form from `label_cross_project_descendants` ("Mit Unterprojekten"), noun from `label_copy_attachments` ("Anhänge kopieren"); es: verb from `field_searchable` ("Incluir en las búsquedas"), noun from `label_copy_attachments` ("Copiar adjuntos") |
+| `label_include_attachments` | Include attachments | Met bijlagen | Inclure les pièces jointes | Mit Anhängen | Incluir adjuntos | en: `error_bulk_download_size_too_big` ("These attachments…"); nl: `label_cross_project_descendants` ("Met subprojecten") — the same key the German value follows, so both rows derive from one pattern; fr: verb from `setting_show_status_changes_in_mail_subject` ("Inclure les…"), noun from `error_bulk_download_size_too_big` ("Ces pièces jointes"); de: form from `label_cross_project_descendants` ("Mit Unterprojekten"), noun from `label_copy_attachments` ("Anhänge kopieren"); es: verb from `field_searchable` ("Incluir en las búsquedas"), noun and article-less shape from `setting_mail_handler_excluded_filenames` ("Excluir adjuntos por nombre"), the same verb-plus-bare-*adjuntos* construction with the opposite verb |
 
 That is the **only** new string. The dialog's title comes from the existing
 `label_export_options`, which is already parameterised by format
@@ -631,7 +631,7 @@ Reported, not touched — INV-1.
 
 - **Issue:** nog aan te maken door Jan — follow-up van
   [#43978](https://www.redmine.org/issues/43978)
-- **Patches attached:** `patches/wiki-export-attachments/2026-09-09-r25063-feature.patch` (code + `en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`)
+- **Patches attached:** `patches/wiki-export-attachments/2026-09-10-r25063-feature.patch` (code + `en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`)
 - **Made against:** `origin/master` **r25063** (`8de368193`, 2026-09-09), branch
   `patch/wiki-export-attachments` at `eed205828`. Ververst op 2026-09-09 vanaf
   r25037: trunk voegde in `e0e38cb9b` (#44396) een regel toe aan dezelfde

@@ -3,9 +3,9 @@ slug: wiki-export-attachments
 feature: Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie
 commit_51: 3c3e9368e
 geoxyz: live
-geoxyz_commit: c077d96df + 1fd3343ff + 6078281ff
+geoxyz_commit: c077d96df + 1fd3343ff + 6078281ff + cf0dda572
 upstream: patch klaar
-patch: patches/wiki-export-attachments/2026-09-09-r25063-{feature,locales}.patch
+patch: patches/wiki-export-attachments/2026-09-10-r25063-{feature,locales}.patch
 issue:
 ---
 
@@ -79,6 +79,35 @@ in het exportkeuzevenster stopt de bijlagen van elke pagina in diezelfde map,
 zodat een verwijzing als `!diagram.png!` klopt zodra je het archief uitpakt.
 Een bijlage die heet als de pagina zelf of als een kindpagina krijgt een
 `(1)`-suffix in plaats van de paginatekst of de kindmap te verdringen.
+
+## Bewijs — fixronde ronde 4 (2026-09-10)
+
+- **Twee nieuwe tests pinnen de per-siblinggroep-scope van het `(n)`-suffix**
+  (F02): `..._should_number_siblings_whose_titles_sanitize_to_the_same_name`
+  (`Foo*` en `Foo"` naast elkaar → `Foo_/Foo_.txt` en `Foo_(1)/Foo_(1).txt`) en
+  `..._should_not_number_pages_that_sanitize_alike_under_different_parents`
+  (`Bar*` onder `Another_page`, `Bar"` onder `CookBook_documentation` → allebei
+  `Bar_`). **Rood bewezen per mutatie:** de namenlijst uit de recursie tillen —
+  precies de "opruiming" die iemand later zou doen — geeft
+  `2 runs, 10 assertions, 1 failures`, en het is de kruis-ouder-test die valt.
+- **De groepering is lineair in plaats van kwadratisch** (F08):
+  `pages.to_set(&:id)` in plaats van `pages.map(&:id)`. Gemeten kostte de oude
+  vorm 0,048 s bij 5 000 pagina's en 0,191 s bij 10 000; met een Set 0,0013 s en
+  0,0027 s. RuboCop wees `Style/MapToSet` aan op de eerste poging
+  (`map(&:id).to_set`), vandaar de blokvorm.
+- **De Spaanse waarde is `Incluir adjuntos`** (F04), zonder lidwoord, zoals
+  `setting_mail_handler_excluded_filenames: Excluir adjuntos por nombre` in
+  hetzelfde bestand. De vorige waarde was niet af te leiden uit de twee
+  sleutels die het dossier noemde.
+- Geraakte suites in één proces (`wiki_controller_test.rb`,
+  `attachment_test.rb`, `wiki_zip_helper_test.rb`): **175 runs, 824 assertions,
+  0 failures, 0 errors, 4 skips**. RuboCop op de twee gewijzigde bestanden: 0.
+- De patchbranch is één commit gebleven: `eed205828` is vervangen door
+  **`c5a0656bd`**, de oude tip staat als
+  `archive/patch-wiki-export-attachments-before-round4`, en beide patchbestanden
+  zijn opnieuw geëxporteerd als `2026-09-10-r25063-{feature,locales}.patch` met
+  dezelfde splitsing (11 en 4 bestanden). Op `7.0-stable-GEOxyz` staat dezelfde
+  wijziging als **`cf0dda572`** (INV-10).
 
 ## Bewijs — refresh op r25063 (2026-09-09)
 
@@ -219,7 +248,7 @@ De cijfers hieronder zijn de ronde-2 meting van 2026-09-05.
 
 Maak een nieuw issue op redmine.org als follow-up van
 [#43978](https://www.redmine.org/issues/43978) en hang er
-`patches/wiki-export-attachments/2026-09-09-r25063-feature.patch` en
+`patches/wiki-export-attachments/2026-09-10-r25063-feature.patch` en
 `-locales.patch` aan. Draai vlak daarvoor
 `tools/check-patch-clean.sh wiki-export-attachments --submit`; als trunk
 intussen verder is, ververst een sessie de patch eerst (g05) — en controleer

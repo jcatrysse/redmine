@@ -1,4 +1,4 @@
-From eed20582870deb83a7b5222c7fa639f363e9e6a1 Mon Sep 17 00:00:00 2001
+From c5a0656bd61b68545da1ffe18622447e29e36165 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Tue, 8 Sep 2026 11:00:45 +0000
 Subject: [PATCH] Preserve the wiki page hierarchy and include page attachments
@@ -33,18 +33,18 @@ archived_wiki_page_filename move there unchanged.
 test_export_to_zip and test_export_to_zip_should_sanitize_non_portable_entry_name_characters
 are updated for the new entry paths.
 ---
- app/controllers/wiki_controller.rb            |  65 ++----
- app/models/attachment.rb                      |  28 ++-
+ app/controllers/wiki_controller.rb            |  65 ++---
+ app/models/attachment.rb                      |  28 +-
  app/views/wiki/_export_options.html.erb       |  15 ++
  app/views/wiki/date_index.html.erb            |   7 +-
  app/views/wiki/index.html.erb                 |   7 +-
  config/initializers/zeitwerk.rb               |   3 +-
  config/locales/en.yml                         |   1 +
- lib/redmine/export/zip/wiki_zip_helper.rb     | 101 ++++++++
- test/functional/wiki_controller_test.rb       | 216 +++++++++++++++++-
+ lib/redmine/export/zip/wiki_zip_helper.rb     | 101 +++++++
+ test/functional/wiki_controller_test.rb       | 250 +++++++++++++++++-
  test/unit/attachment_test.rb                  |   7 +
- .../export/zip/wiki_zip_helper_test.rb        |  43 ++++
- 11 files changed, 430 insertions(+), 63 deletions(-)
+ .../export/zip/wiki_zip_helper_test.rb        |  43 +++
+ 11 files changed, 464 insertions(+), 63 deletions(-)
  create mode 100644 app/views/wiki/_export_options.html.erb
  create mode 100644 lib/redmine/export/zip/wiki_zip_helper.rb
  create mode 100644 test/unit/lib/redmine/export/zip/wiki_zip_helper_test.rb
@@ -285,7 +285,7 @@ index bdbad19a0..662840ee1 100644
    label_completed_versions: Completed versions
 diff --git a/lib/redmine/export/zip/wiki_zip_helper.rb b/lib/redmine/export/zip/wiki_zip_helper.rb
 new file mode 100644
-index 000000000..10e55568b
+index 000000000..f94f18cfa
 --- /dev/null
 +++ b/lib/redmine/export/zip/wiki_zip_helper.rb
 @@ -0,0 +1,101 @@
@@ -319,7 +319,7 @@ index 000000000..10e55568b
 +        # written into the directory of their page
 +        def wiki_pages_to_zip(pages, attachments_by_page = {})
 +          Zip.unicode_names = true
-+          page_ids = pages.map(&:id)
++          page_ids = pages.to_set(&:id)
 +          pages_by_parent_id = pages.group_by {|page| page.parent_id if page_ids.include?(page.parent_id)}
 +          directories = wiki_page_directories(pages_by_parent_id)
 +          buffer = Zip::OutputStream.write_buffer do |zos|
@@ -391,7 +391,7 @@ index 000000000..10e55568b
 +  end
 +end
 diff --git a/test/functional/wiki_controller_test.rb b/test/functional/wiki_controller_test.rb
-index 9f4ee657b..d33dcd6b4 100644
+index 9f4ee657b..b97992045 100644
 --- a/test/functional/wiki_controller_test.rb
 +++ b/test/functional/wiki_controller_test.rb
 @@ -1162,11 +1162,19 @@ class WikiControllerTest < Redmine::ControllerTest
@@ -417,7 +417,7 @@ index 9f4ee657b..d33dcd6b4 100644
          local_time = user.convert_time_to_user_timezone(page.updated_on)
  
          assert_equal page.content.text, entry[:content]
-@@ -1192,11 +1200,209 @@ class WikiControllerTest < Redmine::ControllerTest
+@@ -1192,11 +1200,243 @@ class WikiControllerTest < Redmine::ControllerTest
        assert_response :success
  
        zip_entries = zip_entries_from_response
@@ -439,6 +439,40 @@ index 9f4ee657b..d33dcd6b4 100644
 +    assert_equal 'Another_page', child.parent.parent.title
 +    assert_includes zip_entries_from_response.keys,
 +                    'Another_page/Child_1/Child_1_1/Child_1_1.txt'
++  end
++
++  def test_export_to_zip_should_number_siblings_whose_titles_sanitize_to_the_same_name
++    wiki = Project.find(1).wiki
++    ['Foo*', 'Foo"'].each do |title|
++      page = WikiPage.create!(:wiki => wiki, :title => title)
++      page.build_content(:text => title, :author_id => 2).save!
++    end
++
++    @request.session[:user_id] = 2
++    get :export, :params => {:project_id => 'ecookbook', :format => 'zip'}
++
++    assert_response :success
++
++    entry_names = zip_entries_from_response.keys
++    assert_includes entry_names, 'Foo_/Foo_.txt'
++    assert_includes entry_names, 'Foo_(1)/Foo_(1).txt'
++  end
++
++  def test_export_to_zip_should_not_number_pages_that_sanitize_alike_under_different_parents
++    wiki = Project.find(1).wiki
++    {'Another_page' => 'Bar*', 'CookBook_documentation' => 'Bar"'}.each do |parent, title|
++      page = WikiPage.create!(:wiki => wiki, :title => title, :parent => wiki.find_page(parent))
++      page.build_content(:text => title, :author_id => 2).save!
++    end
++
++    @request.session[:user_id] = 2
++    get :export, :params => {:project_id => 'ecookbook', :format => 'zip'}
++
++    assert_response :success
++
++    entry_names = zip_entries_from_response.keys
++    assert_includes entry_names, 'Another_page/Bar_/Bar_.txt'
++    assert_includes entry_names, 'CookBook_documentation/Bar_/Bar_.txt'
 +  end
 +
 +  def test_export_to_zip_with_attachments

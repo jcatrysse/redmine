@@ -154,7 +154,7 @@ create. The code is unchanged.
 
 ### F02 — the sibling de-duplication of page directories is claimed in the submission and covered by no test
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -204,7 +204,16 @@ the same pair under different parents, asserting that neither gets a suffix.
 Both are red on trunk (the paths do not exist there at all), so they also carry
 their weight in the "red on the old code" table.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10, with the two tests the finding asked for.
+`test_export_to_zip_should_number_siblings_whose_titles_sanitize_to_the_same_name`
+puts `Foo*` and `Foo"` side by side and asserts `Foo_/Foo_.txt` and
+`Foo_(1)/Foo_(1).txt`;
+`test_export_to_zip_should_not_number_pages_that_sanitize_alike_under_different_parents`
+puts `Bar*` under `Another_page` and `Bar"` under `CookBook_documentation` and
+asserts both keep the plain `Bar_`. Proved red by mutation: hoisting the name
+list out of the recursion — exactly the "simplification" the finding warned
+about — gives `2 runs, 1 failures`, and it is the cross-parent test that falls.
+Touched suites after: 175 runs, 824 assertions, 0 failures, 0 errors.
 
 ---
 
@@ -265,7 +274,7 @@ information lost) and says the trade is a reviewer's call to make.
 
 ### F04 — the Spanish string is not the one the dossier's own derivation produces
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** i18n
@@ -310,13 +319,17 @@ Either drop the article to match `Excluir adjuntos por nombre`, or keep it and
 cite a key that actually has it. Whichever, both branches change together
 (INV-10) and the shot `nl-zip-export-dialog.png` is unaffected.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10. The Spanish value is now `Incluir adjuntos`, matching
+`setting_mail_handler_excluded_filenames: Excluir adjuntos por nombre` in the
+same file — verb plus bare *adjuntos*, the same construction with the opposite
+verb. The dossier's translation table cites that key instead of the two that did
+not compose into the shipped string.
 
 ---
 
 ### F05 — the size-limit redirect does not go back where the user was, unlike the call site it is modelled on
 
-- **Status:** open
+- **Status:** wont-fix
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -353,7 +366,16 @@ redirect, taken from the index view where the difference is invisible.
 `redirect_back_or_default(project_wiki_index_path(@project), :referer => true)`,
 or a sentence in the dossier saying why the fixed target is preferred here.
 
-**Resolution:**
+**Resolution:** wont-fix, 2026-09-10, and the finding says why better than a change would.
+`WikiController#destroy` redirects to exactly the same fixed
+`project_wiki_index_path` on trunk, so the patch is following the file it
+edits, which outranks following a different controller — and the finding
+already called itself the weakest of the eight on those grounds. Changing it
+would make the diff touch a line the feature does not need (INV-1) to buy a
+redirect target that differs only when the export was started from the
+date-index tab. The dossier is not changed either: it cites
+`AttachmentsController` for the size *limit*, which is accurate, and not for
+the redirect.
 
 ---
 
@@ -444,7 +466,7 @@ padding the listing with three uninformative lines.
 
 ### F08 — `page_ids.include?` makes the grouping quadratic in the number of pages
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** performance
@@ -480,7 +502,11 @@ n=10000  array=0.191s  set=0.0027s
 `page_ids = pages.map(&:id).to_set`, or drop the membership test in favour of
 a `directories`-based fallback if F01 is fixed in code rather than in prose.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10. `page_ids` is a Set, so the membership test inside `group_by`
+is constant rather than linear and the grouping is no longer quadratic. Written
+as `pages.to_set(&:id)` rather than `pages.map(&:id).to_set` because RuboCop's
+`Style/MapToSet` flagged the first form — the only lint offence the whole fix
+round produced, and it is gone.
 
 
 ---
