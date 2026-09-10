@@ -137,6 +137,23 @@ PostgreSQL 16, Ruby 3.3.6, beide kanten met een identiek `Gemfile.lock`.
 - `tools/check-patch-clean.sh version-subprojects --submit`: **PASS** tegen
   echte trunk r25065, inclusief de vergelijking tussen branch en patchbestand.
 - `tools/check-symmetry.sh version-subprojects`: **PASS**.
+- **Volledige suite op de patch (`0f0bd0a53`): 5989 runs, 31382 assertions,
+  48 failures, 86 errors, 92 skips**, tegen **kale trunk r25037: 5977 runs,
+  31346 assertions, 49 failures, 83 errors, 92 skips** — beide vandaag, beide
+  met de Git-fixture uitgepakt en een identiek `Gemfile.lock`. Verschil in
+  runs: **12**, precies de 12 tests die de patch toevoegt (5 + 7).
+- **De absolute cijfers zijn hier 48/86 en niet 27/2, en dat is de json-gem.**
+  r25037 ligt vóór trunks pin `9a74cdf20` (#44428), dus een verse `bundle
+  install` trekt json 3.0.2 binnen en die breekt `ActiveSupport::JSON.decode`.
+  Het treft beide kanten. Van de vier namen die alleen aan de patchkant falen
+  zijn het **alle vier** eigen nieuwe endpointtests die JSON decoderen
+  (`..._take_the_current_filters_into_account`,
+  `..._not_offer_versions_of_a_project_outside_the_tree`,
+  `..._still_offer_versions_of_an_archived_subproject_never`,
+  `..._ignore_request_params_that_are_not_filters`); de twee namen die alleen
+  op trunk falen zijn Selenium-systeemtests. **De nieuwe ronde-4-test staat er
+  niet bij**, precies omdat die geen JSON decodeert. Op een machine met json
+  2.x geeft dezelfde patch 27/2, zoals de meting van 2026-09-05 hieronder.
 - **Volledige suite op `7.0-stable-GEOxyz` (`43246a900`): 6165 runs, 32522
   assertions, 0 failures, 0 errors, 39 skips** — helemaal groen, en precies
   één run meer dan de 6164 die dezelfde branchtip vandaag vóór deze commit gaf.
