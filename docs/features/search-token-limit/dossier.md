@@ -180,7 +180,12 @@ own — as does `Issue.like`, the issue autocomplete, which calls it.
 
 **Backward compatibility:** the global search behaves exactly as before, and two
 unit tests pin that. `Redmine::Search::Fetcher.new` keeps its old default, so a
-plugin that builds one is unaffected. Text filters return different results than
+plugin that builds one is unaffected. A plugin that calls
+`Redmine::Search::Tokenizer` **directly** does see a change, and it is the one
+this patch makes deliberately: the tokenizer now returns every token instead of
+at most five, so such a plugin should apply its own `first(n)` if it was
+relying on the cap. That is the whole point of moving the limit to the caller
+that pays for it. Text filters return different results than
 in 7.0.0 — they now answer the question that was asked. Saved queries and the
 API are unaffected: the stored filter value is untouched, only the SQL built
 from it changes. A saved query with more than five words in a text filter starts

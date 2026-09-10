@@ -52,7 +52,7 @@ gebruikers kiezen, dus "van Jan, of van niemand" in één filter. Dat kon niet.
   Per mutatie: haakjes eruit → 2 failures; beide poorten eruit → 2 failures;
   de huidige-waarde-helft van `ev` eruit → 2 failures; de journaal-helft eruit
   → 3 errors
-- `tools/check-patch-clean.sh`: `test:all` in `/home/user/wt/patch-assignee-nobody` → **5990 runs, 31732 assertions, 27 failures, 2 errors, 92 skips**CLEAN · `tools/check-geoxyz-branch.sh`: PASS
+- `tools/check-patch-clean.sh`: **CLEAN** · `tools/check-geoxyz-branch.sh`: **PASS**
 - Screenshots: 17 (8 voor, 8 na, 1 regressie), gelezen: ja
 
 ## Wat Jan nog moet doen

@@ -52,7 +52,7 @@ reasons about plugins that build a `Fetcher`, and not about plugins that call
 
 ### F01 — the backward-compatibility paragraph covers plugins that build a `Fetcher`, not plugins that call the tokenizer
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** backward-compat
@@ -94,7 +94,11 @@ One clause in the backward-compatibility paragraph: the cap now lives in
 calls `Tokenizer` directly now receives every token and should pass its own
 `first(n)` if it wants the old behaviour. Nothing in the code needs to change.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10, in the dossier. The backward-compatibility paragraph now
+distinguishes the two kinds of plugin: one that builds a `Fetcher` keeps the old
+default and is unaffected, one that calls `Redmine::Search::Tokenizer` directly
+now receives every token and should apply its own `first(n)`. No code change —
+the tokenizer's new behaviour is the fix, not a side effect.
 
 ---
 

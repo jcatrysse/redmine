@@ -58,7 +58,7 @@ so it is part of the change rather than tidying.
 
 ### F01 — the backward-compatibility claim is false for a plugin filter, which is the same hazard the custom-field guard exists for
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** backward-compat
@@ -124,13 +124,20 @@ are an opt-in on the filter (`:none_matches_null => true`) or gating on the
 field name, and both cost the genericity that Jean-Baptiste Barth asked for in
 note 4 of #5535 — which is why I would not.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10, in the dossier rather than in the code. The
+"Backward compatibility" paragraph now says the change is additive for
+everything core ships, names the plugin case explicitly, and states that `none`
+becomes a reserved value for the two `list_optional` filter types; the
+objections row says the same where a reader meets the enumeration. The code is
+unchanged on purpose: narrowing the gate to core, or to one field name, gives up
+the genericity note 4 of #5535 asked for, and the reviewer's own recommendation
+was to narrow the claim instead.
 
 ---
 
 ### F02 — a suite line has been spliced into the gate line in `status.md`, and the result reads as if the gate printed test counts
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -167,7 +174,9 @@ same list.
 
 Restore the line to the two gate results.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10. The bullet now reads
+"`tools/check-patch-clean.sh`: **CLEAN** · `tools/check-geoxyz-branch.sh`:
+**PASS**"; the spliced copy of the first evidence bullet is gone.
 
 ---
 

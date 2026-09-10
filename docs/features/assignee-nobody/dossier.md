@@ -148,9 +148,16 @@ grepping `^  label_nobody:` in each: 50 files, 50 hits).
 `label_nobody` is reused, so `nl`, `fr`, `de` and `es` need no change and there
 is no second patch file.
 
-**Backward compatibility:** additive. No existing filter, saved query, REST
-call or Atom feed changes its meaning — the pseudo-value only does something
-when a user selects it. A saved query that already contains `assigned_to_id=none`
+**Backward compatibility:** additive for everything core ships. No existing
+filter, saved query, REST call or Atom feed changes its meaning, because no
+core filter of these two types has `none` among its values — the enumeration is
+in the objections table below. **The value does become reserved**, though, and
+that is worth stating rather than leaving to be discovered: a filter added by a
+plugin through `add_available_filter` with `:type => :list_optional` and a
+value list of its own containing the literal string `none` will, after this
+change, match NULL where it used to match that literal. It is the same hazard
+the `is_custom_filter` guard exists for, one step further out, and it is
+excluded from that guard because a plugin filter is not a custom field. A saved query that already contains `assigned_to_id=none`
 (hand-written, or made by an installation carrying one of the older patches)
 went from an HTTP 500 to a correct result. The `!*` and `*` operators are
 untouched, and `sql_for_field` produces byte-identical SQL for every input that
@@ -316,7 +323,7 @@ form, so they are evidence that those five URLs raise and of nothing else.
 | "The 2010 patch broke `author_id`, which cannot be none" — Barth, same note | Trunk has had a separate `Query#author_values` for years, and this patch touches only `assigned_to_values`. The author filter is unaffected. |
 | "This is what a plugin is for." | A plugin would have to reopen `Query` and patch two private methods, one of which (`sql_for_field`) is a 250-line operator dispatcher. It would also have to keep the operator coverage in step with core, which is precisely what the existing patches on this issue failed to do. |
 | "Adding entries to the value list will break code that indexes into it." | One test in core does (`assigned_to_values[1..]`) and is adapted in this patch. No production code indexes the list. |
-| "`none` might collide with a real value." | Only for a filter of type `:list_optional`/`:list_optional_with_history` that is not a custom field. Those are, in all of core: assignee, target version, category, `member_of_group`, `assigned_to_role`, the time-entry equivalents, and user status / auth source / group / 2FA scheme. Every one of them holds numeric ids or a fixed short vocabulary; custom fields, which are the realistic place for a literal "none", are excluded by the `is_custom_filter` guard. `cf_<id>.<attribute>` filters are `:date` and `:list`, so they are outside the gate as well. |
+| "`none` might collide with a real value." | Only for a filter of type `:list_optional`/`:list_optional_with_history` that is not a custom field — which means core's own, listed below, and any a plugin adds through the same `add_available_filter` seam. A plugin whose value list holds the literal `none` would have that value change meaning, so the string is reserved for these two filter types from here on; that is the cost of putting the mechanism in `Query#sql_for_field` rather than in one field, which is what note 4 of this issue asked for. In all of core: assignee, target version, category, `member_of_group`, `assigned_to_role`, the time-entry equivalents, and user status / auth source / group / 2FA scheme. Every one of them holds numeric ids or a fixed short vocabulary; custom fields, which are the realistic place for a literal "none", are excluded by the `is_custom_filter` guard. `cf_<id>.<attribute>` filters are `:date` and `:list`, so they are outside the gate as well. |
 | "Why is `cf` (changed from) in scope?" | Because the filter offers it. Leaving it out does not mean the user cannot pick it — it means they pick it and get an empty list with no error, which is worse than the 500. |
 | "`sql_for_field` has 31 callers. Did you check them?" | Yes, all of them, classified by `is_custom_filter`, by the `type_for(field)` they pass and by whether they parenthesise. `UserQuery#sql_for_is_member_of_group_field` is the only one that combines an open gate, user-supplied values and an unparenthesised splice, and the first version of this patch got it wrong: `?v[is_member_of_group][]=none&v[is_member_of_group][]=10` returned all nine fixture users instead of one. The folded clauses are parenthesised for that reason, and two `UserQueryTest` tests pin it. |
 | "Only the assignee filter is tested, and the change touches seven filters." | Seven core filters pass the gate: `assigned_to_id`, `fixed_version_id` and `category_id` (IssueQuery), `user_id` and `author_id` (TimeEntryQuery), `status`, `auth_source_id` and `twofa_scheme` (UserQuery). All of them produce valid, executable SQL with `none`; where the column is `NOT NULL` the condition is simply never true, which replaces the 500 they used to give. `fixed_version_id` now has a test of its own so the shared path is not proven by a single field, and `is_member_of_group` has two. Only the assignee **value list** is wired into the UI — the others are reachable by URL only, which is deliberate and is #5535's scope. |
