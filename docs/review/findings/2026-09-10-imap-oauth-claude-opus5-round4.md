@@ -74,7 +74,7 @@ Everything here was run in this session.
 
 ### F01 — nothing in the suite pins the one line the whole feature hangs on
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** test-quality
@@ -132,7 +132,17 @@ authenticator, and the SASL string it produces from `(username, token)` is
 either half, and it costs nothing in CI. The mocked tests stay as they are;
 they cover the branch choice, which is a different question.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10. `test_xoauth2_should_be_a_sasl_mechanism_net_imap_knows`
+resolves the authenticator through `Net::IMAP::SASL.authenticator('XOAUTH2',
+username, token)` and asserts the SASL string it produces, so it fails both if
+the mechanism name goes away — an unknown name raises `ArgumentError`, which I
+checked with an invented one — and if the two positional arguments change
+places. No server, no network, no fixture. `imap_test.rb` is 6 runs, 18
+assertions, 0 failures on both branches. The patch branch stayed one commit
+(`45893a712` → `3cd8c0eac`, old tip kept as
+`archive/patch-imap-oauth-before-round4`), the patch file was re-exported as
+`2026-09-10-r25037-feature.patch`, and `7.0-stable-GEOxyz` carries the same test
+as `f73391901`.
 
 ---
 
@@ -195,7 +205,7 @@ under K-22 rather than to this review. No code changes.
 
 ### F03 — `lib/tasks/email.rake` gains two lint offences that no measurement has ever printed
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** conventions
@@ -241,13 +251,18 @@ Separately worth considering for the `tools` onderdeel: the lint gate could
 pass `--force-exclusion` so that it measures what Redmine's CI measures rather
 than silently inspecting files upstream has excluded.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10, in `status.md`. The bullet now gives the number instead of
+stopping at "not linted": trunk's `email.rake` has 8 offences when the file is
+named explicitly, the patch's has 10, and the two added are the same two
+heredoc cops the file already trips eight times because every `desc` in it is
+written that way. It also says why they are not fixed — one `<<~` among four
+`<<-` would be worse, and INV-1 says follow the file you edit.
 
 ---
 
 ### F04 — the submitted text calls the new file "~140 lines" and the diffstat says 198
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** dossier
@@ -282,13 +297,15 @@ Say 198, or say "132 lines of code under a standard header". Either is fine;
 what is not is a number matching neither of the two a reader can get to
 quickly.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10. The file table row now reads "new, 198 lines — 132 of code
+under the standard GPL header", so both numbers a reader can reach quickly are
+there and neither has to be guessed at.
 
 ---
 
 ### F05 — a provider that issues no client secret cannot be configured, and nothing says so
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** nit
 - **Confidence:** confirmed
 - **Category:** correctness
@@ -327,7 +344,13 @@ without one are not supported"), which is enough, or drop `client_secret` from
 the required list and omit the field from the form when it is absent. The first
 is the INV-6-shaped answer.
 
-**Resolution:**
+**Resolution:** fixed, 2026-09-10, in the dossier. The "New setting / migration / gem / route /
+permission" list has a fourth bullet saying a client secret is required, that a
+public client without one cannot be configured and fails with `is missing
+client_secret`, that Microsoft 365 and Google Workspace both issue one for the
+registration the walk-throughs describe, and that requiring it is the safer
+default even though RFC 6749 §2.3.1 permits a public client to have none. The
+code is unchanged.
 
 
 ---

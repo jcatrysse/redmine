@@ -3,9 +3,9 @@ slug: imap-oauth
 feature: IMAP inbound mail via OAuth 2.0 (Gmail / O365)
 commit_51: bbf5c0eb3
 geoxyz: live
-geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872
+geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901
 upstream: patch klaar
-patch: patches/imap-oauth/2026-09-09-r25037-feature.patch
+patch: patches/imap-oauth/2026-09-10-r25037-feature.patch
 issue: 43023
 ---
 
@@ -20,7 +20,7 @@ niets dat die twee aan elkaar verbond. Een redirect-adres uit een *andere*
 autorisatie — voor een andere mailbox — kon dus geplakt worden en zijn refresh
 token belandde als dat van jouw mailbox in het bestand. Opgelost op 2026-09-09;
 zie "Bewijs — Codex-ronde". De branch is `45893a712`, opnieuw geexporteerd naar
-`2026-09-09-r25037-feature.patch`, en applyt op de huidige trunk r25063.
+`2026-09-10-r25037-feature.patch`, en applyt op de huidige trunk r25063.
 
 Af, herschreven, en op 2026-09-06 door reviewronde 2 heen. De patch die al een
 jaar aan Jans eigen issue [#43023](https://www.redmine.org/issues/43023) hangt
@@ -85,6 +85,26 @@ taak, `rake redmine:email:oauth2_authorize`, die dat refresh token één keer pe
 mailbox ophaalt: hij print een URL, de mailboxeigenaar geeft in zijn browser
 toestemming, plakt het adres terug waar hij op uitkwam, en de taak print de
 regel die in het credentialsbestand moet.
+
+## Bewijs — fixronde ronde 4 (2026-09-10)
+
+- **Nieuwe test die de mechanismenaam vastpint** (F01):
+  `test_xoauth2_should_be_a_sasl_mechanism_net_imap_knows` haalt de
+  authenticator op via `Net::IMAP::SASL.authenticator('XOAUTH2', username,
+  token)` en asserteert de SASL-string die eruit komt. Hij faalt dus zowel als
+  de mechanismenaam verdwijnt (`Net::IMAP::SASL.authenticator` geeft dan
+  `ArgumentError`, nagegaan met een verzonnen naam) als wanneer de twee
+  positionele argumenten van plaats wisselen. Geen server, geen netwerk, geen
+  fixture nodig.
+- `imap_test.rb`: **6 runs, 18 assertions, 0 failures, 0 errors** aan beide
+  kanten (patchbranch en `7.0-stable-GEOxyz`). RuboCop op het testbestand: 0.
+- De patchbranch is één commit gebleven: `45893a712` is vervangen door
+  **`3cd8c0eac`**, de oude tip staat als
+  `archive/patch-imap-oauth-before-round4`, en het patchbestand is opnieuw
+  geëxporteerd als `2026-09-10-r25037-feature.patch`. Op `7.0-stable-GEOxyz`
+  staat dezelfde test als **`f73391901`** (INV-10).
+- `tools/check-patch-clean.sh imap-oauth --submit`: **PASS** tegen echte trunk
+  r25065 · `tools/check-symmetry.sh imap-oauth`: **PASS**.
 
 ## Bewijs
 
@@ -156,8 +176,17 @@ omvallen (zie `docs/traps.md`).
   `CGI.parse` een hash met default `[]` geeft, dus de regel erna gaf
   `NoMethodError`. Nu `CGI.parse('')`
 - RuboCop op de vier gewijzigde bestanden: 0 (baseline 0). `lib/tasks/email.rake`
-  wordt niet gelint (`lib/tasks/**/*` staat in Redmine's eigen `.rubocop.yml`
-  onder Exclude), dus daar is menselijke review de enige controle
+  wordt door Redmine's CI niet gelint (`lib/tasks/**/*` staat in de `Exclude`
+  van `.rubocop.yml`), dus daar is menselijke review de enige controle. **Het
+  getal bestaat wel en staat er nu bij** (ronde 4, F03): met het bestand
+  expliciet op de commandoregel — wat onze eigen gates doen, en wat de exclude
+  alleen met `--force-exclusion` overslaat — geeft trunk **8** offences op dat
+  bestand en de patch **10**. De twee erbij zijn `Layout/HeredocIndentation` en
+  `Layout/ClosingHeredocIndentation` op het nieuwe `desc <<-END_DESC`-blok:
+  dezelfde twee cops die het bestand al acht keer overtreedt, omdat élke `desc`
+  erin zo geschreven is. Bewust niet gefixt: één heredoc als `<<~` schrijven
+  terwijl de andere vier `<<-` blijven is slechter, en INV-1 zegt volg het
+  bestand dat je bewerkt
 - `bin/rails zeitwerk:check`: "All is good!" — het nieuwe `lib/redmine`-bestand
   laadt ook onder eager loading, wat productie doet
 - `tools/check-patch-clean.sh imap-oauth --submit`: PASS · 
@@ -273,7 +302,7 @@ het RFC-artikel erbij.
 
 Twee dingen, en het eerste is het echte werk.
 
-**1. Hang `patches/imap-oauth/2026-09-09-r25037-feature.patch` als note aan je
+**1. Hang `patches/imap-oauth/2026-09-10-r25037-feature.patch` als note aan je
 eigen issue [#43023](https://www.redmine.org/issues/43023)** — geen nieuw
 issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 7.1.0. Zeg in die note dat dit een **vervanging** is van
@@ -361,7 +390,7 @@ de note biedt de splitsing aan, de bijlage blijft één bestand. Beide staan in
   kunt vergeten. En niet terugdraaien naar twee argumenten.
 - **De code wordt gelezen vóór de statecheck en gebruikt erna.** Dat is een
   keuze, niet een slordigheid — zie "Bewijs — Codex-ronde". De branch is `45893a712`, opnieuw geexporteerd naar
-`2026-09-09-r25037-feature.patch`, en applyt op de huidige trunk r25063. Zet de statecheck
+`2026-09-10-r25037-feature.patch`, en applyt op de huidige trunk r25063. Zet de statecheck
   niet als eerste regel, dan verliest een echte providerweigering zijn eigen
   foutmelding.
 

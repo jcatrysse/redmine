@@ -1,4 +1,4 @@
-From 45893a712fa65cd3056a8d52cbd8b8cd6bd1c721 Mon Sep 17 00:00:00 2001
+From 3cd8c0eac04a0919676722654ff8722b688612db Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Sun, 6 Sep 2026 12:55:09 +0000
 Subject: [PATCH] Authenticate IMAP inbound mail with an OAuth 2.0 access token
@@ -8,9 +8,9 @@ Subject: [PATCH] Authenticate IMAP inbound mail with an OAuth 2.0 access token
  lib/redmine/imap.rb                         |  20 +-
  lib/redmine/oauth2_client.rb                | 198 ++++++++++
  lib/tasks/email.rake                        |  71 ++++
- test/unit/lib/redmine/imap_test.rb          |  90 +++++
+ test/unit/lib/redmine/imap_test.rb          | 101 ++++++
  test/unit/lib/redmine/oauth2_client_test.rb | 377 ++++++++++++++++++++
- 5 files changed, 755 insertions(+), 1 deletion(-)
+ 5 files changed, 766 insertions(+), 1 deletion(-)
  create mode 100644 lib/redmine/oauth2_client.rb
  create mode 100644 test/unit/lib/redmine/imap_test.rb
  create mode 100644 test/unit/lib/redmine/oauth2_client_test.rb
@@ -366,10 +366,10 @@ index 4ba669510..5651ac8c0 100644
  
 diff --git a/test/unit/lib/redmine/imap_test.rb b/test/unit/lib/redmine/imap_test.rb
 new file mode 100644
-index 000000000..997fc5fb5
+index 000000000..050fa44f6
 --- /dev/null
 +++ b/test/unit/lib/redmine/imap_test.rb
-@@ -0,0 +1,90 @@
+@@ -0,0 +1,101 @@
 +# frozen_string_literal: true
 +
 +# Redmine - project management software
@@ -433,6 +433,17 @@ index 000000000..997fc5fb5
 +        :oauth2_credentials => '/etc/redmine/imap_oauth2.yml'
 +      )
 +    end
++  end
++
++  # The mechanism name is what the patch passes to Net::IMAP, so it is what has
++  # to keep resolving: a rename, or a move away from the positional
++  # (username, token) form, would leave every mocked test above green while no
++  # mailbox authenticates any more.
++  def test_xoauth2_should_be_a_sasl_mechanism_net_imap_knows
++    authenticator = Net::IMAP::SASL.authenticator('XOAUTH2', 'redmine@example.net', 'an-access-token')
++
++    assert_equal "user=redmine@example.net\1auth=Bearer an-access-token\1\1",
++                 authenticator.process(nil)
 +  end
 +
 +  def test_check_should_login_with_the_password_when_the_oauth2_options_are_blank

@@ -157,9 +157,9 @@ in Redmine.
 | File | Change |
 |---|---|
 | `lib/redmine/imap.rb` | authenticate with `XOAUTH2` when an access token is available, `login` otherwise; resolve the token from the two new options |
-| `lib/redmine/oauth2_client.rb` | new, ~140 lines: read the credentials file, build the authorization URL, and POST either the refresh token grant or the authorization code grant |
+| `lib/redmine/oauth2_client.rb` | new, 198 lines — 132 of code under the standard GPL header: read the credentials file, build the authorization URL, and POST either the refresh token grant or the authorization code grant |
 | `lib/tasks/email.rake` | pass the two options through and document them; add the `oauth2_authorize` task and one worked example |
-| `test/unit/lib/redmine/imap_test.rb` | new: first tests for `Redmine::IMAP` |
+| `test/unit/lib/redmine/imap_test.rb` | new: first tests for `Redmine::IMAP`, including one that resolves `XOAUTH2` through `Net::IMAP::SASL` and asserts the SASL string, so a rename of the mechanism or a change to its argument order fails here rather than in production |
 | `test/unit/lib/redmine/oauth2_client_test.rb` | new |
 
 **New setting / migration / gem / route / permission:** none.
@@ -174,6 +174,14 @@ in Redmine.
   site with two mailboxes needs two cron lines, not two settings.
 - **No migration, route or permission.** Nothing is stored in the database and
   nothing is reachable over HTTP.
+- **A client secret is required.** Both grants list `client_secret` among the
+  credentials they demand, so a public client that was never issued one cannot
+  be configured; the task stops with `is missing client_secret` before any
+  request is made. Microsoft 365 and Google Workspace both issue a secret for
+  the registration the walk-throughs describe, so this is not a limitation
+  anyone following them will meet, and requiring it is the safer default —
+  RFC 6749 §2.3.1 permits a public client to have none, but a confidential
+  client is what an unattended mailbox fetch should be.
 
 **Translations (INV-5):** none. The patch adds no user-visible string. The rake
 task's option documentation and `desc` are English-only throughout
@@ -622,7 +630,7 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
 
 - **Issue:** [#43023](https://www.redmine.org/issues/43023) — bestaat al, Jans
   eigen issue, assignee Marius BĂLTEANU, doelversie 7.1.0. **Geen nieuw issue.**
-- **Patch attached:** `patches/imap-oauth/2026-09-09-r25037-feature.patch`
+- **Patch attached:** `patches/imap-oauth/2026-09-10-r25037-feature.patch`
   (711 regels patchbestand, 618 regels wijziging over 5 bestanden). Eén bestand
   — er zijn geen locale-sleutels, dus geen `-locales.patch`.
 - **Made against:** `origin/master` r25037 (`bee32a926`), branch
