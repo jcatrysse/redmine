@@ -108,6 +108,13 @@ Een bijlage die heet als de pagina zelf of als een kindpagina krijgt een
   zijn opnieuw geëxporteerd als `2026-09-10-r25063-{feature,locales}.patch` met
   dezelfde splitsing (11 en 4 bestanden). Op `7.0-stable-GEOxyz` staat dezelfde
   wijziging als **`cf0dda572`** (INV-10).
+- **Volledige suite op `7.0-stable-GEOxyz` ná de hele fixronde**, op tip
+  `fd2365dc3` en gedraaid via `tools/test-env.sh` zodat de systeemtests echt
+  starten: **6169 runs, 32534 assertions, 0 failures, 0 errors, 39 skips**. Dat
+  is vier runs en twaalf assertions meer dan de 6165/32522 van vóór de
+  fixronde — precies de vier tests die er vandaag bij kwamen (twee wiki-export,
+  één imap, één webhook). `tools/check-geoxyz-branch.sh`: **PASS**, met de
+  echte lintgetallen 8 op de tak en 8 op `origin/7.0-stable`.
 
 ## Bewijs — refresh op r25063 (2026-09-09)
 

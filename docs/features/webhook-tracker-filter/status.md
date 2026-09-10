@@ -105,6 +105,13 @@ kwamen alle vier schoon terug.
   broncode is per constructie niet vrij te pleiten en zou de INV-10-gate
   permanent rood houden. De reden staat nu in de allowlist, in het
   commitbericht en hierboven.
+- **Volledige suite op `7.0-stable-GEOxyz` ná de hele fixronde**, op tip
+  `fd2365dc3` en gedraaid via `tools/test-env.sh` zodat de systeemtests echt
+  starten: **6169 runs, 32534 assertions, 0 failures, 0 errors, 39 skips**. Dat
+  is vier runs en twaalf assertions meer dan de 6165/32522 van vóór de
+  fixronde — precies de vier tests die er vandaag bij kwamen (twee wiki-export,
+  één imap, één webhook). `tools/check-geoxyz-branch.sh`: **PASS**, met de
+  echte lintgetallen 8 op de tak en 8 op `origin/7.0-stable`.
 
 ## Bewijs
 

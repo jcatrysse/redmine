@@ -46,7 +46,8 @@ at branch level.
 | Claim | What I measured | Same? |
 |---|---|---|
 | the full suite is green here | **6165 runs, 32522 assertions, 0 failures, 0 errors, 39 skips**, on this tip, today | yes |
-| `tools/check-geoxyz-branch.sh`: PASS | **PASS** — nothing to merge, no AI traces in 49 own commits, no AI identity in author or committer, all 47 recorded shas present, every own non-merge commit recorded against a feature, locales within the five | yes |
+| (re-measured after the fix round) | **6169 runs, 32534 assertions, 0 failures, 0 errors, 39 skips** on `fd2365dc3`, the tip that carries the three later commits — four runs more, which is the four tests the fix round added | yes |
+| `tools/check-geoxyz-branch.sh`: PASS | **PASS**, and again on `fd2365dc3` with 53 own commits and 51 recorded shas — nothing to merge, no AI traces in 49 own commits, no AI identity in author or committer, all 47 recorded shas present, every own non-merge commit recorded against a feature, locales within the five | yes |
 | lint adds nothing | **8 on the branch, 8 on `origin/7.0-stable`, added 0** — measured with a lockfile in both worktrees. The gate printed 1 and 1 until today | conclusion yes, numbers no |
 | `tools/check-symmetry.sh --all`: PASS | **PASS** for all nine, with the one allowed divergence on `wiki-export-attachments` (the `itcpdf` inflection) | yes |
 | every changed file belongs to a feature | **confirmed both ways**: 90 files in the diff, all touched by an own commit; 92 files touched by own commits, the two extra being the reversals above | yes |
@@ -136,6 +137,15 @@ it there would drag the other feature's subject into that diff and break INV-1
 and INV-2 — and `docs/features/webhook-tracker-filter/symmetry-allow.txt` now
 records every line of it with that reason, so INV-10 stays mechanical rather
 than being waived.
+
+A third thing, found by running `tools/check-symmetry.sh --all` rather than the
+one slug: the allowlist has to exist **twice**. The gate compares one slug at a
+time, and both webhook features change `test/unit/webhook_test.rb`, so a line
+that lives on `7.0-stable-GEOxyz` alone is a divergence for each of them —
+excusing it under `webhook-tracker-filter` alone left `webhook-issue-closed`
+red. `docs/features/webhook-issue-closed/symmetry-allow.txt` now carries the
+same seven lines with that reason at the top. With both files in place,
+`--all` is **PASS for all nine**.
 
 Two things the fix taught, both recorded where the next session will meet them.
 `check-symmetry.sh` strips lines beginning with `#` from an allowlist before

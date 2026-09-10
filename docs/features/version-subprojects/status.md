@@ -161,6 +161,13 @@ PostgreSQL 16, Ruby 3.3.6, beide kanten met een identiek `Gemfile.lock`.
 - `tools/check-geoxyz-branch.sh`: **PASS** nadat `43246a900` aan het
   `geoxyz_commit`-veld hierboven is toegevoegd; de gate weigerde eerst, precies
   waar K-21 hem voor gebouwd heeft.
+- **Volledige suite op `7.0-stable-GEOxyz` ná de hele fixronde**, op tip
+  `fd2365dc3` en gedraaid via `tools/test-env.sh` zodat de systeemtests echt
+  starten: **6169 runs, 32534 assertions, 0 failures, 0 errors, 39 skips**. Dat
+  is vier runs en twaalf assertions meer dan de 6165/32522 van vóór de
+  fixronde — precies de vier tests die er vandaag bij kwamen (twee wiki-export,
+  één imap, één webhook). `tools/check-geoxyz-branch.sh`: **PASS**, met de
+  echte lintgetallen 8 op de tak en 8 op `origin/7.0-stable`.
 
 ## Bewijs
 

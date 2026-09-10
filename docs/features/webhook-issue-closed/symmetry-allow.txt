@@ -1,0 +1,31 @@
+# Divergences between patch/webhook-issue-closed and 7.0-stable-GEOxyz that are
+# correct, with the reason. One pattern per line, matched against the line body.
+# See tools/check-symmetry.sh.
+
+# The same seven lines are allowlisted here and in
+# docs/features/webhook-tracker-filter/symmetry-allow.txt, and that duplication
+# is the mechanism working rather than a mistake: check-symmetry compares one
+# slug at a time, and both slugs change test/unit/webhook_test.rb, so a line
+# that lives on 7.0-stable-GEOxyz alone shows up as a divergence for each of
+# them. Excusing it for only one leaves the other permanently red.
+#
+# The test itself: the tracker filter (webhook-tracker-filter) and the
+# issue.closed event (this feature) are two separate upstream patches, each
+# branched from trunk on its own, so their combination -- a hook restricted to
+# a tracker AND subscribed to issue.closed -- exists only where both are
+# applied, which is this branch. Putting the test in either patch would drag
+# the other feature's subject into that diff and break INV-1 and INV-2.
+# Round 4, geoxyz-branch F01.
+#
+# Every line of that test is listed, so the allowlist stays as narrow as the
+# thing it excuses: an eighth line appearing in webhook_test.rb still fails.
+# The test carries no explanatory comment because this file strips lines
+# beginning with # before matching, so a comment in the source could never be
+# allowlisted and would fail the gate for ever.
+test "should apply the tracker filter to the issue closed event as well" do
+hook = create_hook(events: ['issue.closed'])
+selected = Issue.generate!(:project => Project.find(1), :tracker => Tracker.find(1),
+other = Issue.generate!(:project => Project.find(1), :tracker => Tracker.find(2),
+:status => IssueStatus.where(:is_closed => false).order(:id).first)
+assert_equal [hook], Webhook.hooks_for('issue.closed', selected)
+assert_equal [], Webhook.hooks_for('issue.closed', other)

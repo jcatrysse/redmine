@@ -104,6 +104,21 @@ van twee dingen vastleggen: dat het event uitblijft — dan cementeer je een
 tekortkoming — of dat het komt, en dan staat er een rode test in de inzending.
 De meting hierboven staat daarom in dit bestand en niet in de suite.
 
+- **`symmetry-allow.txt` staat er nu ook voor deze feature**, met dezelfde zeven
+  regels als bij `webhook-tracker-filter`. Die verdubbeling is geen slordigheid:
+  `check-symmetry.sh` vergelijkt één slug tegelijk, en beide webhookfeatures
+  raken `test/unit/webhook_test.rb`, dus de GEOxyz-only test die de combinatie
+  van de twee dekt (ronde 4, `geoxyz-branch` F01) is voor allebei een
+  divergentie. Alleen de ene vrijpleiten liet deze feature rood. De reden staat
+  bovenaan het bestand.
+- `tools/check-symmetry.sh --all`: **PASS voor alle negen** — gemeten nadat
+  beide allowlists er stonden. Met alleen de eerste gaf hij hier zeven FAILs,
+  en dat is precies waarom `--all` er is naast de losse slug.
+- **Volledige suite op `7.0-stable-GEOxyz` ná de hele fixronde**, op tip
+  `fd2365dc3` en gedraaid via `tools/test-env.sh`: **6169 runs, 32534
+  assertions, 0 failures, 0 errors, 39 skips**. `tools/check-geoxyz-branch.sh`:
+  **PASS**, lint 8 op de tak en 8 op `origin/7.0-stable`.
+
 ## Bewijs
 
 Alles opnieuw gemeten op **2026-09-05**, tegen trunk **r25037** (`bee32a926`).
