@@ -903,6 +903,21 @@ class QueriesControllerTest < Redmine::ControllerTest
     assert_include ["eCookbook - 2.0", "3", "open"], json
   end
 
+  def test_filter_should_ignore_a_filter_field_list_that_is_not_a_list
+    @request.session[:user_id] = 2
+    get(
+      :filter,
+      :params => {
+        :project_id => 1,
+        :name => 'fixed_version_id',
+        :f => 'subproject_id',
+        :op => {'subproject_id' => '='}
+      }
+    )
+    assert_response :success
+    assert_equal 'application/json', response.media_type
+  end
+
   def test_version_filter_time_entries_with_project_id_should_return_filter_values
     @request.session[:user_id] = 2
     get(
