@@ -1351,3 +1351,18 @@ toegevoegd.
   is een `Rails/*`-fout zien die de branch zélf toevoegt — en dat is precies de
   familie waar `Rails/HasAndBelongsToMany` in zit, die twee van onze patches met
   een `rubocop:disable`-commentaar afdekken.
+
+
+- **Een gate die "ik heb niets kunnen lezen" met "er valt niets te lezen"
+  verwart, faalt op een geldige invoer.** De strengere INV-4-check in
+  `check-patch-clean.sh` (2026-09-10, ronde 4, `tools` F01) faalt terecht als
+  het uitlezen van de commit-boodschap stukgaat — want een grep over niets meldt
+  niets. Maar `patches/members-pagination/` bevat twee *gewone* diffs van
+  Takenori TAKAKI bij #43355, geen `git format-patch`-exports, en die hebben
+  helemaal geen boodschap. Diezelfde middag faalde de gate daarop met
+  `could not read a single message header`, op de enige onderdeel waar dat de
+  normale toestand is. Het onderscheid is één regel: begint geen enkel bestand
+  met `From <sha>`, dan is het een platte diff en is er niets te scannen — dat
+  is sindsdien een `note`, geen `ok` en geen `FAIL`. Beide controlegevallen zijn
+  nagemeten: een format-patch met een ingeplante `Co-authored-by: Claude` faalt
+  nog steeds, en een `From`-header wordt nog steeds gescand.
