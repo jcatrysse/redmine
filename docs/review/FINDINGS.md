@@ -3,7 +3,7 @@
 
 # FINDINGS — elke reviewbevinding, één regel elk
 
-208 bevindingen uit 78 reviews: 15 blocker, 36 major, 84 minor, 55 nit, 18 question. **19 zonder Resolution-regel.**
+208 bevindingen uit 79 reviews: 15 blocker, 36 major, 84 minor, 55 nit, 18 question. **19 zonder Resolution-regel.**
 
 | Sev | Slug | ID | Bevinding | Cat | Zekerheid | Waar | Resolution |
 |---|---|---|---|---|---|---|---|
@@ -283,6 +283,7 @@
 | [`wiki-export-attachments`](findings/2026-09-09-wiki-export-attachments-codex-round2.md) | 2026-09-09 | codex-round2 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | partly — combined stable-branch changed-test run was interru |
 | [`wiki-export-attachments`](findings/2026-09-09-wiki-export-attachments-codex-round3.md) | 2026-09-09 | codex-round3 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | relied on the newly recorded full-suite evidence plus fresh  |
 | [`wiki-export-attachments`](findings/2026-09-09-wiki-export-attachments-codex.md) | 2026-09-09 | codex | blocker 1 / major 0 / minor 0 / nit 0 / question 0 | no — the patch cannot be applied unchanged to current trunk, |
+| [`ar-sessions`](findings/2026-09-10-ar-sessions-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | partly — `session_store_check_test.rb` and `session_store_te |
 | [`assignee-nobody`](findings/2026-09-10-assignee-nobody-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 1 / nit 1 / question 0 | partly — the three touched files in one process, plus the sa |
 | [`geoxyz-hosts`](findings/2026-09-10-geoxyz-hosts-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | no, and it would prove nothing: the change is one line in `c |
 | [`gitignore-credentials`](findings/2026-09-10-gitignore-credentials-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 1 / question 0 | no — `.gitignore` is not code and no suite reads it. Instead |
