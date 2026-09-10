@@ -3,7 +3,7 @@
 
 # FINDINGS — elke reviewbevinding, één regel elk
 
-206 bevindingen uit 73 reviews: 15 blocker, 35 major, 84 minor, 54 nit, 18 question. **18 zonder Resolution-regel.**
+207 bevindingen uit 75 reviews: 15 blocker, 35 major, 84 minor, 55 nit, 18 question. **19 zonder Resolution-regel.**
 
 | Sev | Slug | ID | Bevinding | Cat | Zekerheid | Waar | Resolution |
 |---|---|---|---|---|---|---|---|
@@ -149,6 +149,7 @@
 | nit | `assignee-nobody` | F08 | "all 63 locale files" — trunk has 50 | dossier | confirmed | `docs/features/assignee-nobody/dossier.md`, "Proposed change" and | fixed 2026-09-05 — 50, with the counting command in the dossier; the substantive claim (every locale file has `label_nobody`) re-counted and unchanged |
 | nit | `geoxyz-hosts` | F02 | The matched set is wider than "hostnames", but not in a way that re-opens DNS rebinding | security | confirmed | `config/environments/development.rb:63` | fixed 2026-09-06 — the `.*` prefix became `[a-z0-9-]+(?:\.[a-z0-9-]+)*`, so all thirteen junk-prefixed strings are refused while `a.b.c.geoxyz.eu` still passes and the apex still does not |
 | nit | `geoxyz-hosts` | F03 | The line lives in an upstream-tracked file, so it is a standing merge-conflict candidate | conventions | confirmed | `config/environments/development.rb:63` | wontfix 2026-09-06 — the line stays in `config/environments/development.rb`, per this finding's own first option; both alternatives are worse and the reasons are recorded in `docs/features/geoxyz-hosts/decisions.md` |
+| nit | `gitignore-credentials` | F01 | the directory rule also hides the encrypted file, which is meant to be committed | scope | confirmed | `.gitignore:12` (`/config/credentials/`) | **—** |
 | nit | `imap-oauth` | F03 | `lib/tasks/email.rake` gains two lint offences that no measurement has ever printed | conventions | confirmed | `lib/tasks/email.rake:153-176` | **—** |
 | nit | `imap-oauth` | F04 | a token response whose body is valid JSON but not an object raises `NoMethodError` or `TypeError` instead of the patch's own message | correctness | confirmed (the behaviour); speculative (that a provider or | `lib/redmine/oauth2_client.rb:157-162` (`json_body`), used at `:126` and `:134` | fixed 2026-09-06 — `json_body` returns `{}` unless the parse yielded a `Hash`, so a body of `[]`, `null` or `123` reaches the same two messages every other malformed answer already produced. Two new tests, both red on the old code (`2 runs, 2 failures` under the mutation). Driven in G9 too: the same request that raised `TypeError: no implicit conversion of String into Integer` now raises `OAuth 2.0 token request returned no access token` |
 | nit | `imap-oauth` | F04 | the submitted text calls the new file "~140 lines" and the diffstat says 198 | dossier | confirmed | the file table in `dossier.md`, row `lib/redmine/oauth2_client.rb` | **—** |
@@ -282,6 +283,8 @@
 | [`wiki-export-attachments`](findings/2026-09-09-wiki-export-attachments-codex-round3.md) | 2026-09-09 | codex-round3 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | relied on the newly recorded full-suite evidence plus fresh  |
 | [`wiki-export-attachments`](findings/2026-09-09-wiki-export-attachments-codex.md) | 2026-09-09 | codex | blocker 1 / major 0 / minor 0 / nit 0 / question 0 | no — the patch cannot be applied unchanged to current trunk, |
 | [`assignee-nobody`](findings/2026-09-10-assignee-nobody-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 1 / nit 1 / question 0 | partly — the three touched files in one process, plus the sa |
+| [`geoxyz-hosts`](findings/2026-09-10-geoxyz-hosts-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | no, and it would prove nothing: the change is one line in `c |
+| [`gitignore-credentials`](findings/2026-09-10-gitignore-credentials-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 1 / question 0 | no — `.gitignore` is not code and no suite reads it. Instead |
 | [`imap-oauth`](findings/2026-09-10-imap-oauth-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 1 / nit 3 / question 1 | yes — the **full** `test:all` on the patch tip and on pristi |
 | [`mypage-query-blocks`](findings/2026-09-10-mypage-query-blocks-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 1 / question 0 | partly — the three touched test files in one process, and tw |
 | [`revision-branches`](findings/2026-09-10-revision-branches-claude-opus5-round4.md) | 2026-09-10 | claude-opus5-round4 | blocker 0 / major 0 / minor 0 / nit 0 / question 0 | partly — the six touched files in one process, with `tmp/tes |
