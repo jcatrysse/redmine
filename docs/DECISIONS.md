@@ -1740,3 +1740,45 @@ zonder `Resolution:`-regel. K-22 stelt het fixen uit, het schrapt het niet, en
 
 **Reikwijdte.** Alleen ronde 4. Daarna geldt de oude regel weer, tenzij Jan dan
 iets anders zegt.
+
+
+### K-23 — PKCE in de OAuth-toestemmingsstap van `imap-oauth`?
+
+**Beslist door Jan op 2026-09-10: optie A** — geen PKCE inbouwen, wél het
+antwoord in de bezwarentabel zetten.
+
+**Wat er aan de hand is.** `rake redmine:email:oauth2_authorize` draait de
+authorization code grant met een `state` en zonder `code_challenge`. RFC 9700,
+de OAuth 2.0 Security Best Current Practice van 2025, schrijft PKCE voor bij
+elke authorization code grant, ook voor een vertrouwelijke client. Het woord
+PKCE staat nergens in de patch, het dossier, `status.md` of dit bestand.
+Gevonden in ronde 4 (`imap-oauth` F02); vier eerdere reviewrondes, waaronder
+twee van Codex, hebben er niet naar gekeken — terwijl Codex wél de ontbrekende
+`state` vond, wat de andere helft van dezelfde vraag is.
+
+**De keuze die voorlag.**
+
+- **A) niet inbouwen, wel beantwoorden** — één rij in "Anticipated objections"
+  die uitlegt waarom PKCE hier weinig toevoegt.
+- **B) inbouwen** — ongeveer tien regels: een `code_verifier` uit
+  `SecureRandom`, de S256-`code_challenge` op de autorisatie-URL, en de
+  verifier bij het inwisselen, meegedragen zoals de `state` nu.
+
+**Waarom A.** PKCE beschermt tegen het onderscheppen van de authorization code
+tussen de redirect en het inwisselen. Dat pad bestaat in deze flow niet: de
+code verlaat de browser en de terminal van de mailboxeigenaar niet, er luistert
+niets op de loopback-adres dat een lokaal proces zou kunnen aftroeven, en de
+client is vertrouwelijk — een onderschepte code is zonder het client secret
+onbruikbaar. Daar komt bij dat de patch al groot is voor een eerste inzending
+en INV-6 de nulhypothese "niet nodig" hanteert.
+
+**Wat A wel verplicht.** Het argument hierboven moet in de inzending staan, niet
+in het hoofd van een reviewer. De kerncommitter aan wiens issue (#43023) dit
+hangt zal de vraag stellen, en dan komt het antwoord als losse note in plaats
+van als onderdeel van de patch — dat kost een ronde. De rij hoort dus in
+`docs/features/imap-oauth/dossier.md` onder "Anticipated objections", en wordt
+geschreven in de fixronde van ronde 4 (K-22), niet nu.
+
+**Wat dit niet is.** Geen uitspraak dat PKCE overbodig is in het algemeen. Als
+Redmine ooit een OAuth-flow krijgt waar de redirect wél door een luisterend
+proces of een webserver wordt opgevangen, geldt deze redenering daar niet.
