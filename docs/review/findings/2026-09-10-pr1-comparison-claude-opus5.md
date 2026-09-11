@@ -465,7 +465,7 @@ invisible to it by construction rather than by exception.
 
 ### F02 — nobody has run our IMAP OAuth against a real mailbox
 
-- **Status:** open
+- **Status:** question
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** evidence
@@ -505,11 +505,19 @@ that most changes the reception of an inbound-mail patch. Until then, say in the
 dossier that it has not been done — an unstated absence reads as an oversight,
 a stated one reads as scope.
 
+**Resolution:** not fixable by a session, 2026-09-11 — it needs a real mailbox and a
+real consent, which is one of the four things `CLAUDE.md` says to stop and ask Jan
+about ("anything would send real data to an external service"). Raised as an open
+choice in the session report instead of being quietly left. The dossier already
+says the consent step cannot be a test; what it does not yet say is that the
+post-consent path has never run against a real provider either, and that sentence
+is the owner's to add together with the run, not before it.
+
 ---
 
 ### F03 — "the nine inherited bugs" is a claim our documents make and never support
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** minor
 - **Confidence:** confirmed
 - **Category:** documentation
@@ -552,6 +560,16 @@ the decision exactly as it stands and replaces the *evidence* sentence with
 either the enumerated list from this review or an honest "the nine were never
 written down; this review found four inherited and five introduced". Do not
 change the decision row's outcome — only what it cites.
+
+**Resolution:** fixed, 2026-09-11. A block appended to `docs/DECISIONS.md` via
+`tools/append-note.sh` keeps the 2026-09-01 decision exactly as it stands and
+replaces its evidence sentence: 73 lint offences confirmed to the unit against a
+baseline of 8 rather than 0, four of the nine defects genuinely inherited and
+five introduced by the port, and the `.html_safe` row named as one this PR fixed
+rather than carried. It also records the stronger reason for the decision, which
+the original row does not give: building nine upstream submissions on a port
+scoring 44% on upstream acceptability would have meant undoing most of it
+first.
 
 ---
 

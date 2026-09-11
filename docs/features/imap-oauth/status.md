@@ -127,6 +127,15 @@ regel die in het credentialsbestand moet.
 - `tools/check-symmetry.sh imap-oauth`: **PASS** met dat bestand erbij -- de
   omgekeerde richting vergelijkt alleen bestanden die aan béide kanten bestaan,
   dus een GEOxyz-only document heeft geen allowlist nodig.
+- **Nog open, en het is van Jan** (F02 van dezelfde vergelijking): niemand heeft
+  deze keten ooit tegen een échte mailbox gedraaid. Alle 478 testregels draaien
+  tegen een gemockte IMAP, en de ronde-4-test vraagt net-imap zelf naar het
+  XOAUTH2-mechanisme — maar het pad credentialsbestand → tokenendpoint → XOAUTH2
+  → `select` → `uid_fetch` → `MailHandler` is nooit in zijn geheel gelopen.
+  ansifi's PR #1 heeft dat wél gedaan (een Gmail-fetch die issue #7 aanmaakte).
+  Eén run met een echte mailbox, uitvoer erbij, en dit dossier heeft de zin die
+  bij een inkomende-mailpatch het meest overtuigt. Het kan geen sessie doen: het
+  vraagt echte toestemming van een mailboxeigenaar.
 
 ## Bewijs
 
