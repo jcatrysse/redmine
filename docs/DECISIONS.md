@@ -1782,3 +1782,44 @@ geschreven in de fixronde van ronde 4 (K-22), niet nu.
 **Wat dit niet is.** Geen uitspraak dat PKCE overbodig is in het algemeen. Als
 Redmine ooit een OAuth-flow krijgt waar de redirect wél door een luisterend
 proces of een webserver wordt opgevangen, geldt deze redenering daar niet.
+
+
+## 2026-09-11 — de "negen geërfde bugs" uit de beslissing van 2026-09-01, nagerekend
+
+**De beslissing zelf blijft staan en wordt hier niet heropend.** Opnieuw beginnen
+vanaf `7.0-stable` in plaats van voortbouwen op PR #1 was juist, en de sterkste
+reden staat niet in de oorspronkelijke regel: elke feature moest toch herontworpen
+worden voor upstream, en de score van ronde 4 deel B laat zien waarom dat geen
+detail is — ansifi haalt 44% op "upstream acceptability" tegen 65% op "GEOxyz
+fitness". Dat is de vorm van een nette port naar een privétak, wat het ook moest
+zijn. Erop voortbouwen had betekend: eerst `receive_imap_oauth2`, de
+`search_token_limit`-instelling, de tokenbestanden, de provider-specifieke taken
+en de vervuiling van `Object` weer weghalen.
+
+**Wat wél bijgesteld moet worden is de onderbouwing.** De regel zegt "zijn commits
+dragen de negen geërfde bugs en 73 lint-fouten", en `docs/STATE.md` voegt eraan toe
+dat alle negen uit de originele 5.1-commits kwamen. De negen staan nergens opgesomd
+— er is geen bevindingenbestand van 2026-09-01, het vroegste is van 2026-09-03.
+
+Nagemeten op 2026-09-10/11 (ronde 4 deel B,
+`docs/review/findings/2026-09-10-pr1-comparison-claude-opus5.md`, bevinding F03):
+
+- **73 lint-fouten klopt exact.** 81 offences op de 48 gewijzigde Ruby/rake-bestanden
+  van `5693540cd`, tegen 8 op dezelfde bestanden op het vorkpunt — 73 toegevoegd.
+  De basis was dus 8 en niet 0, en die 8 zijn upstreams eigen regels.
+- **"Alle negen uit de 5.1-commits" klopt niet.** Van de negen functionele defecten
+  die deze review kan benoemen zijn er vier echt geërfd (de `sub` in
+  `branch_contains`, de instantievariabelen in de changeset-partial, één
+  SCM-subproces per rij, en de JavaScript die op geen van beide pagina's geladen
+  wordt) en vijf van de port zelf (het toewijzingsfilter dat crasht op "is niet"
+  met `<<nobody>>`, het doelversiefilter dat gedeelde versies weglaat, de 500 op
+  `/queries/filter`, de wiki-ZIP die een pagina verliest, en twee bestaande
+  Redmine-tests die rood blijven).
+- **Eén regel uit de tabel met verboden constructies hoort niet bij ansifi.**
+  `.html_safe` op SCM-tekst stond in de 5.1-code (`cf826e3fd`); ansifi heeft dat
+  in de port juist vervangen door `safe_join`. De tabel zegt "in de bestaande
+  GEOxyz-code **of** de port van 2026", dus de regel klopt zoals hij er staat —
+  maar hij mag niet aan deze PR toegeschreven worden.
+
+Geen keuze voor Jan; dit is een correctie van de bewijsregel, niet van de
+beslissing.
