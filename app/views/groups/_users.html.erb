@@ -1,11 +1,8 @@
-<%
-  # A dedicated 'users_page' parameter is used so it does not clash with the
-  # 'page' used by the add-user modal's principal list (render_principals_for_new_group_users).
-  users, user_pages, user_count = paginate_group_users(@group)
-%>
+<% users, user_pages, user_count = paginate_group_users(@group) %>
 <p><%= link_to sprite_icon('add', l(:label_user_new)), new_group_users_path(@group, :users_page => params[:users_page]), :remote => true, :class => "icon icon-add" %></p>
 
-<% if users.any? %>
+<% if user_count > 0 %>
+  <div class="autoscroll">
   <table class="list users">
     <thead><tr>
       <th><%= l(:label_user) %></th>
@@ -22,6 +19,7 @@
     <% end %>
     </tbody>
   </table>
+  </div>
   <span class="pagination">
     <%= pagination_links_full(user_pages, user_count) do |text, parameters, options|
           link_to text, edit_group_path(@group, request.query_parameters.merge(parameters).merge(:tab => 'users')), options

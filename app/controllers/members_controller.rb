@@ -138,11 +138,10 @@ class MembersController < ApplicationController
   private
 
   def redirect_to_settings_in_projects
-    redirect_to settings_project_path(@project, members_settings_query)
+    redirect_to settings_project_path(@project, members_settings_url_params)
   end
 
-  # Keeps the members tab and its pagination when redirecting after add/edit/remove
-  def members_settings_query
+  def members_settings_url_params
     query = {:tab => 'members'}
     query[:members_page] = params[:members_page] if params[:members_page].present?
     query[:per_page] = params[:per_page] if params[:per_page].present?

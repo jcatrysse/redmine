@@ -51,9 +51,6 @@ module GroupsHelper
     s + content_tag('span', links, :class => 'pagination')
   end
 
-  # Returns the requested page of the group's users together with its paginator
-  # and the total user count, so the users tab loads only one page at a time
-  # instead of rendering every user of the group.
   def paginate_group_users(group)
     scope = group.users.sorted
     user_count = scope.count

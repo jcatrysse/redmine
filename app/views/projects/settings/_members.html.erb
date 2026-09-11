@@ -1,15 +1,12 @@
-<%
-  # A dedicated 'members_page' parameter is used so it does not clash with the
-  # 'page' used by the new-member modal's principal list (render_principals_for_new_members).
-  members, member_pages, member_count = paginate_members(@project)
-%>
+<% members, member_pages, member_count = paginate_members(@project) %>
 
 <% if User.current.admin? %>
   <div class="contextual"><%= link_to sprite_icon('settings', l(:label_administration)), users_path, :class => "icon icon-settings" %></div>
 <% end %>
 <p><%= link_to sprite_icon('add', l(:label_member_new)), new_project_membership_path(@project, :members_page => params[:members_page]), :remote => true, :class => "icon icon-add" %></p>
 
-<% if members.any? %>
+<% if member_count > 0 %>
+<div class="autoscroll">
 <table class="list members">
   <thead>
     <tr>
@@ -48,6 +45,7 @@
 <% end %>
   </tbody>
 </table>
+</div>
 <span class="pagination">
   <%= pagination_links_full(member_pages, member_count) do |text, parameters, options|
         link_to text, settings_project_path(@project, 'members', request.query_parameters.merge(parameters)), options

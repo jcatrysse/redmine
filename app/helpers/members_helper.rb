@@ -48,11 +48,7 @@ module MembersHelper
     s + content_tag('span', links, :class => 'pagination')
   end
 
-  # Returns the requested page of the project's members together with its
-  # paginator and the total member count. Member.sorted joins roles (a member
-  # may have several roles), so the sorted ids are collected first (duplicates
-  # removed, keeping the lowest role position) and only the current page is
-  # loaded; this paginates members rather than join rows.
+  # limit/offset on Member.sorted would paginate role join rows, not members
   def paginate_members(project)
     ordered_ids =
       project.memberships.
@@ -60,15 +56,16 @@ module MembersHelper
         reorder("#{Role.table_name}.position").
         order(Principal.fields_for_order_statement).
         pluck("#{Member.table_name}.id").uniq
+    member_count = ordered_ids.size
     per_page = per_page_option
     # Clamped to the last page, because removing the last member of a page must
     # not leave the tab on a page that no longer exists.
-    page = [params['members_page'].to_i, (ordered_ids.size + per_page - 1) / per_page].min
-    member_pages = Redmine::Pagination::Paginator.new(ordered_ids.size, per_page, page, 'members_page')
+    page = [params['members_page'].to_i, (member_count + per_page - 1) / per_page].min
+    member_pages = Redmine::Pagination::Paginator.new(member_count, per_page, page, 'members_page')
     page_ids = ordered_ids[member_pages.offset, member_pages.per_page] || []
     members_by_id = project.memberships.where(:id => page_ids).preload(:project, :principal, :roles).index_by(&:id)
     members = page_ids.filter_map {|id| members_by_id[id]}
-    [members, member_pages, ordered_ids.size]
+    [members, member_pages, member_count]
   end
 
   # Returns inheritance information for an inherited member role
