@@ -136,28 +136,36 @@ that section goes to redmine.org.
 
 ## Confirmation, and thanks
 
-Thank you for rebasing this onto current trunk and for splitting it into two
-patches — that is a good deal more work than the original report deserved.
+Thank you for rebasing this onto current trunk, for splitting it into two
+patches, and for the second round — that is a good deal more work than the
+original report deserved.
 
-I have applied both patches to a clean trunk checkout, run the affected suites
-and driven both tabs in a browser. `0002-groups-pagination.patch` covers the
-part we needed on top of the original request: the group users tab is
-paginated too, and `members_page` and `users_page` are separate parameters, so
-the tab list and the principal list inside the add modals no longer move
-together. From our side nothing is missing, and the eleven tests you added
-stay green.
+I have applied both of the 2026-09-10 patches to a clean trunk checkout
+(r25065), run the affected suites and driven both tabs in a browser: **185 runs,
+866 assertions, 0 failures, 0 errors** across `members_controller_test`,
+`projects_controller_test`, `groups_controller_test`, `members_helper_test` and
+`groups_helper_test`. The group users tab is paginated too, and `members_page`
+and `users_page` are separate parameters, so the tab list and the principal list
+inside the add modals no longer move together. From our side nothing is missing.
 
-One improvement to offer on top of the two patches.
+One improvement to offer on top of the two patches, and it is the other half of
+something the second round already started.
 
 ## Out-of-range pages, and why the members tab is the place to handle them
 
-Redmine's paginator clamps a page number up to 1 but never down to the last
-page, and the list views render their pagination block inside the "there are
-rows" branch. So an out-of-range page renders `No data to display` with nothing
-to navigate back with, and that is long-standing behaviour rather than anything
-these patches introduce: `/issues?page=99` does it on plain trunk today, and
-the issue context menu can even get you there by writing the current list URL
-into `back_url`.
+The second round changed `<% if members.any? %>` to `<% if member_count > 0 %>`,
+so an out-of-range page now keeps the pagination links instead of showing
+`No data to display`. That removes the dead end. What it leaves is an empty
+table: on project 1 with `per_page_options = 2,5`, a request for
+`members_page=99` renders **0 rows** with the links below them.
+
+The remaining half is that Redmine's paginator clamps a page number up to 1 but
+never down to the last page. Clamping it there too makes the same request land
+on the last page that has rows — **1 row** on that same fixture instead of 0 —
+and it is the behaviour a user expects after deleting the last member of the
+last page. The dead-end part is long-standing behaviour elsewhere as well
+(`/issues?page=99` does it on plain trunk today), so this is an improvement to
+the two tabs these patches own rather than a defect report.
 
 What the pagination does add is a way to reach that state on the members tab
 by an ordinary click. With `per_page_options = 2,25,50`:
@@ -204,15 +212,17 @@ behaviour anywhere else — an in-range page number is unaffected.
 --- a/app/helpers/members_helper.rb
 +++ b/app/helpers/members_helper.rb
 @@
--    member_pages = Redmine::Pagination::Paginator.new(ordered_ids.size, per_page_option, params['members_page'], 'members_page')
+     member_count = ordered_ids.size
+-    member_pages = Redmine::Pagination::Paginator.new(member_count, per_page_option, params['members_page'], 'members_page')
 +    per_page = per_page_option
 +    # Clamped to the last page, because removing the last member of a page must
 +    # not leave the tab on a page that no longer exists.
-+    page = [params['members_page'].to_i, (ordered_ids.size + per_page - 1) / per_page].min
-+    member_pages = Redmine::Pagination::Paginator.new(ordered_ids.size, per_page, page, 'members_page')
++    page = [params['members_page'].to_i, (member_count + per_page - 1) / per_page].min
++    member_pages = Redmine::Pagination::Paginator.new(member_count, per_page, page, 'members_page')
 --- a/app/helpers/groups_helper.rb
 +++ b/app/helpers/groups_helper.rb
 @@
+     user_count = scope.count
 -    user_pages = Redmine::Pagination::Paginator.new(user_count, per_page_option, params['users_page'], 'users_page')
 +    per_page = per_page_option
 +    # Clamped to the last page, because removing the last user of a page must
@@ -220,6 +230,10 @@ behaviour anywhere else — an in-range page number is unaffected.
 +    page = [params['users_page'].to_i, (user_count + per_page - 1) / per_page].min
 +    user_pages = Redmine::Pagination::Paginator.new(user_count, per_page, page, 'users_page')
 ```
+
+Applied on top of the 2026-09-10 patches this is the whole difference; the
+affected suites stay green (**184 runs, 858 assertions, 0 failures, 0 errors**
+here, on the same five files).
 
 With three tests, each of which fails without the change above:
 
