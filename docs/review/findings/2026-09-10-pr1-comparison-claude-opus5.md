@@ -399,7 +399,7 @@ but it is three locales against our five).
 
 ### F01 — the IMAP OAuth walkthrough exists only on a branch production never sees
 
-- **Status:** open
+- **Status:** fixed
 - **Severity:** major
 - **Confidence:** confirmed
 - **Category:** operability
@@ -447,6 +447,19 @@ divergence: one line in `docs/features/imap-oauth/symmetry-allow.txt` with the
 reason, exactly like the GEOxyz-only webhook test. Alternatively, write it as a
 draft of the redmine.org wiki page and link it from the dossier — but then it
 still has to reach the branch, or this finding stands.
+
+**Resolution:** fixed, 2026-09-11, on `7.0-stable-GEOxyz` only, as `doc/IMAP_OAUTH2.md`
+(`012ab39e0`) — 123 lines carrying both provider walk-throughs, the credentials
+file for each, and the "afterwards" notes about the secret, the scrollback and
+what `invalid_grant` versus `invalid_client` means. It is the dossier's own text
+with the wiki framing replaced by a line saying where the other copy is, so the
+two can be changed together. It is deliberately in no patch: upstream keeps these
+on the `EmailConfiguration` wiki page, which is where both rake task descriptions
+already point, and putting a vendor walk-through in `doc/` would be the first
+thing a committer struck out. No allowlist entry was needed —
+`tools/check-symmetry.sh imap-oauth` is **PASS**, because its reverse direction
+only compares files that exist on both sides, so a GEOxyz-only document is
+invisible to it by construction rather than by exception.
 
 ---
 

@@ -495,6 +495,10 @@ walk-throughs on the wiki rather than in `doc/`, which holds only `INSTALL`,
 `licenses`; `config/configuration.yml.example` already points at that wiki page
 for mail, and the two task descriptions now point at it as well.
 
+The same text ships on `7.0-stable-GEOxyz` as `doc/IMAP_OAUTH2.md`, because a
+dossier on an orphan branch is not where an administrator looks (round 4 deel B,
+F01). One text in two places, deliberately: change both together.
+
 Both providers follow the same three steps: register an application, write a
 credentials file, run `redmine:email:oauth2_authorize` once.
 

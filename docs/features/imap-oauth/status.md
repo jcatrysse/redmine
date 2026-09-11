@@ -3,7 +3,7 @@ slug: imap-oauth
 feature: IMAP inbound mail via OAuth 2.0 (Gmail / O365)
 commit_51: bbf5c0eb3
 geoxyz: live
-geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901
+geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901 + 012ab39e0
 upstream: patch klaar
 patch: patches/imap-oauth/2026-09-10-r25037-feature.patch
 issue: 43023
@@ -112,6 +112,21 @@ regel die in het credentialsbestand moet.
   fixronde — precies de vier tests die er vandaag bij kwamen (twee wiki-export,
   één imap, één webhook). `tools/check-geoxyz-branch.sh`: **PASS**, met de
   echte lintgetallen 8 op de tak en 8 op `origin/7.0-stable`.
+- **`doc/IMAP_OAUTH2.md` staat nu op de GEOxyz-tak** (`012ab39e0`), naar
+  aanleiding van bevinding F01 van de PR#1-vergelijking (ronde 4 deel B). De
+  provider-uitleg -- welk applicatietype je registreert, welke scope, en de ene
+  parameter die maakt dat je een refresh token terugkrijgt -- stond alleen in
+  `dossier.md` op `geoxyz/framework`, en die tak checkt geen enkele server uit.
+  ansifi's PR #1 had dit wél op de tak staan, in twee bestanden onder `doc/`;
+  dat was het zwaarstwegende van de punten waarop zijn levering beter was dan
+  de onze.
+  De tekst is dezelfde als in het dossier; dat is met opzet één tekst op twee
+  plaatsen en ze horen samen bijgewerkt te worden. Het bestand gaat **niet** in
+  de patch: upstream zet zulke handleidingen op de `EmailConfiguration`-wikipagina,
+  waar allebei de taakbeschrijvingen al naar verwijzen.
+- `tools/check-symmetry.sh imap-oauth`: **PASS** met dat bestand erbij -- de
+  omgekeerde richting vergelijkt alleen bestanden die aan béide kanten bestaan,
+  dus een GEOxyz-only document heeft geen allowlist nodig.
 
 ## Bewijs
 
