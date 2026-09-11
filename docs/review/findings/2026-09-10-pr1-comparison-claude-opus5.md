@@ -13,7 +13,7 @@
 
 **Both sides did the same job and ours is the better one, but not for the reason
 our own documents give, and not on every axis.** The headline numbers are
-**ansifi 248 of 420 available points (59%), us 343 of 405 (85%)**, and the gap is almost entirely in
+**ansifi 248 of 420 available points (59%), us 345 of 405 (85%)**, and the gap is almost entirely in
 two places: *Evidence* and *Correctness*. On *GEOxyz fitness* the two sides are
 close, and on one feature ansifi is ahead of us outright.
 
@@ -179,7 +179,7 @@ than a guess about a submission nobody will make. That is 10 of the `n/e` cells.
 | M | **2** — the TXT export is a permanent private patch (Jan dropped it, K-03) | **4** |
 | H | **2** — 10 offences in `wiki_controller.rb` + 7 in its test | **4** — `Style/MapToSet` fixed today; five locales |
 
-#### webhook — issue.closed — ansifi 20/30 · us 23/30
+#### webhook — issue.closed — ansifi 20/30 · us 25/30
 
 | Axis | ansifi (part of `798714bd7`) | us `patch/webhook-issue-closed` |
 |---|---|---|
@@ -188,7 +188,7 @@ than a guess about a submission nobody will make. That is 10 of the `n/e` cells.
 | G | **4** | **4** |
 | E | **3** — part of 89 shared test lines; `webhook_payload_test` covers the payload | **5** — 118 test lines, eight transitions enumerated and seven tested |
 | M | **4** | **4** |
-| H | **2** — `setable_events` gained a bare `[Issue, News, TimeEntry, Version, WikiPage]` statement whose value is discarded, as a dev-mode autoload workaround unrelated to the feature | **2** — same migration shape as ansifi (see below); nothing else |
+| H | **2** — `setable_events` gained a bare `[Issue, News, TimeEntry, Version, WikiPage]` statement whose value is discarded, as a dev-mode autoload workaround unrelated to the feature | **4** — one `en` key and no `nl`/`fr`/`de`/`es`, which is **K-09, still open**: upstream's three sibling keys were English-only when this was written and are not any more. Nothing else |
 
 #### webhook — tracker filter — ansifi 22/30 · us 26/30
 
@@ -300,8 +300,8 @@ side that has them.
 | **GEOxyz fitness** | 49 / 75 (65%) | 66 / 75 (88%) | **the narrowest gap of the four substantive axes.** Most of ours comes from locales and from failure-path handling, not from doing more |
 | **Evidence** | 41 / 75 (55%) | 63 / 70 (90%) | ansifi's own suite is red, two features have no tests at all, and the largest test file group tests a re-implementation. Against that, ansifi has the one thing we do not: a live OAuth fetch |
 | **Maintenance cost** | 54 / 75 (72%) | 54 / 70 (77%) | **effectively a draw.** Ours is bigger code for the same features; ansifi's private surface is bigger because less of it is heading upstream |
-| **Hygiene** | 38 / 70 (54%) | 60 / 70 (86%) | 73 added lint offences, one-locale i18n, `Object` pollution |
-| **Total** | **248 / 420 (59%)** | **343 / 405 (85%)** | |
+| **Hygiene** | 38 / 70 (54%) | 62 / 70 (89%) | on ansifi's side: 73 added lint offences, one-locale i18n, `Object` pollution. Ours loses points only on K-09's English-only webhook key and on `.gitignore`/`doc` placement |
+| **Total** | **248 / 420 (59%)** | **345 / 405 (85%)** | |
 
 **15 of the 180 cells are `n/e`** (8%): ten because neither side proposes the
 five company-local features upstream, and five on the TXT export, which only one
