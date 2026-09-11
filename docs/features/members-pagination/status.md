@@ -3,7 +3,7 @@ slug: members-pagination
 feature: Paginatie op projectleden en groepsleden
 commit_51: 455f5753c
 geoxyz: live
-geoxyz_commit: 148faafb6 + 02ca8b044 + 22a4244c0 + 8fb5c8b8a
+geoxyz_commit: 148faafb6 + 02ca8b044 + 22a4244c0 + 8fb5c8b8a + 8067e231c
 upstream: nooit
 patch:
 issue: 43355
@@ -41,6 +41,38 @@ reviewbevinding F01 van 2026-09-03).
 De GEOxyz-branch draait alle drie de stukken: Takenori's twee patches
 één-op-één, plus de clamp als losse derde commit, zodat die apart kan
 vervallen zodra upstream hem overneemt.
+
+## Tweede ronde patches op #43355 (2026-09-10), nagerekend op 2026-09-11
+
+**Takenori heeft een tweede ronde gepost en het issue leeft weer.** Twee nieuwe
+bestanden (attachments `/36763/` en `/36764/`), en Katsuya HIDAKA bevestigde op
+2026-09-11 dat ze werken op een project met ~4000 leden en dat alle tests slagen.
+Takenori meet de ledentab van ~4,9 s naar ~0,33 s. Met twee onafhankelijke
+bevestigingen en gemeten cijfers gaat dit richting commit.
+
+Nagemeten hier: ze applyen schoon op trunk **r25065** (`167e487ee`) en de vijf
+geraakte testbestanden geven daar **185 runs, 866 assertions, 0 failures,
+0 errors**.
+
+**Wat er nieuw in zit ten opzichte van de augustusversie:** beide lijsten in een
+`autoscroll`-div (dat is ook de "spacing" die de note noemt), de tabel wordt
+gerenderd op basis van het totaal in plaats van de geladen pagina, de twee
+redirect-helpers heten nu `members_settings_url_params` en
+`group_users_url_params`, en de commentaren zijn ingekort.
+
+**Alles daarvan is op deze branch overgenomen** (`8067e231c`), zodat het verschil
+met wat naar trunk gaat nog precies uit één ding bestaat: onze clamp. Geraakte
+suites daarna: **184 runs, 858 assertions, 0 failures, 0 errors**. RuboCop op de
+vier gewijzigde Ruby-bestanden: 1 offence, en die staat op een bestaande regel
+van upstream (`Rails/StrongParametersExpect` in `groups_controller.rb:169`).
+
+**De clamp is niet ingehaald.** Takenori's tweede ronde haalt de melding "No data
+to display" weg, maar toont bij een pagina buiten bereik nog steeds een lege
+tabel. Gemeten met hetzelfde verzoek (`members_page=99`, `per_page_options`
+`2,5`, project 1): upstream ronde twee geeft **0 rijen**, deze branch geeft er
+**1** — de laatste pagina die wél bestaat. Het voorstel uit het dossier staat dus
+nog steeds, en dit is het moment om het als note te plaatsen, nu er twee mensen
+actief meekijken.
 
 ## Wat het doet
 
