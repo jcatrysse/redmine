@@ -11,6 +11,35 @@ issue: "43701"
 
 # search-token-limit — status
 
+## Go MAEDA reageerde, en er ligt een tegenvoorstel (2026-09-25)
+
+**Op [#43701](https://www.redmine.org/issues/43701) heeft Go MAEDA geantwoord.**
+Hij is het eens dat stil zoekwoorden weglaten een probleem is, maar wil de
+limiet houden "to prevent costly database queries", en heeft
+[#44464](https://www.redmine.org/issues/44464) ingediend: limiet blijft 5, maar
+er verschijnt een waarschuwing die zegt welke termen gebruikt zijn. Die staat al
+op *Candidate for next major release*.
+
+**Hij reageert op de patch van januari, niet op de onze.** De enige bijlage op
+#43701 is Jans 5.1-patch van 2026-01-21, die de limiet instelbaar maakte met
+0 = onbeperkt — ook voor de globale zoekfunctie. Onze herontworpen patch (limiet
+blijft 5 in de `Fetcher`, alleen de tekstfilters worden onbeperkt) is daar nooit
+geplaatst.
+
+**Zijn patch conflicteert met de onze.** Nagegaan op trunk `e3962939c`: zijn
+patch applyt schoon, de onze ook, maar de onze applyt **niet** meer bovenop de
+zijne — `lib/redmine/search.rb` en `test/unit/lib/redmine/search_test.rb` botsen
+allebei. Landt #44464 eerst, dan moet onze patch herwerkt worden.
+
+**En er is nu een meting, want geen van beide kanten had er een.** Zie
+`bench/README.md` in deze map, met de scripts erbij. Kort: de globale
+zoekfunctie wordt van 1 naar 50 tokens niet meetbaar duurder (729-850 ms op
+50 000 issues), een filter met *selectieve* termen wordt goedkoper naarmate er
+termen bij komen (443 ms bij één, 208 ms bij twintig), en er is één echt
+slecht geval — `contains` met termen die in élke rij staan, 375 ms bij één term
+en 6 808 ms bij twintig. Dat laatste geeft Go MAEDA voor een deel gelijk, en dat
+hoort in de note te staan.
+
 ## Waar het staat
 
 Ronde 3 (blinde herreview, 2026-09-08) is gedaan: **nul bevindingen over de
