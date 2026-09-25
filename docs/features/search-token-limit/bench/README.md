@@ -69,3 +69,95 @@ PostgreSQL 16, one container, no concurrent load, descriptions of a uniform
 are below the 20-term rows because PostgreSQL stops evaluating a row at the
 first clause that fails, and at that width the plan changes; treat the shape as
 the finding, not the individual milliseconds.
+
+---
+
+# Can the query be optimised instead? Measured 2026-09-25
+
+Jan's follow-up question: is there a maintainable way to fix the heavy query,
+or is the SQL already optimal? Same database, same 50 000 issues.
+
+## What the query looks like
+
+`Redmine::Database.like` emits, on PostgreSQL:
+
+```sql
+description ILIKE '%term%'                      -- without the unaccent extension
+unaccent(description) ILIKE unaccent('%term%')  -- with it, picked up automatically
+```
+
+A leading `%` means no btree index can be used, so both are a sequential scan
+out of the box.
+
+## 1. A GIN trigram index, without unaccent
+
+```sql
+CREATE EXTENSION pg_trgm;
+CREATE INDEX idx_issues_desc_trgm ON issues USING gin (description gin_trgm_ops);
+```
+
+| Query | seq scan | with the index | rows |
+|---|---|---|---|
+| 5 selective terms, AND | 458 ms | **3.8 ms** | 1 |
+| 20 terms present in every row, AND | 2 175 ms | 2 398 ms | 50 000 |
+| 20 selective terms, OR | 1 093 ms | 1 033 ms | 46 265 |
+| 3 selective terms, OR | 1 087 ms | 1 053 ms | 15 790 |
+
+**120× on the query a user actually means, and nothing at all on the queries
+that return most of the table.** PostgreSQL correctly stays on the sequential
+scan there: an index cannot prune when 92 % of the rows match.
+
+Cost: the index is **22 MB against a 56 MB table**, built in 6 s, and it makes
+writes slower — updating 5 000 descriptions took **226 ms without it and
+1 096 ms with it**.
+
+## 2. The same index is useless as soon as `unaccent` is installed
+
+Redmine switches to `unaccent(description) ILIKE unaccent(...)` on its own when
+the extension is present. Measured with the trigram index in place:
+
+| | plan | time |
+|---|---|---|
+| `unaccent(description) ILIKE unaccent('%term313%')` | Seq Scan | 704 ms |
+| `immutable_unaccent(description) ILIKE immutable_unaccent('%term313%')` | Bitmap Index Scan | **45 ms** |
+
+Indexing the expression Redmine writes is not possible:
+
+```
+ERROR:  functions in index expression must be marked IMMUTABLE
+```
+
+`unaccent` is `STABLE`, not `IMMUTABLE`. You can wrap it —
+
+```sql
+CREATE FUNCTION immutable_unaccent(text) RETURNS text
+  LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT
+  AS $$ SELECT unaccent('unaccent', $1) $$;
+```
+
+— and index *that*, but PostgreSQL only uses the index when the query names the
+same expression, and Redmine names `unaccent`. So on an installation with
+unaccent enabled, **the text filters cannot use an index at all without a change
+in Redmine itself**. That is worth its own issue; it is not part of #43701.
+
+## 3. What this says about the limit
+
+The queries that hurt are the ones that return most of the table, and those are
+already slow at five terms: five terms present in every row cost 1 587 ms and
+return all 50 000 rows. Capping the input at five does not prevent an expensive
+query — it only prevents a *precise* one, which is the cheap kind. **Cost tracks
+rows returned, not terms typed.**
+
+So if a guard is wanted, guard the cost:
+
+```yaml
+production:
+  adapter: postgresql
+  variables:
+    statement_timeout: 10000
+```
+
+Rails passes `variables:` to the connection, PostgreSQL and MySQL both have it,
+it needs no code, and it stops exactly the runaway query while leaving every
+good one alone. Caveat: set on the connection it applies to migrations and rake
+tasks as well, so it belongs on the web role rather than in one shared entry.
