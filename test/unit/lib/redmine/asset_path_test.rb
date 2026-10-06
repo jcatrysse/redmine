@@ -43,4 +43,33 @@ class Redmine::AssetPathTest < ActiveSupport::TestCase
     assert_not_nil @assets['plugin_assets/foo/foo.css']
     assert_not_nil @assets['plugin_assets/foo/foo.svg']
   end
+
+  def test_application_paths_first_puts_gems_under_rails_root_behind_the_application
+    root = '/srv/redmine'
+    paths = [
+      '/srv/redmine/app/assets/javascripts',
+      '/srv/redmine/vendor/bundle/ruby/3.3.0/gems/somegem-1.0/app/assets/javascripts',
+      '/usr/local/bundle/gems/othergem-2.0/app/assets/javascripts',
+      '/srv/redmine/app/javascript',
+      '/srv/redmine/vendor/javascript'
+    ]
+    sorted = Redmine::AssetPath.application_paths_first(
+      paths, root: root, gem_dirs: ['/srv/redmine/vendor/bundle/ruby/3.3.0', '/usr/local/bundle']
+    )
+    assert_equal [
+      '/srv/redmine/app/assets/javascripts',
+      '/srv/redmine/app/javascript',
+      '/srv/redmine/vendor/javascript',
+      '/srv/redmine/vendor/bundle/ruby/3.3.0/gems/somegem-1.0/app/assets/javascripts',
+      '/usr/local/bundle/gems/othergem-2.0/app/assets/javascripts'
+    ], sorted
+  end
+
+  def test_application_asset_paths_come_before_gem_asset_paths
+    gem_dirs = [Bundler.bundle_path, *Gem.path].map {|dir| File.expand_path(dir.to_s) + '/'}
+    in_gem = Rails.application.config.assets.paths.map {|path| gem_dirs.any? {|dir| File.expand_path(path.to_s).start_with?(dir)}}
+    assert_equal in_gem.sort_by {|gem| gem ? 1 : 0}, in_gem
+    assert_equal Rails.root.join('vendor/javascript/chart.min.js').to_s,
+                 Rails.application.assets.load_path.find('chart.min.js').path.to_s
+  end
 end
