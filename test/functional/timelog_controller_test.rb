@@ -199,6 +199,15 @@ class TimelogControllerTest < Redmine::ControllerTest
     assert_select 'a[href=?]', '/projects/ecookbook/time_entries', {:text => 'Cancel'}
   end
 
+  def test_get_edit_with_back_url_as_array_should_not_fail
+    @request.session[:user_id] = 2
+
+    get :edit, :params => {:id => 2, :project_id => nil, :back_url => ['/valid']}
+    assert_response :success
+    assert_select 'input[name=back_url]', 0
+    assert_select 'a[href=?]', '/projects/ecookbook/time_entries', {:text => 'Cancel'}
+  end
+
   def test_get_edit_with_an_existing_time_entry_with_locked_user
     user = User.find(3)
     entry = TimeEntry.generate!(:user_id => user.id, :comments => "Time entry on a future locked user")

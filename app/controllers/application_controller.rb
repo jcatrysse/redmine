@@ -495,7 +495,7 @@ class ApplicationController < ActionController::Base
   end
 
   def back_url
-    url = params[:back_url]
+    url = params[:back_url] if params[:back_url].is_a?(String)
     if url.nil? && referer = request.env['HTTP_REFERER']
       url = CGI.unescape(referer.to_s)
     end
