@@ -170,11 +170,13 @@ makes the default configuration correct without one.
 
 **Evidence (INV-8 — figures, not claims):**
 
-- **full** suite with the patch, `tools/test-env.sh <worktree> bundle exec ruby bin/rails test:all`
-  → see `status.md` "Bewijs" for the final figures and the comparison with
-  pristine trunk (same failure names).
-- pristine trunk r25136, same command, non-system part:
-  `6100 runs, 32296 assertions, 27 failures, 2 errors, 82 skips`.
+- **full** suite with the patch, `bin/rails test:all` (system tests included):
+  `6101 runs, 32301 assertions, 27 failures, 2 errors, 82 skips`.
+- pristine trunk r25136, same command:
+  `6100 runs, 32296 assertions, 27 failures, 2 errors, 82 skips` — the same 29
+  failing test names on both runs (27 of them repository and SCM tests, plus
+  one `UserTest` and one API issues test, all failing on pristine trunk in this
+  environment), so the patch adds one passing test and changes nothing else.
 - RuboCop on `app/models/mailer.rb` and `test/unit/mailer_test.rb`: **0**
   offences with the patch, **0** at the merge base.
 - the new test is red on the old code: with `app/models/mailer.rb` stashed it
@@ -254,10 +256,10 @@ before run was repeated with it.
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** zie `status.md` (`geoxyz_commit`)
-- **Suites daar groen:** zie `status.md` "Bewijs"
+- **Commit op `7.0-stable-GEOxyz`:** `e1e759c47` (dezelfde wijziging als de patch, schoon toegepast; `tools/check-symmetry.sh` PASS)
+- **Suites daar groen:** `test:all` op `e1e759c47`: `6194 runs, 32668 assertions, 0 failures, 0 errors, 28 skips`
 - **`nl.yml` toegevoegd:** n.v.t., geen vertalingen
-- **`tools/check-geoxyz-branch.sh`:** zie `status.md`
+- **`tools/check-geoxyz-branch.sh`:** ok voor deze commit; zie `status.md` voor de drie commits van parallelle sessies die de run op 2026-10-07 deden falen
 - **Wanneer kan deze commit vervallen?** Pas als GEOxyz naar de Redmine-release
   gaat die de patch bevat (op zijn vroegst 7.1). Tot dan blijven ook de
   wachtlussen in de crons van issue_recurring en redmine_ai_triage gewoon

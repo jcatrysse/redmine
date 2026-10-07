@@ -13,6 +13,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`back-url-array`](features/back-url-array/status.md) | Geen HTTP 500 meer als back_url als lijst (back_url[]=...) binnenkomt | `-` | live (`0f4317246`) | patch klaar | — |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901 + 012ab39e0`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`dc6dad120 + dd063fa8b + f5ed23c8e`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
+| [`rake-webhook-flush`](features/rake-webhook-flush/status.md) | Webhooks gaan niet meer verloren in de rake-taken die mail ontvangen | `-` | live (`e1e759c47`) | patch klaar | — |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`ff0d23b62 + 755d763a8 + 88d597548`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`6695461bd + 1cd7091fd`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
 | [`version-subprojects`](features/version-subprojects/status.md) | Doelversiefilter biedt ook de versies van de subprojecten in de query | `89752a599` | live (`fd35bd2d1 + 157c171a5 + 74f343d3d + 73157aee5 + 43246a900`) | patch klaar | [#43534](https://www.redmine.org/issues/43534) |
@@ -30,7 +31,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-20 features: 10 patch klaar, 7 nooit, 2 vervallen, 1 geaccepteerd.
+21 features: 11 patch klaar, 7 nooit, 2 vervallen, 1 geaccepteerd.
 
 ## Nu in behandeling
 
@@ -297,6 +298,16 @@ Er staat verder niets meer voor jou open: K-10 (de bovengrens) is beslist —
 optie C, 20.
 
 De Engelse tekst voor de note staat in `dossier.md` vanaf "The problem".
+
+### `rake-webhook-flush`
+
+Op redmine.org een issue aanmaken met de Engelse tekst van
+`docs/features/rake-webhook-flush/dossier.md` vanaf "The problem", met
+`patches/rake-webhook-flush/2026-10-07-r25136-feature.patch` erbij en
+`before-receiver.png` / `after-receiver.png` als voor/na; daarna het nummer hier
+invullen. En K-24 in `docs/DECISIONS.md` bevestigen (aanbeveling: A, zoals
+gebouwd). Voor het indienen de mirror syncen (41 commits achter op 2026-10-07)
+en `tools/check-patch-clean.sh rake-webhook-flush --submit` draaien.
 
 ### `revision-branches`
 
