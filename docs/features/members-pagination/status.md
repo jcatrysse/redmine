@@ -74,6 +74,35 @@ tabel. Gemeten met hetzelfde verzoek (`members_page=99`, `per_page_options`
 nog steeds, en dit is het moment om het als note te plaatsen, nu er twee mensen
 actief meekijken.
 
+## #43355 is gecommit en gesloten (2026-09-12), vastgesteld 2026-10-07
+
+**Marius BĂLTEANU heeft beide patches van Takenori gecommit** en het issue
+gesloten op 2026-09-12, met target version **7.1.0**: *"Both patches committed,
+thanks for the nice work!"* Daarna zijn er nog drie commits aan gedaan:
+`ab287cb0c` (dubbele `tab`-parameter in de paginatielinks), `2b65c1dbd`
+(`paginate_members` vereenvoudigd tot `project.memberships.sorted.pluck(...)`)
+en `e8515b4d2` (extra testdekking voor members destroy en group add_users via
+XHR).
+
+**Twee gevolgen, en allebei vragen ze actie.**
+
+1. **Onze clamp is niet meegegaan.** De note die klaarligt in `dossier.md` onder
+   "The note to post on #43355" is nooit geplaatst, en het issue is nu dicht.
+   Gecontroleerd op trunk `e3962939c`: `paginate_members` daar heeft geen clamp,
+   dus een pagina buiten bereik toont nog steeds een lege tabel in plaats van de
+   laatste pagina die wél rijen heeft. De verbetering moet dus naar een **nieuw
+   issue**, niet meer naar #43355. De tekst van de note is herbruikbaar, maar de
+   diff moet opnieuw tegen de gecommitte versie gezet worden, want die is
+   intussen vereenvoudigd.
+2. **Onze GEOxyz-versie wijkt nu af van trunk.** Wij draaien nog de
+   `left_joins(:member_roles => :role)`-variant uit Takenori's tweede ronde;
+   trunk gebruikt sinds `2b65c1dbd` `Member.sorted`. Dat is dezelfde bedoeling in
+   minder regels. Zolang die afwijking er staat is de latere upgrade naar 7.1
+   geen no-op meer, dus hem gelijktrekken is de volgende stap voor deze feature.
+
+Niets hiervan is kapot: wat GEOxyz draait werkt en is getest. Het is
+achterstand op upstream, geen defect.
+
 ## Wat het doet
 
 De tab *Leden* in de projectinstellingen en de tab *Gebruikers* van een groep
