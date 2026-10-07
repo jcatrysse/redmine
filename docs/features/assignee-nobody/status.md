@@ -37,7 +37,7 @@ gebruikers kiezen, dus "van Jan, of van niemand" in één filter. Dat kon niet.
 ## Bewijs
 
 - Volledige suite met patch (r25136): `test:all` in `/home/user/wt/patch-assignee-nobody` → **6114 runs, 32319 assertions, 27 failures, 2 errors, 82 skips**
-- Volledige suite op schone trunk r25136: TRUNK_LINE
+- Volledige suite op schone trunk r25136: **6100 runs, 32296 assertions, 27 failures, 2 errors, 82 skips**, faalnamen identiek: **ja**, alle 29 (repository- en changesettests die `svn`/`hg`/`bzr`/`cvs` nodig hebben; die ontbreken in deze container). Verschil 14 runs = precies de 14 nieuwe tests
 - Volledige suite op `7.0-stable-GEOxyz` (fix + upstream-merge, vóór de replay op twee commits van een andere sessie): `test:all` → **6189 runs, 32654 assertions, 0 failures, 0 errors, 28 skips** — helemaal groen. Op de uiteindelijke tip `5c2dcdd7a` nog eens `query_test`, `user_query_test`, `queries_controller_test` en `issues_controller_test` in één proces: **886 runs, 4371 assertions, 0 failures, 0 errors**
 - RuboCop op de vier gewijzigde bestanden: 0 (baseline 0 op `origin/master` r25136). `check-geoxyz-branch.sh`: 8 offences op 67 bestanden, alle 8 al op upstreams eigen regels (baseline 8)
 - Rood op de oude code: `test_sql_for_field_should_accept_nil_value_for_operators_without_values` geeft op de vorige patch (`d0243086d`, herzet op r25136) en op `7.0-stable-GEOxyz` vóór `5c2dcdd7a` precies de gemelde fout, `NoMethodError: undefined method 'include?' for nil`, en is groen op schone trunk r25136 — hij pint trunks contract vast. De eerdere mutatiecijfers (haakjes, poorten, de twee helften van `ev`) staan in het dossier en zijn door deze wijziging niet geraakt

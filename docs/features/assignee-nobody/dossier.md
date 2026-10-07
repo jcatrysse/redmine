@@ -255,34 +255,39 @@ Both halves of the `ev` disjunction are pinned by that: issue 1 matches through
 `journal_details.old_value`, issue 4 through the column's current value, so
 dropping either half changes the expected ids.
 
-**Evidence (INV-8), re-run against trunk r25037 on 2026-09-05:**
+**Evidence (INV-8), re-run against trunk r25136 on 2026-10-07:**
 
 - full suite with the patch, system tests included: `bin/rails test:all` in
-  `/home/user/wt/patch-assignee-nobody` → **5990 runs, 31732 assertions,
-  27 failures, 2 errors, 92 skips**
-- full suite on a pristine trunk worktree at the same revision → **5977 runs,
-  31706 assertions, 28 failures, 2 errors, 92 skips**
-- the 29 failing names with the patch are a **strict subset** of trunk's 30.
-  They are repository and changeset tests needing `svn`, `hg`, `bzr` or `cvs`,
-  none of which exist in this container. The one name trunk has and the patched
-  run does not is `IssuesSystemTest#test_change_watch_or_unwatch_icon_from_sidebar`
-  (`expected "/my/page" to equal "/login"`), a login race in a Selenium test
-  that touches no query code. The run count differs by 13, which is exactly the
-  number of tests this patch adds.
+  `/home/user/wt/patch-assignee-nobody` → **6114 runs, 32319 assertions,
+  27 failures, 2 errors, 82 skips**
+- full suite on a pristine trunk worktree at the same revision → **6100 runs,
+  32296 assertions, 27 failures, 2 errors, 82 skips**
+- the 29 failing names are **identical** on both sides. They are repository and
+  changeset tests needing `svn`, `hg`, `bzr` or `cvs`, none of which exist in
+  this container. The run count differs by 14, which is exactly the number of
+  tests this patch adds.
 - RuboCop on `app/models/query.rb`, `test/unit/query_test.rb`,
   `test/unit/user_query_test.rb` and
   `test/functional/queries_controller_test.rb`: **0** offences (baseline on the
-  same four files at `origin/master` r25037: **0**)
+  same four files at `origin/master` r25136: **0**)
 - new tests verified red on the old code. With `app/models/query.rb` reverted to
-  `origin/master` and the tests left in place, the eleven `nobody` tests in
-  `query_test.rb` give **2 failures, 7 errors** (the two gate tests pass there,
-  correctly — with no patch there is nothing to gate) and the two in
-  `user_query_test.rb` give **2 errors**. Per mutation, on the patched code:
-  parentheses removed → 2 failures, with `[1, 2, 3, 4, 7, 8, 9]` where `[8]` is
-  expected; both gates removed → 2 failures; the current-value half of `ev`
-  removed → 2 failures; the journal half removed → 3 errors.
-- patch applies to pristine `origin/master` r25037: **yes**
-- `tools/check-patch-clean.sh assignee-nobody --submit`: **PASS**
+  `origin/master` and the tests left in place (measured on r25037, 2026-09-05),
+  the eleven `nobody` tests in `query_test.rb` give **2 failures, 7 errors**
+  (the two gate tests pass there, correctly — with no patch there is nothing to
+  gate) and the two in `user_query_test.rb` give **2 errors**. Per mutation, on
+  the patched code: parentheses removed → 2 failures, with
+  `[1, 2, 3, 4, 7, 8, 9]` where `[8]` is expected; both gates removed →
+  2 failures; the current-value half of `ev` removed → 2 failures; the journal
+  half removed → 3 errors.
+- `test_sql_for_field_should_accept_nil_value_for_operators_without_values` is
+  red on the previous version of this patch (r25136 plus `d0243086d`):
+  `NoMethodError: undefined method 'include?' for nil`. It is **green on
+  pristine trunk**, on purpose: it pins a contract trunk already honours, which
+  the earlier version of the patch broke.
+- patch applies to pristine `origin/master` r25136: **yes**; to real trunk
+  r25215 (41 commits further, mirror not synced): **yes**, by `git apply --check`
+- `tools/check-patch-clean.sh assignee-nobody`: **PASS**. `--submit` is Jan's
+  step after the mirror sync (K-19).
 
 # Live verification (G9)
 
