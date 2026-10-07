@@ -10,6 +10,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`349fe1860 + 9ad87a11b`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
+| [`back-url-array`](features/back-url-array/status.md) | Geen HTTP 500 meer als back_url als lijst (back_url[]=...) binnenkomt | `-` | live (`0f4317246`) | patch klaar | — |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901 + 012ab39e0`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`dc6dad120 + dd063fa8b + f5ed23c8e`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`ff0d23b62 + 755d763a8 + 88d597548`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
@@ -28,7 +29,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-18 features: 9 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+19 features: 10 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
 
 ## Nu in behandeling
 
@@ -115,6 +116,15 @@ PostgreSQL en `cf` gaf stil nul resultaten.
 
 Draai vlak daarvoor `tools/check-patch-clean.sh assignee-nobody --submit`; is
 trunk intussen verder gelopen, dan ververst een sessie de patch eerst (g05).
+
+### `back-url-array`
+
+Mirror syncen (`docs/runbook.md`, 41 commits achter), dan op redmine.org een
+**Defect** aanmaken: titel "Error 500 when back_url is passed as an array",
+tekst = de Engelse secties van `docs/features/back-url-array/dossier.md` (The
+problem t/m Tests), met `patches/back-url-array/2026-10-07-r25136-feature.patch`
+en de screenshots `before-context-menu-array.png` / `context-menu-array.png`
+erbij. Daarna het issuenummer in de front matter zetten.
 
 ### `imap-oauth`
 
