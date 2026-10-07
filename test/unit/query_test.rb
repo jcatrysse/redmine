@@ -1203,6 +1203,15 @@ class QueryTest < ActiveSupport::TestCase
     assert_equal [matching.id], find_issues_with_query(query).map(&:id)
   end
 
+  def test_sql_for_field_should_accept_nil_value_for_operators_without_values
+    query = IssueQuery.new(:name => '_')
+
+    assert_equal "#{Issue.table_name}.assigned_to_id IS NULL",
+                 query.send(:sql_for_field, 'assigned_to_id', '!*', nil, Issue.table_name, 'assigned_to_id')
+    assert_equal "#{Issue.table_name}.assigned_to_id IS NOT NULL",
+                 query.send(:sql_for_field, 'assigned_to_id', '*', nil, Issue.table_name, 'assigned_to_id')
+  end
+
   def test_filter_notes
     user = User.generate!
     Journal.create!(:user_id => user.id, :journalized => Issue.find(2), :notes => 'Notes.')

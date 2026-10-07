@@ -1257,7 +1257,7 @@ class Query < ApplicationRecord
   def sql_for_field(field, operator, value, db_table, db_field, is_custom_filter=false)
     sql = ''
     match_null =
-      !is_custom_filter && value.include?('none') &&
+      !is_custom_filter && Array(value).include?('none') &&
       [:list_optional, :list_optional_with_history].include?(type_for(field))
     value -= ['none'] if match_null
     case operator
