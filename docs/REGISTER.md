@@ -9,7 +9,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
-| [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`349fe1860 + 9ad87a11b`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
+| [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`349fe1860 + 9ad87a11b + 5c2dcdd7a`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
 | [`back-url-array`](features/back-url-array/status.md) | Geen HTTP 500 meer als back_url als lijst (back_url[]=...) binnenkomt | `-` | live (`0f4317246`) | patch klaar | — |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901 + 012ab39e0`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`dc6dad120 + dd063fa8b + f5ed23c8e`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
@@ -115,15 +115,19 @@ en mag weg.
 
 ### `assignee-nobody`
 
-Hang `patches/assignee-nobody/2026-09-05-r25037-feature.patch` als note aan
-[#5535](https://www.redmine.org/issues/5535), met de uitleg dat de afhandeling
-generiek in `Query#sql_for_field` zit en dat **alle zeven operatoren** gedekt
-zijn in plaats van alleen `=`. Dat is het inhoudelijke verschil met de
-bestaande patches: vier van die operatoren gaven daar een HTTP 500 op
-PostgreSQL en `cf` gaf stil nul resultaten.
-
-Draai vlak daarvoor `tools/check-patch-clean.sh assignee-nobody --submit`; is
-trunk intussen verder gelopen, dan ververst een sessie de patch eerst (g05).
+1. Sync de mirror (`docs/runbook.md`, K-19): `origin/master` staat 41 commits
+   achter op trunk.
+2. Draai `tools/check-patch-clean.sh assignee-nobody --submit`.
+3. Hang `patches/assignee-nobody/2026-10-07-r25136-feature.patch` als note aan
+   [#5535](https://www.redmine.org/issues/5535), met de uitleg dat de
+   afhandeling generiek in `Query#sql_for_field` zit en dat **alle zeven
+   operatoren** gedekt zijn in plaats van alleen `=`. Vier van die operatoren
+   gaven bij de bestaande patches een HTTP 500 op PostgreSQL en `cf` gaf stil
+   nul resultaten.
+4. Op productie: de helpdeskrapporten en de 9 tests van
+   `redmine_contacts_helpdesk` opnieuw bekijken na het uitrollen van
+   `5c2dcdd7a`. Die plugin zit niet in deze repo, dus dat is hier niet
+   gedraaid.
 
 ### `back-url-array`
 
