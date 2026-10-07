@@ -2,8 +2,8 @@
 slug: asset-paths-gem-order
 feature: gems in vendor/bundle achter de assetpaden van core (Chart.js van RedmineUP brak core-grafieken)
 commit_51: -
-geoxyz: live
-geoxyz_commit: 6abebe886
+geoxyz: n.v.t.
+geoxyz_commit: 6abebe886 + 1bf0ef69b
 upstream: nooit
 patch:
 issue:
@@ -68,11 +68,12 @@ Propshaft de paden van gems weer achter die van Redmine.
 
 ## Wat Jan nog moet doen
 
-1. De revert op `7.0-stable-GEOxyz` zetten (de sessie mocht niet pushen):
-   `git checkout 7.0-stable-GEOxyz && git pull && git revert --no-edit 6abebe886 && git push`,
-   en de sha van die revert achter `6abebe886` in `geoxyz_commit` van
-   `docs/features/asset-paths-gem-order/status.md` zetten (K-21), daarna
-   `tools/register.sh --write`.
+1. ~~De revert op `7.0-stable-GEOxyz` zetten.~~ Gedaan op 2026-10-07 door de
+   coördinerende sessie, op Jans uitdrukkelijke vraag: `1bf0ef69b` (revert van
+   `6abebe886`, als Jan Catrysse, zonder trailers), gepusht met
+   `tools/session-push.sh`; `geoxyz_commit` bijgewerkt (K-21) en het register
+   opnieuw gegenereerd. GEOxyz draait deze feature dus niet als code: de
+   serverregel hieronder is de oplossing.
 2. Op de productieserver in `config/additional_environment.rb`:
    `if (spec = Gem.loaded_specs['redmineup'])` /
    `config.assets.excluded_paths += Dir[File.join(spec.full_gem_path, 'app/assets/*')]` /

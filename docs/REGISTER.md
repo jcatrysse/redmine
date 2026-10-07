@@ -22,7 +22,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`c077d96df + 1fd3343ff + 6078281ff + cf0dda572`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
 | [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`8612a76f4 + bc745ce73 + 22daa7c96 + 5b04c5c15 + bf5b41a0d`) | nooit | — |
-| [`asset-paths-gem-order`](features/asset-paths-gem-order/status.md) | gems in vendor/bundle achter de assetpaden van core (Chart.js van RedmineUP brak core-grafieken) | `-` | live (`6abebe886`) | nooit | — |
+| [`asset-paths-gem-order`](features/asset-paths-gem-order/status.md) | gems in vendor/bundle achter de assetpaden van core (Chart.js van RedmineUP brak core-grafieken) | `-` | n.v.t. (`6abebe886 + 1bf0ef69b`) | nooit | — |
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | live (`075c86e8a + 363686456`) | nooit | — |
 | [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key, de credentials-map en credentials.yml.enc negeren | `8ec9951d3` | live (`af0af806d + 737b0a549`) | nooit | — |
@@ -106,11 +106,12 @@ niets aan te doen en het gebeurt precies één keer.
 
 ### `asset-paths-gem-order`
 
-1. De revert op `7.0-stable-GEOxyz` zetten (de sessie mocht niet pushen):
-   `git checkout 7.0-stable-GEOxyz && git pull && git revert --no-edit 6abebe886 && git push`,
-   en de sha van die revert achter `6abebe886` in `geoxyz_commit` van
-   `docs/features/asset-paths-gem-order/status.md` zetten (K-21), daarna
-   `tools/register.sh --write`.
+1. ~~De revert op `7.0-stable-GEOxyz` zetten.~~ Gedaan op 2026-10-07 door de
+   coördinerende sessie, op Jans uitdrukkelijke vraag: `1bf0ef69b` (revert van
+   `6abebe886`, als Jan Catrysse, zonder trailers), gepusht met
+   `tools/session-push.sh`; `geoxyz_commit` bijgewerkt (K-21) en het register
+   opnieuw gegenereerd. GEOxyz draait deze feature dus niet als code: de
+   serverregel hieronder is de oplossing.
 2. Op de productieserver in `config/additional_environment.rb`:
    `if (spec = Gem.loaded_specs['redmineup'])` /
    `config.assets.excluded_paths += Dir[File.join(spec.full_gem_path, 'app/assets/*')]` /
