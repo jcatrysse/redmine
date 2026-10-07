@@ -3,9 +3,9 @@ slug: assignee-nobody
 feature: Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter
 commit_51: 9b03b74b2
 geoxyz: live
-geoxyz_commit: 349fe1860 + 9ad87a11b
+geoxyz_commit: 349fe1860 + 9ad87a11b + 5c2dcdd7a
 upstream: patch klaar
-patch: patches/assignee-nobody/2026-09-05-r25037-feature.patch
+patch: patches/assignee-nobody/2026-10-07-r25136-feature.patch
 issue: "5535"
 ---
 
@@ -13,18 +13,21 @@ issue: "5535"
 
 ## Waar het staat
 
-Ronde 2 is af. De review van 2026-09-03 gaf negen bevindingen, waarvan één
-echte fout in de code: het gevouwen NULL-fragment kwam zonder haakjes terug,
-en `UserQuery#sql_for_is_member_of_group_field` plakt dat fragment achter een
-`AND` binnen een `EXISTS`. De `OR` ontsnapte daar, waardoor het gebruikersfilter
-"lid van groep" met de waarde `none` erbij *alle* gebruikers teruggaf in plaats
-van de leden van die groep. Dat is gerepareerd door het fragment zelfstandig te
-maken (haakjes), niet door die ene aanroeper te repareren — `sql_for_field`
-heeft 31 aanroepers. Alle negen bevindingen hebben een `Resolution:`-regel.
+Ronde 2026-10-07 is af (Jans keuze core-q1, optie A). De patch crashte met
+`NoMethodError: undefined method 'include?' for nil` als een aanroeper
+`sql_for_field` een filter zonder waarde gaf: de nieuwe `none`-poort las
+`value` voordat de operator bekend was, terwijl trunk `nil` voor `*`, `!*`
+en de andere waardeloze operatoren gewoon aanvaardt. Core zelf doet dat nooit
+(`Query#statement` slaat een lege waarde over), `redmine_contacts_helpdesk`
+wel: 9 testfouten en HTTP 500 in de helpdeskrapporten op `7.0-stable-GEOxyz`.
+Gerepareerd met `Array(value)` in de poort, plus één test die `sql_for_field`
+met `nil` aanroept en trunks SQL terugverwacht. Op beide kanten: de patch is in
+zijn ene commit bijgewerkt en meteen herzet op trunk r25136; GEOxyz kreeg een
+eigen commit `5c2dcdd7a`.
 
-De patchbranch is opnieuw op trunk r25037 gezet (g05), de bewijscijfers zijn
-opnieuw gedraaid en alle screenshots zijn opnieuw gemaakt, met twee nieuwe:
-hetzelfde gebruikersfilter vóór en ná de fix.
+Daarvoor: ronde 2 loste de enige echte codefout van de review op (het gevouwen
+NULL-fragment is zelfstandig, met haakjes), ronde 3, 4 en Codex vonden niets
+meer in de code.
 
 ## Wat het doet
 
@@ -33,39 +36,30 @@ gebruikers kiezen, dus "van Jan, of van niemand" in één filter. Dat kon niet.
 
 ## Bewijs
 
-- Volledige suite met patch: `test:all` in `/home/user/wt/patch-assignee-nobody` → **5990 runs, 31732 assertions, 27 failures, 2 errors, 92 skips**
-- Volledige suite op schone trunk r25037: **5977 runs, 31706 assertions, 28 failures, 2 errors, 92 skips**, faalnamen identiek: ja, op één na, en die
-  ene staat op **trunk** en niet bij ons: trunk faalt daarnaast op
-  `IssuesSystemTest#test_change_watch_or_unwatch_icon_from_sidebar`
-  (`expected "/my/page" to equal "/login"`, een inlograce in een Selenium-test).
-  De 29 faalnamen met de patch zijn dus een echte deelverzameling van trunks 30.
-  Het verschil in runs is 13 — precies de dertien nieuwe tests
-- Volledige suite op `7.0-stable-GEOxyz`: `test:all` → **6102 runs, 32270 assertions, 0 failures, 0 errors, 39 skips** — helemaal groen
-- RuboCop op de vier gewijzigde bestanden: 0 (baseline 0, gemeten op
-  `origin/master` r25037). Op de GEOxyz-branch 1 (baseline 1): één
-  `Style/DirectiveScope` op `query.rb`, die letterlijk zo in `origin/7.0-stable`
-  staat en die trunk zelf al opgeruimd heeft — niet van ons, dus niet gefixt
-  (INV-1)
-- Rood op de oude code: de elf `nobody`-tests in `query_test.rb` geven op schone
-  trunk 2 failures en 7 errors (twee poorttests slagen daar, want zonder de
-  patch is er niets te vouwen); de twee in `user_query_test.rb` geven 2 errors.
-  Per mutatie: haakjes eruit → 2 failures; beide poorten eruit → 2 failures;
-  de huidige-waarde-helft van `ev` eruit → 2 failures; de journaal-helft eruit
-  → 3 errors
-- `tools/check-patch-clean.sh`: **CLEAN** · `tools/check-geoxyz-branch.sh`: **PASS**
-- Screenshots: 17 (8 voor, 8 na, 1 regressie), gelezen: ja
+- Volledige suite met patch (r25136): `test:all` in `/home/user/wt/patch-assignee-nobody` → **6114 runs, 32319 assertions, 27 failures, 2 errors, 82 skips**
+- Volledige suite op schone trunk r25136: TRUNK_LINE
+- Volledige suite op `7.0-stable-GEOxyz` (fix + upstream-merge, vóór de replay op twee commits van een andere sessie): `test:all` → **6189 runs, 32654 assertions, 0 failures, 0 errors, 28 skips** — helemaal groen. Op de uiteindelijke tip `5c2dcdd7a` nog eens `query_test`, `user_query_test`, `queries_controller_test` en `issues_controller_test` in één proces: **886 runs, 4371 assertions, 0 failures, 0 errors**
+- RuboCop op de vier gewijzigde bestanden: 0 (baseline 0 op `origin/master` r25136). `check-geoxyz-branch.sh`: 8 offences op 67 bestanden, alle 8 al op upstreams eigen regels (baseline 8)
+- Rood op de oude code: `test_sql_for_field_should_accept_nil_value_for_operators_without_values` geeft op de vorige patch (`d0243086d`, herzet op r25136) en op `7.0-stable-GEOxyz` vóór `5c2dcdd7a` precies de gemelde fout, `NoMethodError: undefined method 'include?' for nil`, en is groen op schone trunk r25136 — hij pint trunks contract vast. De eerdere mutatiecijfers (haakjes, poorten, de twee helften van `ev`) staan in het dossier en zijn door deze wijziging niet geraakt
+- `tools/check-patch-clean.sh`: **PASS** · `tools/check-geoxyz-branch.sh`: **PASS** (op `origin/7.0-stable-GEOxyz` na de push, met de RuboCop-wrapper uit `docs/traps.md`) · `tools/check-symmetry.sh`: **PASS**
+- Mirror: `origin/master` r25136 loopt **41 commits** achter op echte trunk r25215; geen raakt de vier bestanden, en het patchbestand applyt ook op r25215 (`git apply --check`). `--submit` faalt dus tot Jan synct (K-19)
+- Screenshots: 17 (8 voor, 8 na op r25136, 1 regressie van 2026-09-05) plus `nil-value-runner.txt`, gelezen: ja
 
 ## Wat Jan nog moet doen
 
-Hang `patches/assignee-nobody/2026-09-05-r25037-feature.patch` als note aan
-[#5535](https://www.redmine.org/issues/5535), met de uitleg dat de afhandeling
-generiek in `Query#sql_for_field` zit en dat **alle zeven operatoren** gedekt
-zijn in plaats van alleen `=`. Dat is het inhoudelijke verschil met de
-bestaande patches: vier van die operatoren gaven daar een HTTP 500 op
-PostgreSQL en `cf` gaf stil nul resultaten.
-
-Draai vlak daarvoor `tools/check-patch-clean.sh assignee-nobody --submit`; is
-trunk intussen verder gelopen, dan ververst een sessie de patch eerst (g05).
+1. Sync de mirror (`docs/runbook.md`, K-19): `origin/master` staat 41 commits
+   achter op trunk.
+2. Draai `tools/check-patch-clean.sh assignee-nobody --submit`.
+3. Hang `patches/assignee-nobody/2026-10-07-r25136-feature.patch` als note aan
+   [#5535](https://www.redmine.org/issues/5535), met de uitleg dat de
+   afhandeling generiek in `Query#sql_for_field` zit en dat **alle zeven
+   operatoren** gedekt zijn in plaats van alleen `=`. Vier van die operatoren
+   gaven bij de bestaande patches een HTTP 500 op PostgreSQL en `cf` gaf stil
+   nul resultaten.
+4. Op productie: de helpdeskrapporten en de 9 tests van
+   `redmine_contacts_helpdesk` opnieuw bekijken na het uitrollen van
+   `5c2dcdd7a`. Die plugin zit niet in deze repo, dus dat is hier niet
+   gedraaid.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
 
@@ -82,10 +76,21 @@ trunk intussen verder gelopen, dan ververst een sessie de patch eerst (g05).
 - Het fragment dat `sql_for_field` teruggeeft is **zelfstandig**. Dat was een
   ongeschreven afspraak van Redmine zelf en staat nu als één regel boven de
   methode. Repareer een toekomstige variant hiervan nooit bij de aanroeper.
+- `sql_for_field` moet `value = nil` blijven aanvaarden, zoals trunk: plugins
+  roepen hem zo aan. De poort leest daarom `Array(value)`; geen vroege
+  `return`, want die zou de operatortakken overslaan die trunk met `nil` gewoon
+  afhandelt. De test roept de methode direct aan omdat geen kernpad `nil`
+  doorgeeft.
+- Een plugin-filter van type `list_optional` met de letterlijke waarde `none`
+  verandert van betekenis; dat staat in het dossier als bewuste reservering
+  (ronde 4, F01), niet als codewijziging.
 - De vijf identieke `before-*.png` zijn Redmine's generieke 500-pagina en dat
   hoort zo; ze bewijzen dat die URL's klappen en verder niets. Het dossier zegt
-  dat nu ook.
+  dat ook.
+- De oude patchtip `d0243086d`, waar de bevindingen van ronde 3, 4 en Codex naar
+  verwijzen, blijft oplosbaar als branch
+  `archive/patch-assignee-nobody-r25037-before-nil-fix`.
 
 ## Volgende stap voor een sessie
 
-Af — niets te doen. Alleen Jans handeling hierboven.
+Af — niets te doen. Alleen Jans handelingen hierboven.

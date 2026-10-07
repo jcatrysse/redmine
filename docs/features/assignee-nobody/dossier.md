@@ -360,19 +360,24 @@ form, so they are evidence that those five URLs raise and of nothing else.
 
 - **Issue:** [#5535](https://www.redmine.org/issues/5535) — exists since 2010,
   status New. This is a note with a replacement patch, not a new issue.
-- **Patches attached:** `patches/assignee-nobody/2026-09-05-r25037-feature.patch` — one file, code
-  plus tests. No locale patch: the feature adds no string.
-- **Made against:** `origin/master` r25037 (`bee32a926`), refreshed 2026-09-05
+- **Patches attached:** `patches/assignee-nobody/2026-10-07-r25136-feature.patch` — one file, code
+  plus tests. No locale patch: the feature adds no string. Replaces the
+  2026-09-05 r25037 file, which was never attached.
+- **Made against:** `origin/master` r25136 (`e3962939c`), refreshed 2026-10-07.
+  The mirror was 41 commits behind real trunk r25215 that day; none of them
+  touches the four files and the file applies there too (`git apply --check`),
+  but `--submit` stays Jan's step after a sync (K-19)
 - **Status:** klaar om in te dienen
 - **Feedback en wat ermee gebeurde:** —
 
 ## GEOxyz
 
 - **Commit op `7.0-stable-GEOxyz`:** `349fe1860`, plus `9ad87a11b` voor de
-  review-fix van ronde 2. De ronde-2-delta is **letterlijk gelijk** aan die van
-  de trunkpatch (gecontroleerd door de twee diffs met elkaar te vergelijken),
-  dus INV-10 blijft staan.
-- **Suites daar groen:** `test:all` → **6102 runs, 32270 assertions, 0 failures, 0 errors, 39 skips** — fully green, no known-failing set at all, because the SCM tests that fail on trunk do not fail on 7.0-stable. RuboCop op de gewijzigde bestanden: 1 offence, baseline 1 — één `Style/DirectiveScope` op `query.rb` die letterlijk zo in `origin/7.0-stable` staat en die trunk zelf al opgeruimd heeft. Van upstream, dus niet gefixt (INV-1). De ronde-2-delta op deze branch is regel voor regel gelijk aan die van de trunkpatch.
+  review-fix van ronde 2, plus `5c2dcdd7a` voor de `nil`-fix van 2026-10-07.
+  `tools/check-symmetry.sh assignee-nobody`: **PASS** in beide richtingen, dus
+  INV-10 staat, gemeten en niet alleen beweerd.
+- **Suites daar groen (2026-10-07):** `test:all` → **6189 runs, 32654 assertions, 0 failures, 0 errors, 28 skips**, gedraaid op de fix bovenop de upstream-merge. Bij het pushen bleek een andere sessie intussen twee commits te hebben gezet; op de uiteindelijke tip zijn de vier querysuites nog eens in één proces gedraaid: **886 runs, 4371 assertions, 0 failures, 0 errors**. `tools/check-geoxyz-branch.sh`: **PASS**, lint 8 offences op 71 bestanden, alle 8 op upstreams eigen regels (baseline 8).
+- **Wat deze ronde oploste op productie:** `redmine_contacts_helpdesk` roept `sql_for_field` aan met `value = nil`; met `349fe1860` gaf dat 9 testfouten in die plugin en HTTP 500 in de helpdeskrapporten. De plugin zit niet in deze repo, dus dat is hier niet opnieuw gedraaid — wel de exacte aanroep, met `nil`, tegen een draaiende instantie (`shots/nil-value-runner.txt`).
 - **`nl.yml` toegevoegd:** n.v.t. — geen nieuwe string
 - **`tools/check-geoxyz-branch.sh`:** PASS (`REF=7.0-stable-GEOxyz`)
 - **Wanneer kan deze commit vervallen?** Een geaccepteerde trunk-patch komt in
