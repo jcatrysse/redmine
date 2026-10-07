@@ -96,12 +96,6 @@ module RedmineApp
     # configuration is performed in the initializer.
     config.assets.redmine_extension_paths = []
 
-    # After Propshaft's own sort; the load path is built later, on first use.
-    # See Redmine::AssetPath.application_paths_first.
-    config.after_initialize do |app|
-      app.config.assets.paths.replace(Redmine::AssetPath.application_paths_first(app.config.assets.paths))
-    end
-
     # Configure log level here so that additional environment file
     # can change it (environments/ENV.rb would take precedence over it)
     config.log_level = Rails.env.production? ? :info : :debug

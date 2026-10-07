@@ -21,22 +21,6 @@ module Redmine
   class AssetPath
     attr_reader :paths, :prefix, :version
 
-    # Sorts asset paths so that the application's come before those of gems,
-    # keeping the order within each group. Propshaft does the same, but it
-    # takes every path under Rails.root for the application's, so gems
-    # installed in vendor/bundle stay in front of app/javascript and
-    # vendor/javascript, and a gem file named like a core asset replaces it
-    # (the redmineup gem's chart.min.js, Chart.js 3, broke every core chart).
-    def self.application_paths_first(paths, root: Rails.root, gem_dirs: [Bundler.bundle_path, *Gem.path])
-      root = File.expand_path(root.to_s) + '/'
-      gem_dirs = gem_dirs.map {|dir| File.expand_path(dir.to_s) + '/'}.uniq
-      paths.sort_by.with_index do |path, i|
-        path = File.expand_path(path.to_s)
-        application = path.start_with?(root) && gem_dirs.none? {|dir| path.start_with?(dir)}
-        [application ? 0 : 1, i]
-      end
-    end
-
     def initialize(base_dir, paths, prefix=nil)
       @base_dir = base_dir
       @paths  = paths
