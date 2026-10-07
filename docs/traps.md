@@ -1401,3 +1401,15 @@ toegevoegd.
 - **`rails runner` in development kent geen webhook-events tot `Issue` geladen
   is** (redmine.org #44454). `Webhook#save!` faalt dan op "Events is invalid".
   Noem `Issue` eerst in het runner-script.
+
+
+- **Een upstream-merge op `7.0-stable-GEOxyz` meteen apart pushen** (2026-10-07,
+  back-url-array). `tools/session-push.sh` speelt je onverzonden commits opnieuw
+  af met een gewone `git rebase`, en die gooit een mergecommit weg (de inhoud
+  wordt platgeslagen of conflicteert). Merge `origin/7.0-stable`, push direct,
+  en begin dan pas aan je featurecommit — zo valt er niets te replayen.
+- **`tools/claim.sh` kan midden in een rebase blijven staan** als
+  `docs/REGISTER.md` conflicteert met een parallelle claim (2026-10-07,
+  back-url-array). `git status` toont dan "interactive rebase in progress".
+  Oplossen: `tools/register.sh --write`, `git add docs/REGISTER.md`,
+  `GIT_EDITOR=true git rebase --continue`, en `tools/session-push.sh`.
