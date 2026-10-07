@@ -1214,6 +1214,21 @@ class MailerTest < ActiveSupport::TestCase
     ActionMailer::MailDeliveryJob.queue_adapter = ActiveJob::QueueAdapters::InlineAdapter.new
   end
 
+  def test_with_synched_deliveries_should_perform_other_jobs_inline
+    adapter = ActiveJob::Base.queue_adapter
+    ActiveJob::Base.queue_adapter = ActiveJob::QueueAdapters::TestAdapter.new
+    WebhookJob.any_instance.expects(:perform).with(1, '{}').once
+
+    Mailer.with_synched_deliveries do
+      WebhookJob.perform_later(1, '{}')
+    end
+    assert_kind_of ActiveJob::QueueAdapters::TestAdapter, WebhookJob.queue_adapter
+    assert_empty WebhookJob.queue_adapter.enqueued_jobs
+  ensure
+    ActiveJob::Base.queue_adapter = adapter
+    ActionMailer::MailDeliveryJob.queue_adapter = ActiveJob::QueueAdapters::InlineAdapter.new
+  end
+
   def test_email_addresses_should_keep_addresses
     assert_equal ["foo@example.net"],
                  Mailer.email_addresses("foo@example.net")

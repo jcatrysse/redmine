@@ -650,17 +650,21 @@ class Mailer < ActionMailer::Base
     ActionMailer::Base.perform_deliveries = was_enabled
   end
 
-  # Execute the given block with inline sending of emails if the default Async
-  # queue is used for the mailer. See the Rails guide:
+  # Execute the given block with inline sending of emails, and inline execution
+  # of other jobs such as webhook calls, if the default Async queue is used.
+  # See the Rails guide:
   # Using the asynchronous queue from a Rake task will generally not work because
   # Rake will likely end, causing the in-process thread pool to be deleted, before
   # any/all of the .deliver_later emails are processed
   def self.with_synched_deliveries(&)
     adapter = ActionMailer::MailDeliveryJob.queue_adapter
+    jobs_adapter = ActiveJob::Base.queue_adapter
     ActionMailer::MailDeliveryJob.queue_adapter = ActiveJob::QueueAdapters::InlineAdapter.new
+    ActiveJob::Base.queue_adapter = ActiveJob::QueueAdapters::InlineAdapter.new
     yield
   ensure
     ActionMailer::MailDeliveryJob.queue_adapter = adapter
+    ActiveJob::Base.queue_adapter = jobs_adapter
   end
 
   def mail(headers={}, &block)
