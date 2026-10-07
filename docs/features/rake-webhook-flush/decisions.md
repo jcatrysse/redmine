@@ -1,7 +1,8 @@
 # rake-webhook-flush — Class A-beslissingen
 
 Autonoom beslist tijdens deze feature. Eén regel per beslissing, met de reden.
-Class B (keuzes voor Jan) staat in `docs/DECISIONS.md` onder K-24.
+Class B (keuzes voor Jan) staat in `docs/DECISIONS.md` onder K-24; Jan koos
+optie A op 2026-10-07 (commit `786858b2d`).
 
 - **De fix zit in `Mailer.with_synched_deliveries`, niet in de rake-taken.** Die
   helper bestaat sinds 2012 voor precies dit probleem (proces stopt voor de

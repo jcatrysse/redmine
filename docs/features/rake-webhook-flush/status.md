@@ -20,8 +20,9 @@ issues die ze uit mail aanmaakten, omdat het proces stopte voor de jobs liepen
 taken al `Mailer.with_synched_deliveries`; die zet nu ook `ActiveJob::Base` op
 inline binnen het blok, zodat de webhooks in het rake-proces zelf vertrekken.
 Patch klaar tegen r25136 en applyt ook op echte trunk r25215; dezelfde commit
-staat als `e1e759c47` op `7.0-stable-GEOxyz`. Wacht op Jan: issue aanmaken en
-keuze K-24.
+staat als `e1e759c47` op `7.0-stable-GEOxyz`. Jan koos op 2026-10-07 K-24
+optie A, zoals gebouwd (`docs/DECISIONS.md`, commit `786858b2d`). Wacht op Jan:
+issue aanmaken.
 
 ## Wat het doet
 
@@ -47,8 +48,7 @@ Op redmine.org een issue aanmaken met de Engelse tekst van
 `docs/features/rake-webhook-flush/dossier.md` vanaf "The problem", met
 `patches/rake-webhook-flush/2026-10-07-r25136-feature.patch` erbij en
 `before-receiver.png` / `after-receiver.png` als voor/na; daarna het nummer hier
-invullen. En K-24 in `docs/DECISIONS.md` bevestigen (aanbeveling: A, zoals
-gebouwd). Voor het indienen de mirror syncen (41 commits achter op 2026-10-07)
+invullen. Voor het indienen de mirror syncen (41 commits achter op 2026-10-07)
 en `tools/check-patch-clean.sh rake-webhook-flush --submit` draaien.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
@@ -58,8 +58,9 @@ en `tools/check-patch-clean.sh rake-webhook-flush --submit` draaien.
 - **`ActiveJob::Base` wisselen, niet `WebhookJob`.** Gebouwd en gemeten:
   `WebhookJob` wisselen pint hem via `class_attribute` op de geërfde adapter en
   maakt de suite volgordeafhankelijk (8 failures). Zie `decisions.md`.
-- **Onvoorwaardelijk inline**, conform #36393. De keerzijde voor installaties
-  met een echte backend is K-24, niet hier opnieuw te wegen tot Jan kiest.
+- **Onvoorwaardelijk inline, alle jobs zonder eigen adapter**, conform #36393.
+  Beslist door Jan: K-24 optie A ("altijd meteen afwerken"), 2026-10-07, ook
+  later met een echte job-backend. Niet opnieuw wegen.
 - **Geen job-backend voor heel Redmine of GEOxyz.** Jans beslissing bij
   issue_recurring: dat is een aparte keuze, deze feature maakt hem niet.
 - **De wachtlussen in de crons van issue_recurring en redmine_ai_triage blijven.**
@@ -77,4 +78,4 @@ en `tools/check-patch-clean.sh rake-webhook-flush --submit` draaien.
 
 ## Volgende stap voor een sessie
 
-Af — niets te doen tot Jan het issue heeft aangemaakt of K-24 omgooit.
+Af — niets te doen tot Jan het issue heeft aangemaakt.

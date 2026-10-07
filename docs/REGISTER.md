@@ -305,8 +305,7 @@ Op redmine.org een issue aanmaken met de Engelse tekst van
 `docs/features/rake-webhook-flush/dossier.md` vanaf "The problem", met
 `patches/rake-webhook-flush/2026-10-07-r25136-feature.patch` erbij en
 `before-receiver.png` / `after-receiver.png` als voor/na; daarna het nummer hier
-invullen. En K-24 in `docs/DECISIONS.md` bevestigen (aanbeveling: A, zoals
-gebouwd). Voor het indienen de mirror syncen (41 commits achter op 2026-10-07)
+invullen. Voor het indienen de mirror syncen (41 commits achter op 2026-10-07)
 en `tools/check-patch-clean.sh rake-webhook-flush --submit` draaien.
 
 ### `revision-branches`

@@ -20,8 +20,8 @@
   voor de bestaande regel en wordt hier niet erger in een rake-proces.
 - **Wat jij nog moet doen:** een issue aanmaken op redmine.org (er bestaat er nog
   geen, zie G1) met de tekst vanaf "The problem" en
-  `patches/rake-webhook-flush/2026-10-07-r25136-feature.patch` erbij; en de
-  Class B-keuze K-24 in `docs/DECISIONS.md` bevestigen of omgooien.
+  `patches/rake-webhook-flush/2026-10-07-r25136-feature.patch` erbij. De
+  Class B-keuze K-24 is beslist: optie A, zoals gebouwd (2026-10-07).
 
 ## Trunk check (G1)
 
@@ -152,8 +152,7 @@ be inline anyway.
 
 **Only switch when the adapter is `:async`.** Rejected because that is the
 exact check #36393 removed from this helper; reintroducing it for jobs while the
-emails stay unconditional would make the helper inconsistent with itself. Noted
-as an open choice for the GEOxyz side (K-24).
+emails stay unconditional would make the helper inconsistent with itself.
 
 **A sleep or a wait in each rake task.** Ruled out by the brief and by design:
 one place, not one per task.
