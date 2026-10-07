@@ -1382,3 +1382,5 @@ toegevoegd.
   `undefined method 'lft' for nil` in `Project#shared_versions`, vanuit
   `dev-seed.rb:131`. De tweede run van `tools/dev-server.sh` slaagt (de
   projecten bestaan dan al). Gemeld, niet gefixt: `tools/**` is framework.
+
+- **De lintprobe van `check-geoxyz-branch.sh` vuurt niet met rubocop-rails 2.34.3** (asset-paths-gem-order, 2026-10-07). `rails_cops_live()` verwacht `Rails/StrongParametersExpect` op `Project.find(params[:id])`, maar die cop meldt alleen `params.require(...).permit(...)`; met die regel vuurt hij wel. Gevolg: elke run eindigt `INCOMPLETE` ("????  lint NOT MEASURED") terwijl de Rails-cops wel live zijn. Fix hoort bij een framework-sessie (`tools/**`); tot dan lint met de hand meten tegen de baseline.
