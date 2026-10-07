@@ -1853,3 +1853,10 @@ aan de afweging: GEOxyz draait zonder job-backend, dus A en B gedragen zich daar
 identiek.
 
 **Haast?** Nee — gebouwd met A, op patch en GEOxyz.
+
+## Beslist (Jan) — K-24 en asset-paths-gem-order, 2026-10-07 (avond)
+
+Jan beantwoordde deze twee keuzes zelf, één voor één met uitleg en aanbeveling, in de coördinerende sessie (https://claude.ai/code/session_01GiSsYPm3bxvqrpZkdCxNoi).
+
+- **K-24 (rake-webhook-flush): optie A**, "altijd meteen afwerken": alle jobs zonder eigen adapter draaien inline in de mail-rake-taken, ook later met een echte job-backend. Zo gebouwd; niets te wijzigen.
+- **asset-paths-gem-order: de regel op de server, niet de fix in de Redmine-code.** De vraag was: "Aan de RedmineUP-kant kan het alleen met één regel in een serverbestand buiten git. Welke houden we?" Jan koos "Regel op de server". Gevolg: `6abebe886` gaat van `7.0-stable-GEOxyz` af met een revert-commit, en de productiestap wordt de regel `config.assets.excluded_paths` in `config/additional_environment.rb` (zoals onderzocht en getest in het dossier), gevolgd door `assets:precompile` en een controle van een core-grafiek. Jan keurde ook goed dat de branch `fix/asset-paths-gems-under-rails-root` weg mag; het verwijderen werd vanuit de coördinerende sessie geweigerd, dus Jan doet dat zelf op GitHub.
