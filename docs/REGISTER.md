@@ -32,6 +32,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
+- `asset-paths-gem-order` — cse_01PLJVwGe27hhfqKtVThPdnQ sinds 2026-10-07
 - `assignee-nobody` — cse_01SMardBrwvC1yeJc6WhzDwm sinds 2026-10-07
 
 ## Openstaand voor Jan
