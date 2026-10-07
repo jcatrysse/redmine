@@ -1823,3 +1823,33 @@ Nagemeten op 2026-09-10/11 (ronde 4 deel B,
 
 Geen keuze voor Jan; dit is een correctie van de bewijsregel, niet van de
 beslissing.
+
+## Open — keuze voor Jan (toegevoegd 2026-10-07, rake-webhook-flush)
+
+### K-24 — welke jobs draaien inline in de mail-rake-taken, en ook met een echte job-backend?
+
+**Wat er speelt.** `rake redmine:email:read`, `receive_imap` en `receive_pop3`
+verloren de webhooks van de issues die ze aanmaakten (gemeten: 4 issues, 0
+webhooks). Core heeft voor mails al `Mailer.with_synched_deliveries`, dat de
+mailjobs in het rake-proces zelf laat lopen. De patch breidt dat uit. Gebouwd en
+bewezen is de bovenste optie; de vraag is of de scope goed zit.
+
+- **A) Alle jobs zonder eigen adapter inline, altijd (gebouwd).** De patch zet
+  `ActiveJob::Base` op inline binnen het blok. Webhooks komen aan, en een job die
+  een plugin start bij een issue uit mail ook. Met Sidekiq of een andere backend
+  gaan deze webhooks voortaan ook inline in plaats van naar de backend, net zoals
+  de mails dat sinds #36393 (2022) bewust al doen.
+- **B) Alleen inline als de adapter `:async` is.** Sidekiq-installaties houden hun
+  webhooks in de backend. Maar #36393 haalde precies die check uit deze helper
+  weg; hem voor jobs terugzetten en voor mails niet maakt de helper inconsistent,
+  en dat is waar een committer op zal haken.
+- **C) Alleen `WebhookJob`.** Smalste bedoeling, maar zonder Rails-internals niet
+  schoon terug te zetten: de eerste versie deed dit en maakte de testsuite
+  volgordeafhankelijk (8 failures met `mailer_test` + `webhook_test` samen).
+
+**Aanbeveling:** A, omdat het de bestaande conventie van deze helper volgt en de
+enige variant is die zonder trucs exact terugzet. Voor GEOxyz verandert er niets
+aan de afweging: GEOxyz draait zonder job-backend, dus A en B gedragen zich daar
+identiek.
+
+**Haast?** Nee — gebouwd met A, op patch en GEOxyz.
