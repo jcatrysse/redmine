@@ -106,12 +106,19 @@ niets aan te doen en het gebeurt precies één keer.
 
 ### `asset-paths-gem-order`
 
-Na de deploy van `7.0-stable-GEOxyz` in productie `RAILS_ENV=production bundle exec rake assets:precompile`
-draaien (anders blijft de oude `public/assets/chart.min-*.js` van redmineup
-staan), en één keer een core-grafiek openen (Issues → Rapporten → Tracker) met
-de RedmineUP-plugins erbij: grafieken zichtbaar, geen "Chart is not a constructor"
-in de console. De branch `fix/asset-paths-gems-under-rails-root` is daarna overbodig
-en mag weg.
+1. De revert op `7.0-stable-GEOxyz` zetten (de sessie mocht niet pushen):
+   `git checkout 7.0-stable-GEOxyz && git pull && git revert --no-edit 6abebe886 && git push`,
+   en de sha van die revert achter `6abebe886` in `geoxyz_commit` van
+   `docs/features/asset-paths-gem-order/status.md` zetten (K-21), daarna
+   `tools/register.sh --write`.
+2. Op de productieserver in `config/additional_environment.rb`:
+   `if (spec = Gem.loaded_specs['redmineup'])` /
+   `config.assets.excluded_paths += Dir[File.join(spec.full_gem_path, 'app/assets/*')]` /
+   `end`; dan `RAILS_ENV=production bundle exec rake assets:precompile`, herstarten,
+   en Issues → Rapporten → Tracker openen: grafieken zichtbaar, geen
+   "Chart is not a constructor" in de console.
+3. De branch `fix/asset-paths-gems-under-rails-root` op GitHub verwijderen
+   (goedgekeurd; vanuit de sessies geweigerd).
 
 ### `assignee-nobody`
 

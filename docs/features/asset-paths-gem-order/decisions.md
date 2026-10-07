@@ -18,3 +18,7 @@
 - **2026-10-07, Class A:** `7.0-stable-GEOxyz` loopt 8 commits achter op
   `origin/7.0-stable`; niet meegemerged in deze feature (CLAUDE.md wil dat als
   aparte stap, en via `session-push.sh` zou een replay de merge vlakleggen).
+- **2026-10-07 avond, Jan:** de serverregel, niet de code-fix (`docs/DECISIONS.md`).
+  Hiermee vervalt de Class B-keuze hierboven.
+- **2026-10-07 avond, Class A:** de stand-in-gem voor het bewijs van de serverregel
+  heet `redmineup`, zodat het snippet letterlijk zoals in productie getest is.

@@ -2,6 +2,12 @@
 
 ## Voor Jan (Nederlands)
 
+> **Beslist 2026-10-07 (avond): de regel op de server, niet de code-fix.** De
+> rest van dit dossier beschrijft de code-fix zoals hij gereviewd en eerst
+> gecommit werd (`6abebe886`); die gaat er met een revert weer af. De
+> GEOxyz-oplossing is nu het snippet onder "Onderzoek: oplossen aan de
+> RedmineUP-kant", bewezen in "Live verification" (rij "server line").
+
 - **Wat het doet, in gewone taal:** als de gems in `vendor/bundle` binnen de
   Redmine-map staan, laat Propshaft een gem-bestand winnen van een
   core-bestand met dezelfde naam. De redmineup-gem (elke RedmineUP-plugin)
@@ -215,6 +221,16 @@ real plugins is in `status.md`.
 |---|---|---|
 | core chart, gem shadows `chart.min.js`, unpatched | `before-issue-report-chart.png` | table only, no chart; pin `chart.js` serves the gem's file; page errors `Chart is not a constructor` (2×) |
 | same bundle, with the fix | `issue-report-chart.png` | both charts drawn (930×465 canvas, 84890 painted pixels); pin serves Chart.js v4.5.1; no page errors |
+| server line, before: branch with `6abebe886` reverted, stand-in gem named `redmineup`, no `additional_environment.rb` | `before-server-line-issue-report-chart.png` | no chart; pin serves the gem's file; `Chart is not a constructor` (2×) |
+| server line, after: same, with the `excluded_paths` snippet in `config/additional_environment.rb`, verbatim | `server-line-issue-report-chart.png` | both charts drawn (84890 painted pixels); Chart.js v4.5.1; no page errors |
+
+The server-line run used the development server. The same check in
+production mode (precompile and a `RAILS_ENV=production` server) was refused
+by the execution environment and has not been done; the production precompile
+measured further up applies to the code fix only. redmineup's own assets are
+not affected by the snippet: they are served through
+`config.assets.redmine_extension_paths` (`plugin_assets/redmineup/...`), which
+`excluded_paths` does not filter.
 
 Failure paths:
 
