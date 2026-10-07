@@ -1366,3 +1366,7 @@ toegevoegd.
   is sindsdien een `note`, geen `ok` en geen `FAIL`. Beide controlegevallen zijn
   nagemeten: een format-patch met een ingeplante `Co-authored-by: Claude` faalt
   nog steeds, en een `From`-header wordt nog steeds gescand.
+
+- **`tools/dev-seed.rb` faalt de eerste keer op een verse `redmine_dev` tegen trunk r25136, en slaagt de tweede keer.** Op 2026-10-07 (`assignee-nobody`) gaf `tools/dev-server.sh` `FAIL dev-seed.rb` met `undefined method 'lft' for nil` in `Project#shared_versions`, vanuit `Issue.create!` op de subproject-versie (dev-seed.rb:131): het in-memory `child`-object is na het aanmaken van `child2` niet herladen, dus `root` (`self_and_ancestors.first` op verouderde lft/rgt) vindt niets. Dezelfde aanroep opnieuw slaagt, omdat `child` dan vers uit de database komt. **Wat je doet:** `tools/dev-server.sh` nog eens draaien; de seed is idempotent. Een framework-sessie kan `child.reload` toevoegen vóór die `Issue.create!`.
+
+- **`check-geoxyz-branch.sh` vindt hier geen RuboCop op zijn standaardpad (`/opt/rbenv/versions/3.3.6/bin/rubocop` bestaat niet), en `bundle exec rubocop` zegt `command not found` terwijl de gem er wel is.** Op 2026-10-07 werkte een wrapper die de gem rechtstreeks laadt: `exec ruby -e 'load Gem.bin_path("rubocop","rubocop")' -- "$@"`, en dan `RUBOCOP=<wrapper> tools/check-geoxyz-branch.sh`. De gate meldde zelf netjes dat de Rails-cops live waren.
