@@ -1,0 +1,73 @@
+From e60e1c0c68fc6c88f3b7f304ac642498a5b8182b Mon Sep 17 00:00:00 2001
+From: Jan Catrysse <jan.catrysse@geoxyz.eu>
+Date: Wed, 7 Oct 2026 16:11:42 +0000
+Subject: [PATCH] Run webhook calls and other jobs inline in
+ Mailer.with_synched_deliveries.
+
+The rake tasks that receive emails (redmine:email:read, receive_imap and
+receive_pop3) already deliver notification emails inline, because with the
+default Async adapter the process exits before queued jobs run. Webhook calls
+triggered by the issues those emails create were still queued on the Async
+adapter and were lost the same way.
+---
+ app/models/mailer.rb     |  8 ++++++--
+ test/unit/mailer_test.rb | 15 +++++++++++++++
+ 2 files changed, 21 insertions(+), 2 deletions(-)
+
+diff --git a/app/models/mailer.rb b/app/models/mailer.rb
+index 073b3074a..c1e4d78ce 100644
+--- a/app/models/mailer.rb
++++ b/app/models/mailer.rb
+@@ -650,17 +650,21 @@ class Mailer < ActionMailer::Base
+     ActionMailer::Base.perform_deliveries = was_enabled
+   end
+ 
+-  # Execute the given block with inline sending of emails if the default Async
+-  # queue is used for the mailer. See the Rails guide:
++  # Execute the given block with inline sending of emails, and inline execution
++  # of other jobs such as webhook calls, if the default Async queue is used.
++  # See the Rails guide:
+   # Using the asynchronous queue from a Rake task will generally not work because
+   # Rake will likely end, causing the in-process thread pool to be deleted, before
+   # any/all of the .deliver_later emails are processed
+   def self.with_synched_deliveries(&)
+     adapter = ActionMailer::MailDeliveryJob.queue_adapter
++    jobs_adapter = ActiveJob::Base.queue_adapter
+     ActionMailer::MailDeliveryJob.queue_adapter = ActiveJob::QueueAdapters::InlineAdapter.new
++    ActiveJob::Base.queue_adapter = ActiveJob::QueueAdapters::InlineAdapter.new
+     yield
+   ensure
+     ActionMailer::MailDeliveryJob.queue_adapter = adapter
++    ActiveJob::Base.queue_adapter = jobs_adapter
+   end
+ 
+   def mail(headers={}, &block)
+diff --git a/test/unit/mailer_test.rb b/test/unit/mailer_test.rb
+index eb506c393..db0f31533 100644
+--- a/test/unit/mailer_test.rb
++++ b/test/unit/mailer_test.rb
+@@ -1221,6 +1221,21 @@ class MailerTest < ActiveSupport::TestCase
+     ActionMailer::MailDeliveryJob.queue_adapter = ActiveJob::QueueAdapters::InlineAdapter.new
+   end
+ 
++  def test_with_synched_deliveries_should_perform_other_jobs_inline
++    adapter = ActiveJob::Base.queue_adapter
++    ActiveJob::Base.queue_adapter = ActiveJob::QueueAdapters::TestAdapter.new
++    WebhookJob.any_instance.expects(:perform).with(1, '{}').once
++
++    Mailer.with_synched_deliveries do
++      WebhookJob.perform_later(1, '{}')
++    end
++    assert_kind_of ActiveJob::QueueAdapters::TestAdapter, WebhookJob.queue_adapter
++    assert_empty WebhookJob.queue_adapter.enqueued_jobs
++  ensure
++    ActiveJob::Base.queue_adapter = adapter
++    ActionMailer::MailDeliveryJob.queue_adapter = ActiveJob::QueueAdapters::InlineAdapter.new
++  end
++
+   def test_email_addresses_should_keep_addresses
+     assert_equal ["foo@example.net"],
+                  Mailer.email_addresses("foo@example.net")
+-- 
+2.43.0
+
