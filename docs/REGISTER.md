@@ -21,6 +21,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`c077d96df + 1fd3343ff + 6078281ff + cf0dda572`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
 | [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`8612a76f4 + bc745ce73 + 22daa7c96 + 5b04c5c15 + bf5b41a0d`) | nooit | — |
+| [`asset-paths-gem-order`](features/asset-paths-gem-order/status.md) | gems in vendor/bundle achter de assetpaden van core (Chart.js van RedmineUP brak core-grafieken) | `-` | live (`6abebe886`) | nooit | — |
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | live (`075c86e8a + 363686456`) | nooit | — |
 | [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key, de credentials-map en credentials.yml.enc negeren | `8ec9951d3` | live (`af0af806d + 737b0a549`) | nooit | — |
@@ -29,7 +30,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-19 features: 10 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+20 features: 10 patch klaar, 7 nooit, 2 vervallen, 1 geaccepteerd.
 
 ## Nu in behandeling
 
@@ -103,6 +104,15 @@ niets aan te doen en het gebeurt precies één keer.
   inloggen, maar ze staan er wel. `bundle exec rake db:sessions:clear` maakt de
   tabel leeg (iedereen eruit), `db:sessions:upgrade` herschrijft ze naar de
   veilige vorm (niemand eruit). Kies zelf.
+
+### `asset-paths-gem-order`
+
+Na de deploy van `7.0-stable-GEOxyz` in productie `RAILS_ENV=production bundle exec rake assets:precompile`
+draaien (anders blijft de oude `public/assets/chart.min-*.js` van redmineup
+staan), en één keer een core-grafiek openen (Issues → Rapporten → Tracker) met
+de RedmineUP-plugins erbij: grafieken zichtbaar, geen "Chart is not a constructor"
+in de console. De branch `fix/asset-paths-gems-under-rails-root` is daarna overbodig
+en mag weg.
 
 ### `assignee-nobody`
 
