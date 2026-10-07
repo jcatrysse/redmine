@@ -1384,3 +1384,20 @@ toegevoegd.
   projecten bestaan dan al). Gemeld, niet gefixt: `tools/**` is framework.
 
 - **De lintprobe van `check-geoxyz-branch.sh` vuurt niet met rubocop-rails 2.34.3** (asset-paths-gem-order, 2026-10-07). `rails_cops_live()` verwacht `Rails/StrongParametersExpect` op `Project.find(params[:id])`, maar die cop meldt alleen `params.require(...).permit(...)`; met die regel vuurt hij wel. Gevolg: elke run eindigt `INCOMPLETE` ("????  lint NOT MEASURED") terwijl de Rails-cops wel live zijn. Fix hoort bij een framework-sessie (`tools/**`); tot dan lint met de hand meten tegen de baseline.
+
+- **`Klasse.queue_adapter = x` en daarna "terugzetten" pint die klasse** (2026-10-07,
+  `rake-webhook-flush`). Active Job bewaart de adapter in een `class_attribute`;
+  de geërfde waarde terugschrijven maakt hem een eigen waarde, en de klasse volgt
+  `ActiveJob::Base` daarna niet meer. Zichtbaar pas als testbestanden samen in één
+  proces lopen: `WebhookTest` zet `ActiveJob::Base` op `:test`, een gepinde
+  `WebhookJob` volgt niet → 8 failures. Wissel op `ActiveJob::Base` (de wortel), of
+  draai altijd de betrokken testbestanden samen met een paar seeds.
+- **Een webhook-ontvanger in hetzelfde Node-proces als `spawnSync` antwoordt
+  niet** (2026-10-07, `rake-webhook-flush`). `spawnSync` blokkeert de event loop:
+  Redmine wacht 60 s read timeout per levering en de ontvanger telt de levering
+  pas daarna toch mee. Gebruik `spawn` met een promise. Redmine weigert bovendien
+  loopback als webhookdoel: bind de ontvanger op het eigen adres (`hostname -I`,
+  hier 192.0.2.2).
+- **`rails runner` in development kent geen webhook-events tot `Issue` geladen
+  is** (redmine.org #44454). `Webhook#save!` faalt dan op "Events is invalid".
+  Noem `Issue` eerst in het runner-script.
