@@ -40,6 +40,29 @@ slecht geval — `contains` met termen die in élke rij staan, 375 ms bij één 
 en 6 808 ms bij twintig. Dat laatste geeft Go MAEDA voor een deel gelijk, en dat
 hoort in de note te staan.
 
+## Stand op 2026-10-07
+
+**#44464 staat sinds 2026-09-27 op target version 7.1.0.** Go MAEDA heeft hem
+van "Candidate for next major release" naar een concrete release gezet, dus zijn
+waarschuwingspatch is ingepland. Nog niet gecommit, status nog New.
+
+**Op #43701 is sinds 2026-09-21 niets gebeurd.** Onze note is nooit geplaatst en
+de enige bijlage is nog altijd Jans 5.1-patch van 2026-01-21 — de patch waar Go
+MAEDA op reageerde, en niet degene die wij nu voorstellen.
+
+Wat er klaarligt om die note mee te schrijven staat hierboven en in
+`bench/README.md`: de meting dat de globale zoekfunctie niet meetbaar duurder
+wordt van meer tokens, dat een filter met selectieve termen juist goedkoper wordt,
+dat er één echt slecht geval is dat Go MAEDA voor een deel gelijk geeft, en dat
+een GIN-trigram-index het selectieve filter 120× sneller maakt terwijl hij niets
+doet voor de queries die de halve tabel teruggeven. Plus de vondst dat Redmine's
+eigen SQL met `unaccent` aan helemaal niet te indexeren is — dat is een eigen
+upstream-punt, los van dit issue.
+
+**Volgorde als het weer opgepakt wordt:** eerst de mirror syncen (die liep op
+2026-10-07 42 commits achter, K-19), dan de patch verversen tegen die trunk, dan
+de note plaatsen. Het raam staat open zolang #44464 niet gecommit is.
+
 ## Waar het staat
 
 Ronde 3 (blinde herreview, 2026-09-08) is gedaan: **nul bevindingen over de
