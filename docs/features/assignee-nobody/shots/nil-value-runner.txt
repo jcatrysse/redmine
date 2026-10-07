@@ -1,0 +1,9 @@
+== r25136 + the patch as it was before this fix (38ef69609 = d0243086d rebased)
+*   nil -> NoMethodError: undefined method `include?' for nil
+!*  nil -> NoMethodError: undefined method `include?' for nil
+== r25136 + the patch with this fix (46ac3be46)
+*   nil -> issues.assigned_to_id IS NOT NULL  (5 issues)
+!*  nil -> issues.assigned_to_id IS NULL  (4 issues)
+== pristine trunk r25136
+*   nil -> issues.assigned_to_id IS NOT NULL  (5 issues)
+!*  nil -> issues.assigned_to_id IS NULL  (4 issues)

@@ -1,4 +1,4 @@
-From d0243086dbf4b8140eab3d9c16c0304e99f25935 Mon Sep 17 00:00:00 2001
+From 46ac3be460b70f8a6a00187dadbb9ccdc40adc76 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Wed, 2 Sep 2026 20:10:57 +0000
 Subject: [PATCH] Assigned to issuelist filter: added <nobody> value (#5535).
@@ -19,12 +19,12 @@ Custom field filters are excluded, since a list custom field may have
 ---
  app/models/query.rb                        |  26 +++-
  test/functional/queries_controller_test.rb |   5 +-
- test/unit/query_test.rb                    | 139 ++++++++++++++++++++-
+ test/unit/query_test.rb                    | 148 ++++++++++++++++++++-
  test/unit/user_query_test.rb               |  15 +++
- 4 files changed, 178 insertions(+), 7 deletions(-)
+ 4 files changed, 187 insertions(+), 7 deletions(-)
 
 diff --git a/app/models/query.rb b/app/models/query.rb
-index 824dc027d..b49136806 100644
+index fc9b62b39..824a1b604 100644
 --- a/app/models/query.rb
 +++ b/app/models/query.rb
 @@ -651,6 +651,7 @@ class Query < ApplicationRecord
@@ -35,7 +35,7 @@ index 824dc027d..b49136806 100644
      assigned_to_values +=
        (Setting.issue_group_assignment? ? principals : users).sort_by{|p| [p.status, p]}.
          collect{|s| [s.name, s.id.to_s, l("status_#{User::LABEL_BY_STATUS[s.status]}")]}
-@@ -1242,8 +1243,14 @@ class Query < ApplicationRecord
+@@ -1244,8 +1245,14 @@ class Query < ApplicationRecord
    end
  
    # Helper method to generate the WHERE sql for a +field+, +operator+ and a +value+
@@ -44,13 +44,13 @@ index 824dc027d..b49136806 100644
    def sql_for_field(field, operator, value, db_table, db_field, is_custom_filter=false)
      sql = ''
 +    match_null =
-+      !is_custom_filter && value.include?('none') &&
++      !is_custom_filter && Array(value).include?('none') &&
 +      [:list_optional, :list_optional_with_history].include?(type_for(field))
 +    value -= ['none'] if match_null
      case operator
      when "="
        if value.any?
-@@ -1282,6 +1289,7 @@ class Query < ApplicationRecord
+@@ -1284,6 +1291,7 @@ class Query < ApplicationRecord
          # IN an empty set
          sql = "1=0"
        end
@@ -58,7 +58,7 @@ index 824dc027d..b49136806 100644
      when "!"
        if value.any?
          sql =
-@@ -1293,6 +1301,7 @@ class Query < ApplicationRecord
+@@ -1295,6 +1303,7 @@ class Query < ApplicationRecord
          # NOT IN an empty set
          sql = "1=1"
        end
@@ -66,7 +66,7 @@ index 824dc027d..b49136806 100644
      when "!*"
        sql = "#{db_table}.#{db_field} IS NULL"
        sql += " OR #{db_table}.#{db_field} = ''" if is_custom_filter || [:text, :string].include?(type_for(field))
-@@ -1468,7 +1477,7 @@ class Query < ApplicationRecord
+@@ -1470,7 +1479,7 @@ class Query < ApplicationRecord
        sql = sql_contains("#{db_table}.#{db_field}", value.first, :ends_with => true)
      when "ev", "!ev", "cf"
        # has been,  has never been, changed from
@@ -75,7 +75,7 @@ index 824dc027d..b49136806 100644
          neg = (operator.start_with?('!') ? 'NOT' : '')
          subquery =
            "SELECT 1 FROM #{Journal.table_name}" +
-@@ -1479,11 +1488,11 @@ class Query < ApplicationRecord
+@@ -1481,11 +1490,11 @@ class Query < ApplicationRecord
            " AND #{JournalDetail.table_name}.property = 'attr'" +
            " AND #{JournalDetail.table_name}.prop_key = '#{db_field}'" +
            " AND " +
@@ -89,7 +89,7 @@ index 824dc027d..b49136806 100644
            else
              ''
            end
-@@ -1498,6 +1507,17 @@ class Query < ApplicationRecord
+@@ -1500,6 +1509,17 @@ class Query < ApplicationRecord
      return sql
    end
  
@@ -125,10 +125,10 @@ index 297bfa232..04d4d600c 100644
      assert_include ["Dave2 Lopper2", "5", "locked"], json
    end
 diff --git a/test/unit/query_test.rb b/test/unit/query_test.rb
-index ebf7fc991..eb17cb966 100644
+index 3f1e2dd38..e4dbb549a 100644
 --- a/test/unit/query_test.rb
 +++ b/test/unit/query_test.rb
-@@ -1001,6 +1001,134 @@ class QueryTest < ActiveSupport::TestCase
+@@ -1001,6 +1001,143 @@ class QueryTest < ActiveSupport::TestCase
      end
    end
  
@@ -260,10 +260,19 @@ index ebf7fc991..eb17cb966 100644
 +    assert_equal [matching.id], find_issues_with_query(query).map(&:id)
 +  end
 +
++  def test_sql_for_field_should_accept_nil_value_for_operators_without_values
++    query = IssueQuery.new(:name => '_')
++
++    assert_equal "#{Issue.table_name}.assigned_to_id IS NULL",
++                 query.send(:sql_for_field, 'assigned_to_id', '!*', nil, Issue.table_name, 'assigned_to_id')
++    assert_equal "#{Issue.table_name}.assigned_to_id IS NOT NULL",
++                 query.send(:sql_for_field, 'assigned_to_id', '*', nil, Issue.table_name, 'assigned_to_id')
++  end
++
    def test_filter_notes
      user = User.generate!
      Journal.create!(:user_id => user.id, :journalized => Issue.find(2), :notes => 'Notes.')
-@@ -3449,6 +3577,13 @@ class QueryTest < ActiveSupport::TestCase
+@@ -3473,6 +3610,13 @@ class QueryTest < ActiveSupport::TestCase
      assert_equal 'board', query.display_type
    end
  
@@ -277,7 +286,7 @@ index ebf7fc991..eb17cb966 100644
    def test_assigned_to_values_should_be_sorted_by_status_and_name
      User.delete_all
      20.times do |i|
-@@ -3459,8 +3594,8 @@ class QueryTest < ActiveSupport::TestCase
+@@ -3483,8 +3627,8 @@ class QueryTest < ActiveSupport::TestCase
      query = IssueQuery.new(:name => '_')
      query.stubs(:users).returns(User.all)
  

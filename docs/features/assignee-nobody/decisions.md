@@ -38,3 +38,28 @@ ronde 2, 2026-09-05, na de review van 2026-09-03.
   poortfilter** (`fixed_version_id`) en een alinea in het dossier die alle zeven
   geraakte velden noemt — geen code. K-05 blijft: alleen de toewijzingslijst
   krijgt de waarde in de UI.
+
+Ronde 2026-10-07 — `value = nil` (Jans keuze core-q1, optie A).
+
+- **Beslist (autonoom, 2026-10-07):** de poort leest **`Array(value)`**, niet
+  `value&.include?` of een `return` bovenaan voor `nil`. `Array(nil)` is `[]`,
+  dus `match_null` is onwaar en de rest van de methode is vanaf daar letterlijk
+  die van trunk; een vroege `return` zou de operatortakken overslaan die trunk
+  met `nil` juist gewoon afhandelt (`*`, `!*`, `o`, `c`, datumoperatoren).
+- **Beslist (autonoom, 2026-10-07):** de test roept `sql_for_field` **direct**
+  aan (via `send`, zoals `date_clause` in dezelfde testklasse), omdat geen
+  kernpad `nil` doorgeeft: `Query#statement` slaat een filter zonder waarden
+  over. Hij assert de letterlijke SQL van `*` en `!*`, en is groen op schone
+  trunk r25136 — hij pint dus het contract van trunk vast, niet iets nieuws.
+- **Beslist (autonoom, 2026-10-07):** de fix gaat **in de ene commit van de
+  patchbranch** (amend, herzet op r25136), want de patch is nog niet aan
+  #5535 gehangen. Op `7.0-stable-GEOxyz` is het een **eigen commit**
+  (`Accept a nil value in sql_for_field again ...`), want die branch wordt nooit
+  herschreven. Vóór de fix is daar eerst `origin/7.0-stable` ingemerged (acht
+  upstream-commits), als losse merge, zoals CLAUDE.md vraagt.
+- **Beslist (autonoom, 2026-10-07):** het patchbestand van 2026-09-05 is
+  **vervangen**, niet ernaast gezet: het hing nog niet aan het issue, en
+  `check-patch-clean.sh` leest alle `.patch`-bestanden van de slug samen. De
+  oude patchtip blijft oplosbaar als
+  `archive/patch-assignee-nobody-r25037-before-nil-fix` (`d0243086d`), omdat de
+  bevindingen van ronde 3, 4 en Codex naar die SHA verwijzen.

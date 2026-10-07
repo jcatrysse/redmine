@@ -19,11 +19,24 @@
   dan jouw patch van november.
 - **Keuzes:** geen open keuzes. K-05 beslist op 2026-09-02, optie A: alleen de
   toewijzingslijst krijgt `<< niemand >>`, doelversie en categorie niet.
+- **Ronde 2026-10-07 (core-q1, optie A):** de patch crashte met
+  `NoMethodError: undefined method 'include?' for nil` als een aanroeper
+  `sql_for_field` een filter zonder waarde gaf (`value = nil`). Core zelf doet
+  dat nooit (`Query#statement` slaat een lege waarde over), maar
+  `redmine_contacts_helpdesk` wel: 9 testfouten en HTTP 500 in de
+  helpdeskrapporten op `7.0-stable-GEOxyz`. Trunk aanvaardt `nil` voor de
+  operatoren zonder waarde (`*`, `!*`, ...), dus dat was een regressie van ons.
+  Eén woord gerepareerd (`Array(value)`), één test erbij die rood is op de oude
+  code, op beide kanten.
 
 ## Trunk check (G1)
 
-- **Trunk-revisie nagekeken:** `2563fa6a5` = r24882 van 2026-08-03 (de mirror
-  liep op dat moment een maand achter op SVN-trunk)
+- **Trunk-revisie nagekeken:** eerst `2563fa6a5` = r24882 van 2026-08-03;
+  laatst herbekeken op 2026-10-07 tegen de mirror `e3962939c` = r25136
+  (2026-09-25). De mirror liep toen **41 commits** achter op echte trunk
+  (`713d29813` = r25215); geen van die 41 raakt een van de vier bestanden van
+  de patch, en het patchbestand applyt ook op r25215 (`git apply --check`,
+  read-only, de mirror is niet aangeraakt). Trunk lost het nog altijd niet op.
 - **Lost trunk dit al op?** Nee. Trunk kent alleen de *operator* "geen"
   (`!*`), die per definitie niet met gekozen gebruikers te combineren is: een
   filterrij heeft één operator. Gelezen: `Query#assigned_to_values`,
@@ -117,6 +130,16 @@ for every row. Every other branch of the method already returns either a single
 clause or a parenthesised one; these two now do the same, so the fragment is
 self-contained for every caller and for plugin filters using the same seam.
 
+**A filter without values must stay harmless.** Trunk's `sql_for_field`
+accepts `nil` as the value for every operator that takes none (`*`, `!*`,
+`o`, `c`, `t`, `ld`, `nd`, `w` and the other value-less date operators): it
+never reads the value on those branches. `Query#statement` never passes `nil` — it skips a filter with no
+values — but plugins that build their own conditions on `sql_for_field` do,
+and an earlier version of this patch broke them with
+`NoMethodError: undefined method 'include?' for nil`, because the new gate read
+the value before the operator was known. The gate now reads `Array(value)`, so
+`nil` reaches the operator branches exactly as it does on trunk.
+
 The resulting semantics, with `V` the real values selected alongside `none`:
 
 | Operator | SQL |
@@ -135,8 +158,8 @@ same thing.
 
 | File | Change |
 |---|---|
-| `app/models/query.rb` | `assigned_to_values`: the `<< nobody >>` entry. `sql_for_field`: recognise `'none'` on optional list filters (3 lines), fold NULL into the `=` and `!` clauses as a parenthesised fragment (1 line each), and make the `ev`/`!ev`/`cf` subquery NULL-aware through a new private helper `sql_for_in_or_null`. |
-| `test/unit/query_test.rb` | ten new tests; two existing tests strengthened, one adapted (below). |
+| `app/models/query.rb` | `assigned_to_values`: the `<< nobody >>` entry. `sql_for_field`: recognise `'none'` on optional list filters (3 lines, `nil`-safe), fold NULL into the `=` and `!` clauses as a parenthesised fragment (1 line each), and make the `ev`/`!ev`/`cf` subquery NULL-aware through a new private helper `sql_for_in_or_null`. |
+| `test/unit/query_test.rb` | eleven new tests; two existing tests strengthened, one adapted (below). |
 | `test/unit/user_query_test.rb` | two new tests, pinning that the fragment stays inside the `EXISTS` correlation of `sql_for_is_member_of_group_field`. |
 
 **New setting / migration / gem / route / permission:** none. Nor a new
@@ -222,6 +245,7 @@ one-line follow-up, deliberately left to the reviewer.
 | `test_filter_fixed_version_nobody_or_version` | the shared code path is proven on a second `list_optional_with_history` filter, not only on the assignee |
 | `test_filter_nobody_should_not_apply_to_list_filters` | the type gate: a plain `:list` filter compiles no `IS NULL` |
 | `test_filter_nobody_should_not_apply_to_list_custom_fields` | the `is_custom_filter` gate: a list custom field whose possible values really include `none` still matches only the issue holding that literal value |
+| `test_sql_for_field_should_accept_nil_value_for_operators_without_values` | a caller passing `nil` for `*` and `!*` gets trunk's SQL back (`assigned_to_id IS NOT NULL` / `IS NULL`) instead of a `NoMethodError` — the contract trunk already honours and plugins rely on |
 | `test_group_filter_with_a_nobody_value_should_stay_correlated` (UserQuery) | `is_member_of_group` with `none` and a group id returns the members of that group, not every user |
 | `test_group_filter_not_with_a_nobody_value_should_stay_correlated` (UserQuery) | its negation returns the non-members, not nobody |
 
@@ -269,7 +293,7 @@ issues — five unassigned, four assigned to `dev`, one to `tester`; one of dev'
 one group, `verify-group`, with `dev` as its only member). Screenshots in
 `docs/features/assignee-nobody/shots/`, driven by `verify/assignee-nobody.mjs`,
 which asserts every count before it takes the picture and exits non-zero if one
-is wrong. All shots were retaken against trunk r25037 on 2026-09-05.
+is wrong. All before and after shots were retaken against trunk r25136 on 2026-10-07, the after shots on the patch with the `nil` fix; `regression-group-filter-nobody.png` dates from 2026-09-05 and shows the first version of the patch, which is not rebuilt.
 
 | Function | Before | After | What the pair shows |
 |---|---|---|---|
@@ -289,6 +313,7 @@ Failure paths verified:
 | the value does not exist yet (unpatched) | `before-changed-from-nobody.png` and `before-filter-dropdown.png` | the URL asks for `none`, the select cannot hold a value that is not among its options and falls back to `<< me >>` | exactly that. Only these two before shots render a filter form at all: the other five are Redmine's generic 500 page and are byte-identical to each other, so they prove "this URL raises", once, and nothing about the widget |
 | the fragment spliced into a foreign `AND` (first version of this patch) | `regression-group-filter-nobody.png` | a decorrelated `EXISTS`, true for every row | all three users listed under a filter that reads "Member of group is verify-group", against `group-filter-nobody.png` where only `dev` is |
 | `none` on an operator that takes no values (`!*`, `*`) | covered by the unit tests, not a screenshot | the value is ignored, the operator decides | `= none` ≡ `!*` and `! none` ≡ `*`, asserted against the operators' own results |
+| a caller passing `nil` as the value (a plugin; no core page does) | `nil-value-runner.txt` — not a screenshot, because no page of core Redmine reaches it | trunk's SQL for `*` and `!*`, as on pristine trunk | against the same running instance, through `bin/rails runner`: the previous version of the patch raises `NoMethodError: undefined method 'include?' for nil` on both operators; this version and pristine r25136 both return `issues.assigned_to_id IS NOT NULL` (5 issues) and `IS NULL` (4 issues) |
 | `none` on a field where it could collide | not applicable | custom field filters never reach the new code path | `is_custom_filter` guard, and the enumeration in the objections table |
 
 Beyond the browser, the REST short filter was exercised against the same
@@ -324,6 +349,7 @@ form, so they are evidence that those five URLs raise and of nothing else.
 | "This is what a plugin is for." | A plugin would have to reopen `Query` and patch two private methods, one of which (`sql_for_field`) is a 250-line operator dispatcher. It would also have to keep the operator coverage in step with core, which is precisely what the existing patches on this issue failed to do. |
 | "Adding entries to the value list will break code that indexes into it." | One test in core does (`assigned_to_values[1..]`) and is adapted in this patch. No production code indexes the list. |
 | "`none` might collide with a real value." | Only for a filter of type `:list_optional`/`:list_optional_with_history` that is not a custom field — which means core's own, listed below, and any a plugin adds through the same `add_available_filter` seam. A plugin whose value list holds the literal `none` would have that value change meaning, so the string is reserved for these two filter types from here on; that is the cost of putting the mechanism in `Query#sql_for_field` rather than in one field, which is what note 4 of this issue asked for. In all of core: assignee, target version, category, `member_of_group`, `assigned_to_role`, the time-entry equivalents, and user status / auth source / group / 2FA scheme. Every one of them holds numeric ids or a fixed short vocabulary; custom fields, which are the realistic place for a literal "none", are excluded by the `is_custom_filter` guard. `cf_<id>.<attribute>` filters are `:date` and `:list`, so they are outside the gate as well. |
+| "Why `Array(value)` in the gate, when `statement` never passes `nil`?" | Because trunk's `sql_for_field` accepts `nil` for every operator that takes no value, and plugins call it that way; the gate is the only line of the patch that reads the value before the operator is known. Without it, a helpdesk plugin's reports went from working on trunk to an HTTP 500 with this patch applied. `Array(nil)` is `[]`, so `match_null` is false and the method is byte-for-byte trunk's from there on. A test calls the method with `nil` directly, since no core path does. |
 | "Why is `cf` (changed from) in scope?" | Because the filter offers it. Leaving it out does not mean the user cannot pick it — it means they pick it and get an empty list with no error, which is worse than the 500. |
 | "`sql_for_field` has 31 callers. Did you check them?" | Yes, all of them, classified by `is_custom_filter`, by the `type_for(field)` they pass and by whether they parenthesise. `UserQuery#sql_for_is_member_of_group_field` is the only one that combines an open gate, user-supplied values and an unparenthesised splice, and the first version of this patch got it wrong: `?v[is_member_of_group][]=none&v[is_member_of_group][]=10` returned all nine fixture users instead of one. The folded clauses are parenthesised for that reason, and two `UserQueryTest` tests pin it. |
 | "Only the assignee filter is tested, and the change touches seven filters." | Seven core filters pass the gate: `assigned_to_id`, `fixed_version_id` and `category_id` (IssueQuery), `user_id` and `author_id` (TimeEntryQuery), `status`, `auth_source_id` and `twofa_scheme` (UserQuery). All of them produce valid, executable SQL with `none`; where the column is `NOT NULL` the condition is simply never true, which replaces the 500 they used to give. `fixed_version_id` now has a test of its own so the shared path is not proven by a single field, and `is_member_of_group` has two. Only the assignee **value list** is wired into the UI — the others are reachable by URL only, which is deliberate and is #5535's scope. |
