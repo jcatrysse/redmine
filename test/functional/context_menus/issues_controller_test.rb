@@ -444,5 +444,13 @@ module ContextMenus
         assert_select 'a.icon-del', :count => 0
       end
     end
+
+    def test_context_menu_with_back_url_as_array_should_use_referer
+      @request.session[:user_id] = 2
+      @request.env['HTTP_REFERER'] = 'http://test.host/issues'
+      get :index, :params => { :ids => [1], :back_url => ['/issues'] }
+      assert_response :success
+      assert_select 'a.icon-del[href=?]', '/issues?back_url=http%3A%2F%2Ftest.host%2Fissues&ids%5B%5D=1'
+    end
   end
 end
