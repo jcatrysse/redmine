@@ -22,3 +22,25 @@
   Hiermee vervalt de Class B-keuze hierboven.
 - **2026-10-07 avond, Class A:** de stand-in-gem voor het bewijs van de serverregel
   heet `redmineup`, zodat het snippet letterlijk zoals in productie getest is.
+- **2026-10-12, Jan:** keuze B herzien: ook een upstream-patch, en de code-fix terug op
+  `7.0-stable-GEOxyz` in de vorm die upstream ingediend wordt (`docs/DECISIONS.md`,
+  "asset-paths-gem-order herzien"). Hiermee vervallen de regels "optie A, geen
+  upstream-patch" en "de serverregel" hierboven.
+- **2026-10-12, Class A:** de sortering verhuist van een `after_initialize` in
+  `config/application.rb` naar `Redmine::AssetLoadPath#initialize` (als
+  `AssetLoadPath.application_paths_first`). Eén bestand code in plaats van twee, geen
+  afhankelijkheid van de volgorde van Propshafts en Redmines eigen `after_initialize`
+  (die in `30-redmine.rb` bouwt in productie het laadpad al op), en het is de klasse
+  waarmee Redmine Propshafts laadpad al overneemt. Het oude ontwerp staat in het
+  dossier onder "Alternatives considered".
+- **2026-10-12, Class A:** de integratietest draait niet meer op de echte configuratie
+  maar bouwt een `Redmine::AssetLoadPath` met een fixture-gem binnen `Rails.root` en
+  een stub van `Bundler.bundle_path`. De oude test was alleen rood met de bundle in
+  `vendor/bundle` en dus groen in CI, met en zonder fix.
+- **2026-10-12, Class A:** tests in de `test "..." do`-vorm van het bestand zelf,
+  niet `def test_...` zoals in `6abebe886`.
+- **2026-10-12, Class A:** op `7.0-stable-GEOxyz` een nieuwe commit (cherry-pick van
+  de patch-commit), geen revert van `1bf0ef69b`: het ontwerp is veranderd, en
+  gepubliceerde historie herschrijven mag niet. `geoxyz_commit` noemt alle drie.
+- **2026-10-12, Class A:** de twee serverregel-screenshots uit `shots/` gehaald; die
+  aanpak is vervallen. Ze staan in de historie (`7d8b8e67c`).

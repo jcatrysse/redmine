@@ -1,0 +1,100 @@
+From bd0ce4c5b6d13a2cddc4ff9754887646cd0a5249 Mon Sep 17 00:00:00 2001
+From: Jan Catrysse <jan.catrysse@geoxyz.eu>
+Date: Mon, 12 Oct 2026 17:52:11 +0000
+Subject: [PATCH] Keep gems installed under Rails.root behind the application's
+ asset paths.
+
+Propshaft puts the application's asset paths before those of gems, but
+counts every path under Rails.root as the application's. With the bundle
+installed in vendor/bundle, the paths of gems stay in front of app/javascript
+and vendor/javascript, and a gem that ships a file with the same logical path
+as a core asset replaces it. A gem shipping Chart.js 3 as
+app/assets/javascripts/chart.min.js, for example, makes the chart.js pin load
+that file, and every chart fails with "Chart is not a constructor".
+
+Redmine::AssetLoadPath now orders the paths itself, counting paths inside
+Bundler's and RubyGems' directories as gems.
+---
+ lib/redmine/asset_path.rb                     | 16 ++++++++++-
+ .../app/assets/javascripts/chart.min.js       |  1 +
+ test/unit/lib/redmine/asset_path_test.rb      | 28 +++++++++++++++++++
+ 3 files changed, 44 insertions(+), 1 deletion(-)
+ create mode 100644 test/fixtures/asset_path/bundle/gems/shadow-1.0/app/assets/javascripts/chart.min.js
+
+diff --git a/lib/redmine/asset_path.rb b/lib/redmine/asset_path.rb
+index 3a590b66f..aee103835 100644
+--- a/lib/redmine/asset_path.rb
++++ b/lib/redmine/asset_path.rb
+@@ -132,10 +132,24 @@ module Redmine
+   class AssetLoadPath < Propshaft::LoadPath
+     attr_reader :extension_paths, :default_asset_path, :transition_map
+ 
++    # Puts the application's asset paths before those of gems, keeping the
++    # order within each group. Propshaft does the same, but counts every path
++    # under Rails.root as the application's, so gems installed in vendor/bundle
++    # would shadow the application's assets that have the same logical path.
++    def self.application_paths_first(paths, root: Rails.root, gem_dirs: [Bundler.bundle_path, *Gem.path])
++      root = File.expand_path(root.to_s) + '/'
++      gem_dirs = gem_dirs.map {|dir| File.expand_path(dir.to_s) + '/'}
++      paths.sort_by.with_index do |path, i|
++        path = File.expand_path(path.to_s)
++        application = path.start_with?(root) && gem_dirs.none? {|dir| path.start_with?(dir)}
++        [application ? 0 : 1, i]
++      end
++    end
++
+     def initialize(config, compilers)
+       @extension_paths    = config.redmine_extension_paths
+       @default_asset_path = config.redmine_default_asset_path
+-      super(config.paths,
++      super(self.class.application_paths_first(config.paths),
+             compilers: compilers,
+             version: config.version,
+             file_watcher: config.file_watcher,
+diff --git a/test/fixtures/asset_path/bundle/gems/shadow-1.0/app/assets/javascripts/chart.min.js b/test/fixtures/asset_path/bundle/gems/shadow-1.0/app/assets/javascripts/chart.min.js
+new file mode 100644
+index 000000000..80b7354af
+--- /dev/null
++++ b/test/fixtures/asset_path/bundle/gems/shadow-1.0/app/assets/javascripts/chart.min.js
+@@ -0,0 +1 @@
++// A gem's own chart.min.js, which must not shadow vendor/javascript/chart.min.js
+diff --git a/test/unit/lib/redmine/asset_path_test.rb b/test/unit/lib/redmine/asset_path_test.rb
+index bad93f8b0..723266e17 100644
+--- a/test/unit/lib/redmine/asset_path_test.rb
++++ b/test/unit/lib/redmine/asset_path_test.rb
+@@ -43,4 +43,32 @@ class Redmine::AssetPathTest < ActiveSupport::TestCase
+     assert_not_nil @assets['plugin_assets/foo/foo.css']
+     assert_not_nil @assets['plugin_assets/foo/foo.svg']
+   end
++
++  test "application_paths_first puts gem paths behind the application's, also under the root" do
++    paths = [
++      '/srv/redmine/vendor/bundle/ruby/3.3.0/gems/foo-1.0/app/assets/javascripts',
++      '/usr/local/bundle/gems/bar-1.0/app/assets/javascripts',
++      '/srv/redmine/app/javascript',
++      '/srv/redmine/vendor/javascript'
++    ]
++    sorted = Redmine::AssetLoadPath.application_paths_first(
++      paths, root: '/srv/redmine', gem_dirs: ['/srv/redmine/vendor/bundle/ruby/3.3.0', '/usr/local/bundle']
++    )
++    assert_equal [
++      '/srv/redmine/app/javascript',
++      '/srv/redmine/vendor/javascript',
++      '/srv/redmine/vendor/bundle/ruby/3.3.0/gems/foo-1.0/app/assets/javascripts',
++      '/usr/local/bundle/gems/bar-1.0/app/assets/javascripts'
++    ], sorted
++  end
++
++  test "gem assets under Rails.root do not shadow the application's assets" do
++    bundle = Rails.root.join('test/fixtures/asset_path/bundle')
++    Bundler.stubs(:bundle_path).returns(bundle)
++    config = Rails.application.config.assets.dup
++    config.paths = [bundle.join('gems/shadow-1.0/app/assets/javascripts'), Rails.root.join('vendor/javascript')]
++    load_path = Redmine::AssetLoadPath.new(config, Rails.application.assets.compilers)
++
++    assert_equal Rails.root.join('vendor/javascript/chart.min.js'), load_path.find('chart.min.js').path
++  end
+ end
+-- 
+2.43.0
+

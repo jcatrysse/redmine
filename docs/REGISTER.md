@@ -9,6 +9,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
+| [`asset-paths-gem-order`](features/asset-paths-gem-order/status.md) | gems in vendor/bundle achter de assetpaden van core (Chart.js van RedmineUP brak core-grafieken) | `-` | live (`6abebe886 + 1bf0ef69b + 1d8c2a3a7`) | patch klaar | — |
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`349fe1860 + 9ad87a11b + 5c2dcdd7a`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
 | [`back-url-array`](features/back-url-array/status.md) | Geen HTTP 500 meer als back_url als lijst (back_url[]=...) binnenkomt | `-` | live (`0f4317246`) | patch klaar | — |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901 + 012ab39e0`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
@@ -22,7 +23,6 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`wiki-export-attachments`](features/wiki-export-attachments/status.md) | Wiki-ZIP genest naar de wikiboom + bijlagen als exportoptie | `3c3e9368e` | live (`c077d96df + 1fd3343ff + 6078281ff + cf0dda572`) | patch klaar | — |
 | [`auto-watch-defaults`](features/auto-watch-defaults/status.md) | Configureerbare auto-watch defaults | `b2adb8053` | n.v.t. | geaccepteerd | — |
 | [`ar-sessions`](features/ar-sessions/status.md) | Sessies in de database | `ea61e37e8 + c2fefd51c` | live (`8612a76f4 + bc745ce73 + 22daa7c96 + 5b04c5c15 + bf5b41a0d`) | nooit | — |
-| [`asset-paths-gem-order`](features/asset-paths-gem-order/status.md) | gems in vendor/bundle achter de assetpaden van core (Chart.js van RedmineUP brak core-grafieken) | `-` | n.v.t. (`6abebe886 + 1bf0ef69b`) | nooit | — |
 | [`database-yml-erb`](features/database-yml-erb/status.md) | ERB in database.yml bij bundle install | `7ffcdcafc` | todo | nooit | — |
 | [`geoxyz-hosts`](features/geoxyz-hosts/status.md) | *.geoxyz.eu toestaan in development | `918f3466e` | live (`075c86e8a + 363686456`) | nooit | — |
 | [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key, de credentials-map en credentials.yml.enc negeren | `8ec9951d3` | live (`af0af806d + 737b0a549`) | nooit | — |
@@ -31,7 +31,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-21 features: 11 patch klaar, 7 nooit, 2 vervallen, 1 geaccepteerd.
+21 features: 12 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
 
 ## Nu in behandeling
 
@@ -106,20 +106,21 @@ niets aan te doen en het gebeurt precies één keer.
 
 ### `asset-paths-gem-order`
 
-1. ~~De revert op `7.0-stable-GEOxyz` zetten.~~ Gedaan op 2026-10-07 door de
-   coördinerende sessie, op Jans uitdrukkelijke vraag: `1bf0ef69b` (revert van
-   `6abebe886`, als Jan Catrysse, zonder trailers), gepusht met
-   `tools/session-push.sh`; `geoxyz_commit` bijgewerkt (K-21) en het register
-   opnieuw gegenereerd. GEOxyz draait deze feature dus niet als code: de
-   serverregel hieronder is de oplossing.
-2. Op de productieserver in `config/additional_environment.rb`:
-   `if (spec = Gem.loaded_specs['redmineup'])` /
-   `config.assets.excluded_paths += Dir[File.join(spec.full_gem_path, 'app/assets/*')]` /
-   `end`; dan `RAILS_ENV=production bundle exec rake assets:precompile`, herstarten,
-   en Issues → Rapporten → Tracker openen: grafieken zichtbaar, geen
-   "Chart is not a constructor" in de console.
-3. De branch `fix/asset-paths-gems-under-rails-root` op GitHub verwijderen
-   (goedgekeurd; vanuit de sessies geweigerd).
+1. **De mirror syncen** (51 commits achter, `docs/runbook.md`), dan
+   `tools/check-patch-clean.sh asset-paths-gem-order --submit` en de cijfers
+   opnieuw laten draaien (g05).
+2. **Een Defect aanmaken op redmine.org** met de Engelse tekst uit het dossier
+   (vanaf "The problem") en `patches/asset-paths-gem-order/2026-10-12-r25136-feature.patch`
+   erbij; relateren aan #44294 (zelfde symptoom). Het issuenummer daarna in
+   `issue:` hierboven.
+3. **Productie:** `7.0-stable-GEOxyz` deployen, `RAILS_ENV=production bundle exec rake
+   assets:precompile`, herstarten, en Issues → Rapporten → Tracker openen met de
+   RedmineUP-plugins erbij: grafieken zichtbaar, geen "Chart is not a
+   constructor" in de console. Stond de serverregel `config.assets.excluded_paths`
+   al in `config/additional_environment.rb`, dan mag die weg; laten staan kan
+   ook, hij is naast de fix onschadelijk.
+4. De branch `fix/asset-paths-gems-under-rails-root` op GitHub verwijderen
+   (goedgekeurd op 2026-10-07; vanuit de sessies geweigerd). Staat er nog.
 
 ### `assignee-nobody`
 

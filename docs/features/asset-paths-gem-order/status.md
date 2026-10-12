@@ -2,10 +2,10 @@
 slug: asset-paths-gem-order
 feature: gems in vendor/bundle achter de assetpaden van core (Chart.js van RedmineUP brak core-grafieken)
 commit_51: -
-geoxyz: n.v.t.
-geoxyz_commit: 6abebe886 + 1bf0ef69b
-upstream: nooit
-patch:
+geoxyz: live
+geoxyz_commit: 6abebe886 + 1bf0ef69b + 1d8c2a3a7
+upstream: patch klaar
+patch: patches/asset-paths-gem-order/2026-10-12-r25136-feature.patch
 issue:
 ---
 
@@ -13,90 +13,91 @@ issue:
 
 ## Waar het staat
 
-**Jan koos op 2026-10-07 (avond) de regel op de server, niet de code-fix**
-(`docs/DECISIONS.md`, "Beslist (Jan) — K-24 en asset-paths-gem-order"). Dus:
-`6abebe886` moet van `7.0-stable-GEOxyz` af met één revert-commit, en de
-GEOxyz-kant wordt de regel `config.assets.excluded_paths` in
-`config/additional_environment.rb` op de server.
+Af, op het issue na. Jan herzag op 2026-10-12 zijn keuze van 2026-10-07: **keuze
+B, de code-fix terug op GEOxyz én als patch voor redmine.org**
+(`docs/DECISIONS.md`, "asset-paths-gem-order herzien"). De patch staat op
+`patch/asset-paths-gem-order` (`bd0ce4c5b`, van `origin/master` r25136) en
+letterlijk dezelfde commit staat op `7.0-stable-GEOxyz` (`1d8c2a3a7`, een
+cherry-pick bovenop de revert `1bf0ef69b`). Alle gates gedraaid, cijfers
+hieronder. Wat `check-patch-clean.sh --submit` nog tegenhoudt is alleen de
+mirror: `origin/master` loopt 51 commits achter echte trunk (K-19/K-20). Met de
+hand nagegaan dat de patch op echte trunk r25227 applyt.
 
-**Die revert staat nog niet op de branch.** De sessie maakte hem
-(`Revert "Assets: keep gems in vendor/bundle behind the application's asset
-paths."`, als Jan, zonder trailers; de drie bestanden zijn daarna identiek aan
-`origin/7.0-stable`), maar het pushen naar `7.0-stable-GEOxyz` werd door de
-permissiecheck van de omgeving geweigerd, omdat de opdracht via een bericht van
-een andere sessie kwam. Een lokale commit overleeft de container niet, dus het
-commando staat hieronder bij Jan. Tot die revert er is, draait `7.0-stable-GEOxyz`
-nog met de code-fix (`6abebe886`); de serverregel ernaast is onschadelijk.
-
-De serverregel is bewezen in een echte Redmine (dev-modus) op de branch met de
-revert, met een stand-in-gem die `redmineup` heet: zonder de regel "Chart is not
-a constructor", met de regel Chart.js 4.5.1 en getekende grafieken. Het bewijs in
-productiemodus (`RAILS_ENV=production`, precompile, server) werd door dezelfde
-permissiecheck geweigerd als "Production Deploy" en is dus niet gedaan; de eerdere
-precompile-meting gold de code-fix, niet de serverregel.
+**Het ontwerp verschilt van `6abebe886`:** dezelfde sortering, maar in
+`Redmine::AssetLoadPath#initialize` in plaats van een `after_initialize` in
+`config/application.rb`, en een tweede test die ook in CI rood is zonder fix.
+Waarom: `decisions.md` en het dossier, "Alternatives considered".
 
 ## Wat het doet
 
-Met de gems in `vendor/bundle` binnen de Redmine-map wint een gem-asset van
-een core-asset met dezelfde naam; redmineup's Chart.js 3 (`chart.min.js`) brak
-zo elke core-grafiek ("Chart is not a constructor"). De commit zet na
-Propshaft de paden van gems weer achter die van Redmine.
+Met de gems in `vendor/bundle` binnen de Redmine-map (Bundler's
+deployment-modus) wint een gem-asset van een core-asset met dezelfde naam;
+redmineup's Chart.js 3 (`chart.min.js`) brak zo elke core-grafiek ("Chart is not
+a constructor"). Redmine's eigen laadpad zet de paden van gems nu weer achter
+die van Redmine.
 
 ## Bewijs
 
-- Volledige suite op `7.0-stable-GEOxyz` met de fix (oude basis `8067e231c`,
-  bundle in `vendor/bundle`, `tools/test-env.sh ... test:all`):
-  `6070 runs, 31745 assertions, 0 failures, 0 errors, 28 skips`
-- Volledige suite op de gepushte kop `6abebe886` (na de 7.0-stable-merge van een
-  andere sessie), zelfde opzet: `6076 runs, 31782 assertions, 0 failures, 0 errors, 28 skips`
-- Aangeraakte suite: `5 runs, 9 assertions, 0 failures, 0 errors, 0 skips`;
-  zonder de hook in `config/application.rb`: 1 failure (rood bewezen)
-- RuboCop op de drie bestanden: 0 (baseline 0)
-- `tools/check-patch-clean.sh`: n.v.t. (geen patch) · `tools/check-geoxyz-branch.sh`:
-  **INCOMPLETE**, niet PASS: alle checks ok (geen AI-identiteit in 57 eigen commits,
-  `6abebe886` geregistreerd, locales ok, merge actueel) behalve lint, omdat de
-  probe van de gate zelf niet vuurt met rubocop-rails 2.34.3 (traps.md, 2026-10-07).
-  Lint met de hand gemeten: 0 overtredingen op de drie bestanden, baseline 0,
-  Rails-cops live bewezen met `params.require(...).permit(...)`
-- `tools/check-symmetry.sh`: n.v.t. voor deze slug (geen patch-branch, GEOxyz-only);
-  `--all`: 8 FAIL, alle van `assignee-nobody`/`version-subprojects` in `query.rb`
-  (andere sessie, lopend werk), geen enkele in een bestand van deze feature
-- `assets:precompile` productie: zonder fix wordt `chart.min.js` het gem-bestand,
-  met fix Chart.js v4.5.1
-- Screenshots: 5, gelezen: ja (met stand-in-gem, niet met de echte RedmineUP-plugin);
-  de serverregel: `before-server-line-issue-report-chart.png` en `server-line-issue-report-chart.png`
+- Volledige suite met patch (`tools/test-env.sh … test:all`, r25136): `6102 runs, 32297 assertions, 28 failures, 2 errors, 82 skips`. Van de 30: 29 de bekende omgevingsfouten van de runbook (14 `RepositoriesControllerTest`, 8 `ApiTest::RepositoriesTest`, 5 `SysControllerTest`, 1 `UserTest`, 1 `ApiTest::IssuesTest`: `svn`/`hg`/`bzr`/`cvs` ontbreken hier); de dertigste, `ListAutofillSystemTest#test_textile_nested_list_autofill` ("expected /my/page to equal /login" in `log_user`, terwijl twee suites tegelijk liepen), is groen bij herhaling: `list_autofill_test.rb` → `15 runs, 55 assertions, 0 failures, 0 errors`
+- Volledige suite op schone trunk r25136: loopt nog in deze sessie (wordt hier ingevuld)
+- Volledige suite op `7.0-stable-GEOxyz` (`1bf0ef69b` + deze commit): `6194 runs, 32667 assertions, 0 failures, 0 errors, 28 skips` — helemaal groen
+- Aangeraakte suite: `5 runs, 8 assertions, 0 failures, 0 errors, 0 skips` (trunk
+  en GEOxyz); zonder de wijziging in `lib/redmine/asset_path.rb`:
+  `5 runs, 7 assertions, 1 failures, 1 errors` — beide nieuwe tests rood
+- RuboCop 1.91.0 op de twee Ruby-bestanden, `--cache false`: 0 (baseline 0 op
+  `origin/master`); Rails-cops live bewezen met `Rails/Output`
+- `tools/check-patch-clean.sh`: PASS · `--submit`: FAIL, alleen omdat de mirror 51 commits achterloopt (K-20) ·
+  `tools/check-geoxyz-branch.sh`: PASS (lint 8 = baseline 8, Rails-cops live; 62 eigen commits, alle geregistreerd) · `tools/check-symmetry.sh`: PASS
+- Patch applyt op `origin/master` r25136: ja; op echte trunk r25227 (`git apply
+  --check`, `patch -p1 --dry-run`): ja
+- `assets:precompile` met de bundle in `vendor/bundle` en een gem met
+  `chart.min.js`: zonder patch is `chart.min-a89b27c8.js` het gem-bestand, met
+  patch `chart.min-cae696ba.js` = Chart.js v4.5.1
+- Standaardlayout (bundle buiten `Rails.root`): laadpad 13 paden, volgorde
+  identiek aan die van Propshaft — de patch verandert daar niets
+- Screenshots: 5 (trunk before/after/nogem, GEOxyz before/after), gelezen: ja;
+  met de stand-in-gem `asset_shadow_probe`, niet met de echte RedmineUP-plugin
 
 ## Wat Jan nog moet doen
 
-1. ~~De revert op `7.0-stable-GEOxyz` zetten.~~ Gedaan op 2026-10-07 door de
-   coördinerende sessie, op Jans uitdrukkelijke vraag: `1bf0ef69b` (revert van
-   `6abebe886`, als Jan Catrysse, zonder trailers), gepusht met
-   `tools/session-push.sh`; `geoxyz_commit` bijgewerkt (K-21) en het register
-   opnieuw gegenereerd. GEOxyz draait deze feature dus niet als code: de
-   serverregel hieronder is de oplossing.
-2. Op de productieserver in `config/additional_environment.rb`:
-   `if (spec = Gem.loaded_specs['redmineup'])` /
-   `config.assets.excluded_paths += Dir[File.join(spec.full_gem_path, 'app/assets/*')]` /
-   `end`; dan `RAILS_ENV=production bundle exec rake assets:precompile`, herstarten,
-   en Issues → Rapporten → Tracker openen: grafieken zichtbaar, geen
-   "Chart is not a constructor" in de console.
-3. De branch `fix/asset-paths-gems-under-rails-root` op GitHub verwijderen
-   (goedgekeurd; vanuit de sessies geweigerd).
+1. **De mirror syncen** (51 commits achter, `docs/runbook.md`), dan
+   `tools/check-patch-clean.sh asset-paths-gem-order --submit` en de cijfers
+   opnieuw laten draaien (g05).
+2. **Een Defect aanmaken op redmine.org** met de Engelse tekst uit het dossier
+   (vanaf "The problem") en `patches/asset-paths-gem-order/2026-10-12-r25136-feature.patch`
+   erbij; relateren aan #44294 (zelfde symptoom). Het issuenummer daarna in
+   `issue:` hierboven.
+3. **Productie:** `7.0-stable-GEOxyz` deployen, `RAILS_ENV=production bundle exec rake
+   assets:precompile`, herstarten, en Issues → Rapporten → Tracker openen met de
+   RedmineUP-plugins erbij: grafieken zichtbaar, geen "Chart is not a
+   constructor" in de console. Stond de serverregel `config.assets.excluded_paths`
+   al in `config/additional_environment.rb`, dan mag die weg; laten staan kan
+   ook, hij is naast de fix onschadelijk.
+4. De branch `fix/asset-paths-gems-under-rails-root` op GitHub verwijderen
+   (goedgekeurd op 2026-10-07; vanuit de sessies geweigerd). Staat er nog.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
 
-- Optie A, geen upstream-patch: Jans keuze core-q2, 2026-10-07.
-- Oplossen in de gem zelf kan niet: er is geen nieuwere redmineup dan 1.1.13,
-  en een bestand in de geïnstalleerde gem aanpassen overleeft `bundle install` niet.
-- Jan koos de serverregel (`excluded_paths` in `config/additional_environment.rb`)
-  boven de code-fix, 2026-10-07 avond. Niet heropenen; de code-fix blijft in de
-  git-historie (`6abebe886`) als iemand hem ooit terug wil.
+- **Jans keuze B (2026-10-12):** upstream-patch én code-fix op GEOxyz. De eerdere
+  keuzes "optie A, geen upstream-patch" (core-q2, 2026-10-07) en "de serverregel"
+  (2026-10-07 avond) zijn daarmee vervallen; niet heropenen.
+- De sortering hoort in `Redmine::AssetLoadPath#initialize`, niet in een
+  `after_initialize` (Class A, 2026-10-12, `decisions.md`). Het oude ontwerp
+  staat in `6abebe886` en in het dossier als verworpen alternatief.
+- Oplossen in de gem zelf kan niet: er is geen nieuwere redmineup dan 1.1.13, en
+  een bestand in de geïnstalleerde gem aanpassen overleeft `bundle install` niet.
+- `config.assets.excluded_paths` werkt (getest 2026-10-07, screenshots in de
+  historie op `7d8b8e67c`), maar per gem en per server; niet meer de oplossing.
+- Propshaft `main` heeft dezelfde heuristiek (`start_with?(Rails.root.to_s)`);
+  er is geen Propshaft-versie die dit oplost.
 - De echte RedmineUP-plugin starten in een sessie wordt door de veiligheidscheck
-  van de omgeving geweigerd; G9 gebruikt daarom de stand-in-gem `asset_shadow_probe`
-  (bron in het dossier beschreven).
-- De tweede test is alleen rood zonder fix als de suite draait met de bundle in
-  `vendor/bundle`; in de standaard-container staan de gems erbuiten.
+  van de omgeving geweigerd; G9 gebruikt de stand-in-gem `asset_shadow_probe`
+  (dossier, "Live verification").
+- Met de bundle buiten `Rails.root` (deze container, CI, de officiële
+  Docker-image) zie je de fout niet; `bundle config set --local path
+  vendor/bundle` om hem te zien. De nieuwe tests hangen daar niet van af.
 
 ## Volgende stap voor een sessie
 
-Niets voor een sessie tot Jan stap 1 heeft gedaan; daarna alleen `geoxyz_commit` en het register bijwerken als hij dat niet zelf deed.
+Af — niets te doen tot Jan het issue aanmaakt; daarna `issue:` invullen en de
+feedback verwerken.

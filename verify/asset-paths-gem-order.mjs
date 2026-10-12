@@ -5,15 +5,12 @@
 // redmineup 1.1.13 does. The gem is a stand-in (asset_shadow_probe), not
 // redmineup itself: see the dossier, "Live verification", for why.
 //
-//   PREFIX=before-  -> the unpatched branch: the gem's file wins, no chart
-//   PREFIX=         -> with the fix: core's Chart.js 4 wins, chart drawn
-//   PREFIX=nogem-   -> with the fix, the stand-in gem removed from the bundle:
-//                      nothing to reorder, the chart is drawn as before
-//   PREFIX=server-line- -> no code fix (6abebe886 reverted), the stand-in gem
-//                      named redmineup, and Jan's server line in
-//                      config/additional_environment.rb: chart drawn
-// The before shot of the server line is the PREFIX=before- run on the
-// reverted branch, saved as before-server-line-issue-report-chart.png.
+//   PREFIX=before-        -> trunk, unpatched: the gem's file wins, no chart
+//   PREFIX=               -> trunk with the patch: core's Chart.js 4 wins
+//   PREFIX=nogem-         -> trunk with the patch, the stand-in gem removed
+//                            from the bundle: nothing to reorder, chart drawn
+//   PREFIX=geoxyz-before- -> 7.0-stable-GEOxyz at 1bf0ef69b (fix reverted)
+//   PREFIX=geoxyz-        -> 7.0-stable-GEOxyz with the same commit as trunk
 import { session, report } from '../tools/verify-lib.mjs';
 
 const prefix = process.env.PREFIX ?? '';
@@ -50,10 +47,11 @@ console.log(`page errors: ${errors.length ? errors.join(' | ') : 'none'}`);
 
 await s.page.locator('.issue-report-graph').first().scrollIntoViewIfNeeded();
 const captions = {
-  'before-': 'Issue report by tracker, gem in vendor/bundle ships chart.min.js, unpatched: no chart',
-  '': 'Issue report by tracker, same bundle, with the fix: core Chart.js 4 draws the chart',
-  'nogem-': 'Issue report by tracker, with the fix and no colliding gem: unchanged, chart drawn',
-  'server-line-': 'Issue report by tracker, no code fix, excluded_paths line on the server: chart drawn'
+  'before-': 'Issue report by tracker, trunk unpatched, gem in vendor/bundle ships chart.min.js: no chart',
+  '': 'Issue report by tracker, trunk with the patch, same bundle: core Chart.js 4 draws the chart',
+  'nogem-': 'Issue report by tracker, trunk with the patch, no colliding gem: unchanged, chart drawn',
+  'geoxyz-before-': 'Issue report by tracker, 7.0-stable-GEOxyz with the fix reverted, same gem: no chart',
+  'geoxyz-': 'Issue report by tracker, 7.0-stable-GEOxyz with the same commit as the patch: chart drawn'
 };
 await s.shot(`${prefix}issue-report-chart`, captions[prefix], { full: true });
 
