@@ -1894,3 +1894,7 @@ geen sessie stuurt iets naar buiten.
 oplevert als Redmine meeschuift.
 
 **Haast?** Nee — niets hangt ervan af.
+
+## Beslist (Jan) — K-25, 2026-10-12
+
+Jan beantwoordde K-25 in de coördinerende sessie (https://claude.ai/code/session_01GiSsYPm3bxvqrpZkdCxNoi): **optie A, alleen het Redmine-issue.** Propshaft wordt in het dossier genoemd als de plek waar het uiteindelijk hoort; vraagt een committer erom, dan alsnog een issue bij rails/propshaft. De `--submit` van asset-paths-gem-order wacht nog op de mirror-sync (51 commits achter trunk op 2026-10-12).
