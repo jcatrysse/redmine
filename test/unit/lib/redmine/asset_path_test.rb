@@ -43,4 +43,32 @@ class Redmine::AssetPathTest < ActiveSupport::TestCase
     assert_not_nil @assets['plugin_assets/foo/foo.css']
     assert_not_nil @assets['plugin_assets/foo/foo.svg']
   end
+
+  test "application_paths_first puts gem paths behind the application's, also under the root" do
+    paths = [
+      '/srv/redmine/vendor/bundle/ruby/3.3.0/gems/foo-1.0/app/assets/javascripts',
+      '/usr/local/bundle/gems/bar-1.0/app/assets/javascripts',
+      '/srv/redmine/app/javascript',
+      '/srv/redmine/vendor/javascript'
+    ]
+    sorted = Redmine::AssetLoadPath.application_paths_first(
+      paths, root: '/srv/redmine', gem_dirs: ['/srv/redmine/vendor/bundle/ruby/3.3.0', '/usr/local/bundle']
+    )
+    assert_equal [
+      '/srv/redmine/app/javascript',
+      '/srv/redmine/vendor/javascript',
+      '/srv/redmine/vendor/bundle/ruby/3.3.0/gems/foo-1.0/app/assets/javascripts',
+      '/usr/local/bundle/gems/bar-1.0/app/assets/javascripts'
+    ], sorted
+  end
+
+  test "gem assets under Rails.root do not shadow the application's assets" do
+    bundle = Rails.root.join('test/fixtures/asset_path/bundle')
+    Bundler.stubs(:bundle_path).returns(bundle)
+    config = Rails.application.config.assets.dup
+    config.paths = [bundle.join('gems/shadow-1.0/app/assets/javascripts'), Rails.root.join('vendor/javascript')]
+    load_path = Redmine::AssetLoadPath.new(config, Rails.application.assets.compilers)
+
+    assert_equal Rails.root.join('vendor/javascript/chart.min.js'), load_path.find('chart.min.js').path
+  end
 end
