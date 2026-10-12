@@ -33,10 +33,6 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 21 features: 12 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
 
-## Nu in behandeling
-
-- `asset-paths-gem-order` — cse_01DLv9LVATS5vPZTpHaEDjNY sinds 2026-10-12
-
 ## Openstaand voor Jan
 
 ### `ar-sessions`
