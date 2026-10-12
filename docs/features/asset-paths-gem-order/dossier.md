@@ -25,6 +25,10 @@
   afhankelijkheid meer van de volgorde van callbacks. De tweede test is
   herschreven zodat hij ook in CI faalt zonder de fix; de oude was alleen rood
   met de bundle in `vendor/bundle`. Zie "Alternatives considered".
+- **RedmineUP zelf merkt er niets van:** de gem laadt zijn eigen Chart.js 3
+  overal via `plugin_assets/redmineup/chart.min.js` (`javascript_include_tag(...,
+  plugin: 'redmineup')`, onderzocht op de bron van 1.1.13 op 2026-10-07), een
+  ander logisch pad dan het `chart.min.js` waar de patch over gaat.
 - **Kans dat Redmine dit aanneemt:** redelijk. Voor: een echt defect met een
   test die rood is op trunk, klein, en precies hetzelfde symptoom als #44294,
   dat Marius binnen een week oploste. Tegen: het wordt pas zichtbaar met een
@@ -137,8 +141,9 @@ order within each group is kept, so nothing else moves.
 - Code under `Rails.root` that is not in a gem directory — the application,
   and a plugin that defines its own engine — stays in the application group,
   where it was.
-- Plugin and theme assets (`plugin_assets/...`, `themes/...`) are not in
-  `config.assets.paths` and are not affected.
+- Plugin and theme assets are served through
+  `config.assets.redmine_extension_paths` (`plugin_assets/...`, `themes/...`),
+  which this change does not touch.
 - Production needs the usual `rake assets:precompile` after upgrading, so
   `public/assets/chart.min-*.js` is rebuilt from the right file.
 

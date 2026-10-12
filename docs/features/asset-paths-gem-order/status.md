@@ -39,7 +39,7 @@ die van Redmine.
 ## Bewijs
 
 - Volledige suite met patch (`tools/test-env.sh … test:all`, r25136): `6102 runs, 32297 assertions, 28 failures, 2 errors, 82 skips`. Van de 30: 29 de bekende omgevingsfouten van de runbook (14 `RepositoriesControllerTest`, 8 `ApiTest::RepositoriesTest`, 5 `SysControllerTest`, 1 `UserTest`, 1 `ApiTest::IssuesTest`: `svn`/`hg`/`bzr`/`cvs` ontbreken hier); de dertigste, `ListAutofillSystemTest#test_textile_nested_list_autofill` ("expected /my/page to equal /login" in `log_user`, terwijl twee suites tegelijk liepen), is groen bij herhaling: `list_autofill_test.rb` → `15 runs, 55 assertions, 0 failures, 0 errors`
-- Volledige suite op schone trunk r25136: loopt nog in deze sessie (wordt hier ingevuld)
+- Volledige suite op schone trunk r25136 (zelfde container, `test:all`): `6100 runs, 32266 assertions, 28 failures, 2 errors, 82 skips`, faalnamen identiek: **ja, op de inlogflake na** — dezelfde 29 omgevingsfouten (`diff` leeg), en elk van beide runs één andere systeemtest met "expected /my/page to equal /login" (trunk: `IssuesSystemTest#test_bulk_edit`, patch: `ListAutofillSystemTest#test_textile_nested_list_autofill`; bekend uit `traps.md`). Beide groen op de patch bij herhaling (`test_bulk_edit`: `1 runs, 32 assertions, 0 failures`). Verschil 2 runs = precies de 2 nieuwe tests
 - Volledige suite op `7.0-stable-GEOxyz` (`1bf0ef69b` + deze commit): `6194 runs, 32667 assertions, 0 failures, 0 errors, 28 skips` — helemaal groen
 - Aangeraakte suite: `5 runs, 8 assertions, 0 failures, 0 errors, 0 skips` (trunk
   en GEOxyz); zonder de wijziging in `lib/redmine/asset_path.rb`:
@@ -70,7 +70,9 @@ die van Redmine.
 3. **Productie:** `7.0-stable-GEOxyz` deployen, `RAILS_ENV=production bundle exec rake
    assets:precompile`, herstarten, en Issues → Rapporten → Tracker openen met de
    RedmineUP-plugins erbij: grafieken zichtbaar, geen "Chart is not a
-   constructor" in de console. Stond de serverregel `config.assets.excluded_paths`
+   constructor" in de console. Heeft een RedmineUP-plugin zelf grafieken, open
+   er dan ook één: die horen ongewijzigd te werken (ze laden
+   `plugin_assets/redmineup/chart.min.js`, niet het pad van de patch). Stond de serverregel `config.assets.excluded_paths`
    al in `config/additional_environment.rb`, dan mag die weg; laten staan kan
    ook, hij is naast de fix onschadelijk.
 4. De branch `fix/asset-paths-gems-under-rails-root` op GitHub verwijderen

@@ -116,7 +116,9 @@ niets aan te doen en het gebeurt precies één keer.
 3. **Productie:** `7.0-stable-GEOxyz` deployen, `RAILS_ENV=production bundle exec rake
    assets:precompile`, herstarten, en Issues → Rapporten → Tracker openen met de
    RedmineUP-plugins erbij: grafieken zichtbaar, geen "Chart is not a
-   constructor" in de console. Stond de serverregel `config.assets.excluded_paths`
+   constructor" in de console. Heeft een RedmineUP-plugin zelf grafieken, open
+   er dan ook één: die horen ongewijzigd te werken (ze laden
+   `plugin_assets/redmineup/chart.min.js`, niet het pad van de patch). Stond de serverregel `config.assets.excluded_paths`
    al in `config/additional_environment.rb`, dan mag die weg; laten staan kan
    ook, hij is naast de fix onschadelijk.
 4. De branch `fix/asset-paths-gems-under-rails-root` op GitHub verwijderen
