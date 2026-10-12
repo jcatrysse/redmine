@@ -1869,3 +1869,28 @@ Jan herzag zijn keuze van 2026-10-07 (avond) in de coördinerende sessie (https:
 - De code-fix gaat terug op `7.0-stable-GEOxyz` (`6abebe886` werd met `1bf0ef69b` teruggedraaid; die revert vervalt), in de vorm die ook upstream ingediend wordt, zodat beide kanten gelijk zijn (INV-10).
 - Er komt een upstream-patch voor redmine.org: `patch/asset-paths-gem-order` van `origin/master`, met dossier, gates en live-verificatie volgens de upstream-patch-werkwijze. `upstream:` in `status.md` is dus niet langer "nooit".
 - De serverregel `config.assets.excluded_paths` in `config/additional_environment.rb` vervalt als productiestap zodra de fix op `7.0-stable-GEOxyz` staat.
+
+
+
+## Open — keuze voor Jan (toegevoegd 2026-10-12, asset-paths-gem-order)
+
+### K-25 — melden we het ook bij Propshaft, of alleen bij Redmine?
+
+**Wat er speelt.** De oorzaak zit in Propshaft: het telt elk pad onder
+`Rails.root` als "de applicatie", dus ook gems in `vendor/bundle`. Ook op
+Propshaft `main` staat die regel nog zo. De Redmine-patch lost het op in
+Redmine's eigen laadpad (`Redmine::AssetLoadPath`) en wordt vanzelf een no-op
+als Propshaft het ooit zelf goed doet. Beide meldingen zijn iets wat jij doet;
+geen sessie stuurt iets naar buiten.
+
+- **A) Alleen het Redmine-issue (aanbevolen).** Het dossier noemt Propshaft al
+  als de plek waar het uiteindelijk hoort. Vraagt een committer erom, dan
+  alsnog B.
+- **B) Ook een issue bij rails/propshaft.** Lost het voor elke Rails-app op,
+  maar een PR daar moet je zelf opvolgen, en Redmine pint `propshaft ~> 1.3.0`,
+  dus GEOxyz heeft er pas iets aan na een Redmine-upgrade.
+
+**Aanbeveling:** A, omdat de Redmine-patch op zichzelf staat en B pas iets
+oplevert als Redmine meeschuift.
+
+**Haast?** Nee — niets hangt ervan af.
