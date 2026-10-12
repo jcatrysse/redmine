@@ -132,10 +132,24 @@ module Redmine
   class AssetLoadPath < Propshaft::LoadPath
     attr_reader :extension_paths, :default_asset_path, :transition_map
 
+    # Puts the application's asset paths before those of gems, keeping the
+    # order within each group. Propshaft does the same, but counts every path
+    # under Rails.root as the application's, so gems installed in vendor/bundle
+    # would shadow the application's assets that have the same logical path.
+    def self.application_paths_first(paths, root: Rails.root, gem_dirs: [Bundler.bundle_path, *Gem.path])
+      root = File.expand_path(root.to_s) + '/'
+      gem_dirs = gem_dirs.map {|dir| File.expand_path(dir.to_s) + '/'}
+      paths.sort_by.with_index do |path, i|
+        path = File.expand_path(path.to_s)
+        application = path.start_with?(root) && gem_dirs.none? {|dir| path.start_with?(dir)}
+        [application ? 0 : 1, i]
+      end
+    end
+
     def initialize(config, compilers)
       @extension_paths    = config.redmine_extension_paths
       @default_asset_path = config.redmine_default_asset_path
-      super(config.paths,
+      super(self.class.application_paths_first(config.paths),
             compilers: compilers,
             version: config.version,
             file_watcher: config.file_watcher,
