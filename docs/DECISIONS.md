@@ -1860,3 +1860,12 @@ Jan beantwoordde deze twee keuzes zelf, één voor één met uitleg en aanbeveli
 
 - **K-24 (rake-webhook-flush): optie A**, "altijd meteen afwerken": alle jobs zonder eigen adapter draaien inline in de mail-rake-taken, ook later met een echte job-backend. Zo gebouwd; niets te wijzigen.
 - **asset-paths-gem-order: de regel op de server, niet de fix in de Redmine-code.** De vraag was: "Aan de RedmineUP-kant kan het alleen met één regel in een serverbestand buiten git. Welke houden we?" Jan koos "Regel op de server". Gevolg: `6abebe886` gaat van `7.0-stable-GEOxyz` af met een revert-commit, en de productiestap wordt de regel `config.assets.excluded_paths` in `config/additional_environment.rb` (zoals onderzocht en getest in het dossier), gevolgd door `assets:precompile` en een controle van een core-grafiek. Jan keurde ook goed dat de branch `fix/asset-paths-gems-under-rails-root` weg mag; het verwijderen werd vanuit de coördinerende sessie geweigerd, dus Jan doet dat zelf op GitHub.
+
+
+## Beslist (Jan) — asset-paths-gem-order herzien, 2026-10-12
+
+Jan herzag zijn keuze van 2026-10-07 (avond) in de coördinerende sessie (https://claude.ai/code/session_01GiSsYPm3bxvqrpZkdCxNoi), op de vragenpagina en daarna bevestigd in de app: **core-q2 optie B, "Ja, en ook als patch voor redmine.org"**. De vraag was of de core-fix voor de assetpaden (gems in `vendor/bundle` binnen de Redmine-map winnen van core-assets, zodat de Chart.js van redmineup de grafieken van core breekt) in `7.0-stable-GEOxyz` komt.
+
+- De code-fix gaat terug op `7.0-stable-GEOxyz` (`6abebe886` werd met `1bf0ef69b` teruggedraaid; die revert vervalt), in de vorm die ook upstream ingediend wordt, zodat beide kanten gelijk zijn (INV-10).
+- Er komt een upstream-patch voor redmine.org: `patch/asset-paths-gem-order` van `origin/master`, met dossier, gates en live-verificatie volgens de upstream-patch-werkwijze. `upstream:` in `status.md` is dus niet langer "nooit".
+- De serverregel `config.assets.excluded_paths` in `config/additional_environment.rb` vervalt als productiestap zodra de fix op `7.0-stable-GEOxyz` staat.
