@@ -1413,3 +1413,16 @@ toegevoegd.
   back-url-array). `git status` toont dan "interactive rebase in progress".
   Oplossen: `tools/register.sh --write`, `git add docs/REGISTER.md`,
   `GIT_EDITOR=true git rebase --continue`, en `tools/session-push.sh`.
+
+
+- **Een worktree eerst op trunk en daarna op `7.0-stable-GEOxyz` gebruiken geeft een
+  dev-database zonder `sessions`-tabel, en elke pagina een 500** (asset-paths-gem-order,
+  2026-10-12). `db/schema.rb` is gitignored en blijft dus staan bij een checkout. Op een
+  **lege** database laadt `bin/rails db:migrate` (Rails 8.1) dat bestand in plaats van de
+  migraties te draaien, en zet daarbij elke versie uit `db/migrate` in
+  `schema_migrations` — ook GEOxyz's `20240929111106_add_sessions_table`, terwijl de
+  trunk-`schema.rb` die tabel niet kent. Gereproduceerd op een verse database: 0
+  migraties gedraaid, 330 versies, `sessions` ontbreekt, exit 0. **Wat je doet:** na
+  het wisselen van basis `rm db/schema.rb` vóór de eerste `db:migrate`, of een aparte
+  worktree per basis. Al gebeurd: `DELETE FROM schema_migrations WHERE version =
+  '20240929111106'` en opnieuw `db:migrate`.
