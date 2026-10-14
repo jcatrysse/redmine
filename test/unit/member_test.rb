@@ -304,6 +304,31 @@ class MemberTest < ActiveSupport::TestCase
     end
   end
 
+  def test_adding_a_group_member_should_not_query_each_user_beyond_its_inserts
+    project = Project.generate!
+    counts = [5, 10].map do |size|
+      group = Group.generate!
+      group.users << Array.new(size) {User.generate!}
+      count_queries {Member.create!(:principal => group, :project => project, :role_ids => [1])}
+    end
+    # one uniqueness check and two inserts for each of the 5 additional users
+    assert_operator counts[1] - counts[0], :<=, 3 * 5
+  end
+
+  def test_adding_a_group_member_should_not_query_each_user_and_subproject_beyond_its_inserts
+    project = Project.generate!
+    2.times {Project.generate_with_parent!(project, :inherit_members => true)}
+    project.reload
+    counts = [5, 10].map do |size|
+      group = Group.generate!
+      group.users << Array.new(size) {User.generate!}
+      count_queries {Member.create!(:principal => group, :project => project, :role_ids => [1])}
+    end
+    # for each of the 5 additional users: 3 queries in the project, one lookup of
+    # the subprojects and one of their memberships, and 3 queries per subproject
+    assert_operator counts[1] - counts[0], :<=, (3 + 2 + 3 * 2) * 5
+  end
+
   def test_destroy_member_when_member_role_is_empty
     member = Member.find(1)
 
@@ -312,5 +337,14 @@ class MemberTest < ActiveSupport::TestCase
     end
     assert member.destroyed?
     assert_raise(ActiveRecord::RecordNotFound) { Member.find(1) }
+  end
+
+  private
+
+  def count_queries(&)
+    count = 0
+    counter = lambda {|*, payload| count += 1 unless %w(SCHEMA TRANSACTION).include?(payload[:name])}
+    ActiveSupport::Notifications.subscribed(counter, 'sql.active_record', &)
+    count
   end
 end
