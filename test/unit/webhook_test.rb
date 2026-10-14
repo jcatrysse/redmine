@@ -423,7 +423,6 @@ class WebhookTest < ActiveSupport::TestCase
     issue.init_journal @dlopper
     issue.status = IssueStatus.where(is_closed: false).order(:id).first
     issue.save!
-    travel 1.second
 
     Webhook.expects(:trigger).with('issue.updated', issue).once
     Webhook.expects(:trigger).with('issue.closed', issue).once

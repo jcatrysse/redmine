@@ -21,8 +21,9 @@ module Issue::Webhookable
   extend ActiveSupport::Concern
 
   included do
-    # closed_on is written by update_closed_on alone, and only when the issue is closing, so a save that changed it is a closing.
-    after_save_commit ->{ Webhook.trigger(event_name('closed'), self) if saved_change_to_closed_on? }
+    # closing? is gone once the save is done, and closed_on is no substitute: closing again within its resolution leaves it unchanged.
+    before_save ->{ @closing_for_webhook = closing? }
+    after_save_commit ->{ Webhook.trigger(event_name('closed'), self) if @closing_for_webhook }
   end
 
   def webhook_payload(user, action)
