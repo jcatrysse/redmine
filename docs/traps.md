@@ -1426,3 +1426,6 @@ toegevoegd.
   het wisselen van basis `rm db/schema.rb` vóór de eerste `db:migrate`, of een aparte
   worktree per basis. Al gebeurd: `DELETE FROM schema_migrations WHERE version =
   '20240929111106'` en opnieuw `db:migrate`.
+
+- **`until ! pgrep -f "test-env.sh ..."` wacht eeuwig** (group-membership-preload, 2026-10-14). `pgrep -f` matcht de commandoregel van de wachtende shell zelf, want daar staat dezelfde tekst in. De suite was al lang klaar. Wacht op een pid (`while kill -0 $PID`) of grep het log op `runs,`.
+- **Rol-id's verschillen per dev-database** (group-membership-preload, 2026-10-14). Op de trunk-dev-database is Manager id 3, op die van `7.0-stable-GEOxyz` id 1 (volgorde van `load_default_data` en de seed). Een checksum of vergelijking over twee databases moet rolnamen gebruiken, geen ids, anders lijkt een identieke eindtoestand verschillend.
