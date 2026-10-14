@@ -364,7 +364,12 @@ trunk **r25236** (`1d6194503`), the revision the patch is now made against:
   login helper of `application_system_test_case.rb:76` (`expected "/my/page"
   to equal "/login"`), before the test body; re-run alone: **1 runs,
   3 assertions, 0 failures**.
-- **full** suite on a pristine trunk worktree at r25236: BASE_PLACEHOLDER
+- **full** suite on a pristine trunk worktree at r25236 (same command):
+  **6117 runs, 31976 assertions, 27 failures, 2 errors, 87 skips**. The eleven
+  extra runs are the ten new tests plus the one trunk's parametrised payload
+  loop generates for the new event. Failure names compared: trunk's 29 are a
+  subset of the patch run's 30, and the one extra is the system test above
+  that passes on its own.
 - webhook suites: `webhook_test` **42 runs, 153 assertions, 0 failures**;
   `webhook_payload_test` **27 runs, 109 assertions, 0 failures**.
 - RuboCop on the four changed Ruby files: **0**; baseline on the same files at
