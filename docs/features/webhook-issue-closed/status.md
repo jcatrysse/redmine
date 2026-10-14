@@ -101,7 +101,12 @@ toegevoegde en twee verwijderde regels.
   de test had gezet is weer weg. Oude code + test zonder `travel` → 1 failure;
   nieuwe code → webhooksuites plus i18n-test **131 runs, 1173 assertions,
   0 failures**. `tools/check-symmetry.sh webhook-issue-closed`: **PASS**.
-  Volledige suite en `check-geoxyz-branch.sh` op die tip: GEOXYZ_PLACEHOLDER
+  Volledige suite op die tip (`ad17efd3a`, via `tools/test-env.sh`):
+  **6142 runs, 32047 assertions, 0 failures, 0 errors, 29 skips**.
+  `tools/check-geoxyz-branch.sh`: **PASS** (lint 8 op 74 bestanden, baseline
+  8 op upstreams eigen regels; 65 eigen commits, alle geregistreerd).
+- Schone trunk r25236, volledige suite: **6117 runs, 31976 assertions,
+  27 failures, 2 errors, 87 skips** — dezelfde 29 SCM-namen als de patchrun.
 
 ## Wat het doet
 
@@ -391,7 +396,7 @@ verder met `en.yml` alleen.
 
 ## Volgende stap voor een sessie
 
-Af — ronde 2 incluis, niets te doen. Wachten tot Jan het issue heeft
+Af, ververst op r25236 (2026-10-14). Wachten tot Jan het issue heeft
 aangemaakt; vul dan het `issue:`-veld in de front matter en de
 "Submission"-sectie van `dossier.md` in. Vlak vóór het indienen nog één keer
 `tools/check-patch-clean.sh webhook-issue-closed --submit` draaien (g05): als
