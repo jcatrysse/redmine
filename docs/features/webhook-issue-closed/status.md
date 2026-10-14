@@ -3,9 +3,9 @@ slug: webhook-issue-closed
 feature: Apart issue.closed-event op de webhook
 commit_51: 25220b45d (deel)
 geoxyz: live
-geoxyz_commit: 7d85538f3 + 465d326aa
+geoxyz_commit: 7d85538f3 + 465d326aa + ad17efd3a
 upstream: patch klaar
-patch: patches/webhook-issue-closed/2026-09-05-r25037-feature.patch
+patch: patches/webhook-issue-closed/2026-10-14-r25236-feature.patch
 issue:
 ---
 
@@ -55,6 +55,54 @@ komt doordat trunk sinds `acts_as_webhookable` (2026-02-22) al een generieke
 webhooklaag heeft: de 5.1-commit bouwde vier eigen `after_*_commit`-callbacks
 in `Issue`, en daarvan is niets meer nodig.
 
+## Verversing 2026-10-14 — trunk r25236, en de trigger is veranderd
+
+**Aanleiding.** Trunk r25150 (#44455, ook op upstream `7.0-stable`) bevriest de
+klok in elke test. Daarmee faalde de test "again when a reopened issue is
+closed": de hersluiting kreeg dezelfde `updated_on` als de eerste sluiting, dus
+`closed_on` veranderde niet en `saved_change_to_closed_on?` bleef vals. Dat is
+precies het gat bij gelijke tijdstempels dat ronde 4 had gemeten en met tekst
+had afgedaan (zie de sectie hieronder).
+
+**Oordeel: een echte fout in de feature, geen testkwestie.** Het event belooft
+"elke sluiting", en levert dat niet als de hersluiting op dezelfde tijdstempel
+valt — een seconde op een MySQL-`datetime` zonder fracties, en voortaan in
+élke test op trunk. Een committer die dat in zijn eigen suite ziet, ziet een
+fout, en een `travel 1.second` in de test zou hem daarop wijzen. Dus de code
+is aan beide kanten verbeterd en de test niet.
+
+**De wijziging.** `before_save ->{ @closing_for_webhook = closing? }` en
+`after_save_commit ... if @closing_for_webhook`. `closing?` is Redmine's eigen
+predicaat en dezelfde aanroep die `update_closed_on` al doet; `@status_was` is
+gememoiseerd, dus **nul extra queries** (gemeten: 86/69/61 statements voor
+sluiten/heropenen/onderwerp, gelijk aan trunk). Buiten de tests nu veertien
+toegevoegde en twee verwijderde regels.
+
+**Bewijs.**
+- Patch op verse `origin/master` r25236 (`1d6194503`) opnieuw opgebouwd, tip
+  `f608f6a7a`, auteur en committer Jan; force-with-lease over `f3234c1ec`.
+  Patchbestand `2026-10-14-r25236-feature.patch`, het oude is weg.
+- Volledige suite met patch: **6128 runs, 32009 assertions, 28 failures,
+  2 errors, 87 skips** — 29 SCM-tests (geen `svn`/`hg`/`bzr`/`cvs` in dit
+  image) plus één systeemtest die in de login-helper faalde en apart groen is
+  (1 run, 3 assertions, 0 failures). Schone trunk r25236: zie dossier.
+- Rood op oude code: de testbestanden op kale r25236 → 68 runs, 2 failures,
+  3 errors (5 van de 10). De oude trigger op r25236 → 1 failure, precies de
+  hersluitingstest. Mutatie (`if @closing_for_webhook` weg) → de 5 bewakers
+  falen.
+- RuboCop: **0**, baseline **0** (vier bestanden). GEOxyz: **0** op de twee
+  gewijzigde bestanden.
+- `tools/check-patch-clean.sh webhook-issue-closed`: **PASS** (zes checks,
+  tegen de mirror). De mirror liep bij meting **11 commits achter** op echte
+  trunk (r25249); `git apply --check` daarop slaagt ook. `--submit` is voor na
+  Jans sync.
+- GEOxyz: commit **`ad17efd3a`** bovenop de merge `8dae01445` van upstream
+  `7.0-stable`: dezelfde codewijziging, en de `travel 1.second` die de merge in
+  de test had gezet is weer weg. Oude code + test zonder `travel` → 1 failure;
+  nieuwe code → webhooksuites plus i18n-test **131 runs, 1173 assertions,
+  0 failures**. `tools/check-symmetry.sh webhook-issue-closed`: **PASS**.
+  Volledige suite en `check-geoxyz-branch.sh` op die tip: GEOXYZ_PLACEHOLDER
+
 ## Wat het doet
 
 Een webhook kan aanvinken dat hij alleen wil horen wanneer een issue
@@ -88,7 +136,8 @@ klok loopt door
   12:00:02 hersluiten -> ["issue.closed", "issue.updated"]  closed_on=12:00:02
 ```
 
-**Waarom tekst en geen code.** Hoe breed dat venster is, hangt af van de
+**Achterhaald op 2026-10-14, zie hierboven** — de code is alsnog veranderd.
+**Waarom tekst en geen code (toen).** Hoe breed dat venster is, hangt af van de
 resolutie van de kolom: op PostgreSQL microseconden, dus onbereikbaar; op een
 MySQL-`datetime` zonder fracties een hele seconde, en dan moet je sluiten,
 heropenen en hersluiten binnen die seconde. Het alternatief zonder venster
@@ -190,7 +239,7 @@ Alles opnieuw gemeten op **2026-09-05**, tegen trunk **r25037** (`bee32a926`).
 Maak een **nieuw** issue op redmine.org aan als follow-up van
 [#29664](https://www.redmine.org/issues/29664) — dus niet als note aan #29664
 zelf, dat issue is gesloten met target version 7.0.0. Hang er
-`patches/webhook-issue-closed/2026-09-05-r25037-feature.patch` aan. Dat is
+`patches/webhook-issue-closed/2026-10-14-r25236-feature.patch` aan. Dat is
 **één** bestand: er is geen aparte locales-patch, en de reden daarvoor staat
 hieronder en in het dossier onder "Locales — why `en.yml` only". De Engelse
 issuetekst staat kant-en-klaar in `dossier.md` vanaf "The problem".
@@ -241,7 +290,9 @@ verder met `en.yml` alleen.
 - **Er is geen bestaand issue op redmine.org voor dit event.** Gezocht op
   `webhook` (22 issues) en `webhook event` (10 issues). Niet opnieuw zoeken;
   wél kijken of Jan er inmiddels een heeft aangemaakt.
-- **De trigger leest `closed_on`, en dat is geen slimmigheid.** `closed_on`
+- **(Achterhaald op 2026-10-14: de trigger is nu `closing?` via een
+  `before_save`. Niet terug naar `closed_on`.)** Oorspronkelijk:
+  **De trigger leest `closed_on`, en dat is geen slimmigheid.** `closed_on`
   wordt in core op precies één plek geschreven (`update_closed_on`,
   `if closing?`) en staat in geen enkele `safe_attributes`-lijst. "Deze save
   schreef `closed_on`" ís dus "deze save sloot het issue". De statusgebaseerde

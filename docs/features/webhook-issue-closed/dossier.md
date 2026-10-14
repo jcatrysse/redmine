@@ -639,6 +639,13 @@ report.
   herschreven historie: een force push op de branch die GEOxyz draait maakt elke
   checkout daar ongeldig. Dezelfde afweging als bij `ldap-mail-prefs`, en het
   registerveld wijst naar de laatste.
+  Op **2026-10-14** kwam er een derde bij, **`ad17efd3a`**, bovenop de merge
+  `8dae01445` van upstream `7.0-stable` (met #44455): de trigger naar
+  `closing?` via `before_save`, dezelfde wijziging als de patch, en de
+  `travel 1.second` die de merge in de hersluitingstest had gezet weer weg.
+  Rood/groen daar: oude code → 1 failure (die test), nieuwe code →
+  webhooksuites plus i18n-test **131 runs, 1173 assertions, 0 failures**.
+  `tools/check-symmetry.sh webhook-issue-closed`: **PASS**.
 - **Identiek aan de patch (INV-10):** ja, mechanisch nagegaan — de drie
   productiebestanden (`app/models/issue.rb`,
   `app/models/concerns/issue/webhookable.rb`, `lib/redmine/acts/webhookable.rb`)
