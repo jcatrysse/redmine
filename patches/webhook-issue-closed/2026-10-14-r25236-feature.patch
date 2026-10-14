@@ -1,4 +1,4 @@
-From f3234c1ec46158c477112e8c42a7ec2650c76cc4 Mon Sep 17 00:00:00 2001
+From f608f6a7a58b2c9588b2f8b70a5848957342e0ce Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Sat, 5 Sep 2026 20:13:42 +0000
 Subject: [PATCH] Add a separate issue.closed webhook event.
@@ -8,29 +8,30 @@ issue.updated and re-derive the transition from the journal details, which
 means receiving and discarding every other issue change in the project.
 
 Issue registers a fourth webhook event and triggers it from
-Issue::Webhookable when a save wrote closed_on, so the event fires once per
-closing and not again while the issue stays closed, moves to another closed
-status, or is reopened. The payload carries the closing journal, like
-issue.updated does.
+Issue::Webhookable after a save for which Issue#closing? was true, so the
+event fires once per closing and not again while the issue stays closed,
+moves to another closed status, or is reopened. The payload carries the
+closing journal, like issue.updated does.
 ---
- app/models/concerns/issue/webhookable.rb | 12 ++-
+ app/models/concerns/issue/webhookable.rb | 13 +++-
  app/models/issue.rb                      |  2 +-
  config/locales/en.yml                    |  1 +
  test/unit/webhook_payload_test.rb        | 23 ++++++
  test/unit/webhook_test.rb                | 95 ++++++++++++++++++++++++
- 5 files changed, 131 insertions(+), 2 deletions(-)
+ 5 files changed, 132 insertions(+), 2 deletions(-)
 
 diff --git a/app/models/concerns/issue/webhookable.rb b/app/models/concerns/issue/webhookable.rb
-index 7c59329e5..2412f2dfd 100644
+index 7c59329e5..41b5ee284 100644
 --- a/app/models/concerns/issue/webhookable.rb
 +++ b/app/models/concerns/issue/webhookable.rb
-@@ -20,9 +20,14 @@
+@@ -20,9 +20,15 @@
  module Issue::Webhookable
    extend ActiveSupport::Concern
  
 +  included do
-+    # closed_on is written by update_closed_on alone, and only when the issue is closing, so a save that changed it is a closing.
-+    after_save_commit ->{ Webhook.trigger(event_name('closed'), self) if saved_change_to_closed_on? }
++    # closing? is gone once the save is done, and closed_on is no substitute: closing again within its resolution leaves it unchanged.
++    before_save ->{ @closing_for_webhook = closing? }
++    after_save_commit ->{ Webhook.trigger(event_name('closed'), self) if @closing_for_webhook }
 +  end
 +
    def webhook_payload(user, action)
@@ -40,7 +41,7 @@ index 7c59329e5..2412f2dfd 100644
        journal = journals.visible(user).find_by_id(current_journal.id)
        if journal.present?
          h[:data][:journal] = journal_payload(journal, user)
-@@ -32,6 +37,11 @@ module Issue::Webhookable
+@@ -32,6 +38,11 @@ module Issue::Webhookable
      h
    end
  
@@ -53,7 +54,7 @@ index 7c59329e5..2412f2dfd 100644
  
    def journal_payload(journal, user)
 diff --git a/app/models/issue.rb b/app/models/issue.rb
-index fa2d7707d..77b20af53 100644
+index 0a7cc5ed3..a44ae80ff 100644
 --- a/app/models/issue.rb
 +++ b/app/models/issue.rb
 @@ -60,7 +60,7 @@ class Issue < ApplicationRecord
@@ -66,10 +67,10 @@ index fa2d7707d..77b20af53 100644
  
    DONE_RATIO_OPTIONS = %w(issue_field issue_status)
 diff --git a/config/locales/en.yml b/config/locales/en.yml
-index bdbad19a0..21c478574 100644
+index 77e7de2db..a67580753 100644
 --- a/config/locales/en.yml
 +++ b/config/locales/en.yml
-@@ -1196,6 +1196,7 @@ en:
+@@ -1201,6 +1201,7 @@ en:
  
    webhook_event_created: "%{object_name} created"
    webhook_event_updated: "%{object_name} updated"
@@ -112,10 +113,10 @@ index 027071ffa..f89671cb1 100644
      @issue.destroy
      p = WebhookPayload.new('issue.deleted', @issue, @dlopper)
 diff --git a/test/unit/webhook_test.rb b/test/unit/webhook_test.rb
-index e528a2a1c..31a617923 100644
+index 662ec8d61..a15db7332 100644
 --- a/test/unit/webhook_test.rb
 +++ b/test/unit/webhook_test.rb
-@@ -234,6 +234,93 @@ class WebhookTest < ActiveSupport::TestCase
+@@ -299,6 +299,93 @@ class WebhookTest < ActiveSupport::TestCase
      assert_equal attachment.filename, journal.details.last.old_value
    end
  
@@ -209,7 +210,7 @@ index e528a2a1c..31a617923 100644
    test "should compute correct signature" do
      # we're implementing the same signature mechanism as GitHub, so might as well re-use their
      # example. https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries
-@@ -346,6 +433,14 @@ class WebhookTest < ActiveSupport::TestCase
+@@ -411,6 +498,14 @@ class WebhookTest < ActiveSupport::TestCase
      Webhook.create!(url: url, user: user, projects: projects, events: events, active: active)
    end
  

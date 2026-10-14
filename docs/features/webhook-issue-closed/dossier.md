@@ -353,8 +353,50 @@ The two rows added to the table for copies and duplicates are inherited
 `update_attribute`/`copy_from` behaviour rather than anything the guard
 decides, and they are measured in the dossier rather than pinned in a test.
 
-**Evidence (INV-8 — figures, not claims):** all re-run on 2026-09-05 against
-trunk **r25037** (`bee32a926`), the revision the patch is now made against.
+**Evidence (INV-8 — figures, not claims), refresh of 2026-10-14** against
+trunk **r25236** (`1d6194503`), the revision the patch is now made against:
+
+- **full** suite with the patch:
+  `tools/test-env.sh /home/user/wt/patch-webhook-issue-closed bundle exec ruby bin/rails test:all`
+  → **6128 runs, 32009 assertions, 28 failures, 2 errors, 87 skips**.
+  29 of the 30 are the SCM-binary tests named below. The 30th,
+  `IssuesSystemTest#test_removing_issue_shows_confirm_dialog`, failed in the
+  login helper of `application_system_test_case.rb:76` (`expected "/my/page"
+  to equal "/login"`), before the test body; re-run alone: **1 runs,
+  3 assertions, 0 failures**.
+- **full** suite on a pristine trunk worktree at r25236: BASE_PLACEHOLDER
+- webhook suites: `webhook_test` **42 runs, 153 assertions, 0 failures**;
+  `webhook_payload_test` **27 runs, 109 assertions, 0 failures**.
+- RuboCop on the four changed Ruby files: **0**; baseline on the same files at
+  r25236: **0**.
+- **Red on the old code, twice over.** The two test files on pristine r25236
+  code: **68 runs, 239 assertions, 2 failures, 3 errors** — the same five
+  tests as listed below fail. And the previous version of this patch (the
+  `saved_change_to_closed_on?` trigger) on r25236: `webhook_test` **42 runs,
+  152 assertions, 1 failure**, namely
+  `should trigger issue closed webhook again when a reopened issue is closed`,
+  because trunk's frozen clock (r25150, #44455) makes the re-closing land on
+  the previous closing's timestamp. Green on the current trigger, with the
+  test unchanged.
+- **Guards:** remove `if @closing_for_webhook` → `webhook_test` **42 runs,
+  148 assertions, 5 failures**, exactly the five `.never` tests.
+- **Probes re-run on the new trigger**, same results as the table and the
+  backward-compatibility notes claim: one save in `Issue.transaction` →
+  `["issue.closed", "issue.updated"]`; two saves in one transaction →
+  `["issue.updated"]`; `copy_from(keep_status: true)` →
+  `["issue.closed", "issue.created"]`; created closed →
+  `["issue.closed", "issue.created"]`; closing with one duplicate → two of
+  each. Statements per `Issue#save` with webhooks off (closing / reopening /
+  subject edit): **86 / 69 / 61**, on trunk and with the patch alike.
+- `tools/check-patch-clean.sh webhook-issue-closed`: **PASS**, all six
+  checks, against the mirror at r25236. The mirror was **11 commits behind**
+  real trunk (r25249) when measured; `git apply --check` against r25249
+  passes too, and none of those 11 commits touches a file in this patch other
+  than `en.yml` (six added lines elsewhere in the file). The `--submit` run
+  belongs to Jan's sync (K-19).
+
+Earlier figures, kept for the record — run on 2026-09-05 against trunk
+**r25037** (`bee32a926`), with the previous trigger:
 
 - **full** suite with the patch:
   `tools/test-env.sh /home/user/wt/patch-webhook-issue-closed bundle exec ruby bin/rails test:all`
@@ -565,8 +607,8 @@ report.
 ## Submission
 
 - **Issue:** <redmine.org nummer + link, zodra Jan het heeft aangemaakt>
-- **Patches attached:** `patches/webhook-issue-closed/2026-09-05-r25037-feature.patch` (code + `en.yml`, one file — there is no locales patch, see the locale section)
-- **Made against:** `origin/master` r`25037` (2026-09-03)
+- **Patches attached:** `patches/webhook-issue-closed/2026-10-14-r25236-feature.patch` (code + `en.yml`, one file — there is no locales patch, see the locale section)
+- **Made against:** `origin/master` r`25236` (2026-10-13)
 - **Status:** nog niet ingediend
 - **Feedback en wat ermee gebeurde:** —
 - **Twee losse issues, en ze bijten elkaar niet.** Deze patch en die van
@@ -575,7 +617,8 @@ report.
   r25037-checkout **in beide volgordes** achter elkaar toegepast zonder
   conflict. Eén zin daarover in het issue dat als tweede binnenkomt bespaart de
   committer het uitzoekwerk.
-- **Eén zin over `json` 3.0.0, zolang die gem is wat een verse `bundle install`
+- **(Vervallen op r25236: de bundle levert nu `json` 3.1.0 en de end-to-end
+  test is daar groen.)** Oorspronkelijk: **Eén zin over `json` 3.0.0, zolang die gem is wat een verse `bundle install`
   oplevert.** `json` 3.0.0 breekt `ActiveSupport::JSON.decode` met
   `ArgumentError: wrong number of arguments (given 2, expected 1)` — dat is een
   Rails/gem-probleem, niet van deze patch, en het is gemeten op **kaal** trunk
