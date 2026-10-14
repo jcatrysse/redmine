@@ -83,6 +83,15 @@ class ActivityTest < ActiveSupport::TestCase
     assert_equal events, events.uniq
   end
 
+  def test_journal_events_should_preload_details
+    f = Redmine::Activity::Fetcher.new(User.find(1))
+    f.scope = ['issues']
+    journals = f.events.grep(Journal)
+
+    assert_operator journals.size, :>, 1
+    assert_no_queries {journals.each {|journal| journal.details.to_a}}
+  end
+
   def test_files_activity
     f = Redmine::Activity::Fetcher.new(User.anonymous, :project => Project.find(1))
     f.scope = ['files']
