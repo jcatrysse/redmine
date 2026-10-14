@@ -130,6 +130,14 @@ inhoudelijk ongewijzigd; de vier vertalingen zijn byte-identiek.
   `origin/7.0-stable-GEOxyz`, waar de merge met upstream 7.0-stable (#44337) bij
   het einde van deze sessie nog niet op stond. Beide moeten eerst gepusht zijn.
   `7.0-stable-GEOxyz` is niet aangeraakt.
+- **Handmatige symmetriecontrole, 21:56 UTC**, nadat de merge `8dae01445` op
+  `origin/7.0-stable-GEOxyz` stond (tip `ad17efd3a`): alle **132** toegevoegde
+  regels van `940d9b7de` (code, test, migratie, vijf locales op waarde) staan
+  letterlijk op GEOxyz; geen van de vier vervangen trunkregels staat er nog; de
+  app-diff tegenover de eigen basis is aan beide kanten **46** regels, en de
+  GEOxyz-controller noemt `tracker_ids` niet meer. Er is dus niets op
+  `7.0-stable-GEOxyz` te wijzigen. De echte gate blijft
+  `tools/check-symmetry.sh`, en die kan pas na de force-push.
 - De migratie houdt `20260903081500`, nu ouder dan trunk's
   `20260906000000`. Bewust: GEOxyz draait hem al onder die naam, en een
   committer kiest bij het toepassen toch zijn eigen tijdstempel.
