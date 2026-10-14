@@ -18,8 +18,8 @@
   zijn zes uitbreidingen op en punt 2 is letterlijk *"An option to only trigger
   on issue close."*; **note 37** van Holger Just vraagt om precies dat: die
   monolithische patch opsplitsen in losse, tegen trunk gerebaseerde stukken met
-  per stuk de reden erbij. Dit is punt 2, los, tegen r25037. Buiten de tests
-  zijn het dertien toegevoegde en twee verwijderde regels over drie bestanden,
+  per stuk de reden erbij. Dit is punt 2, los, tegen r25236. Buiten de tests
+  zijn het veertien toegevoegde en twee verwijderde regels over drie bestanden,
   en er komt geen instelling, migratie, gem, route of permissie bij. De patch
   raakt **geen enkel bestand onder `lib/redmine/`**: alles wat issuespecifiek
   is staat in `Issue::Webhookable`.
@@ -29,7 +29,13 @@
 
 ## Trunk check (G1)
 
-- **Trunk-revisie nagekeken:** `bee32a926` = **r25037** van **2026-09-03**. Dat
+- **Verversing 2026-10-14:** opnieuw opgebouwd op een verse `origin/master`,
+  `1d6194503` = **r25236**. De oude patch applyde zonder conflict, maar één
+  test faalde: trunk r25150 (#44455) bevriest de klok in elke test, en daarmee
+  werd het gat bij gelijke tijdstempels zichtbaar dat ronde 4 al had gemeten.
+  Dat was een echte fout in de trigger, dus de trigger is veranderd (nu
+  `closing?` via een `before_save`) en de test niet. Zie "Proposed change".
+- **Trunk-revisie eerder nagekeken:** `bee32a926` = **r25037** van **2026-09-03**. Dat
   is de stand van de mirror in deze fork; Redmine's bron is SVN en de mirror
   loopt achter op de echte trunk. De patch is tegen r25037 gemaakt en dat hoort
   in het issue vermeld te worden. (De eerste versie stond op r24882; op
@@ -119,38 +125,41 @@ patch exists to avoid.
 closing. Nothing else changes: hooks that do not tick the new box behave
 exactly as before, and the other four webhookable models are untouched.
 
-The trigger condition is `saved_change_to_closed_on?`. `closed_on` is written
-by exactly one place in core — the `update_closed_on` callback, `if closing?` —
-and it is not a safe attribute, so no request can set it. So "this save wrote
-`closed_on`" and "this save closed the issue" are the same statement, with one
-exception, and the patch does not need a second definition of closing, an extra
-query for the previous status, or an instance variable carried from
-`before_save` into `after_commit`.
+The trigger condition is Redmine's own predicate, `Issue#closing?`: an open
+status changed to a closed one, or a new record created closed. That predicate
+reads the dirty state, so it only holds before the save; a `before_save`
+records it on the instance and the `after_save_commit` fires on it. No second
+definition of "closing" and no extra query: `closing?` is the same call
+`update_closed_on` makes a few callbacks later, and the previous status it
+needs is memoised on the instance (`@status_was`), so the second call is
+answered from memory. Measured by counting `sql.active_record` around one
+`Issue#save` with webhooks off: 86 / 69 / 61 statements for a closing, a
+reopening and a subject edit, identical on trunk and with the patch.
 
-**The exception, stated rather than left to be found.** `update_closed_on`
-assigns `self.closed_on = updated_on`, and Active Record reports no change when
-the value assigned equals the value stored. So a *re-*closing whose
-`updated_on` lands on the same timestamp as the previous closing writes
-nothing, and no `issue.closed` is sent for it. How wide that window is depends
-on the resolution of the column: on PostgreSQL it carries microseconds and no
-sequence of close, reopen and close can fit inside one, while a MySQL
-`datetime` without fractional seconds — which is what an `issues` table created
-by an older Redmine has — makes it a full second. Reaching it needs all three
-transitions inside that window, so a person cannot and a script can. The
-alternative that has no such window is the `before_save` instance variable
-under "Alternatives considered"; the trade is one more callback and one more
-piece of per-instance state against a gap this narrow, and a committer who
-would rather have it can say so.
+**Why not `saved_change_to_closed_on?`.** An earlier version of this patch
+read `closed_on` after the commit, on the argument that core writes it only
+when closing. That is true, and it is still not the same statement:
+`update_closed_on` assigns `self.closed_on = updated_on`, and Active Record
+records no change when the value assigned equals the value stored. A
+re-closing whose `updated_on` equals the previous closing's therefore sent no
+`issue.closed`. On a MySQL `datetime` without fractional seconds — which is what
+an `issues` table created by an older Redmine has — that is close, reopen and
+close within one second, which a person cannot do and a script can. And since
+r25150 (#44455) trunk's own test suite freezes the clock for every test, so
+the window is no longer theoretical there: the test for exactly this row,
+`should trigger issue closed webhook again when a reopened issue is closed`,
+fails against that version on current trunk. It was a defect in the trigger,
+not in the test, so the trigger changed and the test did not.
 
 | File | Change |
 |---|---|
 | `app/models/issue.rb` | `acts_as_webhookable %w(created updated closed deleted)` — registers the event so it appears on the form and passes `Webhook`'s event validation |
-| `app/models/concerns/issue/webhookable.rb` | an `after_save_commit` that triggers `issue.closed` when the save wrote `closed_on`; the existing journal enrichment now also applies to `closed`; `webhook_payload_timestamp` is overridden to map `closed` onto `updated_on` |
+| `app/models/concerns/issue/webhookable.rb` | a `before_save` that records `Issue#closing?` and an `after_save_commit` that triggers `issue.closed` on it; the existing journal enrichment now also applies to `closed`; `webhook_payload_timestamp` is overridden to map `closed` onto `updated_on` |
 | `config/locales/en.yml` | `webhook_event_closed`, next to the three keys it belongs with |
 | `test/unit/webhook_test.rb` | eight tests for the transitions, one of them end to end through `WebhookJob` |
 | `test/unit/webhook_payload_test.rb` | two tests for the payload |
 
-Outside the tests: **13 insertions, 2 deletions** across three files, one of the
+Outside the tests: **14 insertions, 2 deletions** across three files, one of the
 insertions being the locale string and two being comments.
 
 **Nothing under `lib/redmine/` changes.** `closed` is an event only `Issue` can
@@ -203,8 +212,10 @@ somebody ticks the new box.
   `IssuesController#save_issue_with_child_records` calls
   `controller_issues_edit_after_save` **inside** its `Issue.transaction`, so a
   plugin that re-saves the issue from that hook would lose the closing.
-  Carrying the fact across in per-instance state survives it, at the cost of a
-  second callback and state to reset; see *Alternatives considered*.
+  The `before_save` records `closing?` per save, so the second save overwrites
+  it. Making it survive would mean state that accumulates across saves and is
+  reset after both commit and rollback, which is more machinery than a path no
+  core code takes.
 
 ## Which transitions fire, and which do not
 
@@ -279,20 +290,18 @@ implementation did this: `saved_change_to_status_id?`, then
 previous status was closed. It gives the same answer for every row of the table
 above, but it costs one extra query per status change into a closed status, it
 restates a definition core already has, and it uses a safe-navigation chain on
-`status`, which is validated as present. `closed_on` is the value core writes
-*because* the issue was closed, so reading it is reading core's own answer.
+`status`, which is validated as present. `Issue#closing?` gives the same
+answer from state core has already loaded.
 
-**Capturing `closing?` in a `before_save` instance variable.** `Issue#closing?`
-is the exact predicate, but it reads the dirty state before the save and is
-false by the time `after_save_commit` runs. Carrying it across in an ivar works
-and is a pattern this model already uses for `@current_journal`, but it is an
-extra callback and an extra piece of per-instance state to express something
-already recorded in a column. It is the version with **no** timestamp window:
-`closing?` is true for a re-closing whatever `updated_on` turns out to be,
-where `saved_change_to_closed_on?` is not. That is the one argument in its
-favour, and it is the reason this alternative is worth a second look rather
-than a mention — if the window matters to you, this is the change, and it is
-four lines.
+**Reading `closed_on` after the commit (`saved_change_to_closed_on?`).** This
+was the first version of the patch, and it needed no `before_save` and no
+instance variable. It is rejected because it has a window: a re-closing that
+stamps `closed_on` with the value it already holds is not a change to Active
+Record, so no event is sent. That window is one second on a MySQL `datetime`
+without fractions, and every test on trunk since r25150 (#44455), which freezes
+the clock. See "Proposed change". The `before_save` costs one callback and one
+instance variable, a pattern this model already uses for `@current_journal`
+and `@status_was`.
 
 **A setting to switch the event on.** Rejected on INV-6 grounds and because it
 would be a setting for something a check box on the hook already expresses.
@@ -538,18 +547,18 @@ report.
 
 | Objection | Answer |
 |---|---|
-| Why `closed_on` and not the status change? | `closed_on` is written by exactly one place in core, `update_closed_on`, `if closing?`, and it is not a safe attribute. So reading it is reading core's own answer to "was this a closing", with no extra query and no second definition to keep in step. It has one gap and it is named under "Proposed change": a re-closing that lands on the same timestamp as the previous one assigns `closed_on` the value it already holds, so Active Record sees no change and no event is sent. That needs close, reopen and close inside the column's timestamp resolution — a microsecond on PostgreSQL, a second on a `datetime` column without fractional seconds. The status-based version and the `before_save` instance variable are both in "Alternatives considered" with what they cost. |
+| Why an instance variable, and not `saved_change_to_closed_on?` or `saved_change_to_status_id?` after the commit? | `Issue#closing?` is core's definition of a closing, but it reads the dirty state and is false once the save is done, so it is recorded in a `before_save`. `saved_change_to_closed_on?` was this patch's first trigger and misses a re-closing that lands on the previous closing's timestamp — one second on a MySQL `datetime`, and every test on trunk since #44455 freezes the clock. `saved_change_to_status_id?` needs a query for the previous status and restates the definition. Both are under "Alternatives considered". |
 | `closed` is in the `acts_as_webhookable` array but the `case` in that method has no branch for it. Is that not a bug? | No, it is the seam, and it is the reason `lib/redmine/acts/webhookable.rb` is not in this patch at all. Registering an event without a generic lifecycle callback is supported and trunk's own payload test does it (`should generate payload for custom event`, registering `news.commented`). "Closed" is not a lifecycle callback, so it is fired from `Issue::Webhookable` instead, next to the journal enrichment that is also issue-specific — and the payload timestamp for it is overridden in that same file rather than added to the generic mapping. `Issue#attachment_removed` calls `Webhook.trigger` directly for the same reason. |
 | This should be `after_update_commit`, not `after_save_commit`. | `after_save_commit` also covers an issue created directly in a closed status, which is a closing by Redmine's own definition (`Issue#closing?` returns `closed?` for a new record, and `update_closed_on` stamps `closed_on` on that create). Restricting it to updates would make the event silently miss that case. There is a test for it. |
-| What does this cost on `Issue#save` in an installation with webhooks off, which is the default? | One in-memory boolean, and **zero** queries. The condition is written `Webhook.trigger(...) if saved_change_to_closed_on?`, so the guard is evaluated first and `Setting.webhooks_enabled?` is not even read unless the save actually closed the issue. That is cheaper than the three callbacks `acts_as_webhookable` already installs, which call `Webhook.trigger` unconditionally on every create, update and destroy. Measured by counting `sql.active_record` around one `Issue#save`: with webhooks off the `webhooks` table is not touched on any save path, closing or not. |
+| What does this cost on `Issue#save` in an installation with webhooks off, which is the default? | One extra call to `closing?` and one in-memory boolean, and **zero** queries: `update_closed_on` already asks `closing?` on every save, and the previous status it needs is memoised on the instance. `Webhook.trigger(...) if @closing_for_webhook` evaluates the guard first, so `Setting.webhooks_enabled?` is not even read unless the save actually closed the issue. Measured by counting `sql.active_record` around one `Issue#save` on trunk and with the patch: 86 / 69 / 61 statements for a closing, a reopening and a subject edit, on both. |
 | And with webhooks on? | One extra `hooks_for` query, on the save that actually closes the issue and only there. Measured, with webhooks enabled and no hooks at all in the table: a closing save queries `webhooks` **twice** where trunk queries it once, a non-closing save queries it **once**, which is trunk's number. That is one additional indexed `SELECT` on a state transition; every other save path is unchanged. |
 | Does an existing installation start getting extra deliveries? | No. Existing hooks' `events` arrays do not contain `issue.closed`, so `hooks_for` never returns them for it. Nothing changes until somebody ticks the box. |
 | Then a receiver gets two deliveries for one closing, `issue.updated` and `issue.closed`. | Only if it subscribes to both, which it no longer needs to. The point of the event is that a receiver interested only in closings ticks one box and gets one delivery per closing — six deliveries down to two in the browser verification above. |
-| Two closed statuses in a row (`Closed` → `Rejected`) — surely that is a closing too? | It is a change between two closed states, and `closed_on` is deliberately left alone by core in that case, so the issue's recorded closing time does not move. Firing again would tell a receiver "this was closed now" about an issue that was already closed. There is a test. |
+| Two closed statuses in a row (`Closed` → `Rejected`) — surely that is a closing too? | It is a change between two closed states, `Issue#closing?` is false for it, and `closed_on` is deliberately left alone by core in that case, so the issue's recorded closing time does not move. Firing again would tell a receiver "this was closed now" about an issue that was already closed. There is a test. |
 | An administrator ticks "Issue closed" on an existing status. Does every issue in that status now POST to the hook? | No. `IssueStatus#handle_is_closed_change` backfills `closed_on` on those issues with two `Issue.where(...).update_all(...)` statements, and `update_all` runs no callbacks — so neither `issue.closed` nor the existing `issue.updated` fires. Which is right: the issues were not closed, the definition of closed changed. Deleting such a status is not a route in either: `IssueStatus#check_integrity` refuses while any issue still uses it. |
 | Why not add it to `Version` too, which also has a closed status? | Out of scope for this patch and it would double what has to be reviewed. The design generalises: `Version::Webhookable` gains the same three lines with its own predicate. Happy to add it if wanted. |
 | The other translations are missing. | On purpose, and the reasoning is in "Locales — why `en.yml` only": at r25037, in 42 of the 49 non-English locale files the three sibling keys are still the verbatim English string, `i18n.fallbacks` is on, and `rake locales:update` is Redmine's mechanism for propagating a new `en` key with its English value. The seven languages that did translate the group translated all three together — that is the unit of work, and a language team will pick the fourth up the same way. |
-| Thirteen added lines of production code and ten tests is a lot of test for a little code. | The code is small because the condition is exactly right; the tests are what establish that. Eight of the ten are transition tests, covering seven of the eight rows of the table above, and that table is the specification of the feature; the other two pin the payload's journal and its timestamp. The one row without a test is named in *Tests*, with why. |
+| Fourteen added lines of production code and ten tests is a lot of test for a little code. | The code is small because the condition is exactly right; the tests are what establish that. Eight of the ten are transition tests, covering seven of the eight rows of the table above, and that table is the specification of the feature; the other two pin the payload's journal and its timestamp. The one row without a test is named in *Tests*, with why. |
 
 ---
 

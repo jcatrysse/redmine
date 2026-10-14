@@ -111,3 +111,28 @@ Class B (keuzes voor Jan) staat in `docs/DECISIONS.md`.
   om de default uit `Redmine::Acts::Webhookable` naar buiten te halen — een
   wijziging in juist die generieke laag die deze patch verder met rust laat.
   De afweging staat als één zin in het dossier.
+
+## Verversing tegen trunk r25236 (2026-10-14)
+
+- **De trigger is `closing?`, vastgelegd in een `before_save`, niet langer
+  `saved_change_to_closed_on?`.** Aanleiding: trunk r25150 (#44455) bevriest de
+  klok in elke test, en daarmee faalde de bestaande test "again when a reopened
+  issue is closed" op de oude trigger. Dat is geen testkwestie maar het gat dat
+  ronde 4 al had gemeten: `update_closed_on` zet `closed_on = updated_on`, en
+  een hersluiting op dezelfde tijdstempel is voor Active Record geen wijziging.
+  Op MySQL `datetime` zonder fracties is dat venster een seconde en bereikbaar
+  voor een script. De afweging van ronde 4 ("tekst, geen code") steunde op "een
+  venster dat in de praktijk niet voorkomt"; trunks eigen testomgeving laat het
+  nu bij elke test voorkomen, dus een committer ziet het als eerste. De
+  wijziging is één regel meer, kost nul queries (`closing?` is dezelfde aanroep
+  die `update_closed_on` al doet, `@status_was` is gememoiseerd; gemeten
+  86/69/61 statements, gelijk aan trunk) en de test bleef ongewijzigd.
+- **Geen extra test.** De bestaande test dekt precies dit geval onder trunks
+  bevroren klok: rood op de oude trigger, groen op de nieuwe. Een expliciete
+  `travel_to` toevoegen zou dubbel zijn met `ActiveSupport::TestCase#before_setup`.
+- **Op GEOxyz verdwijnt de `travel 1.second`** die de merge van upstream
+  `7.0-stable` aan die test toevoegde: met de nieuwe trigger is hij overbodig,
+  en zonder die regel is de test aan beide kanten dezelfde (INV-10).
+- **F02 (twee saves in één transactie) blijft beschreven en niet
+  gerepareerd.** De `before_save` legt `closing?` per save vast, dus de tweede
+  save overschrijft het; nagemeten: nog steeds alleen `issue.updated`.
