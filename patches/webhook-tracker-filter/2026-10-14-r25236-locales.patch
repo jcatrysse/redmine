@@ -1,6 +1,6 @@
-From aac8754e05f4d87148fbd9a34fbeed5c76fda01f Mon Sep 17 00:00:00 2001
+From 940d9b7de1a57675e7c5cd8ff9ff0a478facbdeb Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
-Date: Sat, 5 Sep 2026 13:37:18 +0000
+Date: Wed, 14 Oct 2026 20:54:10 +0000
 Subject: [PATCH] Limit an outgoing webhook to the trackers selected on it.
 
 A webhook can be restricted to a set of projects but not any further, so a hook
@@ -20,10 +20,10 @@ filtered.
  4 files changed, 4 insertions(+)
 
 diff --git a/config/locales/de.yml b/config/locales/de.yml
-index 4215b1ee7..7146f6b27 100644
+index a40b17480..057f880fb 100644
 --- a/config/locales/de.yml
 +++ b/config/locales/de.yml
-@@ -843,6 +843,7 @@ de:
+@@ -842,6 +842,7 @@ de:
  
    webhook_url_info: Redmine sendet einen POST-Request an diese URL, wenn eines der gewählten Ereignisse in einem der ausgewählten Projekte eintritt.
    webhook_secret_info_html: Wenn gesetzt, wird Redmine mit jedem Request eine Hash-Signatur im X-Redmine-Signature-256 header übermitteln, die zur Authentifizierung des Requests herangezogen werden kann.
@@ -32,10 +32,10 @@ index 4215b1ee7..7146f6b27 100644
    mail_body_account_activation_request: "Ein neuer Benutzer (%{value}) hat sich registriert. Sein Konto wartet auf Ihre Genehmigung:"
    mail_body_account_information: Ihre Konto-Informationen
 diff --git a/config/locales/es.yml b/config/locales/es.yml
-index 62987704b..62b14a951 100644
+index b59eba672..981bdf298 100644
 --- a/config/locales/es.yml
 +++ b/config/locales/es.yml
-@@ -1596,6 +1596,7 @@ es:
+@@ -1595,6 +1595,7 @@ es:
      selected events occurs in one of the selected projects.
    webhook_secret_info_html: If provided, Redmine will use this to create a hash signature
      that is sent with each delivery as the value of the X-Redmine-Signature-256 header.
@@ -44,10 +44,10 @@ index 62987704b..62b14a951 100644
    label_integrations: Integrations
    label_alert_note: Note
 diff --git a/config/locales/fr.yml b/config/locales/fr.yml
-index 79d42af5d..a530cf059 100644
+index d90dc4524..efe4a68c1 100644
 --- a/config/locales/fr.yml
 +++ b/config/locales/fr.yml
-@@ -1497,6 +1497,7 @@ fr:
+@@ -1496,6 +1496,7 @@ fr:
    label_webhook_events: Événements
    webhook_url_info: Redmine enverra une requête POST à cette URL chaque fois qu'un des événements sélectionnés se produit dans un des projets sélectionnés.
    webhook_secret_info_html: S'il est renseigné, Redmine l'utilisera pour créer une signature envoyée avec chaque requête dans l'en-tête X-Redmine-Signature-256.
@@ -56,10 +56,10 @@ index 79d42af5d..a530cf059 100644
    label_integrations: Intégrations
    label_alert_note: Note
 diff --git a/config/locales/nl.yml b/config/locales/nl.yml
-index 1abe4573e..3b6b6a05b 100644
+index d03579514..c8e1b388f 100644
 --- a/config/locales/nl.yml
 +++ b/config/locales/nl.yml
-@@ -1504,6 +1504,7 @@ nl:
+@@ -1503,6 +1503,7 @@ nl:
      selected events occurs in one of the selected projects.
    webhook_secret_info_html: If provided, Redmine will use this to create a hash signature
      that is sent with each delivery as the value of the X-Redmine-Signature-256 header.

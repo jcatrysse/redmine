@@ -125,7 +125,7 @@ development.
 It also needs to be stored on the hook. A hook is a core model with a core
 form and a core controller; a plugin adding a tracker selection would need its
 own join table keyed to `webhooks.id`, its own fields injected into
-`webhooks/_form`, its own strong parameters into `WebhooksController`, and its
+`webhooks/_form`, its own entry in `Webhook`'s safe attributes, and its
 own cleanup when a webhook or a tracker is destroyed. That is a plugin that
 exists only to add one column's worth of configuration to a core screen.
 
@@ -156,9 +156,8 @@ projects. Behaviour:
 | File | Change |
 |---|---|
 | `db/migrate/20260903081500_create_trackers_webhooks.rb` | new join table `trackers_webhooks`, the same shape as the `projects_webhooks` table created by `CreateWebhooks` |
-| `app/models/webhook.rb` | `has_and_belongs_to_many :trackers`; `preload(:trackers)` in `hooks_for`; new `matches_tracker?(object)` used by `hooks_for`; a `tracker_ids=` writer that ignores ids of trackers that do not exist |
+| `app/models/webhook.rb` | `has_and_belongs_to_many :trackers`; `tracker_ids` added to `safe_attributes`, next to `project_ids`; `preload(:trackers)` in `hooks_for`; new `matches_tracker?(object)` used by `hooks_for`; a `tracker_ids=` writer that ignores ids of trackers that do not exist |
 | `app/models/tracker.rb` | `has_and_belongs_to_many :webhooks`, the mirror of the declaration `Project` already carries, so destroying a tracker takes its join rows with it; a `before_destroy` that deactivates the hooks the tracker was the only selection on |
-| `app/controllers/webhooks_controller.rb` | permit `tracker_ids: []` |
 | `app/views/webhooks/_form.html.erb` | a `Trackers` fieldset next to the existing `Projects` one, a check box per tracker, and a hint saying what leaving them all unchecked means |
 | `config/locales/en.yml` | one new key, `webhook_trackers_info` |
 
