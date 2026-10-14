@@ -33,6 +33,10 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 21 features: 12 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
 
+## Nu in behandeling
+
+- `group-membership-preload` — cse_01Eih2Yt9QNuPCc5V6cxMmuC sinds 2026-10-14
+
 ## Openstaand voor Jan
 
 ### `ar-sessions`
