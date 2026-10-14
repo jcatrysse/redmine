@@ -1,0 +1,103 @@
+From f9a02f41da32234090abaa27a64ea3f8c63e855d Mon Sep 17 00:00:00 2001
+From: Jan Catrysse <jan.catrysse@geoxyz.eu>
+Date: Wed, 14 Oct 2026 19:38:16 +0000
+Subject: [PATCH] Reduce queries when adding a group with many users to a
+ project.
+
+MemberRole#add_role_to_group_users and #add_role_to_subprojects now load the
+existing memberships of a level in one query and build the new memberships
+from the user and project objects they already hold, instead of finding each
+membership and reloading its user, project and role one by one. Every
+membership is still saved with its callbacks.
+---
+ app/models/member_role.rb | 16 +++++++++++-----
+ test/unit/member_test.rb  | 34 ++++++++++++++++++++++++++++++++++
+ 2 files changed, 45 insertions(+), 5 deletions(-)
+
+diff --git a/app/models/member_role.rb b/app/models/member_role.rb
+index 975c6f2b0..14141f6ce 100644
+--- a/app/models/member_role.rb
++++ b/app/models/member_role.rb
+@@ -60,9 +60,12 @@ class MemberRole < ApplicationRecord
+   def add_role_to_group_users
+     return if inherited? || !member.principal.is_a?(Group)
+ 
+-    member.principal.users.ids.each do |user_id|
+-      user_member = Member.find_or_initialize_by(:project_id => member.project_id, :user_id => user_id)
+-      user_member.member_roles << MemberRole.new(:role_id => role_id, :inherited_from => id)
++    users = member.principal.users.to_a
++    user_members = Member.where(:project_id => member.project_id, :user_id => users.map(&:id)).
++                     preload(:project, :principal).index_by(&:user_id)
++    users.each do |user|
++      user_member = user_members[user.id] || Member.new(:project => member.project, :principal => user)
++      user_member.member_roles << MemberRole.new(:role => role, :inherited_from => id)
+       user_member.save!
+     end
+   end
+@@ -70,8 +73,11 @@ class MemberRole < ApplicationRecord
+   def add_role_to_subprojects
+     return if member.project.leaf?
+ 
+-    member.project.children.where(:inherit_members => true).ids.each do |subproject_id|
+-      child_member = Member.find_or_initialize_by(:project_id => subproject_id, :user_id => member.user_id)
++    subprojects = member.project.children.where(:inherit_members => true).to_a
++    child_members = Member.where(:project_id => subprojects.map(&:id), :user_id => member.user_id).
++                      preload(:project, :principal).index_by(&:project_id)
++    subprojects.each do |subproject|
++      child_member = child_members[subproject.id] || Member.new(:project => subproject, :principal => member.principal)
+       child_member.member_roles << MemberRole.new(:role => role, :inherited_from => id)
+       child_member.save!
+     end
+diff --git a/test/unit/member_test.rb b/test/unit/member_test.rb
+index dae800d04..bfc9fd4bd 100644
+--- a/test/unit/member_test.rb
++++ b/test/unit/member_test.rb
+@@ -304,6 +304,31 @@ class MemberTest < ActiveSupport::TestCase
+     end
+   end
+ 
++  def test_adding_a_group_member_should_not_query_each_user_beyond_its_inserts
++    project = Project.generate!
++    counts = [5, 10].map do |size|
++      group = Group.generate!
++      group.users << Array.new(size) {User.generate!}
++      count_queries {Member.create!(:principal => group, :project => project, :role_ids => [1])}
++    end
++    # one uniqueness check and two inserts for each of the 5 additional users
++    assert_operator counts[1] - counts[0], :<=, 3 * 5
++  end
++
++  def test_adding_a_group_member_should_not_query_each_user_and_subproject_beyond_its_inserts
++    project = Project.generate!
++    2.times {Project.generate_with_parent!(project, :inherit_members => true)}
++    project.reload
++    counts = [5, 10].map do |size|
++      group = Group.generate!
++      group.users << Array.new(size) {User.generate!}
++      count_queries {Member.create!(:principal => group, :project => project, :role_ids => [1])}
++    end
++    # for each of the 5 additional users: 3 queries in the project, one lookup of
++    # the subprojects and one of their memberships, and 3 queries per subproject
++    assert_operator counts[1] - counts[0], :<=, (3 + 2 + 3 * 2) * 5
++  end
++
+   def test_destroy_member_when_member_role_is_empty
+     member = Member.find(1)
+ 
+@@ -313,4 +338,13 @@ class MemberTest < ActiveSupport::TestCase
+     assert member.destroyed?
+     assert_raise(ActiveRecord::RecordNotFound) { Member.find(1) }
+   end
++
++  private
++
++  def count_queries(&)
++    count = 0
++    counter = lambda {|*, payload| count += 1 unless %w(SCHEMA TRANSACTION).include?(payload[:name])}
++    ActiveSupport::Notifications.subscribed(counter, 'sql.active_record', &)
++    count
++  end
+ end
+-- 
+2.43.0
+

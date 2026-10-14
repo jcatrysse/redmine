@@ -12,6 +12,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`asset-paths-gem-order`](features/asset-paths-gem-order/status.md) | gems in vendor/bundle achter de assetpaden van core (Chart.js van RedmineUP brak core-grafieken) | `-` | live (`6abebe886 + 1bf0ef69b + 1d8c2a3a7`) | patch klaar | — |
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`349fe1860 + 9ad87a11b + 5c2dcdd7a`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
 | [`back-url-array`](features/back-url-array/status.md) | Geen HTTP 500 meer als back_url als lijst (back_url[]=...) binnenkomt | `-` | live (`0f4317246`) | patch klaar | — |
+| [`group-membership-preload`](features/group-membership-preload/status.md) | Een groep met veel gebruikers aan een project toevoegen met minder queries per gebruiker | `-` | live (`2b9700a9c`) | patch klaar | — |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901 + 012ab39e0`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`dc6dad120 + dd063fa8b + f5ed23c8e`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`rake-webhook-flush`](features/rake-webhook-flush/status.md) | Webhooks gaan niet meer verloren in de rake-taken die mail ontvangen | `-` | live (`e1e759c47`) | patch klaar | — |
@@ -31,7 +32,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-21 features: 12 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+22 features: 13 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
 
 ## Nu in behandeling
 
@@ -150,6 +151,15 @@ tekst = de Engelse secties van `docs/features/back-url-array/dossier.md` (The
 problem t/m Tests), met `patches/back-url-array/2026-10-07-r25136-feature.patch`
 en de screenshots `before-context-menu-array.png` / `context-menu-array.png`
 erbij. Daarna het issuenummer in de front matter zetten.
+
+### `group-membership-preload`
+
+De mirror syncen (op 2026-10-14 11 commits achter echte trunk r25249; de patch
+applyt daar al wel op), `tools/check-patch-clean.sh group-membership-preload
+--submit` draaien, en een issue aanmaken met
+`patches/group-membership-preload/2026-10-14-r25236-feature.patch` en de
+Engelse tekst uit `dossier.md` vanaf "The problem", met de voor/na-screenshots.
+Eén patchbestand: er zijn geen vertalingen.
 
 ### `imap-oauth`
 
