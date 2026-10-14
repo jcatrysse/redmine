@@ -29,10 +29,11 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key, de credentials-map en credentials.yml.enc negeren | `8ec9951d3` | live (`af0af806d + 737b0a549`) | nooit | — |
 | [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: notificatievoorkeuren van LDAP-accounts zetten na een import | `9e2c38e2d` | live (`2ac1de3c6 + bc7314a62 + 5b4943570 + f00b41afd + ae2417a6e`) | nooit | — |
 | [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | live (`148faafb6 + 02ca8b044 + 22a4244c0 + 8fb5c8b8a + 8067e231c`) | nooit | [#43355](https://www.redmine.org/issues/43355) |
+| [`upgrade-from-51-geoxyz`](features/upgrade-from-51-geoxyz/status.md) | Upgradepad van een 5.1-stable-GEOxyz-database naar 7.0 (webhooktabellen en hernoemde instellingen) | `-` | live (`8dc5e73a1`) | nooit | — |
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-22 features: 13 patch klaar, 6 nooit, 2 vervallen, 1 geaccepteerd.
+23 features: 13 patch klaar, 7 nooit, 2 vervallen, 1 geaccepteerd.
 
 ## Nu in behandeling
 
@@ -361,6 +362,13 @@ Hang `patches/search-token-limit/2026-09-05-r25037-feature.patch` als note aan
 instelling eruit is: dit is een bugfix geworden in plaats van een
 functieverzoek, en het globale zoekvak houdt bewust zijn grens van vijf
 woorden (jouw keuze K-04, optie A). Vermeld de oude bijlage als achterhaald.
+
+### `upgrade-from-51-geoxyz`
+
+niets — de coördinator draait de upgrade-repetitie opnieuw op de nieuwe kop
+van `7.0-stable-GEOxyz`. Nuttig om bij de echte upgrade te bekijken: de
+uitvoer van `db:migrate` op regels met `not copied` of
+`search_token_limit was`.
 
 ### `version-subprojects`
 
