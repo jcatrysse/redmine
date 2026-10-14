@@ -1898,3 +1898,33 @@ oplevert als Redmine meeschuift.
 ## Beslist (Jan) — K-25, 2026-10-12
 
 Jan beantwoordde K-25 in de coördinerende sessie (https://claude.ai/code/session_01GiSsYPm3bxvqrpZkdCxNoi): **optie A, alleen het Redmine-issue.** Propshaft wordt in het dossier genoemd als de plek waar het uiteindelijk hoort; vraagt een committer erom, dan alsnog een issue bij rails/propshaft. De `--submit` van asset-paths-gem-order wacht nog op de mirror-sync (51 commits achter trunk op 2026-10-12).
+
+
+### Class A — autonoom, 2026-10-14 (onderhoud 7.0-stable-GEOxyz)
+
+- **`origin/7.0-stable` (a1b9c09ee, 26 commits) ingemerged in `7.0-stable-GEOxyz`**,
+  merge `8dae01445`, als Jan, nooit rebase. Conflicten en hun oplossing:
+  - webhooks: upstream verving `WebhooksController#webhook_params` door
+    `safe_attributes` op `Webhook` (#44563). Het trackerfilter voegt nu `'tracker_ids'`
+    toe aan die lijst; `webhook_params` is weg. Upstream's gedrag (geheim van een
+    andere gebruiker blijft bewaard, `Webhook.editable`) blijft volledig.
+  - locales de/en/es/fr/nl: beide kanten behouden (GEOxyz-sleutels plus de twee nieuwe
+    webhook-sleutels, die upstream in het Engels laat).
+  - `git_adapter_test.rb`: beide testgroepen behouden.
+  - upstream bevriest sinds #44455 de klok in elke test. Daardoor faalde
+    webhook-issue-closed's "reopened issue is closed again": hetzelfde-tijdstip-gat dat
+    in zijn `status.md` beschreven staat. De merge zet `travel 1.second` vóór de tweede
+    sluiting; de sessie van die slug vervangt dat door een echte fix in de trigger.
+- **Suite** (`tools/test-env.sh … test:all`, PostgreSQL): vóór de merge (1d8c2a3a7)
+  6194 runs, 0 failures, 1 error (`IssuesSystemTest#test_index_as_csv_should_reflect_sort`),
+  28 skips; ná de merge (1c88bd8a9, zelfde tree als 8dae01445 min 2b9700a9c)
+  6255 runs, 0 failures, 0 errors, 29 skips. RuboCop op de 69 bestanden die GEOxyz
+  t.o.v. 7.0-stable raakt: 0 offences (Rails-cops live, met de hand gemeten wegens de
+  trap van 2026-10-07 in de lintprobe).
+- **`check-symmetry` rood voor webhook-tracker-filter (3) en webhook-issue-closed (1)**:
+  de patchbranches dateren van vóór dezelfde twee upstreamwijzigingen op trunk en
+  moeten ververst worden. Niet geallowlist; de coördinator heeft beide slugs aan een
+  eigen sessie gegeven.
+- **De mirror `origin/7.0-stable` loopt 1 commit achter** op redmine/redmine:
+  `2c0593703` "Merged r25235 and r25236 from trunk into 7.0-stable (#44231)". Na Jans
+  sync opnieuw mergen.
