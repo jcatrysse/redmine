@@ -60,9 +60,12 @@ class MemberRole < ApplicationRecord
   def add_role_to_group_users
     return if inherited? || !member.principal.is_a?(Group)
 
-    member.principal.users.ids.each do |user_id|
-      user_member = Member.find_or_initialize_by(:project_id => member.project_id, :user_id => user_id)
-      user_member.member_roles << MemberRole.new(:role_id => role_id, :inherited_from => id)
+    users = member.principal.users.to_a
+    user_members = Member.where(:project_id => member.project_id, :user_id => users.map(&:id)).
+                     preload(:project, :principal).index_by(&:user_id)
+    users.each do |user|
+      user_member = user_members[user.id] || Member.new(:project => member.project, :principal => user)
+      user_member.member_roles << MemberRole.new(:role => role, :inherited_from => id)
       user_member.save!
     end
   end
@@ -70,8 +73,11 @@ class MemberRole < ApplicationRecord
   def add_role_to_subprojects
     return if member.project.leaf?
 
-    member.project.children.where(:inherit_members => true).ids.each do |subproject_id|
-      child_member = Member.find_or_initialize_by(:project_id => subproject_id, :user_id => member.user_id)
+    subprojects = member.project.children.where(:inherit_members => true).to_a
+    child_members = Member.where(:project_id => subprojects.map(&:id), :user_id => member.user_id).
+                      preload(:project, :principal).index_by(&:project_id)
+    subprojects.each do |subproject|
+      child_member = child_members[subproject.id] || Member.new(:project => subproject, :principal => member.principal)
       child_member.member_roles << MemberRole.new(:role => role, :inherited_from => id)
       child_member.save!
     end
