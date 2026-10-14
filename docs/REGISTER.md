@@ -363,13 +363,6 @@ instelling eruit is: dit is een bugfix geworden in plaats van een
 functieverzoek, en het globale zoekvak houdt bewust zijn grens van vijf
 woorden (jouw keuze K-04, optie A). Vermeld de oude bijlage als achterhaald.
 
-### `upgrade-from-51-geoxyz`
-
-niets — de coördinator draait de upgrade-repetitie opnieuw op de nieuwe kop
-van `7.0-stable-GEOxyz`. Nuttig om bij de echte upgrade te bekijken: de
-uitvoer van `db:migrate` op regels met `not copied` of
-`search_token_limit was`.
-
 ### `version-subprojects`
 
 Hang `patches/version-subprojects/2026-09-10-r25037-feature.patch` als note aan

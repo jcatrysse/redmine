@@ -130,10 +130,7 @@ text filters use all of them`), zodat het bij de upgrade zichtbaar is.
 
 ## Wat Jan nog moet doen
 
-niets — de coördinator draait de upgrade-repetitie opnieuw op de nieuwe kop
-van `7.0-stable-GEOxyz`. Nuttig om bij de echte upgrade te bekijken: de
-uitvoer van `db:migrate` op regels met `not copied` of
-`search_token_limit was`.
+niets
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
 
@@ -155,4 +152,7 @@ uitvoer van `db:migrate` op regels met `not copied` of
 
 ## Volgende stap voor een sessie
 
-af — niets te doen, tenzij de nieuwe upgrade-repetitie iets vindt.
+af — niets te doen, tenzij de nieuwe upgrade-repetitie (door de coördinator,
+op de nieuwe kop van `7.0-stable-GEOxyz`) iets vindt. Bij de echte upgrade:
+lees de uitvoer van `db:migrate` na op regels met `not copied` of
+`search_token_limit was`.
