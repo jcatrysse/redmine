@@ -1441,3 +1441,11 @@ toegevoegd.
   `test_helper.rb`, op trunk en 7.0-stable). Code die op een veranderde tijdstempel
   leunt (`saved_change_to_closed_on?`) ziet binnen één test geen tweede wijziging meer;
   een test die "eerst dit, later dat" bedoelt, moet nu zelf `travel` doen.
+
+- **`tools/check-geoxyz-branch.sh` meldt lint als `????` door zijn eigen probe, niet
+  door een ontbrekende lockfile** (2026-10-14, `upgrade-from-51-geoxyz`). De probe
+  `Project.find(params[:id])` wordt door `Rails/StrongParametersExpect` van
+  rubocop-rails 2.34.3 niet gemeld, ook mét `Gemfile.lock` (rails 8.1.4) in de
+  worktree; `params.require(:project).permit(:name)` in dezelfde controller geeft de
+  cop wél. De Rails-cops leven dus; de gate kan het niet meer aantonen. Tot een
+  framework-sessie de probe aanpast: meet lint zelf en noem de gate INCOMPLETE, niet PASS.
