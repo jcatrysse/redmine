@@ -94,7 +94,7 @@ class UsersController < ApplicationController
     end
 
     # show projects based on current user visibility
-    @memberships = @user.memberships.preload(:roles, :project).where(Project.visible_condition(User.current)).to_a
+    @memberships = @user.memberships.visible.preload(:roles, :project).to_a
 
     @issue_counts = {}
     @issue_counts[:assigned] = {
@@ -186,11 +186,17 @@ class UsersController < ApplicationController
     @user.safe_attributes = params[:user]
     # Was the account actived ? (do it before User#save clears the change)
     was_activated = (@user.status_change == [User::STATUS_REGISTERED, User::STATUS_ACTIVE])
+    mail_changed = @user.mail_changed?
     # TODO: Similar to My#account
     @user.pref.safe_attributes = params[:pref]
 
     if @user.save
       @user.pref.save
+
+      if mail_changed && @user == User.current
+        # The session token was destroyed by the email address change, generate a new one
+        renew_session_token
+      end
 
       Mailer.deliver_password_updated(@user, User.current) if is_updating_password
       if was_activated
@@ -280,7 +286,7 @@ class UsersController < ApplicationController
     users = User.logged.where(id: user_ids).where.not(id: User.current)
     (render_404; return) unless users.any?
 
-    users.update_all status: status
+    users.each {|user| user.update_attribute(:status, status)}
     flash[:notice] = l(:notice_successful_update)
     redirect_to users_path
   end
