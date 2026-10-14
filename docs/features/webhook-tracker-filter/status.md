@@ -5,7 +5,7 @@ commit_51: 25220b45d (deel)
 geoxyz: live
 geoxyz_commit: c6631e937 + 86647653e + 72058fa43 + 8ac09f4ff + 1483f01e2 + fd2365dc3
 upstream: patch klaar
-patch: patches/webhook-tracker-filter/2026-09-05-r25037-feature.patch
+patch: patches/webhook-tracker-filter/2026-10-14-r25236-feature.patch
 issue:
 ---
 
@@ -81,6 +81,58 @@ zijn aan beide kanten identiek. De K-11-mutatie geeft woordelijk de foutmelding
 die het dossier claimt. Vier eigen aanvalspogingen (migratievorm,
 callbackvolgorde, INV-10 tegen GEOxyz, en of de suitefouten van de patch waren)
 kwamen alle vier schoon terug.
+
+## Ververst op trunk r25236 (2026-10-14) — safe_attributes
+
+**Aanleiding.** Upstream #44337 (`7e3a3b0f8`, ook in 7.0-stable) verving
+`WebhooksController#webhook_params` door `safe_attributes` op `Webhook`. De oude
+patch voegde `tracker_ids: []` toe aan die `permit` en applyde daardoor niet
+meer op trunk. Nu staat `'tracker_ids'` achter `'project_ids'` in
+`safe_attributes`, en raakt de patch de controller niet meer. Verder is de diff
+inhoudelijk ongewijzigd; de vier vertalingen zijn byte-identiek.
+
+- Branch opnieuw opgebouwd vanaf `origin/master` r25236 (`1d6194503`) als één
+  commit **`940d9b7de`**, auteur en committer Jan.
+- **Nog niet op `origin/patch/webhook-tracker-filter`.** De force-push werd in
+  deze sessie door de permissiecontrole geweigerd. De nieuwe tip staat op
+  `staging/patch-webhook-tracker-filter-r25236`, de oude tip `cb4972a5c` op
+  `archive/patch-webhook-tracker-filter-r25037-before-safe-attributes`. Jan
+  doet de vervanging (commando in "Wat Jan nog moet doen").
+- Patchbestanden: `2026-10-14-r25236-feature.patch` (7 bestanden, 144+/4-) en
+  `-locales.patch`; de r25037-bestanden zijn weg (git-historie houdt ze).
+- **Volledige suite** (`tools/test-env.sh … test:all`, zelfde `Gemfile.lock`,
+  json 3.1.0, aan beide kanten): met patch **6129 runs, 32019 assertions, 27
+  failures, 2 errors, 87 skips**; schone trunk r25236 **6117 runs, 31975
+  assertions, 27 failures, 2 errors, 87 skips**. Verschil 12 runs = de twaalf
+  nieuwe tests; **29 faalnamen, identiek** (`comm -3` leeg): Repositories-,
+  Sys-, API-repository-tests (geen SCM-binaries), plus `UserTest` en één
+  `ApiTest::IssuesTest` die ook op schone trunk falen.
+- Gerichte suites in één proces (`webhook_test`, `webhook_payload_test`,
+  `webhooks_controller_test`, `tracker_test`, `i18n_test`): **137 runs, 1172
+  assertions, 0 failures**.
+- **Rood op oude code:** de nieuwe testbestanden op de r25236-code zonder de
+  feature: 10 van de 12 rood (1 failure, 9 errors); groen blijven de
+  compatibiliteitstest (geen tracker = alle trackers) en "hook zonder tracker
+  blijft actief bij verwijderen". Mutaties, elk apart: `'tracker_ids'` uit
+  `safe_attributes` → `should_create_webhook_with_trackers` en
+  `should_clear_the_trackers_of_a_webhook` rood; `matches_tracker?` weg → 2
+  rood; `tracker_ids=` weg → `RecordNotFound … 'id'=999999`; `habtm :webhooks`
+  op `Tracker` weg → 3 errors; `deactivate_webhooks` weg → `Expected true to be
+  nil or false`; lege `hidden_field_tag` weg → `found 0`.
+- **RuboCop** (Rails-cops live) op de vijf Ruby-bestanden van de patch: **0**;
+  baseline op de vier bestaande op r25236: **0**.
+- `tools/check-patch-clean.sh webhook-tracker-filter`: **PASS** (applyt op
+  r25236, branch = patchbestand, geen AI-identiteit), gemeten met de lokale
+  `patch/webhook-tracker-filter` op `940d9b7de`. `--submit` niet gedraaid (de
+  mirror is van Jan).
+- **`tools/check-symmetry.sh webhook-tracker-filter`: nog niet groen te
+  meten.** Hij leest `origin/patch/webhook-tracker-filter` (nog de oude tip) en
+  `origin/7.0-stable-GEOxyz`, waar de merge met upstream 7.0-stable (#44337) bij
+  het einde van deze sessie nog niet op stond. Beide moeten eerst gepusht zijn.
+  `7.0-stable-GEOxyz` is niet aangeraakt.
+- De migratie houdt `20260903081500`, nu ouder dan trunk's
+  `20260906000000`. Bewust: GEOxyz draait hem al onder die naam, en een
+  committer kiest bij het toepassen toch zijn eigen tijdstempel.
 
 ## Bewijs — fixronde ronde 4 (2026-09-10)
 
@@ -198,10 +250,20 @@ systeemtests.
 
 ## Wat Jan nog moet doen
 
+**Eerst (2026-10-14):** de ververste branch op zijn plaats zetten, want die
+force-push mocht deze sessie niet doen:
+
+    git push --force-with-lease=refs/heads/patch/webhook-tracker-filter:cb4972a5cffa322f33997fac9d3fdeae2d745b18 \
+      origin origin/staging/patch-webhook-tracker-filter-r25236:refs/heads/patch/webhook-tracker-filter
+    git push origin --delete staging/patch-webhook-tracker-filter-r25236
+
+Daarna, met de GEOxyz-merge gepusht, `tools/check-symmetry.sh
+webhook-tracker-filter` draaien.
+
 Maak een **nieuw** issue op redmine.org aan als follow-up van
 [#29664](https://www.redmine.org/issues/29664) — dus niet als note aan #29664
 zelf, dat issue is gesloten met target version 7.0.0. Hang er
-`patches/webhook-tracker-filter/2026-09-05-r25037-feature.patch` (code +
+`patches/webhook-tracker-filter/2026-10-14-r25236-feature.patch` (code +
 `en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`) aan. Draai vlak daarvoor
 `tools/check-patch-clean.sh webhook-tracker-filter --submit`; is trunk intussen
 verder gelopen, dan ververst een sessie de patch eerst (g05). De Engelse
@@ -310,5 +372,8 @@ een eigen bugrapport, niet in deze patch; melden is genoeg.
 
 ## Volgende stap voor een sessie
 
-Af — niets te doen. Wachten tot Jan het issue heeft aangemaakt; vul dan het
+Zodra `origin/patch/webhook-tracker-filter` op `940d9b7de` staat en de
+GEOxyz-merge gepusht is: `tools/check-symmetry.sh webhook-tracker-filter`
+draaien. Verwacht PASS zonder GEOxyz-wijziging (zelfde `safe_attributes`-regel
+aan beide kanten); faalt hij, dan is dat het werk. Daarna wachten tot Jan het issue heeft aangemaakt; vul dan het
 `issue:`-veld in de front matter en de "Submission"-sectie van `dossier.md` in.

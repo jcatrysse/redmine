@@ -294,13 +294,16 @@ tests set trackers with `hook.update!` instead. Changing the helper's signature
 made 17 unrelated tests error on trunk, which buries the red proof in noise and
 would have made the diff larger for no gain.
 
-**Evidence (INV-8 — figures, not claims):** all of it re-run on 2026-09-05
-against `origin/master` r25037, the revision the patch is made against.
+**Evidence (INV-8 — figures, not claims):** the full-suite, focused-suite,
+lint and red/green figures were re-run on 2026-10-14 against `origin/master`
+r25236, the revision the patch is now made against. The N+1 table and the
+GEOxyz figure are from 2026-09-05 (r25037); `hooks_for` is unchanged between
+the two revisions.
 
 - **full** suite with the patch, `tools/test-env.sh … bundle exec ruby bin/rails test:all`
-  (so including `test/system`): **5989 runs, 31754 assertions, 27 failures, 2 errors, 92 skips**
-- **full** suite on a pristine `origin/master` r25037 worktree, same command:
-  **5977 runs, 31708 assertions, 27 failures, 2 errors, 92 skips**
+  (so including `test/system`): **6129 runs, 32019 assertions, 27 failures, 2 errors, 87 skips**
+- **full** suite on a pristine `origin/master` r25236 worktree, same command and
+  same `Gemfile.lock`: **6117 runs, 31975 assertions, 27 failures, 2 errors, 87 skips**
 - **full** suite on `7.0-stable-GEOxyz` with the same change applied:
   **6108 runs, 32294 assertions, 0 failures, 0 errors, 39 skips** — 7.0-stable
   does not carry the trunk tests that need the missing SCM binaries, so there it
@@ -311,10 +314,13 @@ against `origin/master` r25037, the revision the patch is made against.
   this patch.
 - the webhook and tracker suites together with Redmine's own locale-consistency
   suite (`webhook_test`, `webhook_payload_test`, `webhooks_controller_test`,
-  `tracker_test`, `i18n_test` in one process): **117 runs, 1106 assertions,
+  `tracker_test`, `i18n_test` in one process): **137 runs, 1172 assertions,
   0 failures, 0 errors**
-- RuboCop on the six changed/added Ruby files: **0 offences**. Baseline on the
-  same five existing files at the merge base: **0 offences**.
+- RuboCop on the five changed/added Ruby files: **0 offences**. Baseline on the
+  same four existing files at the merge base: **0 offences**.
+- `tracker_ids` in `safe_attributes` verified red by removing it:
+  `test_should_create_webhook_with_trackers` and
+  `test_should_clear_the_trackers_of_a_webhook` fail.
 - each new test verified red on the old code, by removing the production change
   and re-running:
 
@@ -325,7 +331,7 @@ against `origin/master` r25037, the revision the patch is made against.
   | `test_should_ignore_a_tracker_id_that_does_not_exist` | drop `Webhook#tracker_ids=` → `ActiveRecord::RecordNotFound: Couldn't find Tracker with 'id'=999999` |
   | `test_edit_should_check_the_boxes_of_the_selected_trackers` | drop the blank `hidden_field_tag` from the form → `Expected at least 1 element matching "input[type=hidden]…", found 0` |
   | the four tracker-matching tests | run on a pristine trunk worktree → `ActiveModel::UnknownAttributeError: unknown attribute 'trackers'` / `NoMethodError: undefined method 'trackers'` |
-  | `test_should_find_hook_for_issue_of_any_tracker_when_no_tracker_is_selected`, `test_should_clear_the_trackers_of_a_webhook`, `test_should_not_deactivate_a_hook_with_no_tracker_selected_when_a_tracker_is_destroyed` | **green on both sides.** They pin existing behaviour — the compatibility guarantee, the sentinel round trip, and that an unrelated hook is not touched — which is the point of them |
+  | `test_should_find_hook_for_issue_of_any_tracker_when_no_tracker_is_selected`, `test_should_not_deactivate_a_hook_with_no_tracker_selected_when_a_tracker_is_destroyed` | **green on both sides.** They pin existing behaviour — the compatibility guarantee, and that an unrelated hook is not touched — which is the point of them. On r25236 the other ten new tests are red on pristine trunk (1 failure, 9 errors); `test_should_clear_the_trackers_of_a_webhook` is among them now, because `safe_attributes` drops the unknown key before it is ever assigned |
 
 - N+1, measured on the patched tree by counting `sql.active_record`
   notifications around a warmed `hooks_for` with `SCHEMA` and `TRANSACTION`
@@ -345,8 +351,8 @@ against `origin/master` r25037, the revision the patch is made against.
   anything to load; without it the association costs one per *matching* hook.
   The last row is the case where the preload costs a query instead of saving
   one, and it is answered in the objections table rather than left out.
-- both patch files apply with `git am` to a pristine `origin/master` r25037
-  checkout, each on its own, and together they reproduce the branch exactly.
+- both patch files apply to a pristine `origin/master` r25236 checkout and
+  match the branch (`tools/check-patch-clean.sh`).
 - `tools/check-patch-clean.sh webhook-tracker-filter --submit`: PASS
 
 # Live verification (G9)
@@ -452,13 +458,13 @@ un-localised class name. The result is a German page whose fieldset legend reads
 
 - **Issue:** nog aan te maken — nieuw issue, follow-up van
   [#29664](https://www.redmine.org/issues/29664)
-- **Patches attached:** `patches/webhook-tracker-filter/2026-09-05-r25037-feature.patch`
-  (code + `en.yml`) and `patches/webhook-tracker-filter/2026-09-05-r25037-locales.patch`
+- **Patches attached:** `patches/webhook-tracker-filter/2026-10-14-r25236-feature.patch`
+  (code + `en.yml`) and `patches/webhook-tracker-filter/2026-10-14-r25236-locales.patch`
   (`nl.yml`, `fr.yml`, `de.yml`, `es.yml`)
-- **Made against:** `origin/master` r25037 (`bee32a926`, 2026-09-03). Both files
-  apply with `git am` on a pristine checkout of that revision, each on its own,
-  and together they reproduce the branch exactly (checked in a throwaway
-  worktree)
+- **Made against:** `origin/master` r25236 (`1d6194503`), refreshed on
+  2026-10-14 after #44337 moved the webhook parameters to `safe_attributes`.
+  `tools/check-patch-clean.sh` confirms both files apply to that revision and
+  match the branch commit `940d9b7de`
 - **Status:** klaar voor inzending
 - **Feedback en wat ermee gebeurde:** nog geen
 

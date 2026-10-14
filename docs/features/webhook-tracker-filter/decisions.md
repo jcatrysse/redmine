@@ -115,3 +115,4 @@ opnieuw te wegen. Class B-keuzes staan in `docs/DECISIONS.md`.
   twee regels gezet in plaats van één regel van 152 tekens. De twee goedkope
   controles staan op de eerste regel, de twee dure op de tweede — dat is precies
   de volgorde waar het dossier zich op beroept.
+- 2026-10-14: `tracker_ids` gaat in `safe_attributes` direct achter `project_ids`, de vorm die trunk sinds #44337 voor webhookparameters gebruikt; de controller blijft onaangeroerd. Migratietijdstempel 20260903081500 blijft staan omdat GEOxyz hem onder die naam al draait.

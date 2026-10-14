@@ -442,10 +442,20 @@ verder met `en.yml` alleen.
 
 ### `webhook-tracker-filter`
 
+**Eerst (2026-10-14):** de ververste branch op zijn plaats zetten, want die
+force-push mocht deze sessie niet doen:
+
+    git push --force-with-lease=refs/heads/patch/webhook-tracker-filter:cb4972a5cffa322f33997fac9d3fdeae2d745b18 \
+      origin origin/staging/patch-webhook-tracker-filter-r25236:refs/heads/patch/webhook-tracker-filter
+    git push origin --delete staging/patch-webhook-tracker-filter-r25236
+
+Daarna, met de GEOxyz-merge gepusht, `tools/check-symmetry.sh
+webhook-tracker-filter` draaien.
+
 Maak een **nieuw** issue op redmine.org aan als follow-up van
 [#29664](https://www.redmine.org/issues/29664) — dus niet als note aan #29664
 zelf, dat issue is gesloten met target version 7.0.0. Hang er
-`patches/webhook-tracker-filter/2026-09-05-r25037-feature.patch` (code +
+`patches/webhook-tracker-filter/2026-10-14-r25236-feature.patch` (code +
 `en.yml`) en `-locales.patch` (`nl`, `fr`, `de`, `es`) aan. Draai vlak daarvoor
 `tools/check-patch-clean.sh webhook-tracker-filter --submit`; is trunk intussen
 verder gelopen, dan ververst een sessie de patch eerst (g05). De Engelse
