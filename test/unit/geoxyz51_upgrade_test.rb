@@ -25,6 +25,7 @@ require_relative '../test_helper'
   20260903081500_create_trackers_webhooks
   20260903081501_restore_geoxyz51_webhooks
   20261014120000_copy_geoxyz51_settings
+  20261015000000_remove_geoxyz51_settings
 ).each {|migration| require Rails.root.join('db', 'migrate', migration).to_s}
 
 class Geoxyz51UpgradeTest < ActiveSupport::TestCase
@@ -152,6 +153,20 @@ class Geoxyz51UpgradeTest < ActiveSupport::TestCase
     migrate CopyGeoxyz51Settings
 
     assert_not Setting.display_revision_branches?
+  end
+
+  test "remove settings deletes the 5.1 settings that 7.0 cannot read, after they are copied" do
+    store_51_settings('display_under_single_revision' => '1',
+                      'display_under_associated_revisions' => '1',
+                      'display_revision_branches_regex_enable' => '1',
+                      'display_revision_branches_enable_regex_delimiters' => 'wip',
+                      'search_token_limit' => '0')
+    migrate CopyGeoxyz51Settings, RemoveGeoxyz51Settings
+
+    assert_empty Setting.where(:name => RemoveGeoxyz51Settings::NAMES)
+    assert_nothing_raised {Setting.all.each(&:value)}
+    assert Setting.display_revision_branches?
+    assert_equal '.*(?-i:wip).*', Setting.revision_branches_excluded
   end
 
   test "copy settings reports a search_token_limit that 7.0 no longer applies" do
