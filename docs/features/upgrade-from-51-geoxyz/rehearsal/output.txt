@@ -1,4 +1,4 @@
-# rehearse.sh output, 7.0-stable-GEOxyz 8dc5e73a1, 2026-10-14
+# rehearse.sh output, 7.0-stable-GEOxyz 71b94798f, 2026-10-15
 
 ## postgresql --without
 seeded 5.1 state: webhooks=1
@@ -22,6 +22,7 @@ seeded 5.1 state: webhooks=1
 == 20260903081501 RestoreGeoxyz51Webhooks: migrating ==========================
 == 20261014120000 CopyGeoxyz51Settings: migrating =============================
 -- search_token_limit was 0: the global search now uses the first 5 tokens and text filters use all of them
+== 20261015000000 RemoveGeoxyz51Settings: migrating ===========================
 db:migrate exit 0
 webhooks=1 projects_webhooks=2 trackers_webhooks=3
 hook 3: url=https://hooks.nonexistent.invalid/redmine secret=s3cret active=true events=["issue.created", "issue.updated", "issue.closed"] projects=[1, 2] trackers=[1, 2, 3]
@@ -32,6 +33,8 @@ display_revision_branches="1"
 display_associated_revision_branches="1"
 revision_branches_excluded=".*(?-i:^dependabot/).*,.*(?-i:wip).*"
 revision_branches_enable_regex="1"
+leftover 5.1 settings: []
+Setting.all.each(&:value): no error
 
 ## mysql2 --without
 seeded 5.1 state: webhooks=1
@@ -55,6 +58,7 @@ seeded 5.1 state: webhooks=1
 == 20260903081501 RestoreGeoxyz51Webhooks: migrating ==========================
 == 20261014120000 CopyGeoxyz51Settings: migrating =============================
 -- search_token_limit was 0: the global search now uses the first 5 tokens and text filters use all of them
+== 20261015000000 RemoveGeoxyz51Settings: migrating ===========================
 db:migrate exit 0
 webhooks=1 projects_webhooks=2 trackers_webhooks=3
 hook 3: url=https://hooks.nonexistent.invalid/redmine secret=s3cret active=true events=["issue.created", "issue.updated", "issue.closed"] projects=[1, 2] trackers=[1, 2, 3]
@@ -65,3 +69,5 @@ display_revision_branches="1"
 display_associated_revision_branches="1"
 revision_branches_excluded=".*(?-i:^dependabot/).*,.*(?-i:wip).*"
 revision_branches_enable_regex="1"
+leftover 5.1 settings: []
+Setting.all.each(&:value): no error

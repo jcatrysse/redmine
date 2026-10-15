@@ -22,9 +22,11 @@
   volgende id 4 na id 3, op beide).
 - **Beslist (autonoom, 2026-10-14):** `down` is in alle drie een no-op, zoals
   `20260320090000`. Er is niets terug te zetten dat nog bestaat.
-- **Beslist (autonoom, 2026-10-14):** de oude instellingsrijen blijven staan.
-  7.0 leest ze niet, en weggooien maakt alleen een terugweg onmogelijk zonder
-  iets op te lossen.
+- **Herzien (2026-10-15):** de oude instellingsrijen worden ná de kopie
+  geschrapt (`20261015000000`). De beslissing van 2026-10-14 om ze te laten
+  staan was fout: `Setting#value` geeft op een niet-gedeclareerde naam een
+  `NoMethodError`, gevonden in de tweede upgrade-repetitie. Een aparte migratie,
+  zodat een database die `20261014120000` al draaide ook opgeruimd wordt.
 - **Beslist (autonoom, 2026-10-14):** een instelling die onder haar 7.0-naam al
   bestaat wordt niet overschreven; voor het paar
   `revision_branches_excluded` + `revision_branches_enable_regex` geldt dat

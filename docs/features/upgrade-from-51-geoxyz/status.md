@@ -3,7 +3,7 @@ slug: upgrade-from-51-geoxyz
 feature: Upgradepad van een 5.1-stable-GEOxyz-database naar 7.0 (webhooktabellen en hernoemde instellingen)
 commit_51: -
 geoxyz: live
-geoxyz_commit: 8dc5e73a1
+geoxyz_commit: 8dc5e73a1 + 71b94798f
 upstream: nooit
 patch:
 issue:
@@ -13,8 +13,9 @@ issue:
 
 ## Waar het staat
 
-Af. Eén commit op `7.0-stable-GEOxyz` (`8dc5e73a1`) met drie migraties en één
-testbestand. Gaat nooit naar upstream: het probleem bestaat alleen op een
+Af. Twee commits op `7.0-stable-GEOxyz`: `8dc5e73a1` (drie migraties en één
+testbestand) en `71b94798f` (vierde migratie, die de oude instellingsrijen
+opruimt, uit de tweede upgrade-repetitie van 2026-10-15). Gaat nooit naar upstream: het probleem bestaat alleen op een
 database die op `5.1-stable-GEOxyz` gedraaid heeft. Aanleiding is de
 upgrade-repetitie van de coördinator (2026-10-14: `5.1-stable-GEOxyz`
 `bcf917c` met de 44 productieplugins, daarna `7.0-stable-GEOxyz` `ad17efd`),
@@ -75,6 +76,18 @@ al beslist zijn: de branchregel staat op 7.0 ook op de diffpagina, en de
 issuetab vraagt geen `:browse_repository` meer (zie
 `docs/features/revision-branches/status.md`).
 
+**Opruimen (2026-10-15, tweede repetitie).** De vijf oude rijen
+(`display_under_single_revision`, `display_under_associated_revisions`,
+`display_revision_branches_regex_enable`,
+`display_revision_branches_enable_regex_delimiters`, `search_token_limit`)
+bleven eerst staan. Dat bleek niet onschuldig: `Setting#value` leest
+`available_settings[name]['serialized']`, en voor een naam die niet meer in
+`config/settings.yml` staat is dat `nil['serialized']` → `NoMethodError`. Alles
+wat alle instellingsrijen doorloopt (beheertool, plugin) zou crashen.
+`20261015000000 RemoveGeoxyz51Settings` schrapt ze, ná de kopie. Een aparte
+migratie en niet een wijziging van `20261014120000`, zodat ook een database
+die die al gedraaid heeft (zoals die van de repetitie) opgeruimd wordt.
+
 **`search_token_limit`** bestaat op 7.0 niet meer. Op 5.1 gold het getal
 (0 = onbeperkt) voor de globale zoekfunctie **én** de tekstfilters. Op 7.0
 (feature `search-token-limit`) gebruiken tekstfilters altijd alle woorden en
@@ -88,13 +101,16 @@ text filters use all of them`), zodat het bij de upgrade zichtbaar is.
 
 ## Bewijs
 
-- Volledige suite op `7.0-stable-GEOxyz` `8dc5e73a1`, systeemtests inbegrepen
+- Volledige suite op `7.0-stable-GEOxyz` `71b94798f`, systeemtests inbegrepen
   (`tools/test-env.sh /home/user/wt/geoxyz bundle exec ruby bin/rails test:all`,
-  PostgreSQL 16, `tmp/test/git_repository` uitgepakt): **6268 runs, 32956
-  assertions, 0 failures, 0 errors, 29 skips**, exit 0.
+  PostgreSQL 16, `tmp/test/git_repository` uitgepakt): **6270 runs, 32965
+  assertions, 0 failures, 0 errors, 29 skips**, exit 0. (Op `8dc5e73a1`:
+  6268 runs, 32956 assertions, 0 failures, 0 errors, 29 skips.)
 
-- Nieuwe tests `test/unit/geoxyz51_upgrade_test.rb`: **11 runs, 30
+- Nieuwe tests `test/unit/geoxyz51_upgrade_test.rb`: **12 runs, 35
   assertions, 0 failures** op PostgreSQL 16 én op MariaDB 10.11.
+- De opruimtest is rood zonder `20261015000000` (`up` leeggemaakt):
+  `12 runs, 32 assertions, 1 failures`.
 - **Rood zonder de migraties** (de drie `up`-methodes leeggemaakt):
   `11 runs, 11 assertions, 4 failures, 3 errors`. De vier die groen blijven
   horen dat te doen: de reproductie van F1 zelf, de no-op op een verse
@@ -107,12 +123,12 @@ text filters use all of them`), zodat het bij de upgrade zichtbaar is.
   - zonder de drie migraties: PostgreSQL `PG::DuplicateTable`, MariaDB
     `Table 'webhooks' already exists` — F1 gereproduceerd;
   - met: `webhooks=1 projects_webhooks=2 trackers_webhooks=3`, url, secret,
-    events en active ongewijzigd, geen `geoxyz51_*`-tabellen of 5.1-versies
-    over, volgende webhook-id 4, de instellingen zoals in de tabel hierboven —
+    events en active ongewijzigd, geen `geoxyz51_*`-tabellen, 5.1-versies of
+    5.1-instellingsrijen over, `Setting.all.each(&:value)` zonder fout, volgende webhook-id 4, de instellingen zoals in de tabel hierboven —
     op beide databases identiek.
-- RuboCop op de vier nieuwe bestanden: 0 (nieuwe bestanden, baseline 0).
+- RuboCop op de vijf nieuwe bestanden: 0 (nieuwe bestanden, baseline 0).
 - `tools/check-geoxyz-branch.sh`: **INCOMPLETE, niet PASS** — alle
-  inhoudelijke regels `ok` (66 eigen commits, alle 62 vastgelegde
+  inhoudelijke regels `ok` (68 eigen commits, alle 64 vastgelegde
   `geoxyz_commit`-sha's op de branch, geen niet-vastgelegde commit, geen
   AI-identiteit, locales binnen de vijf), maar de lintregel staat op `????`.
   Dat ligt niet aan deze commit: dezelfde `????` stond er al vóór de push.
@@ -120,7 +136,7 @@ text filters use all of them`), zodat het bij de upgrade zichtbaar is.
   `Rails/StrongParametersExpect` van rubocop-rails 2.34.3 niet gemeld, terwijl
   de cop wél leeft: `params.require(:project).permit(:name)` in een
   controller geeft hem meteen. Staat in `docs/traps.md`; de gate zelf is
-  framework-werk. Zelf gemeten met de lockfile aanwezig: 0 offences op de vier
+  framework-werk. Zelf gemeten met de lockfile aanwezig: 0 offences op de vijf
   nieuwe bestanden.
 - `tools/check-symmetry.sh`: n.v.t. — er is geen `patch/`-branch; dit is
   bewust een GEOxyz-only afwijking die upstream nooit nodig heeft.

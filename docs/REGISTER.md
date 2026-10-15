@@ -30,7 +30,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`gitignore-credentials`](features/gitignore-credentials/status.md) | master.key, de credentials-map en credentials.yml.enc negeren | `8ec9951d3` | live (`af0af806d + 737b0a549`) | nooit | — |
 | [`ldap-mail-prefs`](features/ldap-mail-prefs/status.md) | Rake: notificatievoorkeuren van LDAP-accounts zetten na een import | `9e2c38e2d` | live (`2ac1de3c6 + bc7314a62 + 5b4943570 + f00b41afd + ae2417a6e`) | nooit | — |
 | [`members-pagination`](features/members-pagination/status.md) | Paginatie op projectleden en groepsleden | `455f5753c` | live (`148faafb6 + 02ca8b044 + 22a4244c0 + 8fb5c8b8a + 8067e231c`) | nooit | [#43355](https://www.redmine.org/issues/43355) |
-| [`upgrade-from-51-geoxyz`](features/upgrade-from-51-geoxyz/status.md) | Upgradepad van een 5.1-stable-GEOxyz-database naar 7.0 (webhooktabellen en hernoemde instellingen) | `-` | live (`8dc5e73a1`) | nooit | — |
+| [`upgrade-from-51-geoxyz`](features/upgrade-from-51-geoxyz/status.md) | Upgradepad van een 5.1-stable-GEOxyz-database naar 7.0 (webhooktabellen en hernoemde instellingen) | `-` | live (`8dc5e73a1 + 71b94798f`) | nooit | — |
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
