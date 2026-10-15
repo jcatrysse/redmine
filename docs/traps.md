@@ -1454,3 +1454,16 @@ toegevoegd.
 
 
 - **De inlogflake (`expected "/my/page" to equal "/login"` in `log_user`) komt ook bij seriële suites** (2026-10-15, `asset-paths-gem-order`, g05 op r25254). De traps hierboven lezen alsof hij verdwijnt zodra de volledige suites één voor één draaien. Hier liepen patch, trunk en GEOxyz strikt na elkaar, niets anders op de machine, en toch had zowel de patch- als de trunk-run er precies één, telkens in een andere `IssuesSystemTest` (de GEOxyz-run geen). **Wat je doet:** blijf de namenlijsten vergelijken, draai de betrokken tests en daarna het hele bestand opnieuw op béíde kanten (`test/system/issues_test.rb`: `30 runs, 0 failures` op patch en trunk), en verklaar het verschil in assertions met de per-test-aantallen in plaats van het weg te laten: een test die bij het inloggen omvalt telt zijn overige assertions niet mee.
+
+
+- **`tools/check-symmetry.sh` meet na een force-push van een `patch/<slug>` de
+  oude tip, en meldt dat alleen als `note`.** Zijn fetch-refspec
+  `refs/heads/patch/*:refs/remotes/origin/patch/*` heeft geen `+`, dus git
+  weigert de niet-fast-forward update; het script zegt "could not fetch; using
+  the refs already present" en vergelijkt verder met de verouderde ref. Bij
+  `webhook-tracker-filter` (2026-10-15) gaf dat twee valse FAILs na Jans
+  force-push. Lokaal oplossen: `git fetch origin
+  '+refs/heads/patch/<slug>:refs/remotes/origin/patch/<slug>'` en opnieuw
+  draaien. Het omgekeerde is gevaarlijker: na een force-push die wél iets
+  breekt kan hij een PASS geven op de oude tip. Het script zelf aanpassen is
+  framework-werk (`tools/**`).
