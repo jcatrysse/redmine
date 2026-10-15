@@ -79,7 +79,8 @@
 # worktree: every tree is assembled in a temporary index and committed with
 # commit-tree, leaving unreferenced objects.
 #
-# Exit 0 = symmetric. Exit 1 = a divergence that is not allowed.
+# Exit 0 = symmetric. Exit 1 = a divergence that is not allowed. Exit 2 = not
+# measured (no ruby, no fetch, bad usage).
 
 set -uo pipefail
 
@@ -146,6 +147,25 @@ fail() { printf '  FAIL  %s\n' "$1"; fails=$((fails + 1)); }
 SELF_TEST=no
 if [ "${1:-}" = "--self-test" ]; then SELF_TEST=yes; shift; fi
 
+# The `+` is not optional. A patch branch is rewritten by design — refreshing
+# patch/<slug> is a force-push — and without it git refuses the non-fast-forward
+# update of the remote-tracking ref. This line used to print a `note` and carry
+# on against the old tip: on 2026-10-15 that gave two false FAILs for
+# webhook-tracker-filter right after Jan force-pushed it, and the same stale tip
+# can just as well give a PASS on code nobody runs any more. So a fetch that
+# fails stops the run: a comparison against refs of unknown age is not one.
+# It runs before --all expands, so a patch branch pushed since the last fetch
+# is in the list too.
+fetcherr=$(mktemp)
+if ! git fetch -q origin master 7.0-stable 7.0-stable-GEOxyz \
+       '+refs/heads/patch/*:refs/remotes/origin/patch/*' 2>"$fetcherr"; then
+  echo "FAIL  could not fetch origin, so every ref here may be stale — not measuring:" >&2
+  sed 's/^/        /' "$fetcherr" | head -5 >&2
+  rm -f "$fetcherr"
+  exit 2
+fi
+rm -f "$fetcherr"
+
 if [ "${1:-}" = "--all" ]; then
   set -- $(git for-each-ref --format='%(refname:strip=4)' 'refs/remotes/origin/patch/*' | sort)
   [ $# -gt 0 ] || { echo "FAIL  no patch branches found under $BASE's remote" >&2; exit 2; }
@@ -154,9 +174,6 @@ fi
 
 command -v "$RUBY" >/dev/null 2>&1 ||
   { echo "FAIL  no ruby at $RUBY — the locale comparison needs a YAML parser, and skipping it is how this gate went blind once already" >&2; exit 2; }
-
-git fetch -q origin master 7.0-stable 7.0-stable-GEOxyz 'refs/heads/patch/*:refs/remotes/origin/patch/*' 2>/dev/null ||
-  warn "could not fetch; using the refs already present"
 
 # Flattens both YAML trees to key -> value and reports, for every key this
 # patch added or changed, one line per key whose value on GEOxyz differs.
@@ -392,12 +409,16 @@ if [ "$SELF_TEST" = yes ]; then
   st_probe() {
     local label="$1" broken="$2"
     st_ran=$((st_ran + 1))
-    if GEOXYZ="$broken" "$SELF" "$slug" >/dev/null 2>&1; then
-      printf '  FAIL  %s: %s — the gate passed with this on one side only, it is blind again\n' "$slug" "$label"
-      st_fails=$((st_fails + 1))
-    else
-      printf '  ok    %s: %s\n' "$slug" "$label"
-    fi
+    # Exit 1 only. Exit 2 means the run measured nothing (a failed fetch, say),
+    # and counting that as caught would be the blind gate passing its own test.
+    GEOXYZ="$broken" "$SELF" "$slug" >/dev/null 2>&1
+    case $? in
+      1) printf '  ok    %s: %s\n' "$slug" "$label" ;;
+      0) printf '  FAIL  %s: %s — the gate passed with this on one side only, it is blind again\n' "$slug" "$label"
+         st_fails=$((st_fails + 1)) ;;
+      *) printf '  FAIL  %s: %s — the gate did not measure (exit 2), so this probe proves nothing\n' "$slug" "$label"
+         st_fails=$((st_fails + 1)) ;;
+    esac
   }
 
   for slug in "$@"; do

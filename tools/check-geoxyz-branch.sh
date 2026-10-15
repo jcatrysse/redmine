@@ -41,11 +41,17 @@ echo "check-geoxyz-branch: $BRANCH  (repo $REPO)"
 
 if [ -n "${REF:-}" ]; then
   ref="$REF"
-  git fetch -q origin 7.0-stable 2>/dev/null || warn "could not fetch upstream"
+  git fetch -q origin 7.0-stable 2>/dev/null ||
+    skip "could not fetch origin/7.0-stable, so \"current with upstream\" is measured against a ref of unknown age"
   warn "checking local ref $ref instead of origin/$BRANCH"
 else
+  # A note used to be all a failed fetch cost here, and every line below then
+  # measured refs of unknown age under a PASS. A check that could not run is
+  # not a PASS (round 4, tools F02); check-symmetry.sh gave two false FAILs on
+  # 2026-10-15 for exactly this reason. The configured +refs/heads/* refspec
+  # already lets a force-pushed branch through, so only the failure is new.
   git fetch -q origin 7.0-stable "$BRANCH" 2>/dev/null ||
-    warn "could not fetch; using the refs already present"
+    skip "could not fetch origin, so every check below measures refs of unknown age"
   ref="origin/$BRANCH"
 fi
 git rev-parse --verify --quiet "$ref" >/dev/null || {

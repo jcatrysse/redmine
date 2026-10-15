@@ -84,7 +84,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-git fetch -q origin master 2>/dev/null || warn "could not fetch; using the origin/master already present"
+# The patch branches come along, with a `+`, because refreshing patch/<slug> is
+# a force-push. Without them this gate compared the patch file against whatever
+# origin/patch/<slug> the clone last saw, and a failed fetch was only a note —
+# check-symmetry.sh gave two false FAILs on 2026-10-15 from that same stale tip.
+if ! git fetch -q origin master '+refs/heads/patch/*:refs/remotes/origin/patch/*' 2>"$tmp/fetcherr"; then
+  echo "FAIL  could not fetch origin, so origin/master and origin/patch/* may be stale — not measuring:" >&2
+  sed 's/^/        /' "$tmp/fetcherr" | head -5 >&2
+  exit 2
+fi
 
 # --- what are we checking? -------------------------------------------------
 SLUG=""
@@ -119,6 +127,14 @@ if [ -z "$BRANCH" ] && [ -n "$SLUG" ]; then
   for cand in "patch/$SLUG" "origin/patch/$SLUG"; do
     git rev-parse --verify --quiet "$cand" >/dev/null && { BRANCH="$cand"; break; }
   done
+fi
+
+# A local patch/<slug> wins over origin's, since it may carry work not pushed
+# yet. But one that lacks commits origin has is the stale side of a force-push.
+if [ "$BRANCH" = "patch/$SLUG" ] &&
+   git rev-parse --verify --quiet "origin/patch/$SLUG" >/dev/null &&
+   ! git merge-base --is-ancestor "origin/patch/$SLUG" "patch/$SLUG"; then
+  warn "local patch/$SLUG lacks commits that origin/patch/$SLUG has (a force-push not pulled?) — checking the local one"
 fi
 
 # git apply runs with -C inside a temporary worktree, so a relative path here
