@@ -38,7 +38,6 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 ## Nu in behandeling
 
-- `activity-journal-details-preload` — cse_01DU32onro3gaHeDrTdvhEt2 sinds 2026-10-14
 - `webhook-tracker-filter` — cse_01HDou7ZJoQrSbaf5m7oLMZt sinds 2026-10-14
 
 ## Openstaand voor Jan
