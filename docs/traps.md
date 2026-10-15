@@ -1449,3 +1449,5 @@ toegevoegd.
   worktree; `params.require(:project).permit(:name)` in dezelfde controller geeft de
   cop wél. De Rails-cops leven dus; de gate kan het niet meer aantonen. Tot een
   framework-sessie de probe aanpast: meet lint zelf en noem de gate INCOMPLETE, niet PASS.
+
+- **Een herhaalde `GET /activity` meet niets: de controller antwoordt `304 Not Modified`.** `ActivitiesController#index` doet `stale?(:etag => ...)` en de browser stuurt bij een reload `If-None-Match`, dus vanaf de tweede aanvraag wordt er niet gerenderd. Het N+1 op `journal_details` zit juist in de rendering (`event_title`/`event_type` → `Journal#new_status`). Op 2026-10-14 (`activity-journal-details-preload`) gaf de eerste meting zo 19 queries en 122 ms voor 516 events, terwijl een volle render 3029 queries en ruim 4,5 s kost. **Wat je doet:** in Playwright `page.route` gebruiken en `if-none-match`/`if-modified-since` uit de request halen (zie `verify/activity-journal-details-preload.mjs`), en controleer dat de `Completed`-regel `200 OK` zegt. Let ook op `Setting.activity_days_default`: in de dev-database is dat 10, niet 30.
