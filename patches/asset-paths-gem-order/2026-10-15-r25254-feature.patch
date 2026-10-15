@@ -1,4 +1,4 @@
-From bd0ce4c5b6d13a2cddc4ff9754887646cd0a5249 Mon Sep 17 00:00:00 2001
+From cd89c516a47de8775b9f4436969b40bfae5f2829 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Mon, 12 Oct 2026 17:52:11 +0000
 Subject: [PATCH] Keep gems installed under Rails.root behind the application's
