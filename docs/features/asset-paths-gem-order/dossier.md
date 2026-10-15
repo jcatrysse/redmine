@@ -34,30 +34,35 @@
   dat Marius binnen een week oploste. Tegen: het wordt pas zichtbaar met een
   gem van derden in de bundle, en een committer kan zeggen "dat hoort in
   Propshaft". Dat bezwaar staat met antwoord onderaan.
-- **Wat jij nog moet doen:** zie `status.md` — mirror syncen, `--submit`,
-  het issue aanmaken; in productie de GEOxyz-branch deployen met
-  `assets:precompile`.
+- **Wat jij nog moet doen:** zie `status.md` — het issue aanmaken (mirror,
+  `--submit` en de cijfers zijn op 2026-10-15 op r25254 gedaan); in productie
+  de GEOxyz-branch deployen met `assets:precompile`.
 
 ## Trunk check (G1)
 
-- **Trunk-revisie nagekeken:** mirror `origin/master` = `e3962939c` (r25136,
-  2026-09-25) — **51 commits achter echte trunk**. Echte trunk ook gelezen:
-  `9b4eab622` (r25227, 2026-10-12), opgehaald van github.com/redmine/redmine.
-- **Lost trunk dit al op?** Nee. In r25227 zijn `lib/redmine/asset_path.rb`,
-  `config/initializers/10-patches.rb`, `config/initializers/30-redmine.rb` en
-  `config/application.rb` identiek aan r25136; de Gemfile houdt
-  `propshaft ~> 1.3.0` (alleen rails, rubyzip en de json-pin veranderden). Ook
-  Propshaft zelf niet: `lib/propshaft/railtie.rb` op `main` sorteert nog
-  steeds met `path.to_s.start_with?(Rails.root.to_s)`.
+- **Trunk-revisie nagekeken (g05, 2026-10-15):** mirror `origin/master` =
+  `d1f69043e` (r25254, 2026-10-14), **gelijk aan echte trunk** (0 commits
+  verschil met github.com/redmine/redmine). Eerder nagekeken op r25136 (mirror)
+  en r25227 (echte trunk), 2026-10-12.
+- **Lost trunk dit al op?** Nee. In r25254 zijn `lib/redmine/asset_path.rb`,
+  `config/initializers/30-redmine.rb` en `config/application.rb` identiek aan
+  r25136; de Gemfile houdt `propshaft ~> 1.3.0` (Propshaft 1.3.2 in de lock).
+  Ook Propshaft zelf niet: `lib/propshaft/railtie.rb` op `main` sorteert op
+  2026-10-15 nog steeds met `path.to_s.start_with?(Rails.root.to_s)`.
 - **Bestaand issue op redmine.org?** Niets over dit mechanisme. Gezocht op
   `propshaft` (14 issues), `vendor/bundle` (36, alle over installatie),
   `"Chart is not a constructor"` (1). Verwant: **#44294** (Defect, gesloten,
   7.0.1) — hetzelfde symptoom, maar door een leeg `app/assets/javascripts/chart.min.js`
   in core zelf; opgelost in r24879 door het bestand te wissen, plus een
   systeemtest in r24882. Bij Propshaft: rails/propshaft#89 (open) vraagt hoe je
-  gem-assets uitsluit; geen issue over `vendor/bundle`.
-- **Verandert iets in trunk het ontwerp?** Nee. De patch applyt schoon op
-  r25227 (`git apply --check` en `patch -p1 --dry-run`).
+  gem-assets uitsluit; geen issue over `vendor/bundle`. Bij de refresh de 14
+  issues sinds 2026-10-12 nagelopen (#44597–#44615): geen enkele hierover.
+- **Verandert iets in trunk het ontwerp?** Nee. Eén trunkwijziging raakt de
+  buurt: **#44240** (r25240, `config/initializers/10-patches.rb`) laat
+  `manifest_outdated?` de inhoud van het manifest vergelijken in plaats van
+  mtimes. Het manifest komt uit `Redmine::AssetLoadPath`, dus uit de volgorde
+  van deze patch; het gevolg is gunstig (zie "Backward compatibility") en
+  gemeten. De patch applyt schoon op r25254 (`check-patch-clean.sh --submit`).
 
 ---
 
@@ -145,7 +150,12 @@ order within each group is kept, so nothing else moves.
   `config.assets.redmine_extension_paths` (`plugin_assets/...`, `themes/...`),
   which this change does not touch.
 - Production needs the usual `rake assets:precompile` after upgrading, so
-  `public/assets/chart.min-*.js` is rebuilt from the right file.
+  `public/assets/chart.min-*.js` is rebuilt from the right file. Since #44240
+  (r25240), the automatic precompilation on startup
+  (`config.assets.redmine_detect_update`, on in production) does this by
+  itself: the manifest comes from `Redmine::AssetLoadPath`, `chart.min.js`
+  now maps to another digest, so `needs_precompile?` is true once, and false
+  again after the rebuild (measured: below, under "Evidence").
 
 # Alternatives considered
 
@@ -177,7 +187,7 @@ order within each group is kept, so nothing else moves.
 The second test does not depend on where the test run's own bundle is
 installed, so it guards the fix in CI as well.
 
-**Evidence (INV-8):**
+**Evidence (INV-8),** re-run on trunk r25254 (2026-10-15) unless marked:
 
 - **full** suite with the patch, `tools/test-env.sh <worktree> bundle exec ruby bin/rails test:all`:
   see `status.md`, "Bewijs" (figures and the comparison with clean trunk)
@@ -190,10 +200,17 @@ installed, so it guards the fix in CI as well.
 - RuboCop 1.91.0 (with rubocop-rails 2.38.0, rubocop-performance 1.27.0) on
   the two Ruby files, `--cache false`: 0 offences; baseline at `origin/master`: 0
 - `assets:precompile` with the bundle in `vendor/bundle` and a gem shipping
-  `chart.min.js`: unpatched, `public/assets/chart.min-a89b27c8.js` is the gem's
-  file; patched, `chart.min-cae696ba.js`, Chart.js v4.5.1
-- patch applies to `origin/master` r25136 and to real trunk r25227: yes
-- `tools/check-patch-clean.sh asset-paths-gem-order`: PASS
+  `chart.min.js` (r25136, 2026-10-12): unpatched,
+  `public/assets/chart.min-a89b27c8.js` is the gem's file; patched,
+  `chart.min-cae696ba.js`, Chart.js v4.5.1
+- upgrade path through #44240 (`rails runner`, the test fixture as a gem
+  directory inside `Rails.root`): a manifest written by unpatched trunk maps
+  `chart.min.js` to the gem's `chart.min-0edf0213.js`, and unpatched
+  `needs_precompile?` against it is `false`; with the patch the same manifest
+  gives `needs_precompile?` `true` (`chart.min.js` → `vendor/javascript`,
+  `chart.min-cae696ba.js`); once rewritten, `false` again
+- patch applies to trunk r25254, which `origin/master` equals: yes
+- `tools/check-patch-clean.sh asset-paths-gem-order --submit`: PASS
 
 # Live verification (G9)
 
@@ -201,7 +218,8 @@ Real Redmine (development server), bundle installed with
 `bundle config set --local path vendor/bundle` inside the tree,
 `tools/dev-seed.rb` data. Script: `verify/asset-paths-gem-order.mjs`; it reports
 the file behind the `chart.js` pin, the painted pixels in the chart canvas and
-the page errors.
+the page errors. Taken on trunk r25136 (2026-10-12); the patch is unchanged on
+r25254, and the screenshots were not retaken there.
 
 **Stand-in, not redmineup itself.** Starting Redmine with a RedmineUP plugin
 installed is refused in these sessions by the execution environment's safety
@@ -246,9 +264,11 @@ checked the script's output for the served file and the page errors.
 
 - **Issue:** nog niet aangemaakt — Defect, categorie "Third-party libraries" of
   "Code cleanup/refactoring"; relateren aan #44294
-- **Patch attached:** `patches/asset-paths-gem-order/2026-10-12-r25136-feature.patch`
+- **Patch attached:** `patches/asset-paths-gem-order/2026-10-15-r25254-feature.patch`
   (één bestand: geen locales)
-- **Made against:** `origin/master` r25136 (2026-09-25); applyt ook op r25227
+- **Made against:** trunk r25254 (`d1f69043e`, 2026-10-14), ververst op
+  2026-10-15 (g05); `origin/master` was toen gelijk aan echte trunk. Eerst
+  gemaakt op r25136, inhoudelijk ongewijzigd
 - **Status:** patch klaar, niet ingediend
 - **Feedback en wat ermee gebeurde:** —
 

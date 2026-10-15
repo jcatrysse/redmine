@@ -117,14 +117,11 @@ niets aan te doen en het gebeurt precies één keer.
 
 ### `asset-paths-gem-order`
 
-1. **De mirror syncen** (51 commits achter, `docs/runbook.md`), dan
-   `tools/check-patch-clean.sh asset-paths-gem-order --submit` en de cijfers
-   opnieuw laten draaien (g05).
-2. **Een Defect aanmaken op redmine.org** met de Engelse tekst uit het dossier
-   (vanaf "The problem") en `patches/asset-paths-gem-order/2026-10-12-r25136-feature.patch`
+1. **Een Defect aanmaken op redmine.org** met de Engelse tekst uit het dossier
+   (vanaf "The problem") en `patches/asset-paths-gem-order/2026-10-15-r25254-feature.patch`
    erbij; relateren aan #44294 (zelfde symptoom). Het issuenummer daarna in
    `issue:` hierboven.
-3. **Productie:** `7.0-stable-GEOxyz` deployen, `RAILS_ENV=production bundle exec rake
+2. **Productie:** `7.0-stable-GEOxyz` deployen, `RAILS_ENV=production bundle exec rake
    assets:precompile`, herstarten, en Issues → Rapporten → Tracker openen met de
    RedmineUP-plugins erbij: grafieken zichtbaar, geen "Chart is not a
    constructor" in de console. Heeft een RedmineUP-plugin zelf grafieken, open
@@ -132,7 +129,7 @@ niets aan te doen en het gebeurt precies één keer.
    `plugin_assets/redmineup/chart.min.js`, niet het pad van de patch). Stond de serverregel `config.assets.excluded_paths`
    al in `config/additional_environment.rb`, dan mag die weg; laten staan kan
    ook, hij is naast de fix onschadelijk.
-4. De branch `fix/asset-paths-gems-under-rails-root` op GitHub verwijderen
+3. De branch `fix/asset-paths-gems-under-rails-root` op GitHub verwijderen
    (goedgekeurd op 2026-10-07; vanuit de sessies geweigerd). Staat er nog.
 
 ### `assignee-nobody`

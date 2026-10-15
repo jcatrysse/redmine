@@ -44,3 +44,18 @@
   gepubliceerde historie herschrijven mag niet. `geoxyz_commit` noemt alle drie.
 - **2026-10-12, Class A:** de twee serverregel-screenshots uit `shots/` gehaald; die
   aanpak is vervallen. Ze staan in de historie (`7d8b8e67c`).
+- **2026-10-15, Class A (g05):** patchbranch herzet op trunk r25254 (`cd89c516a`) met
+  `git rebase` en `--force-with-lease`, de oude tip eerst bewaard als
+  `archive/patch-asset-paths-gem-order-r25136-before-refresh` (`bd0ce4c5b`), zoals
+  `docs/traps.md` dat voor een refresh voorschrijft. Het patchbestand is inhoudelijk
+  ongewijzigd: alleen de `From`-sha verschilt.
+- **2026-10-15, Class A:** `origin/7.0-stable` (2 commits, #44231 en #44579) in
+  `7.0-stable-GEOxyz` gemerged vóór de GEOxyz-suite, anders faalde
+  `check-geoxyz-branch.sh` op "2 commit(s) behind" en waren de cijfers op een oude
+  basis gemeten. Een merge, geen rebase (CLAUDE.md, "Keeping it current").
+- **2026-10-15, Class A:** de zin over `assets:precompile` in "Backward compatibility"
+  aangevuld met #44240 (r25240): op trunk vergelijkt de automatische precompilatie bij
+  het opstarten nu de inhoud van het manifest, en dat ziet de verschoven
+  `chart.min.js` zelf. Gemeten, niet afgeleid (status.md, "Bewijs"). Op
+  `7.0-stable-GEOxyz` staat #44240 niet, dus daar blijft de handmatige precompile
+  in "Wat Jan nog moet doen".
