@@ -6,14 +6,14 @@
 #
 # Builds the database up to 20250611092227 (the last 7.0 migration before the
 # webhook tables), seeds the 5.1-stable-GEOxyz state with seed51.rb, migrates
-# the rest and prints what verify.rb finds. --without moves the three
+# the rest and prints what verify.rb finds. --without moves the four
 # GEOxyz upgrade migrations aside first, which reproduces F1.
 set -uo pipefail
 WT=${1:?worktree}; export DATABASE_URL=${2:?database url}; WITHOUT=${3:-}
 HERE=$(cd "$(dirname "$0")" && pwd)
 export RAILS_ENV=test
 cd "$WT" || exit 2
-MIG="db/migrate/20251007073255_set_aside_geoxyz51_webhooks.rb db/migrate/20260903081501_restore_geoxyz51_webhooks.rb db/migrate/20261014120000_copy_geoxyz51_settings.rb"
+MIG="db/migrate/20251007073255_set_aside_geoxyz51_webhooks.rb db/migrate/20260903081501_restore_geoxyz51_webhooks.rb db/migrate/20261014120000_copy_geoxyz51_settings.rb db/migrate/20261015000000_remove_geoxyz51_settings.rb"
 STASH=$(mktemp -d)
 restore() { for f in $MIG; do [ -f "$STASH/$(basename "$f")" ] && mv "$STASH/$(basename "$f")" "$f"; done; rm -f db/schema.rb; }
 trap restore EXIT

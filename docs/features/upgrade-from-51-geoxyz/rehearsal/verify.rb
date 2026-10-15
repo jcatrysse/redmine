@@ -15,3 +15,6 @@ n.destroy
 %w(display_revision_branches display_associated_revision_branches revision_branches_excluded revision_branches_enable_regex).each do |s|
   puts "#{s}=#{Setting.send(s).inspect}"
 end
+puts "leftover 5.1 settings: #{Setting.where(:name => %w(display_under_single_revision display_under_associated_revisions display_revision_branches_regex_enable display_revision_branches_enable_regex_delimiters search_token_limit)).pluck(:name).inspect}"
+Setting.all.each(&:value)
+puts "Setting.all.each(&:value): no error"
