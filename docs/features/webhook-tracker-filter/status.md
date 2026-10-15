@@ -93,11 +93,16 @@ inhoudelijk ongewijzigd; de vier vertalingen zijn byte-identiek.
 
 - Branch opnieuw opgebouwd vanaf `origin/master` r25236 (`1d6194503`) als één
   commit **`940d9b7de`**, auteur en committer Jan.
-- **Nog niet op `origin/patch/webhook-tracker-filter`.** De force-push werd in
-  deze sessie door de permissiecontrole geweigerd. De nieuwe tip staat op
-  `staging/patch-webhook-tracker-filter-r25236`, de oude tip `cb4972a5c` op
-  `archive/patch-webhook-tracker-filter-r25037-before-safe-attributes`. Jan
-  doet de vervanging (commando in "Wat Jan nog moet doen").
+- **Op `origin/patch/webhook-tracker-filter` sinds 2026-10-15**, door Jan
+  geforce-pusht (de sessie mocht dat niet). De oude tip `cb4972a5c` blijft
+  bereikbaar als `archive/patch-webhook-tracker-filter-r25037-before-safe-attributes`;
+  de `staging/`-branch is weg.
+- **`tools/check-symmetry.sh webhook-tracker-filter`: PASS** (2026-10-15),
+  "every substantive line is on both sides in both directions, and its 5
+  locale key(s) read the same", tegen `origin/7.0-stable-GEOxyz` na de
+  #44337-merge. Eerst moest de remote-tracking ref met de hand geforceerd
+  worden: de fetch van het script heeft geen `+` en weigert na een force-push,
+  zie `docs/traps.md`. `tools/check-patch-clean.sh`: PASS, applyt ook op r25254.
 - Patchbestanden: `2026-10-14-r25236-feature.patch` (7 bestanden, 144+/4-) en
   `-locales.patch`; de r25037-bestanden zijn weg (git-historie houdt ze).
 - **Volledige suite** (`tools/test-env.sh … test:all`, zelfde `Gemfile.lock`,
@@ -258,16 +263,6 @@ systeemtests.
 
 ## Wat Jan nog moet doen
 
-**Eerst (2026-10-14):** de ververste branch op zijn plaats zetten, want die
-force-push mocht deze sessie niet doen:
-
-    git push --force-with-lease=refs/heads/patch/webhook-tracker-filter:cb4972a5cffa322f33997fac9d3fdeae2d745b18 \
-      origin origin/staging/patch-webhook-tracker-filter-r25236:refs/heads/patch/webhook-tracker-filter
-    git push origin --delete staging/patch-webhook-tracker-filter-r25236
-
-Daarna, met de GEOxyz-merge gepusht, `tools/check-symmetry.sh
-webhook-tracker-filter` draaien.
-
 Maak een **nieuw** issue op redmine.org aan als follow-up van
 [#29664](https://www.redmine.org/issues/29664) — dus niet als note aan #29664
 zelf, dat issue is gesloten met target version 7.0.0. Hang er
@@ -380,8 +375,5 @@ een eigen bugrapport, niet in deze patch; melden is genoeg.
 
 ## Volgende stap voor een sessie
 
-Zodra `origin/patch/webhook-tracker-filter` op `940d9b7de` staat en de
-GEOxyz-merge gepusht is: `tools/check-symmetry.sh webhook-tracker-filter`
-draaien. Verwacht PASS zonder GEOxyz-wijziging (zelfde `safe_attributes`-regel
-aan beide kanten); faalt hij, dan is dat het werk. Daarna wachten tot Jan het issue heeft aangemaakt; vul dan het
+Af — niets te doen. Wachten tot Jan het issue heeft aangemaakt; vul dan het
 `issue:`-veld in de front matter en de "Submission"-sectie van `dossier.md` in.
