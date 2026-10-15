@@ -1,0 +1,47 @@
+From d67af5d9ea5fbcddaec07496b2ba95ac28afa96d Mon Sep 17 00:00:00 2001
+From: Jan Catrysse <jan.catrysse@geoxyz.eu>
+Date: Wed, 14 Oct 2026 23:19:54 +0000
+Subject: [PATCH] Preload journal details when retrieving Activity events to
+ avoid N+1 queries (#44252).
+
+---
+ app/models/journal.rb      | 2 +-
+ test/unit/activity_test.rb | 9 +++++++++
+ 2 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/app/models/journal.rb b/app/models/journal.rb
+index 1874feb0c..e24019d69 100644
+--- a/app/models/journal.rb
++++ b/app/models/journal.rb
+@@ -54,7 +54,7 @@ class Journal < ApplicationRecord
+     :author_key => :user_id,
+     :scope =>
+       proc do
+-        preload({:issue => :project}, {:issue => :tracker}, :user).
++        preload({:issue => :project}, {:issue => :tracker}, :user, :details).
+           joins("LEFT OUTER JOIN #{JournalDetail.table_name} ON #{JournalDetail.table_name}.journal_id = #{Journal.table_name}.id").
+             where("#{Journal.table_name}.journalized_type = 'Issue' AND" +
+                   " (#{JournalDetail.table_name}.prop_key = 'status_id' OR #{Journal.table_name}.notes <> '')").distinct
+diff --git a/test/unit/activity_test.rb b/test/unit/activity_test.rb
+index 3575e98e6..2a19e2ed4 100644
+--- a/test/unit/activity_test.rb
++++ b/test/unit/activity_test.rb
+@@ -83,6 +83,15 @@ class ActivityTest < ActiveSupport::TestCase
+     assert_equal events, events.uniq
+   end
+ 
++  def test_journal_events_should_preload_details
++    f = Redmine::Activity::Fetcher.new(User.find(1))
++    f.scope = ['issues']
++    journals = f.events.grep(Journal)
++
++    assert_operator journals.size, :>, 1
++    assert_no_queries {journals.each {|journal| journal.details.to_a}}
++  end
++
+   def test_files_activity
+     f = Redmine::Activity::Fetcher.new(User.anonymous, :project => Project.find(1))
+     f.scope = ['files']
+-- 
+2.43.0
+

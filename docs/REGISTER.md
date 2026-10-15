@@ -9,6 +9,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
+| [`activity-journal-details-preload`](features/activity-journal-details-preload/status.md) | De activiteitenpagina laadt de details van issue-wijzigingen in één query in plaats van één per wijziging | `-` | live (`83693089a`) | patch klaar | [#44252](https://www.redmine.org/issues/44252) |
 | [`asset-paths-gem-order`](features/asset-paths-gem-order/status.md) | gems in vendor/bundle achter de assetpaden van core (Chart.js van RedmineUP brak core-grafieken) | `-` | live (`6abebe886 + 1bf0ef69b + 1d8c2a3a7`) | patch klaar | — |
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`349fe1860 + 9ad87a11b + 5c2dcdd7a`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
 | [`back-url-array`](features/back-url-array/status.md) | Geen HTTP 500 meer als back_url als lijst (back_url[]=...) binnenkomt | `-` | live (`0f4317246`) | patch klaar | — |
@@ -33,7 +34,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-23 features: 13 patch klaar, 7 nooit, 2 vervallen, 1 geaccepteerd.
+24 features: 14 patch klaar, 7 nooit, 2 vervallen, 1 geaccepteerd.
 
 ## Nu in behandeling
 
@@ -41,6 +42,13 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 - `webhook-tracker-filter` — cse_01HDou7ZJoQrSbaf5m7oLMZt sinds 2026-10-14
 
 ## Openstaand voor Jan
+
+### `activity-journal-details-preload`
+
+Een notitie plaatsen op https://www.redmine.org/issues/44252 met de tekst onder
+"Note for #44252" in `docs/features/activity-journal-details-preload/dossier.md`
+en `patches/activity-journal-details-preload/2026-10-14-r25236-feature.patch`
+als bijlage. Geen nieuw issue aanmaken.
 
 ### `ar-sessions`
 
