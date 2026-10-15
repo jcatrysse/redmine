@@ -1467,3 +1467,15 @@ toegevoegd.
   draaien. Het omgekeerde is gevaarlijker: na een force-push die wél iets
   breekt kan hij een PASS geven op de oude tip. Het script zelf aanpassen is
   framework-werk (`tools/**`).
+
+- **Opgelost (2026-10-15, framework, op vraag van Jan): de trap hierboven over
+  `tools/check-symmetry.sh` en een force-pushte `patch/<slug>`.** De refspec is
+  nu `+refs/heads/patch/*:refs/remotes/origin/patch/*`, de fetch loopt vóór
+  `--all` de slugs opsomt, en een mislukte fetch stopt de run met exit 2 in
+  plaats van een `note` op de oude tip. `--self-test` telt alleen exit 1 als
+  gevangen probe. `tools/check-patch-clean.sh` haalde de patchbranches nooit
+  zelf op en mat dus dezelfde verouderde tip: nu wel, met `+`, en ook daar is
+  een mislukte fetch exit 2. `tools/check-geoxyz-branch.sh` had de refspec al
+  goed (benoemde branch, geconfigureerde `+refs/heads/*`), maar een mislukte
+  fetch daar is nu `????`/INCOMPLETE. De lokale workaround met de handmatige
+  `git fetch '+refs/heads/patch/<slug>:…'` is niet meer nodig.
