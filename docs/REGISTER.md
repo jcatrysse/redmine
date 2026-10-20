@@ -9,7 +9,6 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
-| [`pdf-export-marshal-attachments`](features/pdf-export-marshal-attachments/status.md) | issue-PDF met een tabel geeft 500 ("can't dump hash with default proc") zodra rollen van een gebruiker van het issue gecachet zijn | `-` | todo (`f59238143`) | ontworpen | — |
 | [`activity-journal-details-preload`](features/activity-journal-details-preload/status.md) | De activiteitenpagina laadt de details van issue-wijzigingen in één query in plaats van één per wijziging | `-` | live (`83693089a`) | patch klaar | [#44252](https://www.redmine.org/issues/44252) |
 | [`asset-paths-gem-order`](features/asset-paths-gem-order/status.md) | gems in vendor/bundle achter de assetpaden van core (Chart.js van RedmineUP brak core-grafieken) | `-` | live (`6abebe886 + 1bf0ef69b + 1d8c2a3a7`) | patch klaar | — |
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`349fe1860 + 9ad87a11b + 5c2dcdd7a`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
@@ -17,6 +16,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`group-membership-preload`](features/group-membership-preload/status.md) | Een groep met veel gebruikers aan een project toevoegen met minder queries per gebruiker | `-` | live (`2b9700a9c`) | patch klaar | — |
 | [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901 + 012ab39e0`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`dc6dad120 + dd063fa8b + f5ed23c8e`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
+| [`pdf-export-marshal-attachments`](features/pdf-export-marshal-attachments/status.md) | issue-PDF met een tabel geeft 500 ("can't dump hash with default proc") zodra rollen van een gebruiker van het issue gecachet zijn | `-` | live (`f59238143`) | patch klaar | — |
 | [`rake-webhook-flush`](features/rake-webhook-flush/status.md) | Webhooks gaan niet meer verloren in de rake-taken die mail ontvangen | `-` | live (`e1e759c47`) | patch klaar | — |
 | [`revision-branches`](features/revision-branches/status.md) | Git-branches op de revisie- en de issuepagina | `cf826e3fd` | live (`ff0d23b62 + 755d763a8 + 88d597548`) | patch klaar | [#5386](https://www.redmine.org/issues/5386) |
 | [`search-token-limit`](features/search-token-limit/status.md) | Tekstfilters negeren geen zoekwoorden meer na het vijfde | `17528437d` | live (`6695461bd + 1cd7091fd`) | patch klaar | [#43701](https://www.redmine.org/issues/43701) |
@@ -35,7 +35,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-25 features: 14 patch klaar, 7 nooit, 2 vervallen, 1 geaccepteerd, 1 ontworpen.
+25 features: 15 patch klaar, 7 nooit, 2 vervallen, 1 geaccepteerd.
 
 ## Nu in behandeling
 
@@ -329,7 +329,11 @@ De Engelse tekst voor de note staat in `dossier.md` vanaf "The problem".
 
 ### `pdf-export-marshal-attachments`
 
-Nog niets: de feature is niet af.
+Op redmine.org een Defect aanmaken (categorie PDF export) met de Engelse tekst uit
+`docs/features/pdf-export-marshal-attachments/dossier.md` en
+`patches/pdf-export-marshal-attachments/2026-10-20-r25262-feature.patch` erbij,
+met `before-issue-pdf.png` en `issue-pdf.png` als voor/na. Vooraf de mirror syncen
+(18 commits achter) en `tools/check-patch-clean.sh --submit pdf-export-marshal-attachments` draaien.
 
 ### `rake-webhook-flush`
 

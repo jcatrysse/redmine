@@ -137,7 +137,7 @@ still copies the whole issue graph for nothing.
 
 **Evidence (INV-8 — figures, not claims):**
 
-- **full** suite with the patch: `tools/test-env.sh <worktree> bundle exec ruby bin/rails test:all` → see `status.md` "Bewijs" for the figures and the comparison with clean trunk
+- **full** suite with the patch: `bin/rails test:all` → 6331 runs, 33062 assertions, 29 failures, 2 errors, 159 skips; on clean trunk r25262: 6329 runs, 33055 assertions, 29 failures, 2 errors, 159 skips. The failures are the same tests apart from two system tests, one on each side, both green when re-run alone (timing); the rest are repository, API and CommonMark tests that fail on this environment without the patch
 - `test/unit/lib/redmine/export/pdf_test.rb` with the patch: 7 runs, 53 assertions, 0 failures, 0 errors
 - RuboCop 1.91.0 on both changed files: 0 offences (baseline at the merge base: 0)
 - each new test red on the old code, by running it there: without the change both
@@ -214,10 +214,10 @@ Files.
 
 ## GEOxyz
 
-- **Commit op `7.0-stable-GEOxyz`:** zie `status.md` (front matter `geoxyz_commit`)
-- **Suites daar groen:** zie `status.md` "Bewijs"
+- **Commit op `7.0-stable-GEOxyz`:** `f59238143`
+- **Suites daar groen:** `test:all` 6354 runs, 33097 assertions, 0 failures, 0 errors, 99 skips
 - **`nl.yml` toegevoegd:** n.v.t., geen vertalingen
-- **`tools/check-geoxyz-branch.sh`:** zie `status.md`
+- **`tools/check-geoxyz-branch.sh`:** PASS; `tools/check-symmetry.sh` FAIL alleen op het verplaatste bestand, met de hand gelijk bevonden (zie `status.md`)
 - **Wanneer kan deze commit vervallen?** Pas als GEOxyz naar de Redmine-release
   gaat die de geaccepteerde trunk-patch bevat (7.1 of later; Redmine backport
   features niet, maar dit is een defect: als een committer het naar 7.0-stable
