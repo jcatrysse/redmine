@@ -100,6 +100,18 @@ module Redmine
           RDMwriteFormattedCell(w, h, x, y, txt, attachments, border, ln, fill)
         end
 
+        # The copy made by startTransaction shares the attachments instead of
+        # marshaling them, because records can hold hashes with a default proc
+        def objclone(object)
+          attachments = object.instance_variable_get(:@attachments)
+          object.instance_variable_set(:@attachments, nil)
+          copy = super
+          copy.instance_variable_set(:@attachments, attachments)
+          copy
+        ensure
+          object.instance_variable_set(:@attachments, attachments)
+        end
+
         def get_image_filename(attrname)
           atta = RDMPdfEncoding.attach(@attachments, attrname, "UTF-8")
           if atta
