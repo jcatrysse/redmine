@@ -99,4 +99,39 @@ class PdfTest < ActiveSupport::TestCase
   ensure
     set_tmp_attachments_directory
   end
+
+  def test_write_formatted_cell_with_table_should_not_marshal_attachments
+    set_fixtures_attachments_directory
+    User.current = User.find(1)
+    issue = Issue.find(14)
+    # Caches the roles in a Hash with a default proc, which Marshal cannot dump
+    issue.author.roles_for_project(issue.project)
+    html = '<table><thead><tr><th>Name</th></tr></thead><tbody><tr><td>Value</td></tr></tbody></table>' \
+           '<img src="testfile.png" />'
+
+    pdf = Redmine::Export::PDF::ITCPDF.new('en')
+    pdf.add_page
+    pdf.RDMwriteFormattedCell(190, 5, '', '', html, issue.attachments)
+    assert_include '/Subtype /Image', pdf.output
+  ensure
+    set_tmp_attachments_directory
+  end
+
+  def test_write_formatted_cell_with_table_across_page_break_should_keep_attachments
+    set_fixtures_attachments_directory
+    User.current = User.find(1)
+    issue = Issue.find(14)
+    issue.author.roles_for_project(issue.project)
+    html = '<table><thead><tr><th>Name</th></tr></thead><tbody><tr><td>Value</td></tr></tbody></table>' \
+           '<img src="testfile.png" />'
+
+    pdf = Redmine::Export::PDF::ITCPDF.new('en')
+    pdf.add_page
+    pdf.set_y(270)
+    pdf.RDMwriteFormattedCell(190, 5, '', '', html, issue.attachments)
+    assert_equal 2, pdf.get_page
+    assert_include '/Subtype /Image', pdf.output
+  ensure
+    set_tmp_attachments_directory
+  end
 end
