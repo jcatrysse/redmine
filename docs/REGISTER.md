@@ -9,6 +9,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 | Slug | Feature | 5.1-commit | GEOxyz | Upstream | Issue |
 |---|---|---|---|---|---|
+| [`pdf-export-marshal-attachments`](features/pdf-export-marshal-attachments/status.md) | issue-PDF met een tabel geeft 500 ("can't dump hash with default proc") zodra rollen van een gebruiker van het issue gecachet zijn | `-` | todo (`f59238143`) | ontworpen | — |
 | [`activity-journal-details-preload`](features/activity-journal-details-preload/status.md) | De activiteitenpagina laadt de details van issue-wijzigingen in één query in plaats van één per wijziging | `-` | live (`83693089a`) | patch klaar | [#44252](https://www.redmine.org/issues/44252) |
 | [`asset-paths-gem-order`](features/asset-paths-gem-order/status.md) | gems in vendor/bundle achter de assetpaden van core (Chart.js van RedmineUP brak core-grafieken) | `-` | live (`6abebe886 + 1bf0ef69b + 1d8c2a3a7`) | patch klaar | — |
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`349fe1860 + 9ad87a11b + 5c2dcdd7a`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
@@ -34,7 +35,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`netimap-cve`](features/netimap-cve/status.md) | net-imap gem-bump | `92312960c` | n.v.t. | vervallen | — |
 | [`wiki-export-txt`](features/wiki-export-txt/status.md) | Hele wiki als één TXT-bestand | `3c3e9368e (deel)` | n.v.t. | vervallen | — |
 
-24 features: 14 patch klaar, 7 nooit, 2 vervallen, 1 geaccepteerd.
+25 features: 14 patch klaar, 7 nooit, 2 vervallen, 1 geaccepteerd, 1 ontworpen.
 
 ## Nu in behandeling
 
@@ -325,6 +326,10 @@ Er staat verder niets meer voor jou open: K-10 (de bovengrens) is beslist —
 optie C, 20.
 
 De Engelse tekst voor de note staat in `dossier.md` vanaf "The problem".
+
+### `pdf-export-marshal-attachments`
+
+Nog niets: de feature is niet af.
 
 ### `rake-webhook-flush`
 
