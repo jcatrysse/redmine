@@ -1479,3 +1479,22 @@ toegevoegd.
   goed (benoemde branch, geconfigureerde `+refs/heads/*`), maar een mislukte
   fetch daar is nu `????`/INCOMPLETE. De lokale workaround met de handmatige
   `git fetch '+refs/heads/patch/<slug>:…'` is niet meer nodig.
+
+
+- **`tools/dev-seed.rb` faalt de eerste keer op een lege dev-database** (2026-10-20,
+  `pdf-export-marshal-attachments`, twee keer: trunk r25262 en `7.0-stable-GEOxyz`):
+  `Project#shared_versions` → `undefined method 'lft' for nil` op `dev-seed.rb:131`.
+  `tools/dev-server.sh` nog eens draaien lukt wel; de seed is idempotent. Niet gefixt
+  (framework-bestand).
+- **Een admin vult geen rollencache** (2026-10-20, `pdf-export-marshal-attachments`):
+  `User#allowed_to?` kortsluit voor admins en roept `roles_for_project` nooit aan. Een
+  G9-reproductie die afhangt van gecachte rollen heeft een niet-admin auteur of
+  toegewezene nodig; de eerste twee live runs gaven daardoor 200 op ongepatchte trunk.
+  En een plugin-`init.rb` met `Rails.application.config.to_prepare` voert dat blok niet
+  uit: Redmine laadt `init.rb` al binnen de prepare-fase. Roep het rechtstreeks aan.
+- **`tools/check-symmetry.sh` kan een in trunk verplaatst bestand niet aan**
+  (2026-10-20, `pdf-export-marshal-attachments`): trunk r25047 verplaatste `ITCPDF`
+  naar `lib/redmine/export/pdf/itcpdf.rb`, 7.0-stable heeft het in `pdf.rb`. Het
+  script faalt op "exists on patch but not on GEOxyz" vóór het `symmetry-allow.txt`
+  leest, dus geen allowregel helpt. Met de hand vergelijken: `diff` van de `^[+-]`-regels
+  van beide `git diff`s. Een pad-mapping in het script is framework-werk.
