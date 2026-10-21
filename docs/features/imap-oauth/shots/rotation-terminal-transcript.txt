@@ -1,0 +1,160 @@
+G9 for refresh token rotation (2026-10-21), against the harness in
+docs/features/imap-oauth/verify-harness/: a real IMAP server that only accepts
+AUTHENTICATE XOAUTH2, and a real HTTPS token endpoint (self-signed, the client
+pointed at it with SSL_CERT_FILE) that can rotate refresh tokens. Driver:
+verify-harness/g9-rotation.sh. Each fetch is the real rake task,
+`bin/rails redmine:email:receive_imap ... oauth2_credentials=FILE`, run as the
+unprivileged user `redmine`, the way cron runs it, so file permissions really
+apply (as root they would not). Same driver, same servers, same dev database;
+only the code differs.
+
+The tokens are fake, which is why the refresh_token line of the file is shown.
+
+Scenarios:
+  A  ROTATE=revoke: every refresh grant returns a new refresh token and only
+     the newest one is accepted (RFC 6749 section 6 permits this)
+  B  no ROTATE: no refresh token in the response (Google's behaviour)
+  C  ROTATE=keep (Microsoft's documented behaviour), directory not writable
+  D  ROTATE=keep, file owned by root and readable by group redmine
+
+===== BEFORE: the patch as it stood (3cd8c0eac) =====
+
+--- A. provider rotates and revokes the old refresh token (ROTATE=revoke) ---
+    directory redmine 700, file redmine:redmine 640
+    file: redmine:redmine 640  sha256 c1664a7d77c53c3f  mtime 09:42:24.381
+    refresh_token: a-refresh-token
+  run 1
+    exit 0
+    newest issue: #11 "Fetched with a rotated refresh token" created 09:42:29
+    file: redmine:redmine 640  sha256 c1664a7d77c53c3f  mtime 09:42:24.381
+    refresh_token: a-refresh-token
+  run 2
+    exit 1
+    stderr: bin/rails aborted!
+    stderr: OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)
+    stderr: /home/user/wt/imap-before/lib/redmine/oauth2_client.rb:160:in `token_from'
+    stderr: /home/user/wt/imap-before/lib/redmine/oauth2_client.rb:35:in `access_token'
+    stderr: /home/user/wt/imap-before/lib/redmine/imap.rb:85:in `oauth2_access_token'
+    stderr: /home/user/wt/imap-before/lib/redmine/imap.rb:42:in `check'
+    stderr: /home/user/wt/imap-before/lib/tasks/email.rake:148:in `block (4 levels) in <top (required)>'
+    stderr: /home/user/wt/imap-before/app/models/mailer.rb:661:in `with_synched_deliveries'
+    stderr: /home/user/wt/imap-before/lib/tasks/email.rake:147:in `block (3 levels) in <top (required)>'
+    newest issue: #11 "Fetched with a rotated refresh token" created 09:42:29
+    file: redmine:redmine 640  sha256 c1664a7d77c53c3f  mtime 09:42:24.381
+    refresh_token: a-refresh-token
+  run 3
+    exit 1
+    stderr: bin/rails aborted!
+    stderr: OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)
+    stderr: /home/user/wt/imap-before/lib/redmine/oauth2_client.rb:160:in `token_from'
+    stderr: /home/user/wt/imap-before/lib/redmine/oauth2_client.rb:35:in `access_token'
+    stderr: /home/user/wt/imap-before/lib/redmine/imap.rb:85:in `oauth2_access_token'
+    stderr: /home/user/wt/imap-before/lib/redmine/imap.rb:42:in `check'
+    stderr: /home/user/wt/imap-before/lib/tasks/email.rake:148:in `block (4 levels) in <top (required)>'
+    stderr: /home/user/wt/imap-before/app/models/mailer.rb:661:in `with_synched_deliveries'
+    stderr: /home/user/wt/imap-before/lib/tasks/email.rake:147:in `block (3 levels) in <top (required)>'
+    newest issue: #11 "Fetched with a rotated refresh token" created 09:42:29
+    file: redmine:redmine 640  sha256 c1664a7d77c53c3f  mtime 09:42:24.381
+    refresh_token: a-refresh-token
+  token endpoint log:
+    token endpoint: issued refresh token number 1 (ROTATE=revoke), 1 valid
+    token endpoint: refresh token not accepted, invalid_grant
+    token endpoint: refresh token not accepted, invalid_grant
+  diff between the file as written and the file now:
+
+--- B. provider returns no refresh token (Google's behaviour) ---
+    file: redmine:redmine 600  sha256 f30f8cf90d302799  mtime 09:42:49.974
+    refresh_token: a-refresh-token
+  run 1
+    exit 0
+    newest issue: #12 "Fetched with a rotated refresh token" created 09:42:56
+    file: redmine:redmine 600  sha256 f30f8cf90d302799  mtime 09:42:49.974
+    refresh_token: a-refresh-token
+  file byte-identical to the one written: YES
+
+--- C. provider rotates (ROTATE=keep), directory not writable by redmine ---
+    directory root 755, file redmine:redmine 600
+    file: redmine:redmine 600  sha256 d73a1b3adf0a9c92  mtime 09:43:00.868
+    refresh_token: a-refresh-token
+  run 1
+    exit 0
+    newest issue: #13 "Fetched with a rotated refresh token" created 09:43:06
+    file: redmine:redmine 600  sha256 d73a1b3adf0a9c92  mtime 09:43:00.868
+    refresh_token: a-refresh-token
+  a token in what the run printed: none
+
+--- D. provider rotates (ROTATE=keep), file owned by root, readable by group redmine ---
+    directory redmine 700, file root:redmine 640
+    file: root:redmine 640  sha256 0600392162da0a72  mtime 09:43:11.155
+    refresh_token: a-refresh-token
+  run 1
+    exit 0
+    newest issue: #14 "Fetched with a rotated refresh token" created 09:43:17
+    file: root:redmine 640  sha256 0600392162da0a72  mtime 09:43:11.155
+    refresh_token: a-refresh-token
+
+
+
+===== AFTER: rotated refresh token written back (b0f972aaf) =====
+
+--- A. provider rotates and revokes the old refresh token (ROTATE=revoke) ---
+    directory redmine 700, file redmine:redmine 640
+    file: redmine:redmine 640  sha256 c1664a7d77c53c3f  mtime 09:44:06.062
+    refresh_token: a-refresh-token
+  run 1
+    exit 0
+    newest issue: #15 "Fetched with a rotated refresh token" created 09:44:11
+    file: redmine:redmine 640  sha256 308da1c366b87ee3  mtime 09:44:09.867
+    refresh_token: rotated-refresh-token-1
+  run 2
+    exit 0
+    newest issue: #16 "Fetched with a rotated refresh token" created 09:44:21
+    file: redmine:redmine 640  sha256 743bbf570c271814  mtime 09:44:19.931
+    refresh_token: rotated-refresh-token-2
+  run 3
+    exit 0
+    newest issue: #17 "Fetched with a rotated refresh token" created 09:44:31
+    file: redmine:redmine 640  sha256 9ed1d0ad7f45a405  mtime 09:44:29.747
+    refresh_token: rotated-refresh-token-3
+  token endpoint log:
+    token endpoint: issued refresh token number 1 (ROTATE=revoke), 1 valid
+    token endpoint: issued refresh token number 2 (ROTATE=revoke), 1 valid
+    token endpoint: issued refresh token number 3 (ROTATE=revoke), 1 valid
+  diff between the file as written and the file now:
+    6c6
+    < refresh_token: a-refresh-token
+    ---
+    > refresh_token: rotated-refresh-token-3
+
+--- B. provider returns no refresh token (Google's behaviour) ---
+    file: redmine:redmine 600  sha256 f30f8cf90d302799  mtime 09:44:36.097
+    refresh_token: a-refresh-token
+  run 1
+    exit 0
+    newest issue: #18 "Fetched with a rotated refresh token" created 09:44:42
+    file: redmine:redmine 600  sha256 f30f8cf90d302799  mtime 09:44:36.097
+    refresh_token: a-refresh-token
+  file byte-identical to the one written: YES
+
+--- C. provider rotates (ROTATE=keep), directory not writable by redmine ---
+    directory root 755, file redmine:redmine 600
+    file: redmine:redmine 600  sha256 d73a1b3adf0a9c92  mtime 09:44:47.215
+    refresh_token: a-refresh-token
+  run 1
+    exit 0
+    stderr: The new refresh token issued by the provider could not be written to /tmp/tmp.Hy0MHij1ja/c/imap_oauth2.yml: Permission denied @ rb_sysopen - /tmp/tmp.Hy0MHij1ja/c/.imap_oauth2.yml20261021-29863-p41xmp
+    newest issue: #19 "Fetched with a rotated refresh token" created 09:44:53
+    file: redmine:redmine 600  sha256 d73a1b3adf0a9c92  mtime 09:44:47.215
+    refresh_token: a-refresh-token
+  a token in what the run printed: none
+
+--- D. provider rotates (ROTATE=keep), file owned by root, readable by group redmine ---
+    directory redmine 700, file root:redmine 640
+    file: root:redmine 640  sha256 0600392162da0a72  mtime 09:44:57.285
+    refresh_token: a-refresh-token
+  run 1
+    exit 0
+    newest issue: #20 "Fetched with a rotated refresh token" created 09:45:02
+    file: redmine:redmine 600  sha256 8572c28cb28c9020  mtime 09:45:00.763
+    refresh_token: rotated-refresh-token-1
+

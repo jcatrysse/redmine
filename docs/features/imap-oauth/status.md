@@ -3,15 +3,67 @@ slug: imap-oauth
 feature: IMAP inbound mail via OAuth 2.0 (Gmail / O365)
 commit_51: bbf5c0eb3
 geoxyz: live
-geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901 + 012ab39e0
+geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901 + 012ab39e0 + 3a71d578b
 upstream: patch klaar
-patch: patches/imap-oauth/2026-09-10-r25037-feature.patch
+patch: patches/imap-oauth/2026-10-21-r25037-feature.patch
 issue: 43023
 ---
 
 # imap-oauth — status
 
 ## Waar het staat
+
+**2026-10-21: refresh-token-rotatie toegevoegd, op Jans beslissing van
+vandaag.** `Oauth2Client.access_token` vroeg bij elke `receive_imap`-run een
+access token met het refresh token uit het bestand, en negeerde het nieuwe
+refresh token dat het antwoord kan meegeven. Microsoft geeft er bij élk gebruik
+een nieuw (standaardlevensduur 90 dagen) en RFC 6749 §6 zegt dat de client het
+oude dan MOET weggooien. Het bestand hield dus eeuwig het oorspronkelijke token,
+en de mail kon na die levensduur stil stoppen. De 5.1-code schreef het terug; de
+7.0-herschrijving had dat laten vallen. Nu: is het teruggegeven token anders dan
+dat in het bestand, dan vervangt Redmine **alleen de `refresh_token:`-regel**,
+atomair (`File.atomic_write`), met behoud van eigenaar en modus. Lukt schrijven
+niet, dan haalt de run toch de mail op en staat er een waarschuwing op stderr,
+zonder token. Niet tegen een echte Microsoft-tenant bewezen (dat duurt 90
+dagen); het argument is de RFC en Microsofts eigen documentatie.
+
+- Patchbranch: tweede commit **`b0f972aaf`** bovenop `3cd8c0eac` (squashen
+  vroeg een force-push, en die werd in deze sessie geweigerd).
+  `7.0-stable-GEOxyz`: **`3a71d578b`**, dezelfde code byte voor byte, plus
+  dezelfde alinea in `doc/IMAP_OAUTH2.md`.
+- Nieuw patchbestand `2026-10-21-r25037-feature.patch` (twee commits), dat van
+  2026-09-10 is vervangen.
+- Cijfers, details en de G9-tabel: `dossier.md`, "Refresh token rotation" en
+  "Evidence for the refresh token rotation". Kort: volledige suite patch
+  6028 runs / 49 F / 82 E tegen 6022 / 49 / 82 op `3cd8c0eac` dezelfde dag,
+  **dezelfde 131 faalnamen** (json 3.1.0 op r25037, #44428, plus de SCM-tests);
+  GEOxyz 6278 runs, **0 failures, 0 errors**, 29 skips. RuboCop 0 (baseline 0).
+  4 van de 6 nieuwe tests rood op de oude code, de 2 bewakers door mutatie.
+- G9 tegen de harnas, als onbevoegde gebruiker `redmine` zoals cron: met een
+  provider die bij rotatie het oude token intrekt faalden run 2 en 3 vóór de
+  fix met `invalid_grant`; erna halen alle drie mail op en wisselt het bestand
+  drie keer van token, met alleen regel 6 anders. Zonder nieuw token blijft het
+  bestand byte-identiek; een onschrijfbare map geeft exit 0 plus waarschuwing.
+
+**De regels voor het credentialsbestand, nu Redmine erin schrijft** (ook voor
+PRODUCTION.md):
+
+- Sleutels voor `receive_imap`: `token_url`, `client_id`, `client_secret`,
+  `refresh_token` verplicht; `scope` (bij Microsoft verplicht:
+  `https://outlook.office.com/IMAP.AccessAsUser.All offline_access`).
+  Alleen voor `oauth2_authorize`: `authorize_url`, `redirect_uri`,
+  `authorize_params`.
+- `refresh_token` op **één** regel op het hoogste niveau, `refresh_token:
+  WAARDE`, zoals `oauth2_authorize` hem print. Geen blokwaarde, niet twee keer.
+- Bestand: eigenaar de gebruiker die de cron draait, modus `600`. Is iemand
+  anders eigenaar, dan wordt het na de eerste rotatie toch van de
+  Redmine-gebruiker met `600` (nagegaan, scenario D).
+- **Map: eigenaar de Redmine-gebruiker en schrijfbaar** (`700`), want daar komt
+  het tijdelijke bestand. `/etc` of een root-map volstaat niet; dan blijft het
+  oude token staan en komt er elke run een waarschuwing.
+- Cron: `flock -n` op de regel, want overlappende runs halen dezelfde mail twee
+  keer op; Redmine lockt niet zelf. En cron moet stderr mailen (`MAILTO`), anders
+  ziet niemand de waarschuwing.
 
 **De onafhankelijke Codex-review van 2026-09-09 vond hier de major die drie
 Claude-rondes gemist hadden, en hij had gelijk: de autorisatieflow had geen
@@ -333,7 +385,15 @@ het RFC-artikel erbij.
 
 Twee dingen, en het eerste is het echte werk.
 
-**1. Hang `patches/imap-oauth/2026-09-10-r25037-feature.patch` als note aan je
+**0. Eerst de mirror syncen (K-19).** `origin/master` stond op 2026-10-21 22
+commits achter echte trunk, dus `--submit` faalt tot jij synct. Het patchbestand
+applyt wel op echte trunk `68b77a4e1`, met de hand nagegaan. Na de sync:
+`tools/check-patch-clean.sh imap-oauth --submit` opnieuw. Wil je één commit in
+plaats van twee in het patchbestand, dan is dat een force-push van
+`patch/imap-oauth` en een nieuwe export; nodig is het niet, `git am` neemt er
+twee net zo goed.
+
+**1. Hang `patches/imap-oauth/2026-10-21-r25037-feature.patch` als note aan je
 eigen issue [#43023](https://www.redmine.org/issues/43023)** — geen nieuw
 issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 7.1.0. Zeg in die note dat dit een **vervanging** is van
@@ -356,8 +416,10 @@ issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
   `EmailConfiguration`-wikipagina, waar Redmine dit soort uitleg al zet en waar
   een providerwijziging zonder release gecorrigeerd kan worden.
 - Geen tokencache op schijf, en daarmee vervallen `normalize_token_file`,
-  `secure_file`, de YAML-symbolenwhitelist, `mask_token` en de
-  refresh-en-herschrijf-tak — ruwweg de helft van de hulpcode.
+  `secure_file`, de YAML-symbolenwhitelist en `mask_token` — ruwweg de helft van
+  de hulpcode. Wat wél terugkwam (2026-10-21): een geroteerd refresh token wordt
+  teruggeschreven, maar als één regel in het bestand van de beheerder, niet als
+  een eigen tokenbestand.
 - **Noem dit ook, het is een echt lek:** de patch die er nu hangt print het
   volledige access token bij `imap_debug=1`, via
   `puts "IMAP DEBUG: effective imap_options=#{imap_options.inspect}"`, waarin
@@ -371,6 +433,11 @@ issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
   De oudere, te sterke formulering ("interpoleert token noch client secret in
   welke string dan ook") is op 2026-09-06 rechtgezet na reviewbevinding F01;
   gebruik die niet meer.
+- **Noem de rotatie ook**: het refresh token dat de provider bij een refresh
+  teruggeeft wordt in het bestand gezet (RFC 6749 §6), alleen die ene regel, en
+  de map moet daarom schrijfbaar zijn. De bezwaar-rij "Why does a fetch task
+  write to a credentials file?" in `dossier.md` is het antwoord als iemand
+  vraagt.
 - `Redmine::IMAP` en `Redmine::POP3` hadden **geen enkele test**; deze
   patch levert de eerste (12 tests, 43 assertions).
 - **Bied de splitsing aan, in één zin** (jouw keuze F07/optie B van 2026-09-06).
@@ -414,6 +481,17 @@ de note biedt de splitsing aan, de bijlage blijft één bestand. Beide staan in
 `docs/DECISIONS.md`; niet opnieuw afwegen.
 
 ## Wat er al bekend is, en niet opnieuw afgewogen moet worden
+
+- **Rotatie: terugschrijven is Jans beslissing van 2026-10-21.** Niet opnieuw
+  afwegen of het nodig is. Alleen de regel vervangen (geen YAML-dump), via
+  `to_yaml(line_width: -1)` en een blok aan `sub`, `File.atomic_write`,
+  waarschuwen in plaats van falen, geen lock: elk met reden in `decisions.md`
+  van 2026-10-21. `oauth2_authorize` blijft printen (Jan, 2026-09-03 en
+  2026-10-21); of hij ook moet schrijven is K-26, open voor Jan.
+- **De G9-seed heeft `dev.verify0@example.net` niet meer**; de afzender in de
+  rotatieharnas is `dev@example.net`. Met de oude afzender negeert MailHandler
+  de mail stil ("ignoring email from unknown user") en lijkt een geslaagde run
+  niets te doen.
 
 - **De `state` is verplicht en `refresh_token` neemt hem als argument** (Codex,
   2026-09-09). Niet "vereenvoudigen" door de state in een class-variabele te
@@ -489,6 +567,7 @@ de note biedt de splitsing aan, de bijlage blijft één bestand. Beide staan in
 
 ## Volgende stap voor een sessie
 
-Af — niets te doen, behalve de patch bijwerken als er feedback op #43023 komt.
+Af — niets te doen, behalve na Jans mirror-sync `--submit` opnieuw draaien, en
+de patch bijwerken als er feedback op #43023 komt.
 Ronde 2 is voor deze slug klaar; ronde 3 (blinde herreview) is een aparte
 sessie en leest deze regel liefst niet vooraf.

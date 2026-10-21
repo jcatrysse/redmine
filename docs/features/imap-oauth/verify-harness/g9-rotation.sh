@@ -8,7 +8,7 @@
 #
 # Needs: a user `redmine`, login.example.net resolving to 127.0.0.1
 # (/etc/hosts), and a development database with the dev seed (project
-# geoxyz-verify, user dev.verify0@example.net) — tools/dev-server.sh.
+# geoxyz-verify, user dev@example.net) — tools/dev-server.sh.
 #
 # The tokens in this harness are fake, so the transcript shows the
 # refresh_token line of the file. That is the evidence here; it is not
@@ -24,7 +24,7 @@ PIDS=()
 trap 'kill "${PIDS[@]}" 2>/dev/null' EXIT
 
 cat > "$TMP/message.eml" <<'EOF'
-From: dev.verify0@example.net
+From: dev@example.net
 To: redmine@example.net
 Subject: Fetched with a rotated refresh token
 

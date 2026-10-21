@@ -377,6 +377,46 @@ Neither `Redmine::IMAP` nor `Redmine::POP3` had a single test before this patch;
 | `Oauth2ClientTest#test_access_token_should_warn_without_the_token_when_the_new_refresh_token_cannot_be_written` | when the write fails (`Errno::EACCES`), the access token is still returned, the file is unchanged, and stderr carries a warning naming the file and the system error, but neither the new nor the old refresh token, nor the access token |
 | `Oauth2ClientTest#test_access_token_should_warn_without_the_token_when_the_refresh_token_line_cannot_be_replaced` | a file whose `refresh_token` is a folded block scalar spread over two lines is not rewritten into something else: the parse-back check refuses, the file is left byte for byte, and the warning says so without the token |
 
+**Evidence for the refresh token rotation (2026-10-21).** The branch is still
+based on r25037; the rotation is a second commit, `b0f972aaf`, on top of
+`3cd8c0eac`.
+
+- **full** suite (`test:all` through `tools/test-env.sh`, so including the
+  system tests) with the rotation → `6028 runs, 31588 assertions, 49 failures,
+  82 errors, 81 skips`
+- **full** suite on `3cd8c0eac`, the patch without the rotation, same day, same
+  container, own database → `6022 runs, 31553 assertions, 49 failures,
+  82 errors, 81 skips`
+- 6028 - 6022 = **6**, exactly the six new tests. The 131 failing test
+  **names** are **identical** on both sides (`diff` of the sorted lists
+  empty), and none touches IMAP or OAuth. They differ from the `27 failures,
+  2 errors` of September because this bundle resolves `json` to 3.1.0 on
+  r25037: 78 of them are `ArgumentError: wrong number of arguments (given 2,
+  expected 1)` in the API tests, the fault trunk fixed in `9a74cdf20` (#44428)
+  by pinning `json` below 3.0; the rest are the repository tests of an image
+  without `svn`, `hg`, `bzr` and `cvs`. Both sides carry them; the patch adds
+  none.
+- the two test files together in one process: `38 runs, 145 assertions,
+  0 failures, 0 errors, 0 skips`
+- red on the old code: on `3cd8c0eac`'s `oauth2_client.rb` the test file gives
+  `32 runs, 111 assertions, 4 failures` — the four tests that need the write
+  (replace the line, quote a non-plain token, warn on a failed write, warn on a
+  line that cannot be replaced). The other two new tests are guards that must
+  be green on both sides (the old code never writes), and they were proven to
+  bite by mutation instead: dropping the comparison with the token in the file
+  fails `..._when_the_same_refresh_token_is_returned`; dropping the presence
+  check as well also fails `..._when_no_refresh_token_is_returned`. Further
+  mutations, each caught by exactly the test named: a YAML load and dump
+  instead of the line replacement (`..._replace_the_refresh_token_line_...`,
+  comments lost); a plain tempfile and rename without the mode
+  (`..._replace_...`, mode `0600` instead of `0640`); a silent rescue and a
+  token in the warning (`..._warn_..._cannot_be_written`); string
+  interpolation instead of `to_yaml`, and `sub` with a string instead of a
+  block (`..._quote_a_new_refresh_token_...`).
+- RuboCop on the four Ruby files: `0` offences, baseline `0` at `3cd8c0eac`.
+  `lib/tasks/email.rake`, measured explicitly: `10` both before and after this
+  commit (the description only gained four lines of text).
+
 **Evidence (INV-8 — figures, not claims).** All figures below are from
 2026-09-06, on trunk **r25037** (`bee32a926`), after the patch was refreshed
 against current trunk and the four round-1 review findings were fixed. The
@@ -543,6 +583,29 @@ mistakes:
 | only the code pasted, not the whole address | `No code parameter in the address, paste the whole address the browser was redirected to` |
 | something pasted that is not an address at all | the same message, rather than `URI::InvalidURIError` |
 | the code already used or expired | `OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)` |
+
+**Refresh token rotation, 2026-10-21.** The same harness, with the token
+endpoint able to rotate: `ROTATE=revoke` returns a new refresh token with each
+access token and accepts only the newest one, `ROTATE=keep` keeps the old ones
+valid as Microsoft documents, and without `ROTATE` it returns none, as Google
+does. Each fetch is the real `rake redmine:email:receive_imap ...
+oauth2_credentials=FILE`, run as an unprivileged `redmine` user the way cron
+runs it, so the file permissions really apply. The credentials file is written
+by hand, with a comment line, a trailing comment and a blank line. Driver
+`verify-harness/g9-rotation.sh`, full transcript in
+`shots/rotation-terminal-transcript.txt`.
+
+| Case | Before (`3cd8c0eac`) | After (`b0f972aaf`) |
+|---|---|---|
+| provider rotates and revokes, three runs in a row | run 1 fetches (issue #11); runs 2 and 3 fail with `OAuth 2.0 token request failed with 400 Bad Request (invalid_grant)`, the file never changes | all three fetch (issues #15, #16, #17); the file holds `rotated-refresh-token-1`, `-2`, `-3` in turn, stays `redmine:redmine 640`, and `diff` against the file as written shows only line 6, the `refresh_token:` line |
+| provider returns no refresh token | fetches, file untouched | fetches (#18), file byte-identical, mtime unchanged |
+| provider rotates, directory `root 755` | fetches, file untouched | fetches (#19), file untouched, exit 0, and stderr says `The new refresh token issued by the provider could not be written to .../imap_oauth2.yml: Permission denied @ rb_sysopen - .../.imap_oauth2.yml20261021-...`; no token anywhere in the output |
+| provider rotates, file `root:redmine 640` in a `redmine 700` directory | fetches, file untouched | fetches (#20), the new token is stored, and the file comes back `redmine:redmine 600` — `File.atomic_write` cannot give it back to root, and then keeps the stricter mode of its temporary file, as the dossier says |
+
+| Function | Screenshot | What it shows |
+|---|---|---|
+| Rotation, before | `rotation-before-issues-list.png` | issue #11 from the first run against the revoking provider and nothing from the next two; #12-#14 from the other three cases |
+| Rotation, after | `rotation-after-issues-list.png` | #15, #16 and #17 from three consecutive runs against the same revoking provider, #18-#20 from the other three cases |
 
 **No credential appears in any log, any error message or any debug output.**
 That was checked deliberately, because the patch on #43023 prints the full
@@ -724,15 +787,18 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
 
 - **Issue:** [#43023](https://www.redmine.org/issues/43023) — bestaat al, Jans
   eigen issue, assignee Marius BĂLTEANU, doelversie 7.1.0. **Geen nieuw issue.**
-- **Patch attached:** `patches/imap-oauth/2026-09-10-r25037-feature.patch`
-  (711 regels patchbestand, 618 regels wijziging over 5 bestanden). Eén bestand
-  — er zijn geen locale-sleutels, dus geen `-locales.patch`.
+- **Patch attached:** `patches/imap-oauth/2026-10-21-r25037-feature.patch`
+  (1084 regels patchbestand, twee commits: de feature en de rotatiefix, 889
+  regels wijziging over 5 bestanden). Eén bestand — er zijn geen
+  locale-sleutels, dus geen `-locales.patch`. Het bestand van 2026-09-10 is
+  vervangen; het staat in de historie van `geoxyz/framework`.
 - **Made against:** `origin/master` r25037 (`bee32a926`), branch
-  `patch/imap-oauth` at `45893a712`. **Applies cleanly to current trunk r25063
-  (`8de368193`) as well**, checked on 2026-09-09 with
-  `tools/check-patch-clean.sh imap-oauth --submit`; the branch is left on r25037
-  because falling behind trunk is not a defect while the patch still applies
-  (INV-2). De eerdere versie stond op r24882; die is bewaard als
+  `patch/imap-oauth` at `b0f972aaf`. Op 2026-10-21 applyt het bestand op de
+  mirror (r25262) en, met de hand nagegaan, op **echte trunk `68b77a4e1`**
+  (2026-10-20). `--submit` faalt alleen omdat de mirror 22 commits achter echte
+  trunk staat: eerst Jans sync (K-19), dan `--submit` opnieuw. The branch is
+  left on r25037 because falling behind trunk is not a defect while the patch
+  still applies (INV-2). De eerdere versie stond op r24882; die is bewaard als
   `archive/patch-imap-oauth-r24882-before-round2` zodat de SHA `d63cb35a5`
   waar reviewronde 1 naar verwijst oplosbaar blijft.
 - **Status:** klaar om ingediend te worden; Jan hangt hem aan het issue
@@ -765,6 +831,11 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
   geziene string toe, dus er is geen enkele locale-sleutel. Dat geldt aan beide
   kanten identiek (INV-10).
 - **Afwijking GEOxyz ↔ upstream:** geen. Dezelfde commit, dezelfde code.
+- **Rotatiefix (2026-10-21):** `3a71d578b` op `7.0-stable-GEOxyz`, dezelfde
+  drie bestanden byte-identiek aan `b0f972aaf` (`cmp` op de commitversies), plus
+  dezelfde nieuwe "Afterwards"-alinea in `doc/IMAP_OAUTH2.md`. Volledige suite
+  daar: `6278 runs, 33002 assertions, 0 failures, 0 errors, 29 skips`.
+  `tools/check-symmetry.sh imap-oauth`: PASS.
 - **`tools/check-geoxyz-branch.sh`:** PASS (2026-09-06) — current met
   `origin/7.0-stable`, geen AI-sporen in de eigen commits, 1 lint-offence op 66
   gewijzigde Ruby-bestanden en die staat al op een eigen regel van
