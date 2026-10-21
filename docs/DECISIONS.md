@@ -1928,3 +1928,24 @@ Jan beantwoordde K-25 in de coördinerende sessie (https://claude.ai/code/sessio
 - **De mirror `origin/7.0-stable` loopt 1 commit achter** op redmine/redmine:
   `2c0593703` "Merged r25235 and r25236 from trunk into 7.0-stable (#44231)". Na Jans
   sync opnieuw mergen.
+
+## Beslist (Jan) — imap-oauth, refresh-token-rotatie, 2026-10-21
+
+Jan besliste op 2026-10-21, via de coördinerende sessie: **terugschrijven**.
+Geeft het tokenantwoord op de refresh-token-grant een `refresh_token` terug dat
+verschilt van het token in het credentialsbestand, dan schrijft Redmine het in
+datzelfde bestand, atomair en met behoud van de modus. Hetzelfde ontwerp op
+`patch/imap-oauth` en op `7.0-stable-GEOxyz` (INV-10), vóór de inzending op
+#43023.
+
+Waarom het nodig was: RFC 6749 §6 ("the client MUST discard the old refresh
+token and replace it with the new refresh token"), en het Microsoft identity
+platform vervangt het refresh token bij elk gebruik, standaardlevensduur 90
+dagen. GEOxyz' OAuth-mailboxen zijn Microsoft 365. De 5.1-code
+(`bbf5c0eb3`, `receive_imap_oauth2`) schreef het wél terug; de 7.0-herschrijving
+liet dat vallen en rotatie is daarna nergens besproken. Niet in de praktijk
+bewezen tegen Microsoft (dat vraagt 90 dagen); het argument is de RFC en de
+documentatie van de provider, en zo staat het ook in het dossier.
+
+Gebouwd en bewezen in `docs/features/imap-oauth/` (status.md, dossier.md
+"Refresh token rotation", decisions.md 2026-10-21).
