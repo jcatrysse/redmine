@@ -125,7 +125,7 @@ server.mount_proc '/oauth2/v2.0/authorize' do |request, response|
   warn "authorize endpoint: client_id=#{request.query['client_id']} scope=#{request.query['scope']} redirect_uri=#{redirect_uri}"
   warn "authorize endpoint: full query=#{request.request_uri.query}"
   response.status = 302
-  response['Location'] = "#{redirect_uri}?code=the-consent-code&session_state=fake"
+  response['Location'] = "#{redirect_uri}?code=the-consent-code&state=#{CGI.escape(request.query['state'].to_s)}&session_state=fake"
 end
 
 trap('INT') {server.shutdown}
