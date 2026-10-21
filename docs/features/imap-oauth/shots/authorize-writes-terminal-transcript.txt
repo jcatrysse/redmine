@@ -1,0 +1,122 @@
+G9 for K-26 option B (2026-10-21): redmine:email:oauth2_authorize writes the
+refresh token into the credentials file. Driver
+verify-harness/g9-authorize-writes.sh. The real interactive task runs as the
+unprivileged user `redmine`; the consent URL it prints is followed with curl the
+way a browser follows it (the harness's authorize endpoint stands in for the
+consent screen and redirects with code and state), and that address is pasted
+back on the task's stdin. The token endpoint's log is the witness for whether a
+code was exchanged at all. Tokens are fake; that is why the line is shown.
+
+Cases:
+  1  first authorization, file without a refresh_token line (the normal case)
+  2  directory not writable by redmine
+  3  directory made read-only after the consent URL was printed, so the write
+     after the exchange fails
+
+===== BEFORE: oauth2_authorize prints the line (b0f972aaf) =====
+
+--- 1. first authorization, file without a refresh_token line ---
+    directory redmine 700, file redmine:redmine 640
+    file: redmine:redmine 640  sha256 0284959aec15989a
+    refresh_token line: (none)
+    | Open this URL in a browser and sign in as the mailbox owner:
+    | https://login.example.net:11451/oauth2/v2.0/authorize?...(consent URL)
+    | Then paste the whole address you were redirected to: 
+    | Add this line to /tmp/tmp.U3Cd5J3q5R/one/imap_oauth2.yml:
+    | refresh_token: a-refresh-token-from-consent
+    | exit 0
+  token endpoint saw:
+    token endpoint: {"client_id"=>"a-client-id", "client_secret"=>"[redacted]", "grant_type"=>"authorization_code", "code"=>..., "redirect_uri"=>"http://localhost", "scope"=>"https://outlook.office.com/IMAP.AccessAsUser.All offline_access", "refresh_token"=>"[redacted]"}
+    file: redmine:redmine 640  sha256 0284959aec15989a
+    refresh_token line: (none)
+  diff between the file as written and the file now:
+  receive_imap with that file:
+    exit 1
+    stderr: bin/rails aborted!
+    stderr: /tmp/tmp.U3Cd5J3q5R/one/imap_oauth2.yml is missing refresh_token
+    stderr: /home/user/wt/imap-before/lib/redmine/oauth2_client.rb:95:in `read_credentials'
+    stderr: /home/user/wt/imap-before/lib/redmine/oauth2_client.rb:30:in `access_token'
+    stderr: /home/user/wt/imap-before/lib/redmine/imap.rb:85:in `oauth2_access_token'
+    stderr: /home/user/wt/imap-before/lib/redmine/imap.rb:42:in `check'
+    stderr: /home/user/wt/imap-before/lib/tasks/email.rake:151:in `block (4 levels) in <top (required)>'
+    stderr: /home/user/wt/imap-before/app/models/mailer.rb:661:in `with_synched_deliveries'
+    stderr: /home/user/wt/imap-before/lib/tasks/email.rake:150:in `block (3 levels) in <top (required)>'
+    newest issue: #20 "Fetched with a rotated refresh token"
+
+--- 2. directory not writable by redmine ---
+    directory root 755, file redmine:redmine 600
+    | Open this URL in a browser and sign in as the mailbox owner:
+    | https://login.example.net:11452/oauth2/v2.0/authorize?...(consent URL)
+    | Then paste the whole address you were redirected to: 
+    | Add this line to /tmp/tmp.U3Cd5J3q5R/two/imap_oauth2.yml:
+    | refresh_token: a-refresh-token-from-consent
+    | exit 0
+  token endpoint saw:
+    token endpoint: {"client_id"=>"a-client-id", "client_secret"=>"[redacted]", "grant_type"=>"authorization_code", "code"=>..., "redirect_uri"=>"http://localhost", "scope"=>"https://outlook.office.com/IMAP.AccessAsUser.All offline_access", "refresh_token"=>"[redacted]"}
+    file: redmine:redmine 600  sha256 7a76d51b8efd081f
+    refresh_token line: (none)
+
+--- 3. the directory becomes read-only between the consent URL and the paste ---
+    directory redmine 700, then 500 after the URL is printed
+    | Open this URL in a browser and sign in as the mailbox owner:
+    | https://login.example.net:11453/oauth2/v2.0/authorize?...(consent URL)
+    | Then paste the whole address you were redirected to: 
+    | Add this line to /tmp/tmp.U3Cd5J3q5R/three/imap_oauth2.yml:
+    | refresh_token: a-refresh-token-from-consent
+    | exit 0
+  token endpoint saw:
+    token endpoint: {"client_id"=>"a-client-id", "client_secret"=>"[redacted]", "grant_type"=>"authorization_code", "code"=>..., "redirect_uri"=>"http://localhost", "scope"=>"https://outlook.office.com/IMAP.AccessAsUser.All offline_access", "refresh_token"=>"[redacted]"}
+    file: redmine:redmine 600  sha256 7454a7eb78f2baef
+    refresh_token line: (none)
+
+
+
+===== AFTER: oauth2_authorize writes the file (7f2fe6250) =====
+
+--- 1. first authorization, file without a refresh_token line ---
+    directory redmine 700, file redmine:redmine 640
+    file: redmine:redmine 640  sha256 0284959aec15989a
+    refresh_token line: (none)
+    | Open this URL in a browser and sign in as the mailbox owner:
+    | https://login.example.net:11451/oauth2/v2.0/authorize?...(consent URL)
+    | Then paste the whole address you were redirected to: 
+    | The refresh token was written to /tmp/tmp.RHJ3Y9SZmP/one/imap_oauth2.yml
+    | exit 0
+  token endpoint saw:
+    token endpoint: {"client_id"=>"a-client-id", "client_secret"=>"[redacted]", "grant_type"=>"authorization_code", "code"=>..., "redirect_uri"=>"http://localhost", "scope"=>"https://outlook.office.com/IMAP.AccessAsUser.All offline_access", "refresh_token"=>"[redacted]"}
+    file: redmine:redmine 640  sha256 29e68fb68ba55ff1
+    refresh_token line: refresh_token: a-refresh-token-from-consent
+  diff between the file as written and the file now:
+    8a9
+    > refresh_token: a-refresh-token-from-consent
+  receive_imap with that file:
+    exit 0
+    newest issue: #21 "Fetched with the refresh token oauth2_authorize wrote"
+
+--- 2. directory not writable by redmine ---
+    directory root 755, file redmine:redmine 600
+    | bin/rails aborted!
+    | /tmp/tmp.RHJ3Y9SZmP/two/imap_oauth2.yml and its directory must be writable to save the refresh token
+    | /home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:130:in `check_refresh_token_writable'
+    | /home/user/wt/patch-imap-oauth/lib/redmine/oauth2_client.rb:53:in `authorize_url'
+    | /home/user/wt/patch-imap-oauth/lib/tasks/email.rake:187:in `block (3 levels) in <top (required)>'
+    | exit 1
+  token endpoint saw:
+    (no grant at all)
+    file: redmine:redmine 600  sha256 7a76d51b8efd081f
+    refresh_token line: (none)
+
+--- 3. the directory becomes read-only between the consent URL and the paste ---
+    directory redmine 700, then 500 after the URL is printed
+    | Open this URL in a browser and sign in as the mailbox owner:
+    | https://login.example.net:11453/oauth2/v2.0/authorize?...(consent URL)
+    | Then paste the whole address you were redirected to: 
+    | The refresh token could not be written to /tmp/tmp.RHJ3Y9SZmP/three/imap_oauth2.yml: Permission denied @ rb_sysopen - /tmp/tmp.RHJ3Y9SZmP/three/.imap_oauth2.yml20261021-11804-c20bv7
+    | Add this line to it yourself:
+    | refresh_token: a-refresh-token-from-consent
+    | exit 1
+  token endpoint saw:
+    token endpoint: {"client_id"=>"a-client-id", "client_secret"=>"[redacted]", "grant_type"=>"authorization_code", "code"=>..., "redirect_uri"=>"http://localhost", "scope"=>"https://outlook.office.com/IMAP.AccessAsUser.All offline_access", "refresh_token"=>"[redacted]"}
+    file: redmine:redmine 600  sha256 7454a7eb78f2baef
+    refresh_token line: (none)
+

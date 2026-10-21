@@ -3,15 +3,45 @@ slug: imap-oauth
 feature: IMAP inbound mail via OAuth 2.0 (Gmail / O365)
 commit_51: bbf5c0eb3
 geoxyz: live
-geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901 + 012ab39e0 + 3a71d578b
+geoxyz_commit: 1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901 + 012ab39e0 + 3a71d578b + 578730ad3
 upstream: patch klaar
-patch: patches/imap-oauth/2026-10-21-r25037-feature.patch
+patch: patches/imap-oauth/2026-10-21-r25037-feature-k26.patch
 issue: 43023
 ---
 
 # imap-oauth — status
 
 ## Waar het staat
+
+**2026-10-21, later die dag: K-26 optie B (Jan).** `oauth2_authorize` schrijft
+het refresh token nu zelf in het credentialsbestand, met dezelfde routine als
+de rotatie: de `refresh_token:`-regel wordt vervangen, of onderaan toegevoegd
+als er nog geen is (de normale eerste keer). Het scherm toont alleen dat het
+bestand geschreven is, nooit de waarde. Vóór de toestemmings-URL controleert
+`authorize_url` dat bestand en map schrijfbaar zijn en dat de regel vervangen
+kan worden, en stopt anders meteen, zodat de mailboxeigenaar niet voor niets
+toestemt. Mislukt het schrijven daarna toch, dan print de taak de regel alsnog
+en stopt met exit 1: de autorisatiecode is eenmalig en de token mag niet
+verloren gaan.
+
+- Patchbranch: derde commit **`7f2fe6250`**; de commits blijven apart (Jan).
+  `7.0-stable-GEOxyz`: **`578730ad3`**, code byte-identiek, plus de
+  herschreven "Afterwards" in `doc/IMAP_OAUTH2.md`. Dit is de nieuwe kop voor
+  de generale repetitie, in plaats van `3a71d578b`.
+- Patchbestand: `2026-10-21-r25037-feature-k26.patch` (drie commits), vervangt
+  dat van de rotatiefix.
+- Suite patch 6034 runs / 49 F / 82 E, **dezelfde 131 faalnamen** als de
+  baseline; GEOxyz 6284 runs, **0 failures, 0 errors**, 29 skips. RuboCop 0.
+  Alle 6 nieuwe tests rood op de vorige code (4 daarvan alleen omdat
+  `save_refresh_token` nog niet bestond; de twee `authorize_url`-tests zijn de
+  gedragsmatige).
+- G9 (`shots/authorize-writes-terminal-transcript.txt`): eerste autorisatie
+  schrijft precies één regel erbij, modus blijft, `receive_imap` maakt daarna
+  issue #21; onschrijfbare map stopt vóór de URL en de tokenendpoint zag geen
+  enkele grant; map read-only na de URL geeft de regel op het scherm en exit 1.
+- Voor de beheerder verandert: geen regel meer plakken, wel `oauth2_authorize`
+  draaien **als de Redmine-gebruiker** (dezelfde die de cron draait), want die
+  moet het bestand en de map kunnen schrijven.
 
 **2026-10-21: refresh-token-rotatie toegevoegd, op Jans beslissing van
 vandaag.** `Oauth2Client.access_token` vroeg bij elke `receive_imap`-run een
@@ -33,7 +63,7 @@ dagen); het argument is de RFC en Microsofts eigen documentatie.
   dezelfde alinea in `doc/IMAP_OAUTH2.md`.
 - Nieuw patchbestand `2026-10-21-r25037-feature.patch` (twee commits), dat van
   2026-09-10 is vervangen.
-- Cijfers, details en de G9-tabel: `dossier.md`, "Refresh token rotation" en
+- (Rotatie, eerder vandaag:) Cijfers, details en de G9-tabel: `dossier.md`, "Refresh token rotation" en
   "Evidence for the refresh token rotation". Kort: volledige suite patch
   6028 runs / 49 F / 82 E tegen 6022 / 49 / 82 op `3cd8c0eac` dezelfde dag,
   **dezelfde 131 faalnamen** (json 3.1.0 op r25037, #44428, plus de SCM-tests);
@@ -388,12 +418,10 @@ Twee dingen, en het eerste is het echte werk.
 **0. Eerst de mirror syncen (K-19).** `origin/master` stond op 2026-10-21 22
 commits achter echte trunk, dus `--submit` faalt tot jij synct. Het patchbestand
 applyt wel op echte trunk `68b77a4e1`, met de hand nagegaan. Na de sync:
-`tools/check-patch-clean.sh imap-oauth --submit` opnieuw. Wil je één commit in
-plaats van twee in het patchbestand, dan is dat een force-push van
-`patch/imap-oauth` en een nieuwe export; nodig is het niet, `git am` neemt er
-twee net zo goed.
+`tools/check-patch-clean.sh imap-oauth --submit` opnieuw. De drie commits
+blijven apart (jouw keuze van 2026-10-21).
 
-**1. Hang `patches/imap-oauth/2026-10-21-r25037-feature.patch` als note aan je
+**1. Hang `patches/imap-oauth/2026-10-21-r25037-feature-k26.patch` als note aan je
 eigen issue [#43023](https://www.redmine.org/issues/43023)** — geen nieuw
 issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 7.1.0. Zeg in die note dat dit een **vervanging** is van
@@ -425,11 +453,11 @@ issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
   `puts "IMAP DEBUG: effective imap_options=#{imap_options.inspect}"`, waarin
   `imap_options[:password]` het token is. Deze patch heeft geen debugoutput, en
   er staat geen credential in welk log, welke foutmelding of welke debugregel
-  dan ook. **Zeg het precies zo en niet sterker** — er is één plek waar een
-  credential wél geprint wordt, en dat is de laatste regel van
-  `oauth2_authorize`, naar de terminal van de beheerder die net zelf toestemming
-  gaf, omdat hem die regel geven het hele doel van die taak is. Dat staat er in
-  `dossier.md` bij, met het gevolg erbij (scrollback en transcripts wissen).
+  dan ook. **Zeg het precies zo en niet sterker** — er is één pad waarop een
+  credential wél geprint wordt: als `oauth2_authorize` het net verkregen
+  refresh token niet in het bestand kan schrijven, print hij de regel, omdat de
+  toestemming niet opnieuw ingewisseld kan worden. Normaal schrijft hij het
+  bestand en print hij niets (K-26 B, 2026-10-21). Dat staat in `dossier.md`.
   De oudere, te sterke formulering ("interpoleert token noch client secret in
   welke string dan ook") is op 2026-09-06 rechtgezet na reviewbevinding F01;
   gebruik die niet meer.
@@ -463,7 +491,7 @@ walkthroughs zelf:
    per mailbox" beschreven staat
 2. schrijf het credentialsbestand, alles behalve `refresh_token`
 3. `rake redmine:email:oauth2_authorize oauth2_credentials=/etc/redmine/imap_oauth2.yml`
-4. zet de regel die hij print in het bestand
+4. hij schrijft het refresh token zelf in het bestand (draai hem als de Redmine-gebruiker)
 5. `rake redmine:email:receive_imap host=outlook.office365.com port=993 ssl=1
    username=... oauth2_credentials=... project=...`
 
@@ -486,8 +514,13 @@ de note biedt de splitsing aan, de bijlage blijft één bestand. Beide staan in
   afwegen of het nodig is. Alleen de regel vervangen (geen YAML-dump), via
   `to_yaml(line_width: -1)` en een blok aan `sub`, `File.atomic_write`,
   waarschuwen in plaats van falen, geen lock: elk met reden in `decisions.md`
-  van 2026-10-21. `oauth2_authorize` blijft printen (Jan, 2026-09-03 en
-  2026-10-21); of hij ook moet schrijven is K-26, open voor Jan.
+  van 2026-10-21.
+- **`oauth2_authorize` schrijft het bestand: K-26 optie B, Jan, 2026-10-21.**
+  Dat vervangt de beslissing van 2026-09-03 dat hij alleen print. Niet
+  terugdraaien naar printen; printen gebeurt alleen nog op het faalpad ná de
+  inwisseling, en dat is opzet (eenmalige code). De vroegere zin in
+  `docs/DECISIONS.md` dat Jan op 2026-10-21 "uitdrukkelijk" printen wilde,
+  was fout en is daar gecorrigeerd.
 - **De G9-seed heeft `dev.verify0@example.net` niet meer**; de afzender in de
   rotatieharnas is `dev@example.net`. Met de oude afzender negeert MailHandler
   de mail stil ("ignoring email from unknown user") en lijkt een geslaagde run

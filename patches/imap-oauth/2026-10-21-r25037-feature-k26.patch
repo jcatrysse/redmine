@@ -1,7 +1,7 @@
 From 3cd8c0eac04a0919676722654ff8722b688612db Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Sun, 6 Sep 2026 12:55:09 +0000
-Subject: [PATCH 1/2] Authenticate IMAP inbound mail with an OAuth 2.0 access
+Subject: [PATCH 1/3] Authenticate IMAP inbound mail with an OAuth 2.0 access
  token (#43023).
 
 ---
@@ -861,7 +861,7 @@ index 000000000..5d17d89fe
 From b0f972aaf25a8cf622cd964d0db85168e7e995b6 Mon Sep 17 00:00:00 2001
 From: Jan Catrysse <jan.catrysse@geoxyz.eu>
 Date: Wed, 21 Oct 2026 08:41:15 +0000
-Subject: [PATCH 2/2] Store a refresh token rotated by the OAuth 2.0 provider
+Subject: [PATCH 2/3] Store a refresh token rotated by the OAuth 2.0 provider
  in the credentials file (#43023).
 
 ---
@@ -1079,6 +1079,248 @@ index 5d17d89fe..79bb82ff5 100644
      file.close
      yield file.path
    ensure
+-- 
+2.43.0
+
+
+From 7f2fe6250fde209985a4f16c5a98f72daf79e856 Mon Sep 17 00:00:00 2001
+From: Jan Catrysse <jan.catrysse@geoxyz.eu>
+Date: Wed, 21 Oct 2026 12:39:16 +0000
+Subject: [PATCH 3/3] Write the refresh token obtained by
+ redmine:email:oauth2_authorize into the credentials file (#43023).
+
+---
+ lib/redmine/oauth2_client.rb                | 61 +++++++++++++++-----
+ lib/tasks/email.rake                        | 29 +++++++---
+ test/unit/lib/redmine/oauth2_client_test.rb | 62 +++++++++++++++++++++
+ 3 files changed, 129 insertions(+), 23 deletions(-)
+
+diff --git a/lib/redmine/oauth2_client.rb b/lib/redmine/oauth2_client.rb
+index eb5dddb55..ffbde071b 100644
+--- a/lib/redmine/oauth2_client.rb
++++ b/lib/redmine/oauth2_client.rb
+@@ -45,9 +45,12 @@ module Redmine
+       # authorization code grant. Returns the URL and the state it carries;
+       # refresh_token needs that state to tell this authorization apart from
+       # any other one, so the two are returned together rather than left to
+-      # the caller to keep in step.
++      # the caller to keep in step. Raises when the refresh token could not be
++      # saved to the file afterwards: the authorization code can be exchanged
++      # only once, so that is found out before the owner consents.
+       def authorize_url(credentials_file)
+         credentials = read_credentials(credentials_file, %w(authorize_url client_id))
++        check_refresh_token_writable(credentials_file, credentials)
+         uri = https_uri(credentials['authorize_url'], 'authorize_url')
+         params = URI.decode_www_form(uri.query.to_s).to_h
+         if credentials['authorize_params'].is_a?(Hash)
+@@ -82,6 +85,16 @@ module Redmine
+         token_from(response, 'refresh_token')
+       end
+ 
++      # Writes the refresh token into the credentials file: the refresh_token
++      # line is replaced, or added when the file has none yet, and the rest of
++      # the file is kept as the administrator wrote it. The file is replaced
++      # atomically with its mode kept. Raises when it cannot be written.
++      def save_refresh_token(credentials_file, refresh_token)
++        credentials = read_credentials(credentials_file, [])
++        updated = with_refresh_token(credentials_file, File.read(credentials_file), credentials, refresh_token)
++        File.atomic_write(credentials_file) {|file| file.write(updated)}
++      end
++
+       private
+ 
+       def read_credentials(credentials_file, required)
+@@ -99,23 +112,43 @@ module Redmine
+       end
+ 
+       # A provider may issue a new refresh token with each access token, and
+-      # RFC 6749 section 6 then requires the old one to be discarded. Only the
+-      # refresh_token line is rewritten so that the rest of the file is kept as
+-      # the administrator wrote it, and the file is replaced atomically with its
+-      # mode kept. The access token of this run is already obtained, so a
+-      # failure is reported rather than raised.
++      # RFC 6749 section 6 then requires the old one to be discarded. The
++      # access token of this run is already obtained, so a failure is reported
++      # rather than raised.
+       def store_refresh_token(credentials_file, credentials, refresh_token)
+-        content = File.read(credentials_file)
++        updated = with_refresh_token(credentials_file, File.read(credentials_file), credentials, refresh_token)
++        File.atomic_write(credentials_file) {|file| file.write(updated)}
++      rescue SystemCallError, IOError => e
++        warn "The new refresh token issued by the provider could not be written to #{credentials_file}: #{e.message}"
++      rescue RuntimeError => e
++        warn "#{e.message}, the new refresh token issued by the provider was not stored"
++      end
++
++      def check_refresh_token_writable(credentials_file, credentials)
++        with_refresh_token(credentials_file, File.read(credentials_file), credentials, 'a-refresh-token')
++        unless File.writable?(credentials_file) && File.writable?(File.dirname(credentials_file))
++          raise "#{credentials_file} and its directory must be writable to save the refresh token"
++        end
++      end
++
++      # The file content with only its refresh_token line replaced, or with one
++      # added at the end when there is none, and parsed back to make sure that
++      # nothing else changed.
++      def with_refresh_token(credentials_file, content, credentials, refresh_token)
+         line = /^refresh_token:[^\r\n]*/
+         replacement = {'refresh_token' => refresh_token}.to_yaml(line_width: -1).delete_prefix("---\n").chomp
+-        updated = content.sub(line) {replacement}
+-        if content.scan(line).one? && yaml_equal?(updated, credentials.merge('refresh_token' => refresh_token))
+-          File.atomic_write(credentials_file) {|file| file.write(updated)}
+-        else
+-          warn "#{credentials_file} has no single refresh_token line to replace, the new refresh token issued by the provider was not stored"
++        updated =
++          case content.scan(line).size
++          when 0
++            "#{content.end_with?("\n") ? content : "#{content}\n"}#{replacement}\n" unless credentials.key?('refresh_token')
++          when 1
++            content.sub(line) {replacement}
++          end
++        unless updated && yaml_equal?(updated, credentials.merge('refresh_token' => refresh_token))
++          raise "#{credentials_file} has no single refresh_token line to replace"
+         end
+-      rescue SystemCallError, IOError => e
+-        warn "The new refresh token issued by the provider could not be written to #{credentials_file}: #{e.message}"
++
++        updated
+       end
+ 
+       def yaml_equal?(content, credentials)
+diff --git a/lib/tasks/email.rake b/lib/tasks/email.rake
+index b58d7ebfd..aa1f30d8f 100644
+--- a/lib/tasks/email.rake
++++ b/lib/tasks/email.rake
+@@ -52,11 +52,11 @@ Available IMAP options:
+                              client_secret: ...
+                              refresh_token: ...
+                              scope: ...
+-                           Run redmine:email:oauth2_authorize once to obtain
+-                           the refresh token. A new refresh token issued by
+-                           the provider replaces that line, so FILE and its
+-                           directory must be writable by the user running
+-                           this task. See the guides at:
++                           Run redmine:email:oauth2_authorize once to write
++                           the refresh token into it. A new refresh token
++                           issued by the provider replaces that line, so FILE
++                           and its directory must be writable by the user
++                           running this task. See the guides at:
+                            http://www.redmine.org/projects/redmine/wiki/EmailConfiguration
+   folder=FOLDER            IMAP folder to read (default: INBOX)
+ 
+@@ -158,7 +158,9 @@ Obtain the refresh token that receive_imap needs, once, for one mailbox.
+ This is interactive on purpose: only the mailbox owner can consent, in a
+ browser. The task prints a URL to open, and the browser is then redirected to
+ redirect_uri. That address usually fails to load, which is expected - copy it
+-out of the address bar and paste it back here.
++out of the address bar and paste it back here. The refresh token is then
++written into the credentials file, which, like its directory, must be
++writable by the user running this task.
+ 
+ Available options:
+   oauth2_credentials=FILE  the YAML file described in receive_imap, with
+@@ -193,9 +195,18 @@ END_DESC
+       refresh_token = Redmine::Oauth2Client.refresh_token(credentials_file, redirect_url, state)
+ 
+       puts
+-      puts "Add this line to #{credentials_file}:"
+-      puts
+-      puts "refresh_token: #{refresh_token}"
++      begin
++        Redmine::Oauth2Client.save_refresh_token(credentials_file, refresh_token)
++      rescue => e
++        # The code cannot be exchanged again, so the token is handed over
++        # rather than lost.
++        puts "The refresh token could not be written to #{credentials_file}: #{e.message}"
++        puts "Add this line to it yourself:"
++        puts
++        puts "refresh_token: #{refresh_token}"
++        exit 1
++      end
++      puts "The refresh token was written to #{credentials_file}"
+     end
+ 
+     desc <<-END_DESC
+diff --git a/test/unit/lib/redmine/oauth2_client_test.rb b/test/unit/lib/redmine/oauth2_client_test.rb
+index 79bb82ff5..b56952079 100644
+--- a/test/unit/lib/redmine/oauth2_client_test.rb
++++ b/test/unit/lib/redmine/oauth2_client_test.rb
+@@ -39,6 +39,16 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
+     scope: https://outlook.office.com/IMAP.AccessAsUser.All offline_access
+   YAML
+ 
++  # The same, before oauth2_authorize ran: no refresh_token line yet.
++  AUTHORIZE_FILE = <<~YAML
++    # Redmine mailbox, Microsoft 365
++    authorize_url: https://login.example.net/oauth2/v2.0/authorize
++    token_url: https://login.example.net/oauth2/v2.0/token
++    client_id: a-client-id
++    client_secret: a-client-secret   # expires 2027-01
++    scope: https://outlook.office.com/IMAP.AccessAsUser.All offline_access
++  YAML
++
+   def test_access_token_should_return_the_token_of_a_refresh_token_grant
+     request = nil
+     http = expect_token_request(response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token'}.to_json)) {|req| request = req}
+@@ -247,6 +257,58 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
+     end
+   end
+ 
++  def test_authorize_url_should_raise_before_consent_when_the_file_cannot_be_written
++    with_credentials_file(AUTHORIZE_FILE) do |file|
++      File.stubs(:writable?).returns(false)
++      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.authorize_url(file)}
++      assert_equal "#{file} and its directory must be writable to save the refresh token", error.message
++    end
++  end
++
++  def test_authorize_url_should_raise_before_consent_when_the_refresh_token_line_cannot_be_replaced
++    content = "#{AUTHORIZE_FILE}refresh_token: >-\n  an-older-refresh-token\n"
++    with_credentials_file(content) do |file|
++      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.authorize_url(file)}
++      assert_equal "#{file} has no single refresh_token line to replace", error.message
++      assert_equal content, File.read(file)
++    end
++  end
++
++  def test_save_refresh_token_should_add_the_line_to_a_file_that_has_none
++    with_credentials_file(AUTHORIZE_FILE) do |file|
++      File.chmod(0o640, file)
++      Redmine::Oauth2Client.save_refresh_token(file, 'a-refresh-token-from-consent')
++
++      assert_equal "#{AUTHORIZE_FILE}refresh_token: a-refresh-token-from-consent\n", File.read(file)
++      assert_equal 0o640, File.stat(file).mode & 0o7777
++    end
++  end
++
++  def test_save_refresh_token_should_add_the_line_to_a_file_without_a_final_newline
++    with_credentials_file(AUTHORIZE_FILE.chomp) do |file|
++      Redmine::Oauth2Client.save_refresh_token(file, 'a-refresh-token-from-consent')
++
++      assert_equal "#{AUTHORIZE_FILE}refresh_token: a-refresh-token-from-consent\n", File.read(file)
++    end
++  end
++
++  def test_save_refresh_token_should_replace_the_line_of_an_earlier_authorization
++    with_credentials_file(CREDENTIALS_FILE) do |file|
++      Redmine::Oauth2Client.save_refresh_token(file, 'a-refresh-token-from-consent')
++
++      assert_equal CREDENTIALS_FILE.sub("'a-refresh-token'", 'a-refresh-token-from-consent'), File.read(file)
++    end
++  end
++
++  def test_save_refresh_token_should_raise_when_the_file_cannot_be_written
++    with_credentials_file(AUTHORIZE_FILE) do |file|
++      File.stubs(:atomic_write).raises(Errno::EACCES, File.dirname(file))
++      error = assert_raise(Errno::EACCES) {Redmine::Oauth2Client.save_refresh_token(file, 'a-refresh-token-from-consent')}
++      assert_not_include 'a-refresh-token-from-consent', error.message
++      assert_equal AUTHORIZE_FILE, File.read(file)
++    end
++  end
++
+   def test_authorize_url_should_carry_an_unpredictable_state
+     with_credentials(CREDENTIALS.merge('authorize_url' => 'https://login.example.net/authorize')) do |file|
+       url, state = Redmine::Oauth2Client.authorize_url(file)
 -- 
 2.43.0
 

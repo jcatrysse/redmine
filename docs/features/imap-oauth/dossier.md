@@ -398,6 +398,23 @@ Neither `Redmine::IMAP` nor `Redmine::POP3` had a single test before this patch;
 | `Oauth2ClientTest#test_save_refresh_token_should_replace_the_line_of_an_earlier_authorization` | re-authorizing replaces the existing line instead of adding a second one |
 | `Oauth2ClientTest#test_save_refresh_token_should_raise_when_the_file_cannot_be_written` | a failed write raises, for the task to fall back on printing the line, and the message carries no token |
 
+**Evidence for `oauth2_authorize` writing the file (2026-10-21, K-26 option B).**
+A third commit, `7f2fe6250`, on top of the rotation.
+
+- **full** suite with it → `6034 runs, 31600 assertions, 49 failures,
+  82 errors, 81 skips`: six runs more than the rotation commit's `6028`, exactly
+  the six new tests, and the 131 failing names are **identical** to the
+  baseline of `3cd8c0eac` measured the same day (`diff` empty).
+- the two test files together: `44 runs, 157 assertions, 0 failures, 0 errors`
+- red on the old code: with `b0f972aaf`'s `oauth2_client.rb` the test file gives
+  `38 runs, 130 assertions, 3 failures, 3 errors`, all six new tests. Honestly
+  stated: the three errors and one of the failures are `save_refresh_token` not
+  existing yet; the two `authorize_url` tests are the behavioural ones, and
+  removing only the `File.writable?` condition fails
+  `..._before_consent_when_the_file_cannot_be_written` on its own.
+- RuboCop on the four Ruby files: `0`; `lib/tasks/email.rake` measured
+  explicitly: `10`, as at the merge base.
+
 **Evidence for the refresh token rotation (2026-10-21).** The branch is still
 based on r25037; the rotation is a second commit, `b0f972aaf`, on top of
 `3cd8c0eac`.
@@ -623,6 +640,18 @@ by hand, with a comment line, a trailing comment and a blank line. Driver
 | provider rotates, directory `root 755` | fetches, file untouched | fetches (#19), file untouched, exit 0, and stderr says `The new refresh token issued by the provider could not be written to .../imap_oauth2.yml: Permission denied @ rb_sysopen - .../.imap_oauth2.yml20261021-...`; no token anywhere in the output |
 | provider rotates, file `root:redmine 640` in a `redmine 700` directory | fetches, file untouched | fetches (#20), the new token is stored, and the file comes back `redmine:redmine 600` — `File.atomic_write` cannot give it back to root, and then keeps the stricter mode of its temporary file, as the dossier says |
 
+`oauth2_authorize` writing the file (K-26 B), the real interactive task run as
+`redmine`, the consent URL followed the way a browser follows it and the
+redirect pasted back on stdin; the token endpoint's log says whether a code was
+exchanged at all. Driver `verify-harness/g9-authorize-writes.sh`, transcript
+`shots/authorize-writes-terminal-transcript.txt`:
+
+| Case | Before (`b0f972aaf`) | After (`7f2fe6250`) |
+|---|---|---|
+| first authorization, file without a `refresh_token:` line | prints `Add this line to ...` and `refresh_token: <token>`, file unchanged, so `receive_imap` then stops with `... is missing refresh_token` | prints `The refresh token was written to ...`, no token on screen; `diff` shows exactly one added line, mode `640` kept; `receive_imap` with the file then creates issue #21 |
+| directory `root 755` | consent, exchange, token printed | stops **before** the consent URL with `... and its directory must be writable to save the refresh token`, exit 1, and the token endpoint saw **no grant at all** |
+| directory made read-only after the URL was printed | consent, exchange, token printed | the exchange happens, the write fails with `Permission denied @ rb_sysopen - .../.imap_oauth2.yml...`, and the task prints `Add this line to it yourself:` with the line, exit 1: the consent is not lost |
+
 | Function | Screenshot | What it shows |
 |---|---|---|
 | Rotation, before | `rotation-before-issues-list.png` | issue #11 from the first run against the revoking provider and nothing from the next two; #12-#14 from the other three cases |
@@ -812,13 +841,14 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
 
 - **Issue:** [#43023](https://www.redmine.org/issues/43023) — bestaat al, Jans
   eigen issue, assignee Marius BĂLTEANU, doelversie 7.1.0. **Geen nieuw issue.**
-- **Patch attached:** `patches/imap-oauth/2026-10-21-r25037-feature.patch`
-  (1084 regels patchbestand, twee commits: de feature en de rotatiefix, 889
-  regels wijziging over 5 bestanden). Eén bestand — er zijn geen
-  locale-sleutels, dus geen `-locales.patch`. Het bestand van 2026-09-10 is
-  vervangen; het staat in de historie van `geoxyz/framework`.
+- **Patch attached:** `patches/imap-oauth/2026-10-21-r25037-feature-k26.patch`
+  (1326 regels patchbestand, drie commits: de feature, de rotatiefix en
+  K-26 B; 1009 regels wijziging over 5 bestanden). De commits blijven apart,
+  Jans keuze van 2026-10-21. Eén bestand — er zijn geen locale-sleutels, dus
+  geen `-locales.patch`. De bestanden van 2026-09-10 en van de rotatiefix zijn
+  vervangen; ze staan in de historie van `geoxyz/framework`.
 - **Made against:** `origin/master` r25037 (`bee32a926`), branch
-  `patch/imap-oauth` at `b0f972aaf`. Op 2026-10-21 applyt het bestand op de
+  `patch/imap-oauth` at `7f2fe6250`. Op 2026-10-21 applyt het bestand op de
   mirror (r25262) en, met de hand nagegaan, op **echte trunk `68b77a4e1`**
   (2026-10-20). `--submit` faalt alleen omdat de mirror 22 commits achter echte
   trunk staat: eerst Jans sync (K-19), dan `--submit` opnieuw. The branch is
@@ -861,6 +891,10 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
   dezelfde nieuwe "Afterwards"-alinea in `doc/IMAP_OAUTH2.md`. Volledige suite
   daar: `6278 runs, 33002 assertions, 0 failures, 0 errors, 29 skips`.
   `tools/check-symmetry.sh imap-oauth`: PASS.
+- **K-26 B (2026-10-21):** `578730ad3` op `7.0-stable-GEOxyz`, de drie
+  codebestanden byte-identiek aan `7f2fe6250`, plus dezelfde herschreven
+  "Afterwards" in `doc/IMAP_OAUTH2.md`. Volledige suite daar:
+  `6284 runs, 33015 assertions, 0 failures, 0 errors, 29 skips`.
 - **`tools/check-geoxyz-branch.sh`:** PASS (2026-09-06) — current met
   `origin/7.0-stable`, geen AI-sporen in de eigen commits, 1 lint-offence op 66
   gewijzigde Ruby-bestanden en die staat al op een eigen regel van
