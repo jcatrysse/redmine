@@ -53,7 +53,10 @@ Available IMAP options:
                              refresh_token: ...
                              scope: ...
                            Run redmine:email:oauth2_authorize once to obtain
-                           the refresh token. See the guides at:
+                           the refresh token. A new refresh token issued by
+                           the provider replaces that line, so FILE and its
+                           directory must be writable by the user running
+                           this task. See the guides at:
                            http://www.redmine.org/projects/redmine/wiki/EmailConfiguration
   folder=FOLDER            IMAP folder to read (default: INBOX)
 

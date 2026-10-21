@@ -28,6 +28,17 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
     'refresh_token' => 'a-refresh-token'
   }
 
+  # As an administrator writes it by hand, rather than as YAML dumps it.
+  CREDENTIALS_FILE = <<~YAML
+    # Redmine mailbox, Microsoft 365
+    token_url: https://login.example.net/oauth2/v2.0/token
+    client_id: a-client-id
+    client_secret: a-client-secret   # expires 2027-01
+    refresh_token: 'a-refresh-token'
+
+    scope: https://outlook.office.com/IMAP.AccessAsUser.All offline_access
+  YAML
+
   def test_access_token_should_return_the_token_of_a_refresh_token_grant
     request = nil
     http = expect_token_request(response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token'}.to_json)) {|req| request = req}
@@ -64,6 +75,93 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
       'https://outlook.office.com/IMAP.AccessAsUser.All',
       URI.decode_www_form(request.body).to_h['scope']
     )
+  end
+
+  def test_access_token_should_replace_the_refresh_token_line_when_a_new_one_is_issued
+    expect_token_request(
+      response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token', 'refresh_token' => 'a-new-refresh-token'}.to_json)
+    )
+
+    with_credentials_file(CREDENTIALS_FILE) do |file|
+      File.chmod(0o640, file)
+      assert_output('', '') do
+        assert_equal 'an-access-token', Redmine::Oauth2Client.access_token(file)
+      end
+
+      assert_equal CREDENTIALS_FILE.sub("'a-refresh-token'", 'a-new-refresh-token'), File.read(file)
+      assert_equal 0o640, File.stat(file).mode & 0o7777
+    end
+  end
+
+  def test_access_token_should_quote_a_new_refresh_token_that_is_not_a_plain_yaml_value
+    expect_token_request(
+      response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token', 'refresh_token' => '*a: new #token\1'}.to_json)
+    )
+
+    with_credentials_file(CREDENTIALS_FILE) do |file|
+      Redmine::Oauth2Client.access_token(file)
+
+      assert_equal CREDENTIALS_FILE.sub("'a-refresh-token'") {'"*a: new #token\\\\1"'}, File.read(file)
+      assert_equal '*a: new #token\1', YAML.safe_load_file(file)['refresh_token']
+    end
+  end
+
+  def test_access_token_should_leave_the_file_alone_when_the_same_refresh_token_is_returned
+    expect_token_request(
+      response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token', 'refresh_token' => 'a-refresh-token'}.to_json)
+    )
+    File.expects(:atomic_write).never
+
+    with_credentials_file(CREDENTIALS_FILE) do |file|
+      assert_equal 'an-access-token', Redmine::Oauth2Client.access_token(file)
+      assert_equal CREDENTIALS_FILE, File.read(file)
+    end
+  end
+
+  def test_access_token_should_leave_the_file_alone_when_no_refresh_token_is_returned
+    expect_token_request(response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token'}.to_json))
+    File.expects(:atomic_write).never
+
+    with_credentials_file(CREDENTIALS_FILE) do |file|
+      assert_equal 'an-access-token', Redmine::Oauth2Client.access_token(file)
+      assert_equal CREDENTIALS_FILE, File.read(file)
+    end
+  end
+
+  def test_access_token_should_warn_without_the_token_when_the_new_refresh_token_cannot_be_written
+    expect_token_request(
+      response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token', 'refresh_token' => 'a-new-refresh-token'}.to_json)
+    )
+
+    with_credentials_file(CREDENTIALS_FILE) do |file|
+      File.stubs(:atomic_write).raises(Errno::EACCES, File.dirname(file))
+      _, stderr = capture_io do
+        assert_equal 'an-access-token', Redmine::Oauth2Client.access_token(file)
+      end
+
+      assert_include "could not be written to #{file}: Permission denied", stderr
+      assert_not_include 'a-new-refresh-token', stderr
+      assert_not_include 'a-refresh-token', stderr
+      assert_not_include 'an-access-token', stderr
+      assert_equal CREDENTIALS_FILE, File.read(file)
+    end
+  end
+
+  def test_access_token_should_warn_without_the_token_when_the_refresh_token_line_cannot_be_replaced
+    expect_token_request(
+      response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token', 'refresh_token' => 'a-new-refresh-token'}.to_json)
+    )
+    content = CREDENTIALS_FILE.sub("refresh_token: 'a-refresh-token'", "refresh_token: >-\n  a-refresh-token")
+
+    with_credentials_file(content) do |file|
+      _, stderr = capture_io do
+        assert_equal 'an-access-token', Redmine::Oauth2Client.access_token(file)
+      end
+
+      assert_include "#{file} has no single refresh_token line to replace", stderr
+      assert_not_include 'a-new-refresh-token', stderr
+      assert_equal content, File.read(file)
+    end
   end
 
   def test_authorize_url_should_carry_the_authorization_code_grant_parameters
@@ -344,9 +442,13 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
 
   private
 
-  def with_credentials(credentials)
+  def with_credentials(credentials, &)
+    with_credentials_file(credentials.to_yaml, &)
+  end
+
+  def with_credentials_file(content)
     file = Tempfile.new(['imap_oauth2', '.yml'])
-    file.write(credentials.to_yaml)
+    file.write(content)
     file.close
     yield file.path
   ensure

@@ -24,7 +24,8 @@ module Redmine
     class << self
       # Requests an access token with the refresh token grant, using the
       # credentials read from the given YAML file. The token is not cached: it
-      # is short lived and requesting one costs a single request.
+      # is short lived and requesting one costs a single request. A new refresh
+      # token in the response replaces the one in the file.
       def access_token(credentials_file)
         credentials = read_credentials(credentials_file, %w(token_url client_id client_secret refresh_token))
         response = post_to_token_endpoint(
@@ -32,7 +33,12 @@ module Redmine
           'grant_type' => 'refresh_token',
           'refresh_token' => credentials['refresh_token']
         )
-        token_from(response, 'access_token')
+        token = token_from(response, 'access_token')
+        refresh_token = json_body(response)['refresh_token']
+        if refresh_token.present? && refresh_token != credentials['refresh_token']
+          store_refresh_token(credentials_file, credentials, refresh_token)
+        end
+        token
       end
 
       # The URL the mailbox owner opens to consent, first leg of the
@@ -90,6 +96,32 @@ module Redmine
         end
 
         credentials
+      end
+
+      # A provider may issue a new refresh token with each access token, and
+      # RFC 6749 section 6 then requires the old one to be discarded. Only the
+      # refresh_token line is rewritten so that the rest of the file is kept as
+      # the administrator wrote it, and the file is replaced atomically with its
+      # mode kept. The access token of this run is already obtained, so a
+      # failure is reported rather than raised.
+      def store_refresh_token(credentials_file, credentials, refresh_token)
+        content = File.read(credentials_file)
+        line = /^refresh_token:[^\r\n]*/
+        replacement = {'refresh_token' => refresh_token}.to_yaml(line_width: -1).delete_prefix("---\n").chomp
+        updated = content.sub(line) {replacement}
+        if content.scan(line).one? && yaml_equal?(updated, credentials.merge('refresh_token' => refresh_token))
+          File.atomic_write(credentials_file) {|file| file.write(updated)}
+        else
+          warn "#{credentials_file} has no single refresh_token line to replace, the new refresh token issued by the provider was not stored"
+        end
+      rescue SystemCallError, IOError => e
+        warn "The new refresh token issued by the provider could not be written to #{credentials_file}: #{e.message}"
+      end
+
+      def yaml_equal?(content, credentials)
+        YAML.safe_load(content) == credentials
+      rescue Psych::Exception
+        false
       end
 
       def redirect_uri(credentials)
