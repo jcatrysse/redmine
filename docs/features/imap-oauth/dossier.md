@@ -20,6 +20,13 @@
 - **Wat jij nog moet doen:** zie `status.md` — één note aan #43023. Er staat
   geen keuze meer open: K-06 (de `client_credentials`-grant) besliste je op
   2026-09-03 met optie A, en F07 uit ronde 3 op 2026-09-06 met optie B.
+- **Nieuw sinds 2026-10-21 (jouw beslissing):** geeft de provider bij het
+  ophalen een *nieuw* refresh token terug, dan schrijft Redmine dat in
+  hetzelfde credentialsbestand: alleen de `refresh_token:`-regel, atomair, met
+  behoud van de modus. Microsoft doet dat bij elk gebruik; de 7.0-code gooide
+  het weg, waardoor het bestand na de levensduur van het oorspronkelijke token
+  (standaard 90 dagen) stil kan stoppen met werken. Zie "Refresh token
+  rotation" hieronder. De patch is daardoor twee commits geworden.
 
 ## Trunk check (G1)
 
@@ -27,7 +34,11 @@
   schrijven (2026-09-03). Op 2026-09-06 opnieuw tegen `bee32a926` = **r25037**
   gezet, 88 commits verder, en de patch is daarop herzet en opnieuw bewezen —
   zie "Evidence". De conclusie hieronder is op r25037 opnieuw nagegaan en
-  ongewijzigd.
+  ongewijzigd. Op 2026-10-21 (rotatiefix) nogmaals tegen **echte trunk**
+  `68b77a4e1` (2026-10-20) van github.com/redmine/redmine: `lib/redmine/imap.rb`
+  doet nog steeds alleen `login`, en de enige `refresh_token` in `lib`, `app` of
+  `config/initializers` is `use_refresh_token` in de Doorkeeper-configuratie,
+  de providerkant.
 - **Lost trunk dit al op?** Nee. `lib/redmine/imap.rb` doet onvoorwaardelijk
   `imap.login(username, password)` en kent geen enkel SASL-mechanisme.
   `lib/tasks/email.rake` biedt alleen `password=`. Er is geen OAuth-client in
@@ -154,11 +165,71 @@ Microsoft needs `offline_access` in the scope instead. That is the one place
 where the providers differ, and it is in the administrator's file rather than
 in Redmine.
 
+## Refresh token rotation
+
+A token response to the refresh token grant may carry a new refresh token.
+RFC 6749 section 6: "The authorization server MAY issue a new refresh token, in
+which case the client MUST discard the old refresh token and replace it with
+the new refresh token. The authorization server MAY revoke the old refresh
+token after issuing a new refresh token to the client." The Microsoft identity
+platform does this on every use
+([Refresh tokens](https://learn.microsoft.com/en-us/entra/identity-platform/refresh-tokens)):
+"Refresh tokens replace themselves with a fresh token upon every use. The
+Microsoft identity platform doesn't revoke old refresh tokens when used to
+fetch new access tokens. Securely delete the old refresh token after acquiring
+a new one." Its default refresh token lifetime is 90 days. Google returns no
+refresh token on this grant, so nothing changes for Gmail.
+
+So when the response carries a `refresh_token` that differs from the one in the
+file, `Oauth2Client.access_token` writes it back into the same file:
+
+- **Only the `refresh_token:` line is replaced.** The administrator writes this
+  file by hand, possibly with comments; a YAML load and dump would drop the
+  comments and reorder the keys. The new file is parsed before it is written
+  and must load to exactly the old credentials with only `refresh_token`
+  changed. A file where that does not hold — no top-level `refresh_token:`
+  line, two of them, a multi-line value, or a file whose other values were
+  changed while this run was waiting on the token endpoint — is left alone,
+  with a warning.
+- **The write is atomic**, with Rails' own `File.atomic_write`: a temporary file
+  in the same directory, renamed over the original. A crash leaves either the
+  old file or the new one, never half of one. The temporary file is created
+  `0600`, and `File.atomic_write` gives the result the owner, group and mode of
+  the original. Two consequences, both in the task description: **the
+  directory has to be writable by the user running the task**, because that is
+  where the temporary file is made; and the file should be owned by that user,
+  because only then can its owner and mode be carried over — a file owned by
+  someone else comes back owned by the Redmine user with mode `0600`, which is
+  stricter, not looser.
+- **A failure to write is a warning on stderr, not an error.** This run already
+  holds its access token, and failing it would stop mail without saving the
+  token either. A cron job mails its stderr, so the warning is not silent. It
+  names the file and the system error (`Permission denied @ rb_sysopen -
+  /etc/redmine/.imap_oauth2.yml...`), never a token or a secret.
+- **No lock.** Two overlapping runs on one file each write a complete file
+  holding a token the provider has just issued, and the rename means neither
+  can see the other's half-written file; the last one wins. With a provider
+  that keeps the old tokens valid, as Microsoft documents, both are good. With
+  one that revokes the old token on rotation, the two runs have already both
+  presented the same old token by the time either of them writes, and a lock
+  around the write cannot undo that; only a lock around the whole run could.
+  And overlapping runs are already wrong for `receive_imap` itself, since both
+  fetch the same unseen messages and create the issues twice, so a site that
+  can overlap needs `flock` on the cron line regardless. INV-1: no lock.
+
+What is **not** proven: that Microsoft really stops accepting the original
+refresh token after 90 days when the newer ones are discarded. Showing that
+takes 90 days against a real tenant. The case for the change rests on the RFC
+and on the provider's own documentation quoted above, no more.
+
+`oauth2_authorize` is unchanged: it still prints the `refresh_token:` line for
+the administrator to add to the file.
+
 | File | Change |
 |---|---|
 | `lib/redmine/imap.rb` | authenticate with `XOAUTH2` when an access token is available, `login` otherwise; resolve the token from the two new options |
-| `lib/redmine/oauth2_client.rb` | new, 198 lines — 132 of code under the standard GPL header: read the credentials file, build the authorization URL, and POST either the refresh token grant or the authorization code grant |
-| `lib/tasks/email.rake` | pass the two options through and document them; add the `oauth2_authorize` task and one worked example |
+| `lib/redmine/oauth2_client.rb` | new, 229 lines under the standard GPL header: read the credentials file, build the authorization URL, POST either the refresh token grant or the authorization code grant, and write a rotated refresh token back into the file |
+| `lib/tasks/email.rake` | pass the two options through and document them, including that the credentials file and its directory must be writable by the user running the task; add the `oauth2_authorize` task and one worked example |
 | `test/unit/lib/redmine/imap_test.rb` | new: first tests for `Redmine::IMAP`, including one that resolves `XOAUTH2` through `Net::IMAP::SASL` and asserts the SASL string, so a rename of the mechanism or a change to its argument order fails here rather than in production |
 | `test/unit/lib/redmine/oauth2_client_test.rb` | new |
 
@@ -216,10 +287,13 @@ for three reasons, in order of weight:
    a release.
 2. *The token cache is what makes it complicated.* Almost half the helper code
    in that patch — `normalize_token_file`, `secure_file`, the `PERMITTED`
-   whitelist of YAML symbols, `mask_token`, the refresh-and-rewrite branch —
-   exists only because an access token is written to disk and read back. Not
-   caching it removes all of it. The cost is one HTTPS POST per fetch run, next
-   to an IMAP session that is about to open anyway.
+   whitelist of YAML symbols, `mask_token` — exists only because an access
+   token is written to disk and read back. Not caching it removes all of it.
+   The cost is one HTTPS POST per fetch run, next to an IMAP session that is
+   about to open anyway. What that patch got right, and this one kept: when the
+   provider rotates the refresh token, the new one has to be written back (see
+   "Refresh token rotation"). That is one line of the administrator's file,
+   replaced in place, not a second file Redmine owns.
 3. *A parallel task family duplicates the fetch loop's option surface.*
    `receive_imap_oauth2` re-implements `host`, `port`, `ssl`, `starttls`,
    `folder`, `move_on_success` and `move_on_failure`, and re-derives the
@@ -297,6 +371,11 @@ Neither `Redmine::IMAP` nor `Redmine::POP3` had a single test before this patch;
 | `Oauth2ClientTest#test_refresh_token_should_raise_when_the_address_carries_no_code` | pasting only the code instead of the whole address says so |
 | `Oauth2ClientTest#test_refresh_token_should_raise_when_the_address_cannot_be_parsed` | pasting something that is not an address at all gives the same advice rather than a `URI::InvalidURIError`. This test found a real bug on its first run: the guard returned a plain `{}` where `CGI.parse` returns a hash defaulting to `[]`, so the next line raised `NoMethodError` |
 | `Oauth2ClientTest#test_refresh_token_should_raise_when_the_response_holds_no_refresh_token` | a provider that returns only an access token, which is what happens when `offline_access` or `access_type: offline` is missing, is reported as such |
+| `Oauth2ClientTest#test_access_token_should_replace_the_refresh_token_line_when_a_new_one_is_issued` | a response carrying a new `refresh_token` rewrites the credentials file to exactly the original text with that one line changed — the comment lines, the trailing comment on `client_secret`, the blank line and the key order all survive, and a quoted value is replaced by the plain form `oauth2_authorize` prints — and the file keeps mode `0640`. Nothing is printed |
+| `Oauth2ClientTest#test_access_token_should_leave_the_file_alone_when_the_same_refresh_token_is_returned` | a response that repeats the token already in the file writes nothing (`File.atomic_write` is never called) |
+| `Oauth2ClientTest#test_access_token_should_leave_the_file_alone_when_no_refresh_token_is_returned` | Google's case: no `refresh_token` in the response, nothing written |
+| `Oauth2ClientTest#test_access_token_should_warn_without_the_token_when_the_new_refresh_token_cannot_be_written` | when the write fails (`Errno::EACCES`), the access token is still returned, the file is unchanged, and stderr carries a warning naming the file and the system error, but neither the new nor the old refresh token, nor the access token |
+| `Oauth2ClientTest#test_access_token_should_warn_without_the_token_when_the_refresh_token_line_cannot_be_replaced` | a file whose `refresh_token` is a folded block scalar spread over two lines is not rewritten into something else: the parse-back check refuses, the file is left byte for byte, and the warning says so without the token |
 
 **Evidence (INV-8 — figures, not claims).** All figures below are from
 2026-09-06, on trunk **r25037** (`bee32a926`), after the patch was refreshed
@@ -469,9 +548,10 @@ mistakes:
 That was checked deliberately, because the patch on #43023 prints the full
 access token when `imap_debug=1` is set: it does `puts imap_options.inspect`,
 and `imap_options[:password]` is the token. This patch has no debug output at
-all, and no credential is interpolated into any message it raises: the failure
-messages above name the file, the key or the provider's `error` code, never a
-value.
+all, and no credential is interpolated into any message it raises or prints:
+the failure messages above name the file, the key or the provider's `error`
+code, never a value, and the two warnings of the refresh token write-back name
+the file and the system error.
 
 There is exactly one place where a credential is printed, and it is the one
 place it has to be: the last line of `oauth2_authorize` prints
@@ -600,6 +680,14 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
 
 - The file holds a client secret and a refresh token. Give it to the Redmine
   user only: `chown redmine: /etc/redmine/imap_oauth2.yml && chmod 600` it.
+- Redmine writes to this file: when the provider issues a new refresh token
+  with an access token, as Microsoft does on every use, `receive_imap` replaces
+  the `refresh_token:` line. That takes a temporary file next to it, so the
+  directory must be writable by the Redmine user as well — `/etc/redmine` owned
+  by `redmine` with mode `700`, or a directory of its own. Keep the refresh
+  token on one line, `refresh_token: VALUE`, as `oauth2_authorize` prints it.
+  If the file cannot be updated, `receive_imap` still fetches the mail and
+  prints a warning; fix the permissions before the old token expires.
 - `oauth2_authorize` printed the refresh token to your terminal. Clear the
   scrollback and the shell history of that session, and delete any transcript
   of it, once the line is in the file.
@@ -621,7 +709,9 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
 | "Then Redmine now carries Microsoft's and Google's OAuth details after all." | It does not. `oauth2_authorize` reads the authorization endpoint, the scope, the redirect URI and any extra query parameters out of the administrator's file. Google's `access_type=offline` and `prompt=consent`, and Microsoft's `offline_access` scope, are values in that file. The two walk-throughs belong on the `EmailConfiguration` wiki page, where a provider changing its console can be corrected without a Redmine release. |
 | "Why not use the `oauth2` gem, which is already in the Gemfile?" | It is in the `:test` group, for testing Redmine's own OAuth **provider** (Doorkeeper). Using it here would move a test dependency into production for one form POST. `Net::HTTP` and `JSON` are stdlib, and `app/models/webhook.rb` already establishes how core makes an outbound HTTP request. |
 | "Why not `gmail_xoauth`, as the earlier patch does?" | Redundant. `Net::IMAP::SASL::XOAuth2Authenticator` is in the pinned `net-imap ~> 0.6.1`, and 0.4.x already carried it as `Net::IMAP::XOauth2Authenticator`. The patch calls the mechanism by name — `imap.authenticate('XOAUTH2', username, token)` — rather than the constant, so it does not depend on which of the two names a given net-imap exposes. |
-| "An access token per run is wasteful." | One form POST next to an IMAP session that is about to open anyway. In exchange, nothing is written to disk, so there is no token file to create, permission, rotate, corrupt or leak — and roughly half the helper code in the earlier patch existed only to manage that file. If a busy site ever needs caching it can be added behind the same option without changing the interface. |
+| "An access token per run is wasteful." | One form POST next to an IMAP session that is about to open anyway. In exchange, no access token is written to disk, so there is no token cache to create, permission, expire, corrupt or leak — and roughly half the helper code in the earlier patch existed only to manage that cache. The one thing written is a rotated refresh token, into the administrator's own file (next row). If a busy site ever needs caching it can be added behind the same option without changing the interface. |
+| "Why does a fetch task write to a credentials file?" | Because the provider may hand back a new refresh token with each access token, and then the old one has to go. RFC 6749 section 6: "The authorization server MAY issue a new refresh token, in which case the client MUST discard the old refresh token and replace it with the new refresh token. The authorization server MAY revoke the old refresh token after issuing a new refresh token to the client." The [Microsoft identity platform](https://learn.microsoft.com/en-us/entra/identity-platform/refresh-tokens) does exactly that on every use — "Refresh tokens replace themselves with a fresh token upon every use [...] Securely delete the old refresh token after acquiring a new one" — with a default lifetime of 90 days. A client that keeps presenting the original token is relying on the provider not revoking it, against the RFC's MUST. Only the `refresh_token:` line is replaced, the file is renamed into place atomically with its mode kept, and a failed write is a warning, not a failed fetch. We have not watched a Microsoft tenant reject the original token after 90 days; the argument is the RFC and the provider's documentation. |
+| "Two cron runs overlapping will race on the file." | Each writes a complete file through a rename, so neither sees a torn one, and the last writer leaves a token the provider has just issued. A provider that revokes on rotation has already seen the same old token twice by the time either run writes, and only a lock around the whole run could prevent that — which `receive_imap` already needs anyway, since two overlapping runs fetch the same unseen messages twice. `flock` on the cron line covers both; a lock inside Redmine would cover neither. |
 | "`OAUTHBEARER` is the standard; `XOAUTH2` is obsolete." | True, and Google and Microsoft both document `XOAUTH2` and both still accept it; `OAUTHBEARER` support is uneven. Hardcoding the mechanism keeps the option surface at two rather than three. Making it an option later is a one-line change in the same method. |
 | "The client secret sits in a file on disk." | As do the database password and the SMTP password, in `config/database.yml` and `config/configuration.yml`. The alternative was `ENV` options on the rake command line, which would put the secret in `ps` output for every user on the host. |
 | "`receive_pop3` gets nothing." | Deliberate — INV-1, and POP3 over OAuth is a much rarer ask. `Redmine::Oauth2Client` is not IMAP-specific, so wiring it into `Redmine::POP3` later is a few lines. |

@@ -16,6 +16,13 @@
 # object (`[]`). That is round-3 finding F04: the parse succeeds, so the
 # JSON::ParserError rescue never fires and the hash lookup below it is what
 # breaks.
+#
+# With ROTATE=keep every refresh_token grant also returns a new refresh token
+# and the old ones stay valid, which is what the Microsoft identity platform
+# documents. With ROTATE=revoke only the most recently issued refresh token is
+# accepted, which RFC 6749 section 6 permits ("MAY revoke the old refresh
+# token"). Without ROTATE the response carries no refresh token, as Google's
+# does.
 
 require 'webrick'
 require 'webrick/https'
@@ -25,6 +32,8 @@ require 'cgi'
 
 port, cert_path, expected_refresh_token, access_token = ARGV
 port = port.to_i
+valid_refresh_tokens = [expected_refresh_token]
+issued = 0
 
 key = OpenSSL::PKey::RSA.new(2048)
 name = OpenSSL::X509::Name.parse('/CN=login.example.net')
@@ -76,10 +85,19 @@ server.mount_proc '/oauth2/v2.0/token' do |request, response|
   response['Content-Type'] = 'application/json'
   case received['grant_type']
   when 'refresh_token'
-    if received['refresh_token'] == expected_refresh_token
+    if valid_refresh_tokens.include?(received['refresh_token'])
+      body = {'access_token' => access_token, 'token_type' => 'Bearer', 'expires_in' => 3599}
+      if %w(keep revoke).include?(ENV['ROTATE'])
+        issued += 1
+        body['refresh_token'] = "rotated-refresh-token-#{issued}"
+        valid_refresh_tokens = [] if ENV['ROTATE'] == 'revoke'
+        valid_refresh_tokens << body['refresh_token']
+        warn "token endpoint: issued refresh token number #{issued} (ROTATE=#{ENV['ROTATE']}), #{valid_refresh_tokens.size} valid"
+      end
       response.status = 200
-      response.body = {'access_token' => access_token, 'token_type' => 'Bearer', 'expires_in' => 3599}.to_json
+      response.body = body.to_json
     else
+      warn 'token endpoint: refresh token not accepted, invalid_grant'
       response.status = 400
       response.body = {'error' => 'invalid_grant', 'error_description' => 'The refresh token is invalid.'}.to_json
     end
