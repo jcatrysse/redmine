@@ -37,6 +37,10 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 
 25 features: 15 patch klaar, 7 nooit, 2 vervallen, 1 geaccepteerd.
 
+## Nu in behandeling
+
+- `imap-oauth` — cse_01WgMeG6avKCfoQ5oVy8qoTw sinds 2026-10-21
+
 ## Openstaand voor Jan
 
 ### `activity-journal-details-preload`
