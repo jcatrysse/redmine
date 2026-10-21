@@ -1949,3 +1949,28 @@ documentatie van de provider, en zo staat het ook in het dossier.
 
 Gebouwd en bewezen in `docs/features/imap-oauth/` (status.md, dossier.md
 "Refresh token rotation", decisions.md 2026-10-21).
+
+## Open — keuze voor Jan (toegevoegd 2026-10-21, imap-oauth)
+
+### K-26 — moet `oauth2_authorize` het refresh token nu ook zelf in het bestand schrijven?
+
+**Wat er aan de hand is.** Sinds 2026-10-21 schrijft `receive_imap` een
+geroteerd refresh token terug in het credentialsbestand. Het argument van
+2026-09-03 om `oauth2_authorize` alleen te laten *printen* ("schrijven betekent
+rechten zetten, samenvoegen, een tweede plek waar een geheim ontstaat") weegt
+daardoor minder: de machinerie om één regel veilig te vervangen bestaat nu.
+Jan zei op 2026-10-21 uitdrukkelijk: `oauth2_authorize` blijft printen. Dit is
+dus niet gebouwd, alleen voorgelegd.
+
+- **A) blijft printen** (huidige stand) — geen extra code in de patch. Nadeel:
+  het refresh token staat in de terminal-scrollback van de beheerder, en die
+  moet dat zelf wissen (staat in "Afterwards").
+- **B) ook schrijven** — de bestaande vervangroutine hergebruiken, plus een
+  regel *toevoegen* als het bestand nog geen `refresh_token:` heeft (de eerste
+  keer is dat altijd zo). Ongeveer tien regels en twee tests. Voordeel: het
+  token verschijnt nergens op het scherm.
+
+**Aanbeveling: A**, voor deze inzending. De patch is al groot voor een eerste
+inzending, de scrollback-kwestie staat eerlijk in het dossier, en B is een
+kleine, losse vervolgpatch als een committer erom vraagt. **Haast:** nee, er is
+gebouwd met A.
