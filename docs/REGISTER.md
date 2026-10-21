@@ -14,7 +14,7 @@ leveringen: **GEOxyz** (draait het in productie op 7.0?) en **Upstream**
 | [`assignee-nobody`](features/assignee-nobody/status.md) | Niet-toegewezen combineerbaar met gekozen gebruikers in het toewijzingsfilter | `9b03b74b2` | live (`349fe1860 + 9ad87a11b + 5c2dcdd7a`) | patch klaar | [#5535](https://www.redmine.org/issues/5535) |
 | [`back-url-array`](features/back-url-array/status.md) | Geen HTTP 500 meer als back_url als lijst (back_url[]=...) binnenkomt | `-` | live (`0f4317246`) | patch klaar | — |
 | [`group-membership-preload`](features/group-membership-preload/status.md) | Een groep met veel gebruikers aan een project toevoegen met minder queries per gebruiker | `-` | live (`2b9700a9c`) | patch klaar | — |
-| [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901 + 012ab39e0`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
+| [`imap-oauth`](features/imap-oauth/status.md) | IMAP inbound mail via OAuth 2.0 (Gmail / O365) | `bbf5c0eb3` | live (`1a6d462a8 + d92dff560 + 5c937ddbd + 75f355fa8 + 90afb7872 + f73391901 + 012ab39e0 + 3a71d578b`) | patch klaar | [#43023](https://www.redmine.org/issues/43023) |
 | [`mypage-query-blocks`](features/mypage-query-blocks/status.md) | Max. eigen zoekopdrachten op Mijn pagina instelbaar, standaard 3 | `0214f3ecc` | live (`dc6dad120 + dd063fa8b + f5ed23c8e`) | patch klaar | [#27313](https://www.redmine.org/issues/27313) |
 | [`pdf-export-marshal-attachments`](features/pdf-export-marshal-attachments/status.md) | issue-PDF met een tabel geeft 500 ("can't dump hash with default proc") zodra rollen van een gebruiker van het issue gecachet zijn | `-` | live (`f59238143`) | patch klaar | — |
 | [`rake-webhook-flush`](features/rake-webhook-flush/status.md) | Webhooks gaan niet meer verloren in de rake-taken die mail ontvangen | `-` | live (`e1e759c47`) | patch klaar | — |
@@ -170,7 +170,15 @@ Eén patchbestand: er zijn geen vertalingen.
 
 Twee dingen, en het eerste is het echte werk.
 
-**1. Hang `patches/imap-oauth/2026-09-10-r25037-feature.patch` als note aan je
+**0. Eerst de mirror syncen (K-19).** `origin/master` stond op 2026-10-21 22
+commits achter echte trunk, dus `--submit` faalt tot jij synct. Het patchbestand
+applyt wel op echte trunk `68b77a4e1`, met de hand nagegaan. Na de sync:
+`tools/check-patch-clean.sh imap-oauth --submit` opnieuw. Wil je één commit in
+plaats van twee in het patchbestand, dan is dat een force-push van
+`patch/imap-oauth` en een nieuwe export; nodig is het niet, `git am` neemt er
+twee net zo goed.
+
+**1. Hang `patches/imap-oauth/2026-10-21-r25037-feature.patch` als note aan je
 eigen issue [#43023](https://www.redmine.org/issues/43023)** — geen nieuw
 issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
 7.1.0. Zeg in die note dat dit een **vervanging** is van
@@ -193,8 +201,10 @@ issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
   `EmailConfiguration`-wikipagina, waar Redmine dit soort uitleg al zet en waar
   een providerwijziging zonder release gecorrigeerd kan worden.
 - Geen tokencache op schijf, en daarmee vervallen `normalize_token_file`,
-  `secure_file`, de YAML-symbolenwhitelist, `mask_token` en de
-  refresh-en-herschrijf-tak — ruwweg de helft van de hulpcode.
+  `secure_file`, de YAML-symbolenwhitelist en `mask_token` — ruwweg de helft van
+  de hulpcode. Wat wél terugkwam (2026-10-21): een geroteerd refresh token wordt
+  teruggeschreven, maar als één regel in het bestand van de beheerder, niet als
+  een eigen tokenbestand.
 - **Noem dit ook, het is een echt lek:** de patch die er nu hangt print het
   volledige access token bij `imap_debug=1`, via
   `puts "IMAP DEBUG: effective imap_options=#{imap_options.inspect}"`, waarin
@@ -208,6 +218,11 @@ issue, dat issue staat op naam van kerncommitter Marius BĂLTEANU met doelversie
   De oudere, te sterke formulering ("interpoleert token noch client secret in
   welke string dan ook") is op 2026-09-06 rechtgezet na reviewbevinding F01;
   gebruik die niet meer.
+- **Noem de rotatie ook**: het refresh token dat de provider bij een refresh
+  teruggeeft wordt in het bestand gezet (RFC 6749 §6), alleen die ene regel, en
+  de map moet daarom schrijfbaar zijn. De bezwaar-rij "Why does a fetch task
+  write to a credentials file?" in `dossier.md` is het antwoord als iemand
+  vraagt.
 - `Redmine::IMAP` en `Redmine::POP3` hadden **geen enkele test**; deze
   patch levert de eerste (12 tests, 43 assertions).
 - **Bied de splitsing aan, in één zin** (jouw keuze F07/optie B van 2026-09-06).
