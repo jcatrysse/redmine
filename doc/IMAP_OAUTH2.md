@@ -61,7 +61,7 @@ rake redmine:email:oauth2_authorize RAILS_ENV=production \
   oauth2_credentials=/etc/redmine/imap_oauth2.yml
 ```
 
-Add the `refresh_token:` line it prints to the same file, and fetch mail with:
+It writes the refresh token into the same file. Then fetch mail with:
 
 ```
 rake redmine:email:receive_imap RAILS_ENV=production \
@@ -111,20 +111,23 @@ Then the same two commands, with `host=imap.gmail.com port=993 ssl=1`.
 
 - The file holds a client secret and a refresh token. Give it to the Redmine
   user only: `chown redmine: /etc/redmine/imap_oauth2.yml && chmod 600` it.
-- Redmine writes to this file: when the provider issues a new refresh token
-  with an access token, as Microsoft does on every use, `receive_imap` replaces
-  the `refresh_token:` line. That takes a temporary file next to it, so the
-  directory must be writable by the Redmine user as well — `/etc/redmine` owned
-  by `redmine` with mode `700`, or a directory of its own. Keep the refresh
-  token on one line, `refresh_token: VALUE`, as `oauth2_authorize` prints it.
+- Redmine writes to this file: `oauth2_authorize` adds the `refresh_token:`
+  line, and when the provider issues a new refresh token with an access token,
+  as Microsoft does on every use, `receive_imap` replaces it. That takes a
+  temporary file next to it, so the directory must be writable by the Redmine
+  user as well — `/etc/redmine` owned by `redmine` with mode `700`, or a
+  directory of its own. Run both tasks as that user. `oauth2_authorize` checks
+  this before it prints the consent URL, so nobody consents for nothing. Keep
+  the refresh token on one line, `refresh_token: VALUE`, as Redmine writes it.
   If the file cannot be updated, `receive_imap` still fetches the mail and
   prints a warning; fix the permissions before the old token expires.
-- `oauth2_authorize` printed the refresh token to your terminal. Clear the
-  scrollback and the shell history of that session, and delete any transcript
-  of it, once the line is in the file.
+- Should the write fail after the consent after all, `oauth2_authorize` prints
+  the `refresh_token:` line instead, because the consent cannot be redeemed a
+  second time. Only then: add the line yourself, and clear the scrollback and
+  the shell history of that session.
 - A refresh token is long lived but not eternal. It stops working if it is
   revoked, if the account's password policy forces it, or in the Google
-  *Testing* case above. Re-run `oauth2_authorize` and replace the line; nothing
+  *Testing* case above. Re-run `oauth2_authorize`, which replaces the line; nothing
   else changes.
 - `receive_imap` says which of the two it is:
   `invalid_grant` means the refresh token is no longer accepted, `invalid_client`

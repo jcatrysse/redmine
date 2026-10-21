@@ -45,9 +45,12 @@ module Redmine
       # authorization code grant. Returns the URL and the state it carries;
       # refresh_token needs that state to tell this authorization apart from
       # any other one, so the two are returned together rather than left to
-      # the caller to keep in step.
+      # the caller to keep in step. Raises when the refresh token could not be
+      # saved to the file afterwards: the authorization code can be exchanged
+      # only once, so that is found out before the owner consents.
       def authorize_url(credentials_file)
         credentials = read_credentials(credentials_file, %w(authorize_url client_id))
+        check_refresh_token_writable(credentials_file, credentials)
         uri = https_uri(credentials['authorize_url'], 'authorize_url')
         params = URI.decode_www_form(uri.query.to_s).to_h
         if credentials['authorize_params'].is_a?(Hash)
@@ -82,6 +85,16 @@ module Redmine
         token_from(response, 'refresh_token')
       end
 
+      # Writes the refresh token into the credentials file: the refresh_token
+      # line is replaced, or added when the file has none yet, and the rest of
+      # the file is kept as the administrator wrote it. The file is replaced
+      # atomically with its mode kept. Raises when it cannot be written.
+      def save_refresh_token(credentials_file, refresh_token)
+        credentials = read_credentials(credentials_file, [])
+        updated = with_refresh_token(credentials_file, File.read(credentials_file), credentials, refresh_token)
+        File.atomic_write(credentials_file) {|file| file.write(updated)}
+      end
+
       private
 
       def read_credentials(credentials_file, required)
@@ -99,23 +112,43 @@ module Redmine
       end
 
       # A provider may issue a new refresh token with each access token, and
-      # RFC 6749 section 6 then requires the old one to be discarded. Only the
-      # refresh_token line is rewritten so that the rest of the file is kept as
-      # the administrator wrote it, and the file is replaced atomically with its
-      # mode kept. The access token of this run is already obtained, so a
-      # failure is reported rather than raised.
+      # RFC 6749 section 6 then requires the old one to be discarded. The
+      # access token of this run is already obtained, so a failure is reported
+      # rather than raised.
       def store_refresh_token(credentials_file, credentials, refresh_token)
-        content = File.read(credentials_file)
-        line = /^refresh_token:[^\r\n]*/
-        replacement = {'refresh_token' => refresh_token}.to_yaml(line_width: -1).delete_prefix("---\n").chomp
-        updated = content.sub(line) {replacement}
-        if content.scan(line).one? && yaml_equal?(updated, credentials.merge('refresh_token' => refresh_token))
-          File.atomic_write(credentials_file) {|file| file.write(updated)}
-        else
-          warn "#{credentials_file} has no single refresh_token line to replace, the new refresh token issued by the provider was not stored"
-        end
+        updated = with_refresh_token(credentials_file, File.read(credentials_file), credentials, refresh_token)
+        File.atomic_write(credentials_file) {|file| file.write(updated)}
       rescue SystemCallError, IOError => e
         warn "The new refresh token issued by the provider could not be written to #{credentials_file}: #{e.message}"
+      rescue RuntimeError => e
+        warn "#{e.message}, the new refresh token issued by the provider was not stored"
+      end
+
+      def check_refresh_token_writable(credentials_file, credentials)
+        with_refresh_token(credentials_file, File.read(credentials_file), credentials, 'a-refresh-token')
+        unless File.writable?(credentials_file) && File.writable?(File.dirname(credentials_file))
+          raise "#{credentials_file} and its directory must be writable to save the refresh token"
+        end
+      end
+
+      # The file content with only its refresh_token line replaced, or with one
+      # added at the end when there is none, and parsed back to make sure that
+      # nothing else changed.
+      def with_refresh_token(credentials_file, content, credentials, refresh_token)
+        line = /^refresh_token:[^\r\n]*/
+        replacement = {'refresh_token' => refresh_token}.to_yaml(line_width: -1).delete_prefix("---\n").chomp
+        updated =
+          case content.scan(line).size
+          when 0
+            "#{content.end_with?("\n") ? content : "#{content}\n"}#{replacement}\n" unless credentials.key?('refresh_token')
+          when 1
+            content.sub(line) {replacement}
+          end
+        unless updated && yaml_equal?(updated, credentials.merge('refresh_token' => refresh_token))
+          raise "#{credentials_file} has no single refresh_token line to replace"
+        end
+
+        updated
       end
 
       def yaml_equal?(content, credentials)
