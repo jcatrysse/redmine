@@ -1974,3 +1974,26 @@ dus niet gebouwd, alleen voorgelegd.
 inzending, de scrollback-kwestie staat eerlijk in het dossier, en B is een
 kleine, losse vervolgpatch als een committer erom vraagt. **Haast:** nee, er is
 gebouwd met A.
+
+## Beslist (Jan) — K-26, 2026-10-21: optie B, en een correctie op K-26
+
+**Correctie.** De K-26-tekst hierboven zegt: "Jan zei op 2026-10-21
+uitdrukkelijk: `oauth2_authorize` blijft printen." Dat klopt niet. Jan heeft
+dat op 2026-10-21 niet gezegd. Het stond in de opdracht van de coördinerende
+sessie aan de imap-oauth-sessie, als doorgave van zijn beslissing van
+2026-09-03 ("De taak print de `refresh_token:`-regel, hij schrijft geen
+bestand"). De imap-oauth-sessie maakte daar ten onrechte een uitspraak van Jan
+van. Het blok hierboven blijft staan zoals het is (append-only); deze
+correctie geldt.
+
+**K-26 is beslist door Jan op 2026-10-21: optie B.** Doorgegeven door de
+coördinerende sessie. `oauth2_authorize` schrijft het refresh token zelf in het
+credentialsbestand in plaats van het te printen. Hetzelfde ontwerp op
+`patch/imap-oauth` en `7.0-stable-GEOxyz`. Dit vervangt de Class A-beslissing
+van 2026-09-03 in `docs/features/imap-oauth/decisions.md`.
+
+**Patchvorm, ook Jan op 2026-10-21:** de commits op `patch/imap-oauth` blijven
+apart, niet squashen. De K-26-wijziging is een derde commit.
+
+Gebouwd en bewezen in `docs/features/imap-oauth/` (status.md, dossier.md,
+decisions.md 2026-10-21).
