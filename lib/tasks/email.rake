@@ -52,11 +52,11 @@ Available IMAP options:
                              client_secret: ...
                              refresh_token: ...
                              scope: ...
-                           Run redmine:email:oauth2_authorize once to obtain
-                           the refresh token. A new refresh token issued by
-                           the provider replaces that line, so FILE and its
-                           directory must be writable by the user running
-                           this task. See the guides at:
+                           Run redmine:email:oauth2_authorize once to write
+                           the refresh token into it. A new refresh token
+                           issued by the provider replaces that line, so FILE
+                           and its directory must be writable by the user
+                           running this task. See the guides at:
                            http://www.redmine.org/projects/redmine/wiki/EmailConfiguration
   folder=FOLDER            IMAP folder to read (default: INBOX)
 
@@ -158,7 +158,9 @@ Obtain the refresh token that receive_imap needs, once, for one mailbox.
 This is interactive on purpose: only the mailbox owner can consent, in a
 browser. The task prints a URL to open, and the browser is then redirected to
 redirect_uri. That address usually fails to load, which is expected - copy it
-out of the address bar and paste it back here.
+out of the address bar and paste it back here. The refresh token is then
+written into the credentials file, which, like its directory, must be
+writable by the user running this task.
 
 Available options:
   oauth2_credentials=FILE  the YAML file described in receive_imap, with
@@ -193,9 +195,18 @@ END_DESC
       refresh_token = Redmine::Oauth2Client.refresh_token(credentials_file, redirect_url, state)
 
       puts
-      puts "Add this line to #{credentials_file}:"
-      puts
-      puts "refresh_token: #{refresh_token}"
+      begin
+        Redmine::Oauth2Client.save_refresh_token(credentials_file, refresh_token)
+      rescue => e
+        # The code cannot be exchanged again, so the token is handed over
+        # rather than lost.
+        puts "The refresh token could not be written to #{credentials_file}: #{e.message}"
+        puts "Add this line to it yourself:"
+        puts
+        puts "refresh_token: #{refresh_token}"
+        exit 1
+      end
+      puts "The refresh token was written to #{credentials_file}"
     end
 
     desc <<-END_DESC

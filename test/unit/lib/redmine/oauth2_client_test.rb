@@ -39,6 +39,16 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
     scope: https://outlook.office.com/IMAP.AccessAsUser.All offline_access
   YAML
 
+  # The same, before oauth2_authorize ran: no refresh_token line yet.
+  AUTHORIZE_FILE = <<~YAML
+    # Redmine mailbox, Microsoft 365
+    authorize_url: https://login.example.net/oauth2/v2.0/authorize
+    token_url: https://login.example.net/oauth2/v2.0/token
+    client_id: a-client-id
+    client_secret: a-client-secret   # expires 2027-01
+    scope: https://outlook.office.com/IMAP.AccessAsUser.All offline_access
+  YAML
+
   def test_access_token_should_return_the_token_of_a_refresh_token_grant
     request = nil
     http = expect_token_request(response(Net::HTTPOK, '200', 'OK', {'access_token' => 'an-access-token'}.to_json)) {|req| request = req}
@@ -244,6 +254,58 @@ class Redmine::Oauth2ClientTest < ActiveSupport::TestCase
     with_credentials(CREDENTIALS.merge('authorize_url' => 'http://login.example.net/authorize')) do |file|
       error = assert_raise(RuntimeError) {Redmine::Oauth2Client.authorize_url(file)}
       assert_equal 'authorize_url must be an https URL', error.message
+    end
+  end
+
+  def test_authorize_url_should_raise_before_consent_when_the_file_cannot_be_written
+    with_credentials_file(AUTHORIZE_FILE) do |file|
+      File.stubs(:writable?).returns(false)
+      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.authorize_url(file)}
+      assert_equal "#{file} and its directory must be writable to save the refresh token", error.message
+    end
+  end
+
+  def test_authorize_url_should_raise_before_consent_when_the_refresh_token_line_cannot_be_replaced
+    content = "#{AUTHORIZE_FILE}refresh_token: >-\n  an-older-refresh-token\n"
+    with_credentials_file(content) do |file|
+      error = assert_raise(RuntimeError) {Redmine::Oauth2Client.authorize_url(file)}
+      assert_equal "#{file} has no single refresh_token line to replace", error.message
+      assert_equal content, File.read(file)
+    end
+  end
+
+  def test_save_refresh_token_should_add_the_line_to_a_file_that_has_none
+    with_credentials_file(AUTHORIZE_FILE) do |file|
+      File.chmod(0o640, file)
+      Redmine::Oauth2Client.save_refresh_token(file, 'a-refresh-token-from-consent')
+
+      assert_equal "#{AUTHORIZE_FILE}refresh_token: a-refresh-token-from-consent\n", File.read(file)
+      assert_equal 0o640, File.stat(file).mode & 0o7777
+    end
+  end
+
+  def test_save_refresh_token_should_add_the_line_to_a_file_without_a_final_newline
+    with_credentials_file(AUTHORIZE_FILE.chomp) do |file|
+      Redmine::Oauth2Client.save_refresh_token(file, 'a-refresh-token-from-consent')
+
+      assert_equal "#{AUTHORIZE_FILE}refresh_token: a-refresh-token-from-consent\n", File.read(file)
+    end
+  end
+
+  def test_save_refresh_token_should_replace_the_line_of_an_earlier_authorization
+    with_credentials_file(CREDENTIALS_FILE) do |file|
+      Redmine::Oauth2Client.save_refresh_token(file, 'a-refresh-token-from-consent')
+
+      assert_equal CREDENTIALS_FILE.sub("'a-refresh-token'", 'a-refresh-token-from-consent'), File.read(file)
+    end
+  end
+
+  def test_save_refresh_token_should_raise_when_the_file_cannot_be_written
+    with_credentials_file(AUTHORIZE_FILE) do |file|
+      File.stubs(:atomic_write).raises(Errno::EACCES, File.dirname(file))
+      error = assert_raise(Errno::EACCES) {Redmine::Oauth2Client.save_refresh_token(file, 'a-refresh-token-from-consent')}
+      assert_not_include 'a-refresh-token-from-consent', error.message
+      assert_equal AUTHORIZE_FILE, File.read(file)
     end
   end
 
