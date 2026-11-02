@@ -1,0 +1,238 @@
+/* GEOxyz Material theme for Redmine 7 - flat Material You surfaces, light and dark */
+@import url(/application.css);
+
+/* Colours: every colour used below comes from these variables, so dark mode only redefines them */
+:root {
+  --m-bg:#fef7ff;
+  --m-surface:#ffffff;
+  --m-surface-2:#f7f2fa;
+  --m-hover:#f3edf7;
+  --m-outline:#79747e;
+  --m-line:#e7e0ec;
+  --m-text:#1d1b20;
+  --m-muted:#49454f;
+  --m-link:#6750a4;
+  --m-link-hover:#7d5260;
+  --m-primary:#6750a4;
+  --m-on-primary:#ffffff;
+  --m-tonal:#eaddff;
+  --m-on-tonal:#21005d;
+  --m-header:#6750a4;
+  --m-on-header:#ffffff;
+  --m-chip:rgba(255,255,255,.16);
+  --m-chip-selected:#eaddff;
+  --m-on-chip-selected:#21005d;
+  --m-selection:rgba(103,80,164,.16);
+  --m-code:#f3edf7;
+  --m-urgent:#b3261e;
+  --m-high:#8c4a00;
+  --m-shadow:0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.24);
+  --m-radius:20px;
+  --m-radius-sm:12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --m-bg:#141218;
+    --m-surface:#211f26;
+    --m-surface-2:#2b2930;
+    --m-hover:#36343b;
+    --m-outline:#938f99;
+    --m-line:#49454f;
+    --m-text:#e6e0e9;
+    --m-muted:#cac4d0;
+    --m-link:#d0bcff;
+    --m-link-hover:#efb8c8;
+    --m-primary:#d0bcff;
+    --m-on-primary:#381e72;
+    --m-tonal:#4f378b;
+    --m-on-tonal:#eaddff;
+    --m-header:#4f378b;
+    --m-on-header:#eaddff;
+    --m-chip:rgba(255,255,255,.10);
+    --m-chip-selected:#eaddff;
+    --m-on-chip-selected:#21005d;
+    --m-selection:rgba(208,188,255,.20);
+    --m-code:#2b2930;
+    --m-urgent:#ffb4ab;
+    --m-high:#ffb870;
+    --m-shadow:0 1px 3px rgba(0,0,0,.5), 0 1px 2px rgba(0,0,0,.6);
+  }
+}
+
+/* Base */
+html { font-size:15px; }
+body {
+  font-family:"Roboto","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,"Liberation Sans","DejaVu Sans",sans-serif;
+  font-size:1rem; line-height:1.5; color:var(--m-text); background:var(--m-bg);
+}
+#wrapper, #wrapper2, #wrapper3 { background:transparent; }
+#content, #sidebar, .wiki, td, th, p, li, label, input, select, textarea, .box,
+#footer, #quick-search, #top-menu, #main-menu li a { font-size:1rem; }
+.gantt_subjects, .gantt_hdr, .tooltip, .small, .info, .badge { font-size:.88rem; }
+a, a:link, a:visited { color:var(--m-link); text-decoration:none; }
+a:hover { color:var(--m-link-hover); text-decoration:underline; }
+h2, h3, h4 { color:var(--m-text); border-bottom:none; }
+h2 { font-size:1.6rem; font-weight:700; letter-spacing:-.01em; }
+h3 { font-size:1.15rem; font-weight:600; }
+h4 { font-size:1rem; border-bottom:1px solid var(--m-line); }
+
+/* Top bar and header; the project menu sits inside the header and the content overlaps its bottom edge */
+#top-menu { background:var(--m-surface-2); color:var(--m-text); border:none; padding:6px 16px; height:auto; }
+#top-menu a { color:var(--m-text); font-weight:500; }
+#top-menu a:hover { color:var(--m-link); }
+#header {
+  position:relative; box-sizing:border-box; min-height:112px;
+  background:var(--m-header); color:var(--m-on-header);
+  margin:14px 16px 0; padding:18px 24px 56px; border:none; border-radius:28px; box-shadow:var(--m-shadow);
+}
+#header:has(#main-menu) { min-height:150px; }
+#header h1, #header a, #header h1 .breadcrumbs, #header #quick-search { color:var(--m-on-header); font-weight:700; }
+#header #project-jump, #header #q { border-radius:999px; }
+#main { background:transparent; margin:0 16px; }
+
+#main-menu, #main-menu.tabs {
+  position:absolute; top:auto; bottom:34px; left:20px; right:20px; width:auto; margin:0; padding:0;
+  background:transparent; border:none; box-shadow:none;
+}
+#main-menu ul { margin:0; padding:0; }
+#main-menu li a, #main-menu li a:visited {
+  background:var(--m-chip); color:var(--m-on-header); border:none; border-radius:12px;
+  padding:5px 16px; margin-right:6px; font-weight:500;
+}
+#main-menu li a:hover { background:rgba(255,255,255,.28); color:var(--m-on-header); text-decoration:none; }
+#main-menu li a.selected, #main-menu li a.selected:hover { background:var(--m-chip-selected); color:var(--m-on-chip-selected); font-weight:600; }
+#main-menu li a.new-object { background:var(--m-chip); color:var(--m-on-header); border-radius:999px; }
+#main-menu .tabs-buttons button { color:var(--m-on-header); background:transparent; }
+#main-menu .menu-children { background:var(--m-surface); border-radius:var(--m-radius-sm); box-shadow:var(--m-shadow); }
+#main-menu .menu-children a { color:var(--m-text); background:transparent; }
+
+#content, #sidebar {
+  position:relative; margin-top:-22px; background:var(--m-surface); border:none;
+  border-radius:var(--m-radius); box-shadow:var(--m-shadow); padding:20px 24px;
+}
+#content { min-height:0; }
+#sidebar { padding:16px 18px; }
+#footer { background:transparent; color:var(--m-muted); border:none; }
+#footer a { color:var(--m-muted); }
+
+/* Tables: flat rows with dividers */
+table.list, table.list.issues, .autoscroll table.list { border:none; background:transparent; border-collapse:separate; border-spacing:0; }
+table.list th {
+  background:transparent; color:var(--m-muted); font-weight:600; font-size:.9rem;
+  border:none; border-bottom:2px solid var(--m-tonal); padding:11px 10px;
+}
+table.list th a { color:var(--m-muted); }
+table.list td { padding:10px; border:none; border-bottom:1px solid var(--m-line); }
+table.list tbody tr:last-child td { border-bottom:none; }
+tr.odd, tr.even, table.list tbody tr.odd, table.list tbody tr.even { background:transparent; }
+table.list tbody tr:hover { background:var(--m-hover); }
+tr.issue td.subject a { font-weight:550; }
+tr.issue.context-menu-selection, tr.context-menu-selection td { background:var(--m-selection) !important; }
+tr.priority-highest td, tr.priority-urgent td, tr.priority-immediate td { color:var(--m-urgent); }
+tr.priority-high td { color:var(--m-high); }
+tr.issue.closed td, tr.issue.closed td a { color:var(--m-muted); }
+table.list tr.group td, tr.group td { background:var(--m-surface-2); }
+td.checkbox, th.checkbox { width:28px; }
+
+/* Cards: boxes, fieldsets, issue details, journals */
+.box, fieldset, div.box.tabular, .splitcontent .box, .attachments,
+div.issue, div.issue.details, div.journal, #history .journal {
+  background:var(--m-surface-2); border:none; border-radius:16px; box-shadow:none; padding:14px 16px;
+}
+div.issue, div.issue.details { padding:18px 20px; }
+div.issue .subject h3 { font-size:1.4rem; }
+div.journal { margin-bottom:10px; }
+div.journal.has-notes h4 { border-bottom:none; }
+fieldset { margin-bottom:12px; }
+legend { color:var(--m-muted); font-weight:600; padding:0 8px; }
+#flash_notice, #flash_error, #flash_warning, #flash_success, div.flash, #errorExplanation {
+  border-radius:var(--m-radius-sm); padding:10px 16px; border-width:1px;
+}
+
+/* Tabs, pagination, badges */
+div.tabs { border-bottom:1px solid var(--m-line); }
+.tabs ul li a, .tabs a { background:transparent; border:none; border-radius:12px 12px 0 0; padding:6px 14px; font-weight:500; color:var(--m-muted); }
+.tabs ul li a.selected, .tabs a.selected { background:var(--m-tonal); color:var(--m-on-tonal); border-bottom:3px solid var(--m-primary); }
+.contextual, .contextual a { font-size:.92rem; }
+p.breadcrumb, .breadcrumbs { color:var(--m-muted); }
+.pagination li a, .pagination li span { border-radius:8px; border:1px solid var(--m-line); background:var(--m-surface); padding:3px 10px; }
+.pagination li.current span { background:var(--m-primary); color:var(--m-on-primary); border-color:var(--m-primary); }
+.badge, span.badge, .tag-label { border-radius:999px; }
+.avatar img, img.gravatar { border-radius:50%; }
+.progress, table.progress, .progress-bar { border-radius:999px; overflow:hidden; }
+
+/* Forms: Material outlined fields */
+input[type=text], input[type=password], input[type=email], input[type=number], input[type=date],
+input[type=search], input[type=url], input[type=tel], select, textarea, .select2-container .select2-selection {
+  font-size:1rem; padding:7px 11px; background:transparent; color:var(--m-text);
+  border:1px solid var(--m-outline); border-radius:8px; box-shadow:none;
+}
+select { padding-right:26px; }
+select[multiple], select[size] { padding:6px; }
+input[type=text]:focus, input[type=password]:focus, input[type=email]:focus, input[type=number]:focus,
+input[type=date]:focus, input[type=search]:focus, input[type=url]:focus, input[type=tel]:focus, select:focus, textarea:focus {
+  outline:none; border:2px solid var(--m-primary); padding:6px 10px;
+}
+.tabular label { font-weight:600; color:var(--m-muted); }
+
+/* Buttons: tonal by default, filled for the primary action; consistent height and centred content */
+input[type=submit], input[type=button], button, a.button, .button {
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  min-height:34px; box-sizing:border-box; vertical-align:middle; white-space:nowrap; line-height:1.2;
+  font-size:.95rem; font-weight:600; padding:7px 16px; border:none; border-radius:999px;
+  background:var(--m-tonal); color:var(--m-on-tonal); box-shadow:none; cursor:pointer;
+}
+input[type=submit]:hover, input[type=button]:hover, button:hover, a.button:hover {
+  box-shadow:var(--m-shadow); filter:brightness(.97); text-decoration:none;
+}
+input[type=submit][name=commit], input.button-positive, button.button-positive, input[type=submit].button-positive,
+a.icon-add.button, #content .contextual a.icon-add {
+  background:var(--m-primary); color:var(--m-on-primary);
+}
+a.icon-add.button, #content .contextual a.icon-add { border-radius:16px; padding:8px 18px; box-shadow:var(--m-shadow); }
+a.icon-add.button svg, #content .contextual a.icon-add svg { color:var(--m-on-primary); fill:currentColor; stroke:currentColor; }
+button.icon-only, td.buttons button, #query_form .buttons button, button.move-left, button.move-right {
+  width:34px; min-width:34px; height:34px; padding:0; border-radius:50%;
+}
+p.buttons { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+#query_form p.buttons { justify-content:flex-start; gap:16px; }
+#query_form div.buttons { display:flex; flex-direction:column; align-items:center; gap:6px; padding:0 8px; }
+#query_form .splitcontentleft, #query_form .splitcontentright { vertical-align:top; }
+td.buttons { vertical-align:middle; }
+
+/* Calendar, Gantt, wiki, code */
+table.cal { border-radius:var(--m-radius-sm); overflow:hidden; border-collapse:separate; border-spacing:0; background:var(--m-surface); }
+table.cal td, table.cal th { border-color:var(--m-line); }
+table.cal td.today { background:var(--m-tonal); }
+.gantt_hdr, .gantt_subjects_column { border-color:var(--m-line); }
+pre, code, .wiki pre { background:var(--m-code); color:var(--m-text); border:1px solid var(--m-line); border-radius:var(--m-radius-sm); font-size:.9rem; }
+.wiki table { border-collapse:separate; border-spacing:0; border-radius:var(--m-radius-sm); }
+.wiki table, .wiki table th, .wiki table td { border-color:var(--m-line); }
+.wiki th { background:var(--m-surface-2); }
+blockquote { border-left:3px solid var(--m-primary); background:var(--m-surface-2); border-radius:0 var(--m-radius-sm) var(--m-radius-sm) 0; padding:6px 12px; }
+
+/* Plugin boards (redmine_agile) */
+.agile-board .issue-card, div.issue-card {
+  background:var(--m-surface); border:1px solid var(--m-line); border-radius:12px; box-shadow:var(--m-shadow); font-size:.92rem;
+}
+table.issues-board th, .agile-board th { border-radius:10px 10px 0 0; }
+
+/* Menus, dialogs, tooltips */
+#context-menu, #context-menu ul, .ui-dialog, .ui-widget-content, .select2-dropdown, .tribute-container ul {
+  background:var(--m-surface); color:var(--m-text); border:1px solid var(--m-line);
+  border-radius:var(--m-radius-sm); box-shadow:var(--m-shadow);
+}
+#context-menu a:hover { background:var(--m-hover); border-radius:6px; }
+.ui-dialog .ui-dialog-titlebar { background:var(--m-surface-2); border:none; border-radius:var(--m-radius-sm) var(--m-radius-sm) 0 0; }
+.tooltip span.tip { background:var(--m-surface); color:var(--m-text); border-radius:var(--m-radius-sm); box-shadow:var(--m-shadow); }
+#login-form { background:var(--m-surface); border:none; border-radius:var(--m-radius); box-shadow:var(--m-shadow); padding:22px 26px; }
+#login-form table { background:transparent; }
+::-webkit-scrollbar { width:10px; height:10px; }
+::-webkit-scrollbar-thumb { background:var(--m-outline); border-radius:10px; }
+
+/* Small screens */
+@media (max-width:899px) {
+  #header { margin:8px; padding:14px 14px 52px; }
+  #main { margin:0 8px; }
+  #content { padding:14px; }
+}
