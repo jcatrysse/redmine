@@ -90,21 +90,21 @@ h4 { font-size:1rem; border-bottom:1px solid var(--m-line); }
 #header #project-jump, #header #q { border-radius:999px; }
 #main { background:transparent; margin:0 16px; }
 
-#main-menu, #main-menu.tabs {
+#header #main-menu, #header #main-menu.tabs {
   position:absolute; top:auto; bottom:34px; left:20px; right:20px; width:auto; margin:0; padding:0;
   background:transparent; border:none; box-shadow:none;
 }
-#main-menu ul { margin:0; padding:0; }
-#main-menu li a, #main-menu li a:visited {
+#header #main-menu ul { margin:0; padding:0; }
+#header #main-menu li a, #header #main-menu li a:visited {
   background:var(--m-chip); color:var(--m-on-header); border:none; border-radius:12px;
   padding:5px 16px; margin-right:6px; font-weight:500;
 }
-#main-menu li a:hover { background:rgba(255,255,255,.28); color:var(--m-on-header); text-decoration:none; }
-#main-menu li a.selected, #main-menu li a.selected:hover { background:var(--m-chip-selected); color:var(--m-on-chip-selected); font-weight:600; }
-#main-menu li a.new-object { background:var(--m-chip); color:var(--m-on-header); border-radius:999px; }
-#main-menu .tabs-buttons button { color:var(--m-on-header); background:transparent; }
-#main-menu .menu-children { background:var(--m-surface); border-radius:var(--m-radius-sm); box-shadow:var(--m-shadow); }
-#main-menu .menu-children a { color:var(--m-text); background:transparent; }
+#header #main-menu li a:hover { background:rgba(255,255,255,.28); color:var(--m-on-header); text-decoration:none; }
+#header #main-menu li a.selected, #header #main-menu li a.selected:hover { background:var(--m-chip-selected); color:var(--m-on-chip-selected); font-weight:600; }
+#header #main-menu li a.new-object { background:var(--m-chip); color:var(--m-on-header); border-radius:999px; }
+#header #main-menu .tabs-buttons button { color:var(--m-on-header); background:transparent; }
+#header #main-menu .menu-children { background:var(--m-surface); border-radius:var(--m-radius-sm); box-shadow:var(--m-shadow); }
+#header #main-menu .menu-children a { color:var(--m-text); background:transparent; }
 
 #content, #sidebar {
   position:relative; margin-top:-22px; background:var(--m-surface); border:none;
@@ -191,7 +191,7 @@ a.icon-add.button, #content .contextual a.icon-add {
 }
 a.icon-add.button, #content .contextual a.icon-add { border-radius:16px; padding:8px 18px; box-shadow:var(--m-shadow); }
 a.icon-add.button svg, #content .contextual a.icon-add svg { color:var(--m-on-primary); fill:currentColor; stroke:currentColor; }
-button.icon-only, td.buttons button, #query_form .buttons button, button.move-left, button.move-right {
+button.icon-only, td.buttons button.icon-only, #query_form .buttons button, button.move-left, button.move-right {
   width:34px; min-width:34px; height:34px; padding:0; border-radius:50%;
 }
 p.buttons { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
@@ -235,4 +235,60 @@ table.issues-board th, .agile-board th { border-radius:10px 10px 0 0; }
   #header { margin:8px; padding:14px 14px 52px; }
   #main { margin:0 8px; }
   #content { padding:14px; }
+}
+
+/* Jira-style left sidebar (built by javascripts/theme.js), desktop only.
+   Below 900px it is hidden and Redmine's own mobile menu takes over. */
+#m-sidenav, .m-sidenav__toggle { display:none; }
+@media (min-width:900px) {
+  html.m-has-sidenav #m-sidenav {
+    display:block; position:fixed; top:0; left:0; bottom:0; width:232px; z-index:20;
+    overflow-y:auto; box-sizing:border-box; padding:14px 10px 24px;
+    background:var(--m-surface-2); border-right:1px solid var(--m-line);
+  }
+  html.m-has-sidenav #wrapper { padding-left:232px; }
+  html.m-has-sidenav #top-menu .general-menu { visibility:hidden; }
+  html.m-has-sidenav #header #main-menu { display:none; }
+  html.m-has-sidenav #header, html.m-has-sidenav #header:has(#main-menu) { min-height:96px; padding-bottom:40px; }
+
+  .m-sidenav__brand { display:block; padding:6px 10px 14px; font-size:1.15rem; font-weight:700; color:var(--m-text) !important; text-decoration:none !important; }
+  .m-sidenav__section { margin:0 0 14px; }
+  .m-sidenav__title {
+    padding:8px 10px 4px; font-size:.78rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+    color:var(--m-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  #m-sidenav ul { list-style:none; margin:0; padding:0; }
+  #m-sidenav li { margin:1px 0; float:none; }
+  #m-sidenav li a, #m-sidenav li a:visited {
+    display:block; padding:7px 12px; border-radius:10px; color:var(--m-text); font-weight:500;
+    text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; background:transparent;
+  }
+  #m-sidenav li a:hover { background:var(--m-hover); text-decoration:none; }
+  #m-sidenav li a.selected, #m-sidenav li a.m-current { background:var(--m-tonal); color:var(--m-on-tonal); font-weight:600; }
+
+  /* the moved project menu: vertical list instead of tabs */
+  #m-sidenav #main-menu, #m-sidenav #main-menu.tabs {
+    position:static; display:block; width:auto; margin:0; padding:0; border:none; background:transparent; box-shadow:none;
+  }
+  #m-sidenav #main-menu > ul { display:block; white-space:normal; }
+  #m-sidenav #main-menu > ul > li { display:block; float:none; width:auto; margin:1px 0; position:relative; }
+  #m-sidenav #main-menu .menu-children { display:none; }
+  #m-sidenav #main-menu li:hover > .menu-children, #m-sidenav #main-menu .menu-children.visible { display:block; left:12px; top:100%; min-width:180px; }
+  #m-sidenav #main-menu .menu-children li a { padding:6px 12px; border-radius:6px; }
+  #m-sidenav #main-menu .tabs-buttons { display:none !important; }
+  #m-sidenav #main-menu li a.new-object { white-space:nowrap; display:inline-block; margin:4px 0 6px 6px; padding:5px 14px; border-radius:999px; background:var(--m-primary); color:var(--m-on-primary); }
+  #m-sidenav #main-menu .menu-children { position:absolute; z-index:30; background:var(--m-surface); border-radius:var(--m-radius-sm); box-shadow:var(--m-shadow); }
+
+  .m-sidenav__toggle {
+    display:flex; align-items:center; justify-content:center; position:fixed; z-index:21; top:14px; left:216px;
+    width:28px; min-width:28px; height:28px; min-height:28px; padding:0; border-radius:50%;
+    background:var(--m-surface); color:var(--m-text); border:1px solid var(--m-line); box-shadow:var(--m-shadow); font-size:18px; line-height:1;
+  }
+  html:not(.m-has-sidenav) .m-sidenav__toggle { display:none; }
+
+  /* collapsed: sidebar hidden, content uses the full width */
+  html.m-sidenav-collapsed #m-sidenav { display:none; }
+  html.m-sidenav-collapsed.m-has-sidenav #wrapper { padding-left:0; }
+  html.m-sidenav-collapsed.m-has-sidenav #top-menu .general-menu { visibility:visible; }
+  html.m-sidenav-collapsed .m-sidenav__toggle { left:8px; }
 }
