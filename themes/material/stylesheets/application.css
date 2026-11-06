@@ -56,6 +56,16 @@
     --m-urgent:#ffb4ab;
     --m-high:#ffb870;
     --m-shadow:0 1px 3px rgba(0,0,0,.5), 0 1px 2px rgba(0,0,0,.6);
+
+    /* Redmine core and many plugins build their colours from the open-color palette.
+       Remapping it here turns their fixed light colours into dark ones. */
+    --oc-white:#211f26;
+    --oc-gray-0:#2b2930; --oc-gray-1:#322f37; --oc-gray-2:#3a3740; --oc-gray-3:#49454f; --oc-gray-4:#5d5964;
+    --oc-gray-5:#79747e; --oc-gray-6:#938f99; --oc-gray-7:#cac4d0; --oc-gray-8:#ddd7e2; --oc-gray-9:#e6e0e9;
+    --oc-blue-0:#1f2a3a; --oc-yellow-0:#3a3420; --oc-indigo-1:#2b2d48; --oc-green-0:#1f3326; --oc-red-0:#3a2224;
+    --oc-blue-7:#8bc4ff; --oc-blue-9:#a5d0ff; --oc-red-8:#ff9e9e; --oc-red-9:#ffb4ab; --oc-green-7:#8fdc9a;
+    --oc-green-9:#a6e3ae; --oc-pink-9:#ffb0cd; --oc-indigo-9:#c3c8ff; --oc-yellow-9:#ffd77a;
+    --oc-yellow-1:#40391f; --oc-yellow-2:#4a4123;
   }
 }
 
@@ -168,6 +178,8 @@ input[type=search], input[type=url], input[type=tel], select, textarea, .select2
   border:1px solid var(--m-outline); border-radius:8px; box-shadow:none;
 }
 select { padding-right:26px; }
+select option, select optgroup { background:var(--m-surface); color:var(--m-text); }
+#sidebar h3, #sidebar h4 { color:var(--m-muted); }
 select[multiple], select[size] { padding:6px; }
 input[type=text]:focus, input[type=password]:focus, input[type=email]:focus, input[type=number]:focus,
 input[type=date]:focus, input[type=search]:focus, input[type=url]:focus, input[type=tel]:focus, select:focus, textarea:focus {
@@ -291,4 +303,12 @@ table.issues-board th, .agile-board th { border-radius:10px 10px 0 0; }
   html.m-sidenav-collapsed.m-has-sidenav #wrapper { padding-left:0; }
   html.m-sidenav-collapsed.m-has-sidenav #top-menu .general-menu { visibility:visible; }
   html.m-sidenav-collapsed .m-sidenav__toggle { left:8px; }
+  html.m-sidenav-collapsed.m-has-sidenav #top-menu { padding-left:48px; }
+}
+
+/* Dark mode: the few colours Redmine core and plugins write as fixed values instead of palette variables */
+@media (prefers-color-scheme: dark) {
+  div#sticky-issue-header { background-color:var(--m-surface); border-color:var(--m-line); }
+  .cal .calbody.today .day-value { color:#ffffff; }
+  span.itil-priority { background-color:transparent; }
 }
