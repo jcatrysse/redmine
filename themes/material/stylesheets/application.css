@@ -304,6 +304,9 @@ table.issues-board th, .agile-board th { border-radius:10px 10px 0 0; }
   html.m-sidenav-collapsed.m-has-sidenav #top-menu .general-menu { visibility:visible; }
   html.m-sidenav-collapsed .m-sidenav__toggle { left:8px; }
   html.m-sidenav-collapsed.m-has-sidenav #top-menu { padding-left:48px; }
+  html.m-sidenav-collapsed.m-has-sidenav #header #main-menu { display:block; }
+  html.m-sidenav-collapsed.m-has-sidenav #header:has(#main-menu) { min-height:150px; padding-bottom:56px; }
+  html.m-sidenav-collapsed.m-has-sidenav #header #main-menu li a.new-object { white-space:nowrap; }
 }
 
 /* Dark mode: the few colours Redmine core and plugins write as fixed values instead of palette variables */
@@ -312,3 +315,15 @@ table.issues-board th, .agile-board th { border-radius:10px 10px 0 0; }
   .cal .calbody.today .day-value { color:#ffffff; }
   span.itil-priority { background-color:transparent; }
 }
+
+/* Tab scroll buttons of the project menu in the header (used when the sidebar is collapsed) */
+#header #main-menu .tabs-buttons { inline-size:66px; block-size:30px; background:var(--m-header); border:none; z-index:2; }
+#header #main-menu button.tab-left, #header #main-menu button.tab-right {
+  width:28px; min-width:28px; height:28px; min-height:28px; padding:0; border:none; border-radius:50%;
+  background:var(--m-chip-selected); box-shadow:none; inset-block-end:1px;
+}
+#header #main-menu button.tab-left { inset-inline-end:34px; }
+#header #main-menu button.tab-right { inset-inline-end:2px; }
+#header #main-menu button.tab-left svg.icon-svg, #header #main-menu button.tab-right svg.icon-svg { stroke:var(--m-on-chip-selected); }
+#header #main-menu button.tab-left.disabled, #header #main-menu button.tab-right.disabled { opacity:.45; }
+#header #main-menu > ul { overflow:hidden; box-sizing:border-box; padding-inline-end:72px; }

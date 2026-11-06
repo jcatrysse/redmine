@@ -66,15 +66,30 @@
     }
 
     var mainMenu = document.getElementById('main-menu');
+    var headerParent = mainMenu ? mainMenu.parentNode : null;
+    var headerNext = mainMenu ? mainMenu.nextSibling : null;
+    var projectSection = null;
     if (mainMenu) {
       var heading = document.querySelector('#header h1');
       var projectName = heading ? heading.textContent.trim().split('»').pop().trim() : '';
-      var projectSection = section(projectName || 'Project');
+      projectSection = section(projectName || 'Project');
       projectSection.classList.add('m-sidenav__project');
       var newObject = mainMenu.querySelector('a.new-object');
       if (newObject && newObject.textContent.trim() === '+') newObject.textContent = '+ New';
       projectSection.appendChild(mainMenu);
       nav.appendChild(projectSection);
+    }
+
+    // Collapsed: the project menu goes back to the header as tabs, so it stays reachable.
+    function placeProjectMenu(collapsed) {
+      if (!mainMenu || !projectSection || !headerParent) return;
+      if (collapsed) {
+        headerParent.insertBefore(mainMenu, headerNext && headerNext.parentNode === headerParent ? headerNext : null);
+      } else {
+        projectSection.appendChild(mainMenu);
+      }
+      // let Redmine recalculate the tab scroll buttons for the new position
+      if (window.jQuery) window.jQuery(window).trigger('resize');
     }
 
     var toggle = el('button', { type: 'button', 'class': 'm-sidenav__toggle', 'aria-label': 'Collapse sidebar', title: 'Collapse sidebar' });
@@ -84,6 +99,7 @@
       document.documentElement.classList.toggle('m-sidenav-collapsed', collapsed);
       toggle.innerHTML = collapsed ? '&#x203A;' : '&#x2039;';
       toggle.setAttribute('title', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+      placeProjectMenu(collapsed);
       writeCollapsed(collapsed);
     });
 
@@ -94,6 +110,7 @@
       document.documentElement.classList.add('m-sidenav-collapsed');
       toggle.innerHTML = '&#x203A;';
       toggle.setAttribute('title', 'Expand sidebar');
+      placeProjectMenu(true);
     }
     document.documentElement.classList.add('m-has-sidenav');
   }
