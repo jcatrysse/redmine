@@ -344,3 +344,13 @@ table.issues-board th, .agile-board th { border-radius:10px 10px 0 0; }
   html .flyout-menu { background-color:var(--color-top-menu-background); }
   html .flyout-menu h3 { background-color:var(--color-header-background); border-color:rgba(255,255,255,.15); }
 }
+
+/* Collapsible boxes (Filters, Options, ...): the title is a chip with a gap between arrow and text,
+   and a collapsed box shows only that chip instead of an empty pill */
+fieldset.collapsible > legend {
+  display:inline-flex; align-items:center; gap:6px; padding:3px 12px 3px 8px; cursor:pointer;
+  border-radius:999px; background:var(--m-surface); color:var(--m-muted); font-weight:600;
+}
+fieldset.collapsible > legend:hover { color:var(--m-text); background:var(--m-hover); }
+fieldset.collapsible > legend svg.icon-svg { margin:0; }
+fieldset.collapsible.collapsed { background:transparent; padding:0; box-shadow:none; min-height:0; }
