@@ -202,7 +202,7 @@ a.icon-add.button, #content .contextual a.icon-add {
   background:var(--m-primary); color:var(--m-on-primary);
 }
 a.icon-add.button, #content .contextual a.icon-add { border-radius:16px; padding:8px 18px; box-shadow:var(--m-shadow); }
-a.icon-add.button svg, #content .contextual a.icon-add svg { color:var(--m-on-primary); fill:currentColor; stroke:currentColor; }
+a.icon-add.button svg, #content .contextual a.icon-add svg { color:var(--m-on-primary); fill:none; stroke:currentColor; }
 button.icon-only, td.buttons button.icon-only, #query_form .buttons button, button.move-left, button.move-right {
   width:34px; min-width:34px; height:34px; padding:0; border-radius:50%;
 }
@@ -314,6 +314,9 @@ table.issues-board th, .agile-board th { border-radius:10px 10px 0 0; }
   div#sticky-issue-header { background-color:var(--m-surface); border-color:var(--m-line); }
   .cal .calbody.today .day-value { color:#ffffff; }
   span.itil-priority { background-color:transparent; }
+  /* text-editor toolbar: the icons are dark images, so the buttons stay light */
+  body .jstElements button { background-color:#cac4d0; border-color:#938f99; color:#1d1b20; opacity:.9; }
+  body .jstElements button:hover { background-color:#e6e0e9; opacity:1; }
 }
 
 /* Tab scroll buttons of the project menu in the header (used when the sidebar is collapsed) */
