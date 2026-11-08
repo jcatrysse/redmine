@@ -29,6 +29,9 @@
   --m-shadow:0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.24);
   --m-radius:20px;
   --m-radius-sm:12px;
+  /* Redmine's own variables, used by the mobile header and the slide-out menu (responsive.css) */
+  --color-header-background:#6750a4;
+  --color-top-menu-background:#4f378b;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -59,6 +62,8 @@
 
     /* Redmine core and many plugins build their colours from the open-color palette.
        Remapping it here turns their fixed light colours into dark ones. */
+    --color-header-background:#4f378b;
+    --color-top-menu-background:#2b2930;
     --oc-white:#211f26;
     --oc-gray-0:#2b2930; --oc-gray-1:#322f37; --oc-gray-2:#3a3740; --oc-gray-3:#49454f; --oc-gray-4:#5d5964;
     --oc-gray-5:#79747e; --oc-gray-6:#938f99; --oc-gray-7:#cac4d0; --oc-gray-8:#ddd7e2; --oc-gray-9:#e6e0e9;
@@ -330,3 +335,12 @@ table.issues-board th, .agile-board th { border-radius:10px 10px 0 0; }
 #header #main-menu button.tab-left svg.icon-svg, #header #main-menu button.tab-right svg.icon-svg { stroke:var(--m-on-chip-selected); }
 #header #main-menu button.tab-left.disabled, #header #main-menu button.tab-right.disabled { opacity:.45; }
 #header #main-menu > ul { overflow:hidden; box-sizing:border-box; padding-inline-end:72px; }
+
+/* Phones: texts on the purple mobile header stay white (they use palette colours that dark mode remaps) */
+@media screen and (max-width:899px) {
+  html #header a.mobile-toggle-button, html #project-jump .drdn-trigger { color:#ffffff; }
+  /* responsive.css writes Redmine's default blues as fixed values; use the theme colours instead */
+  html #header { background-color:var(--color-header-background); border-radius:0 0 20px 20px; }
+  html .flyout-menu { background-color:var(--color-top-menu-background); }
+  html .flyout-menu h3 { background-color:var(--color-header-background); border-color:rgba(255,255,255,.15); }
+}
